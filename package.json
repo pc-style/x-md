@@ -1,0 +1,39 @@
+{
+  "name": "x-md",
+  "version": "1.0.0",
+  "description": "Open-source X/Twitter to Markdown converter (FxTwitter + syndication + optional Firecrawl)",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pc-style/x-md.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pc-style/x-md/issues"
+  },
+  "homepage": "https://github.com/pc-style/x-md#readme",
+  "keywords": [
+    "x",
+    "twitter",
+    "markdown",
+    "converter",
+    "obsidian",
+    "vercel",
+    "open-source"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@vercel/node": "^5.8.4",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "tailwindcss": "^4.3.0"
+  }
+}
