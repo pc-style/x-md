@@ -145,9 +145,10 @@ Accept: text/markdown
       <article class="reveal mb-16 border-t border-border pt-12" id="agents">
         <p class="eyebrow">Automation</p>
         <h3 class="section-title text-2xl">AI agents</h3>
-        <p class="mt-3 max-w-2xl text-muted">Point tools at the convert URL with a full X link. Default path needs no paid tweet API keys.</p>
-        <pre class="code-block mt-6">GET /api/convert?url=${encodeURIComponent(EXAMPLE_URL)}
-Accept: text/markdown</pre>
+        <p class="mt-3 max-w-2xl text-muted">Point tools at <code>https://x.pcstyle.dev/api/convert</code> with a full X link, or use repo skills under <code>skills/read-x-links-*</code>.</p>
+        <pre class="code-block mt-6">curl -sS -G "https://x.pcstyle.dev/api/convert" \\
+  --data-urlencode "url=${EXAMPLE_URL}" \\
+  -H "Accept: text/markdown"</pre>
         <p class="mt-4 text-sm text-muted">JSON: <code>Accept: application/json</code> includes <code>source</code> (fxtwitter | syndication | firecrawl).</p>
       </article>
 

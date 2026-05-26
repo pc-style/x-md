@@ -3,51 +3,92 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="x.md is an open-source, self-hosted API that turns public X posts into Markdown: threads, media, quotes, and X Articles on your own Vercel deploy."
+      content="x.md turns public X posts into Markdown for notes, Obsidian, and agents. Open-source API on Vercel: threads, media, quotes, and X Articles."
     />
-    <meta name="keywords" content="X, Twitter, Markdown, converter, API, open source, Vercel, Obsidian" />
+    <meta name="keywords" content="X, Twitter, Markdown, converter, API, open source, Vercel, Obsidian, agent" />
     <meta name="author" content="x.md contributors" />
-    <meta name="robots" content="index, follow" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#0c0f14" />
-    <title>x.md — open-source X to Markdown</title>
-    <link rel="canonical" href="https://x-md.vercel.app/" />
+    <meta name="color-scheme" content="dark light" />
+    <title>x.md — open-source X to Markdown API</title>
+    <link rel="canonical" href="https://x.pcstyle.dev/" />
+    <link rel="alternate" hreflang="en" href="https://x.pcstyle.dev/" />
+    <link rel="alternate" hreflang="x-default" href="https://x.pcstyle.dev/" />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="x.md" />
-    <meta property="og:title" content="x.md — open-source X to Markdown" />
+    <meta property="og:title" content="x.md — open-source X to Markdown API" />
     <meta
       property="og:description"
       content="Self-hosted X to Markdown API. Threads, media, quotes, and X Articles. Deploy on Vercel in minutes."
     />
-    <meta property="og:url" content="https://x-md.vercel.app/" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="x.md — open-source X to Markdown" />
+    <meta property="og:url" content="https://x.pcstyle.dev/" />
+    <meta property="og:image" content="https://x.pcstyle.dev/og.png" />
+    <meta property="og:image:secure_url" content="https://x.pcstyle.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="x.md — convert public X posts to Markdown" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="x.md — open-source X to Markdown API" />
     <meta
       name="twitter:description"
       content="Self-hosted X to Markdown API. Threads, media, quotes, and X Articles."
     />
+    <meta name="twitter:image" content="https://x.pcstyle.dev/og.png" />
+    <meta name="twitter:image:alt" content="x.md — convert public X posts to Markdown" />
+    <link rel="manifest" href="/site.webmanifest" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        "name": "x.md",
-        "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Any",
-        "description": "Open-source API that converts public X posts to Markdown for notes, agents, and automation.",
-        "offers": {
-          "@type": "Offer",
-          "price": "0",
-          "priceCurrency": "USD"
-        },
-        "license": "https://opensource.org/licenses/MIT",
-        "codeRepository": "https://github.com/pc-style/x-md",
-        "featureList": [
-          "Markdown and Obsidian output",
-          "Thread expansion",
-          "FxTwitter, syndication, and optional Firecrawl fallbacks",
-          "Vercel serverless deployment"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://x.pcstyle.dev/#website",
+            "url": "https://x.pcstyle.dev/",
+            "name": "x.md",
+            "description": "Open-source API that converts public X posts to Markdown for notes, agents, and automation.",
+            "inLanguage": "en-US",
+            "publisher": { "@id": "https://x.pcstyle.dev/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://x.pcstyle.dev/#organization",
+            "name": "x.md",
+            "url": "https://x.pcstyle.dev/",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://x.pcstyle.dev/logo.svg"
+            }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "@id": "https://x.pcstyle.dev/#app",
+            "name": "x.md",
+            "url": "https://x.pcstyle.dev/",
+            "image": "https://x.pcstyle.dev/og.png",
+            "applicationCategory": "DeveloperApplication",
+            "operatingSystem": "Any",
+            "description": "Open-source API that converts public X posts to Markdown for notes, agents, and automation.",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "license": "https://opensource.org/licenses/MIT",
+            "codeRepository": "https://github.com/pc-style/x-md",
+            "isAccessibleForFree": true,
+            "featureList": [
+              "Markdown and Obsidian output",
+              "Thread expansion",
+              "FxTwitter, syndication, and optional Firecrawl fallbacks",
+              "Vercel serverless deployment"
+            ]
+          }
         ]
       }
     </script>

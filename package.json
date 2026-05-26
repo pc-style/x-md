@@ -11,7 +11,7 @@
   "bugs": {
     "url": "https://github.com/pc-style/x-md/issues"
   },
-  "homepage": "https://github.com/pc-style/x-md#readme",
+  "homepage": "https://x.pcstyle.dev",
   "keywords": [
     "x",
     "twitter",
@@ -24,7 +24,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "read-x": "bun scripts/read-x.ts"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",

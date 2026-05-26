@@ -27,7 +27,13 @@ export interface ConvertSuccess {
   cache: CacheStatus
 }
 
-const ALLOWED_HOSTS = new Set(['x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com'])
+const ALLOWED_HOSTS = new Set([
+  'x.com',
+  'twitter.com',
+  'www.twitter.com',
+  'mobile.twitter.com',
+  'x.pcstyle.dev',
+])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 const STATUS_PATH = /^\/([^/?#]+)\/status\/(\d+)\/?$/
 

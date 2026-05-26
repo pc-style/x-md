@@ -26,6 +26,19 @@ bun run dev
 
 Open [http://localhost:5173](http://localhost:5173), paste a public status URL, or call the API directly.
 
+## Agent skills
+
+Cursor agents can read X links via bundled skills:
+
+| Skill | Location | How |
+| --- | --- | --- |
+| Local CLI | `skills/read-x-links-local/` | `bun run read-x -- "<url>"` |
+| Hosted API | `skills/read-x-links-vercel/` | `https://x.pcstyle.dev/api/convert?url=...` |
+
+Live site: [https://x.pcstyle.dev](https://x.pcstyle.dev)
+
+Personal copies (with helper scripts): `~/.agents/skills/read-x-links-local/` and `read-x-links-vercel/`.
+
 ## API
 
 ### Convert by query string
@@ -87,7 +100,9 @@ vercel --prod
 
 `vercel.json` sets build output to `dist`, API routes under `api/`, and path rewrites for `/:handle/status/:id`.
 
-After deploy, set your canonical URL in `index.html` if you use a custom domain.
+Production domain: `https://x.pcstyle.dev` (canonical URLs and OG tags in `index.html`).
+
+**DNS (Cloudflare or your provider):** `A` record `x` → `76.76.21.21` (Vercel).
 
 ## Project layout
 
