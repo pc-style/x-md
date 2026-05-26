@@ -68,7 +68,7 @@ Copy [`.env.local.example`](.env.local.example) to `.env.local`:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `FIRECRAWL_API_KEY` | No | Firecrawl scrape fallback when FxTwitter and syndication fail |
+| `FIRECRAWL_API_KEY` | No | Firecrawl scrape fallback when FxTwitter and syndication fail (local/self-host only; not set on the public Vercel production deploy) |
 | `CACHE_TTL_SECONDS` | No | Converter cache TTL (default `3600`) |
 | `CACHE_DISABLED` | No | Set to `1` to disable cache |
 | `CACHE_PERSIST` | No | Set to `0` to use memory-only cache |

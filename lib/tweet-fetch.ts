@@ -18,8 +18,14 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
   const attempts: Array<() => Promise<FetchResult>> = [
     async () => ({ tweets: [await fetchFxStatus(id)], source: 'fxtwitter' }),
     async () => ({ tweets: [await fetchSyndicationStatus(handle, id)], source: 'syndication' }),
-    async () => ({ tweets: [await fetchFirecrawlStatus(handle, id)], source: 'firecrawl' }),
   ]
+
+  if (process.env.FIRECRAWL_API_KEY) {
+    attempts.push(async () => ({
+      tweets: [await fetchFirecrawlStatus(handle, id)],
+      source: 'firecrawl',
+    }))
+  }
 
   let lastError: unknown
 
