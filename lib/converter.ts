@@ -106,6 +106,12 @@ function parseFormat(raw: string | null | undefined): OutputFormat {
 
 const DEFAULT_THREAD = 'full'
 
+function canonicalThreadCacheValue(raw: string | null | undefined): string {
+  if (raw === 'off') return 'off'
+  if (!raw || raw === 'full' || raw === 'conversation') return DEFAULT_THREAD
+  return raw
+}
+
 function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; limit: number } {
   if (raw === 'off') return { mode: 'off', limit: 1 }
 
@@ -189,7 +195,7 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
     v: 2,
     id,
     format,
-    thread: input.thread ?? DEFAULT_THREAD,
+    thread: canonicalThreadCacheValue(input.thread),
     userinfo: input.userinfo ?? 'off',
   })
 

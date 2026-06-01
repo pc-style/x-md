@@ -171,20 +171,21 @@ export async function fetchFxConversationChain(
   id: string,
   limit = 100,
 ): Promise<FxTweet[]> {
-  const chain: FxTweet[] = []
+  const walked: FxTweet[] = []
   const seen = new Set<string>()
   let currentId: string | undefined = id
 
-  while (currentId && chain.length < limit) {
+  while (currentId && walked.length < 100) {
     if (seen.has(currentId)) break
     seen.add(currentId)
 
     const tweet = await fetchFxStatus(currentId)
-    chain.unshift(tweet)
+    walked.push(tweet)
     currentId = getParentStatusId(tweet)
   }
 
-  return chain
+  walked.reverse()
+  return walked.slice(0, limit)
 }
 
 export async function fetchFxThread(id: string): Promise<FxTweet[]> {
