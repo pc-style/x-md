@@ -104,10 +104,12 @@ function parseFormat(raw: string | null | undefined): OutputFormat {
   throw new ConvertError(400, '`format` must be `markdown` or `obsidian`.', 'invalid_format')
 }
 
-function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; limit: number } {
-  if (!raw || raw === 'off') return { mode: 'off', limit: 1 }
+const DEFAULT_THREAD = 'full'
 
-  if (raw === 'full') return { mode: 'full', limit: 100 }
+function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; limit: number } {
+  if (raw === 'off') return { mode: 'off', limit: 1 }
+
+  if (!raw || raw === 'full' || raw === 'conversation') return { mode: 'full', limit: 100 }
 
   const n = Number.parseInt(raw, 10)
   if (Number.isFinite(n) && n >= 2 && n <= 100) {
@@ -116,7 +118,7 @@ function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; li
 
   throw new ConvertError(
     400,
-    '`thread` must be `off`, `full`, or a number from 2 to 100.',
+    '`thread` must be `off`, `full`, `conversation`, or a number from 2 to 100.',
     'invalid_thread',
   )
 }
@@ -184,10 +186,10 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   const { canonicalUrl, handle, id } = resolveTarget(input)
 
   const cacheKey = buildCacheKey({
-    v: 1,
+    v: 2,
     id,
     format,
-    thread: input.thread ?? 'off',
+    thread: input.thread ?? DEFAULT_THREAD,
     userinfo: input.userinfo ?? 'off',
   })
 
