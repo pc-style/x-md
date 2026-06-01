@@ -179,9 +179,14 @@ export async function fetchFxConversationChain(
     if (seen.has(currentId)) break
     seen.add(currentId)
 
-    const tweet = await fetchFxStatus(currentId)
-    walked.push(tweet)
-    currentId = getParentStatusId(tweet)
+    try {
+      const tweet = await fetchFxStatus(currentId)
+      walked.push(tweet)
+      currentId = getParentStatusId(tweet)
+    } catch (error) {
+      if (error instanceof ConvertError && error.code === 'private_tweet') throw error
+      break
+    }
   }
 
   walked.reverse()
