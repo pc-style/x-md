@@ -63,7 +63,7 @@ describe('parseThread — invalid values throw ConvertError', () => {
     ).rejects.toBeInstanceOf(ConvertError)
   })
 
-  test('error message includes "conversation" as a valid option', async () => {
+  test('error message lists valid thread options', async () => {
     let err: unknown
     try {
       await convertTweet({ url: validUrl, thread: 'bad' })
@@ -71,7 +71,7 @@ describe('parseThread — invalid values throw ConvertError', () => {
       err = e
     }
     expect(err).toBeInstanceOf(ConvertError)
-    expect((err as ConvertError).message).toContain('conversation')
+    expect((err as ConvertError).message).toContain('full')
   })
 
   test('error code is "invalid_thread"', async () => {
@@ -111,20 +111,16 @@ describe('parseThread — valid values accepted', () => {
     vi.clearAllMocks()
   })
 
-  test('thread=null resolves without error (defaults to full)', async () => {
+  test('thread=null resolves without error (defaults to off)', async () => {
     await expect(convertTweet({ url: validUrl, thread: null })).resolves.toBeDefined()
   })
 
-  test('thread=undefined resolves without error (defaults to full)', async () => {
+  test('thread=undefined resolves without error (defaults to off)', async () => {
     await expect(convertTweet({ url: validUrl })).resolves.toBeDefined()
   })
 
   test('thread="full" resolves without error', async () => {
     await expect(convertTweet({ url: validUrl, thread: 'full' })).resolves.toBeDefined()
-  })
-
-  test('thread="conversation" resolves without error (new alias for full)', async () => {
-    await expect(convertTweet({ url: validUrl, thread: 'conversation' })).resolves.toBeDefined()
   })
 
   test('thread="off" resolves without error', async () => {
@@ -145,10 +141,10 @@ describe('parseThread — valid values accepted', () => {
 })
 
 // ---------------------------------------------------------------------------
-// canonicalThreadCacheValue — tested via the cache key built by convertTweet
+// Cache key — tested via the cache key built by convertTweet
 // ---------------------------------------------------------------------------
 
-describe('canonicalThreadCacheValue — cache key normalisation', () => {
+describe('convertTweet cache key', () => {
   const validUrl = 'https://x.com/testuser/status/1234567890'
   const mockedBuildCacheKey = vi.mocked(buildCacheKey)
 
@@ -156,17 +152,17 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     vi.clearAllMocks()
   })
 
-  test('thread=null produces a cache key with thread="full"', async () => {
+  test('thread=null produces a cache key with thread="off"', async () => {
     await convertTweet({ url: validUrl, thread: null })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ thread: 'full' }),
+      expect.objectContaining({ thread: 'off' }),
     )
   })
 
-  test('thread=undefined produces a cache key with thread="full"', async () => {
+  test('thread=undefined produces a cache key with thread="off"', async () => {
     await convertTweet({ url: validUrl })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ thread: 'full' }),
+      expect.objectContaining({ thread: 'off' }),
     )
   })
 
@@ -175,16 +171,6 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
       expect.objectContaining({ thread: 'full' }),
     )
-  })
-
-  test('thread="conversation" normalises to thread="full" in the cache key', async () => {
-    await convertTweet({ url: validUrl, thread: 'conversation' })
-    expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ thread: 'full' }),
-    )
-    // Ensure 'conversation' is NOT stored as-is
-    const calls = mockedBuildCacheKey.mock.calls
-    expect(calls.every((args) => (args[0] as { thread: string }).thread !== 'conversation')).toBe(true)
   })
 
   test('thread="off" stays as "off" in the cache key', async () => {
@@ -201,27 +187,21 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     )
   })
 
-  test('cache key uses version 2', async () => {
+  test('cache key uses version 1', async () => {
     await convertTweet({ url: validUrl, thread: 'full' })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ v: 2 }),
+      expect.objectContaining({ v: 1 }),
     )
   })
 
-  // Regression: null and 'full' and 'conversation' all map to the same cache key
-  test('thread=null, thread="full", and thread="conversation" all produce the same cache key', async () => {
+  test('thread=null and thread="off" produce the same cache key', async () => {
     await convertTweet({ url: validUrl, thread: null })
     const keyFromNull = mockedBuildCacheKey.mock.calls[0]?.[0]
 
     vi.clearAllMocks()
-    await convertTweet({ url: validUrl, thread: 'full' })
-    const keyFromFull = mockedBuildCacheKey.mock.calls[0]?.[0]
+    await convertTweet({ url: validUrl, thread: 'off' })
+    const keyFromOff = mockedBuildCacheKey.mock.calls[0]?.[0]
 
-    vi.clearAllMocks()
-    await convertTweet({ url: validUrl, thread: 'conversation' })
-    const keyFromConversation = mockedBuildCacheKey.mock.calls[0]?.[0]
-
-    expect(keyFromNull).toEqual(keyFromFull)
-    expect(keyFromFull).toEqual(keyFromConversation)
+    expect(keyFromNull).toEqual(keyFromOff)
   })
 })

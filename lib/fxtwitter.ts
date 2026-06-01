@@ -55,6 +55,12 @@ export interface FxArticle {
   }
 }
 
+export interface FxReplyingTo {
+  screen_name?: string
+  status?: string
+  url?: string
+}
+
 export interface FxTweet {
   url?: string
   id?: string
@@ -71,7 +77,7 @@ export interface FxTweet {
   quotes?: number
   lang?: string
   source?: string
-  replying_to?: string[] | null
+  replying_to?: string[] | FxReplyingTo | null
   replying_to_status?: string[] | null
   possibly_sensitive?: boolean
   media?: FxMedia
@@ -142,10 +148,56 @@ export async function fetchFxStatus(id: string): Promise<FxTweet> {
   return tweet
 }
 
-export async function fetchFxThread(id: string): Promise<FxTweet[]> {
-  const data = await fxFetch(`2/thread/${id}`)
-  if (data.thread?.length) {
-    return data.thread.map(normalizeTweet)
+export function getParentStatusId(tweet: FxTweet): string | undefined {
+  const replyingTo = tweet.replying_to
+  if (replyingTo && !Array.isArray(replyingTo) && typeof replyingTo === 'object') {
+    const status = replyingTo.status
+    if (status != null && status !== '') return String(status)
   }
-  return [await fetchFxStatus(id)]
+
+  const statusIds = tweet.replying_to_status
+  if (statusIds?.length) return String(statusIds[0])
+
+  return undefined
+}
+
+export async function fetchFxConversationChain(id: string, limit = 100): Promise<FxTweet[]> {
+  const chain: FxTweet[] = []
+  const visited = new Set<string>()
+  let currentId = id
+
+  while (true) {
+    if (visited.has(currentId)) break
+    visited.add(currentId)
+
+    const tweet = await fetchFxStatus(currentId)
+    chain.unshift(tweet)
+
+    const parentId = getParentStatusId(tweet)
+    if (!parentId) break
+    currentId = parentId
+  }
+
+  return chain.slice(0, limit)
+}
+
+export async function fetchFxFullThread(id: string, limit = 100): Promise<FxTweet[]> {
+  const data = await fxFetch(`2/thread/${id}`)
+  const thread = data.thread?.map(normalizeTweet)
+
+  if (thread && thread.length > 1) {
+    return thread.slice(0, limit)
+  }
+
+  const tweet = thread?.[0] ?? (await fetchFxStatus(id))
+  if (!getParentStatusId(tweet)) {
+    return [tweet]
+  }
+
+  const chain = await fetchFxConversationChain(id, limit)
+  return chain.length > 0 ? chain : [tweet]
+}
+
+export async function fetchFxThread(id: string): Promise<FxTweet[]> {
+  return fetchFxFullThread(id)
 }
