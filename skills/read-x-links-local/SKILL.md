@@ -21,10 +21,12 @@ Run from the **x-md** workspace root.
 bun run read-x -- "https://x.com/handle/status/1234567890"
 ```
 
+By default, reply chains are expanded from the root post through the URL you pass (`thread=full`). Use `--thread off` for a single post only.
+
 Or:
 
 ```bash
-bun scripts/read-x.ts "https://x.com/handle/status/1234567890" --thread full --userinfo author
+bun scripts/read-x.ts "https://x.com/handle/status/1234567890" --userinfo author
 ```
 
 Helper script (from repo root):

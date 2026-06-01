@@ -13,7 +13,7 @@ function setupConvertForm(root: HTMLElement) {
     e.preventDefault()
     const raw = input.value.trim()
     if (!raw) return
-    const target = `/api/convert?url=${encodeURIComponent(raw)}`
+    const target = `/api/convert?url=${encodeURIComponent(raw)}&thread=full`
     window.open(target, '_blank', 'noopener,noreferrer')
   })
 }
@@ -91,7 +91,7 @@ returns X Article blocks…</pre>
       <div class="container-page reveal">
         <div class="mx-auto max-w-xl">
           <h2 class="section-title">Convert a post</h2>
-          <p class="mt-2 text-muted">Paste any public X status URL. Opens Markdown in a new tab.</p>
+          <p class="mt-2 text-muted">Paste any public X status URL. Opens Markdown in a new tab (includes reply-chain context by default).</p>
           <form data-convert-form class="mt-6 flex flex-col gap-3 sm:flex-row">
             <input
               data-convert-input
@@ -161,7 +161,7 @@ Accept: text/markdown
             <thead><tr><th>Param</th><th>Default</th><th>Values</th></tr></thead>
             <tbody>
               <tr><td><code>format</code></td><td>markdown</td><td><code>markdown</code>, <code>obsidian</code></td></tr>
-              <tr><td><code>thread</code></td><td>off</td><td><code>off</code>, <code>full</code>, <code>2-100</code></td></tr>
+              <tr><td><code>thread</code></td><td>full</td><td><code>off</code>, <code>full</code>, <code>conversation</code>, <code>2-100</code></td></tr>
               <tr><td><code>userinfo</code></td><td>off</td><td><code>off</code>, <code>author</code>, <code>all</code></td></tr>
               <tr><td><code>url</code></td><td>-</td><td>Encoded X status URL (required on <code>/api/convert</code>)</td></tr>
             </tbody>
