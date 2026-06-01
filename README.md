@@ -7,7 +7,7 @@ Open-source API and landing page that turns public **X posts into Markdown** you
 ## Features
 
 - **Markdown** and **Obsidian** (`?format=obsidian`) output with YAML frontmatter
-- **Threads** (`?thread=full` or `?thread=2-100`)
+- **Threads** (default `full`): conversation ancestors and author continuations; use `?thread=off` for a single post only
 - **Author metadata** (`?userinfo=author` or `all`)
 - **X Articles** when the primary provider returns article blocks
 - **Provider chain**: FxTwitter (primary), X syndication CDN (fallback), optional [Firecrawl](https://firecrawl.dev) scrape
@@ -62,7 +62,7 @@ Same query params as below.
 | --- | --- | --- |
 | `url` | — | Encoded X status URL (required on `/api/convert`) |
 | `format` | `markdown` | `markdown`, `obsidian` |
-| `thread` | `off` | `off`, `full`, `2-100` |
+| `thread` | `full` | `off`, `full`, `conversation`, `2-100` |
 | `userinfo` | `off` | `off`, `author`, `all` |
 | `nocache` | — | Bypass cache when set |
 

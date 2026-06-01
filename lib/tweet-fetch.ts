@@ -1,6 +1,6 @@
 import { ConvertError } from './errors.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
-import { fetchFxStatus, fetchFxThread, type FxTweet } from './fxtwitter.js'
+import { fetchFxFullThread, fetchFxStatus, type FxTweet } from './fxtwitter.js'
 import { fetchSyndicationStatus } from './syndication.js'
 
 export type FetchSource = 'fxtwitter' | 'syndication' | 'firecrawl'
@@ -53,7 +53,7 @@ export async function fetchPosts(
   }
 
   try {
-    const tweets = await fetchFxThread(id)
+    const tweets = await fetchFxFullThread(id)
     return { tweets, source: 'fxtwitter' }
   } catch (error) {
     if (isHardNotFound(error)) throw error
