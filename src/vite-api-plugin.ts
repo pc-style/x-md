@@ -1,6 +1,12 @@
+import type { Connect } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
-import { ConvertError, convertTweet, markdownResponse } from '../lib/converter'
+import {
+  acceptPrefersHtml,
+  ConvertError,
+  convertTweet,
+  markdownResponse,
+} from '../lib/converter'
 
 async function handleConvert(
   url: URL,
@@ -23,6 +29,7 @@ async function handleConvert(
 
   const accept = String(req.headers.accept ?? '')
   const asJson = accept.includes('application/json')
+  const asHtml = acceptPrefersHtml(accept)
 
   try {
     const result = await convertTweet({
@@ -35,7 +42,7 @@ async function handleConvert(
       nocache: url.searchParams.get('nocache'),
     })
 
-    const { status, headers, body } = markdownResponse(result, asJson)
+    const { status, headers, body } = markdownResponse(result, asJson, asHtml)
     res.statusCode = status
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
@@ -61,16 +68,33 @@ async function handleConvert(
   return true
 }
 
-export function apiDevPlugin(): Plugin {
-  return {
-    name: 'x-md-api-dev',
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url) return next()
+function installConvertMiddleware(middlewares: Connect.Server) {
+  middlewares.use((req, res, next) => {
+    void (async () => {
+      try {
+        if (!req.url) {
+          next()
+          return
+        }
         const url = new URL(req.url, 'http://localhost')
         const handled = await handleConvert(url, req, res)
         if (!handled) next()
-      })
+      } catch (error) {
+        next(error as Error)
+      }
+    })()
+  })
+}
+
+export function apiDevPlugin(): Plugin {
+  return {
+    name: 'x-md-api-dev',
+    enforce: 'pre',
+    configureServer(server) {
+      installConvertMiddleware(server.middlewares)
+    },
+    configurePreviewServer(server) {
+      installConvertMiddleware(server.middlewares)
     },
   }
 }

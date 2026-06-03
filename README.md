@@ -28,16 +28,21 @@ Open [http://localhost:5173](http://localhost:5173), paste a public status URL, 
 
 ## Agent skills
 
-Cursor agents can read X links via bundled skills:
+Cursor agents can read X links via bundled skills. Install with the [skills CLI](https://skills.sh/):
 
-| Skill | Location | How |
-| --- | --- | --- |
-| Local CLI | `skills/read-x-links-local/` | `bun run read-x -- "<url>"` |
-| Hosted API | `skills/read-x-links-vercel/` | `https://x.pcstyle.dev/api/convert?url=...` |
+```bash
+npx skills add pc-style/x-md --list
+
+npx skills add pc-style/x-md -g -y \
+  --skill read-x-links-vercel --skill read-x-links-local
+```
+
+| Skill | Use when |
+| --- | --- |
+| `read-x-links-vercel` | Hosted API at `x.pcstyle.dev` — no local repo |
+| `read-x-links-local` | Full threads, Firecrawl fallback, working in this repo |
 
 Live site: [https://x.pcstyle.dev](https://x.pcstyle.dev)
-
-Personal copies (with helper scripts): `~/.agents/skills/read-x-links-local/` and `read-x-links-vercel/`.
 
 ## API
 

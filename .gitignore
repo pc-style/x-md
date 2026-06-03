@@ -31,3 +31,7 @@ src/assets/
 .env.local
 .cursor/
 .vercel
+
+.kombai/
+
+x.md.ignore*
