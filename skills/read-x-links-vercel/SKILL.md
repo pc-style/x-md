@@ -28,6 +28,8 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \
   -H "Accept: text/markdown"
 ```
 
+By default, reply chains are expanded from the root post through the URL you pass (`thread=full`). Use `thread=off` for a single post only.
+
 Path rewrite:
 
 ```text

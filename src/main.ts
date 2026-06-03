@@ -33,8 +33,10 @@ function setupConvertForm(root: HTMLElement) {
     const raw = input.value.trim()
     if (!raw) return
     const path = statusPathFromUrl(raw)
-    if (!path) return
-    window.open(path, '_blank', 'noopener,noreferrer')
+    const target = path
+      ? `${path}?thread=full`
+      : `/api/convert?url=${encodeURIComponent(raw)}&thread=full`
+    window.open(target, '_blank', 'noopener,noreferrer')
   })
 }
 
@@ -98,7 +100,7 @@ app.innerHTML = `
       <div class="convert-card mx-auto max-w-[620px]">
         <p class="eyebrow eyebrow-accent mb-3">Try it</p>
         <h2 class="text-[28px] font-medium leading-tight text-[#f7f8f8]">Convert a post</h2>
-        <p class="mt-2 text-[16px] text-[#8a8f98]">Paste any public X status URL. Opens Markdown at the same path on this site.</p>
+        <p class="mt-2 text-[16px] text-[#8a8f98]">Paste any public X status URL. Opens Markdown at the same path on this site (includes reply-chain context by default).</p>
         <form data-convert-form class="mt-7 flex flex-col gap-3 sm:flex-row">
           <label for="x-url" class="sr-only">X status URL</label>
           <input
@@ -117,7 +119,7 @@ app.innerHTML = `
           <button type="submit" class="btn-primary flex h-[42px] shrink-0 items-center justify-center rounded-full px-4 text-[13px]">Get Markdown</button>
         </form>
         <p class="mt-4 text-[14px] text-[#8a8f98]">
-          Opens <code class="code-chip">${EXAMPLE_PATH}</code> here — the same trick as swapping <code class="code-chip">x.com</code> → <code class="code-chip">x.pcstyle.dev</code> in the link.
+          Opens <code class="code-chip">${EXAMPLE_PATH}?thread=full</code> here — the same trick as swapping <code class="code-chip">x.com</code> → <code class="code-chip">x.pcstyle.dev</code> in the link.
         </p>
       </div>
     </section>
@@ -274,8 +276,8 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
               </tr>
               <tr>
                 <td><code>thread</code></td>
-                <td>off</td>
-                <td class="font-mono text-[12px]">off, full, 2-100</td>
+                <td>full</td>
+                <td class="font-mono text-[12px]">off, full, conversation, 2-100</td>
               </tr>
               <tr>
                 <td><code>userinfo</code></td>

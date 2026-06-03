@@ -11,7 +11,7 @@ function usage(): never {
 
 Options:
   --format markdown|obsidian   Output format (default: markdown)
-  --thread off|full|N          Thread mode (default: off)
+  --thread off|full|conversation|N   Thread mode (default: full)
   --userinfo off|author|all    Author metadata (default: off)
   --json                       Emit JSON instead of Markdown
   --nocache                    Bypass converter cache

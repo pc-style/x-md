@@ -25,13 +25,15 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "read-x": "bun scripts/read-x.ts"
+    "read-x": "bun scripts/read-x.ts",
+    "test": "vitest --run"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@vercel/node": "^5.8.4",
     "typescript": "~6.0.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
