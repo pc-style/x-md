@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { ConvertError, convertTweet, markdownResponse } from '../lib/converter.js'
+import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -9,6 +9,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const accept = String(req.headers.accept ?? '')
   const asJson = accept.includes('application/json')
+  const asHtml = acceptPrefersHtml(accept)
 
   try {
     const result = await convertTweet({
@@ -21,7 +22,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       nocache: typeof req.query.nocache === 'string' ? req.query.nocache : undefined,
     })
 
-    const { status, headers, body } = markdownResponse(result, asJson)
+    const { status, headers, body } = markdownResponse(result, asJson, asHtml)
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
     }

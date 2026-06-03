@@ -206,7 +206,36 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   return { ...value, cache: status }
 }
 
-export function markdownResponse(result: ConvertSuccess, asJson = false): {
+export function acceptPrefersHtml(accept: string): boolean {
+  if (accept.includes('application/json') || accept.includes('text/markdown')) return false
+  return accept.includes('text/html')
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+export function htmlMarkdownPage(markdown: string, canonicalUrl: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${escapeHtml(canonicalUrl)} · x.md</title>
+  <style>
+    body { margin: 0; background: #08090a; color: #d0d6e0; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+    pre { margin: 0; padding: 1.5rem; white-space: pre-wrap; word-break: break-word; line-height: 1.65; font-size: 13px; }
+  </style>
+</head>
+<body><pre>${escapeHtml(markdown)}</pre></body>
+</html>`
+}
+
+export function markdownResponse(result: ConvertSuccess, asJson = false, asHtml = false): {
   status: number
   headers: Record<string, string>
   body: string
@@ -236,6 +265,14 @@ export function markdownResponse(result: ConvertSuccess, asJson = false): {
         source: result.source,
         cache: result.cache,
       }),
+    }
+  }
+
+  if (asHtml) {
+    return {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', ...sharedHeaders },
+      body: htmlMarkdownPage(result.body, result.canonicalUrl),
     }
   }
 
