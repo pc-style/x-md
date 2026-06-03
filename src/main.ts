@@ -8,11 +8,20 @@ const EXAMPLE_X_URL = `https://x.com/${EXAMPLE_HANDLE}/status/${EXAMPLE_ID}`
 const EXAMPLE_HOSTED_URL = `https://x.pcstyle.dev/${EXAMPLE_HANDLE}/status/${EXAMPLE_ID}`
 const EXAMPLE_PATH = `/${EXAMPLE_HANDLE}/status/${EXAMPLE_ID}`
 
+const HOSTED_HOSTS = new Set([
+  'x.pcstyle.dev',
+  typeof window !== 'undefined' ? window.location.hostname.replace(/^www\./, '') : '',
+])
+
 function statusPathFromUrl(raw: string): string | null {
   try {
     const parsed = new URL(raw.trim())
     const host = parsed.hostname.replace(/^www\./, '')
-    if (!['x.com', 'twitter.com', 'x.pcstyle.dev'].includes(host) && !host.endsWith('.vercel.app')) {
+    if (
+      !['x.com', 'twitter.com'].includes(host) &&
+      !HOSTED_HOSTS.has(host) &&
+      !host.endsWith('.vercel.app')
+    ) {
       return null
     }
     const match = parsed.pathname.match(/^\/([^/?#]+)\/status\/(\d+)\/?$/)

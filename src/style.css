@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap");
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap";
 @import "tailwindcss";
 
 :root {
@@ -226,6 +226,6 @@
 
   .sr-only {
     @apply absolute m-[-1px] h-px w-px overflow-hidden border-0 p-0 whitespace-nowrap;
-    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
   }
 }
