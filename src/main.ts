@@ -198,13 +198,46 @@ Accept: text/markdown
         <p class="eyebrow eyebrow-muted mb-3">Automation</p>
         <h3 class="text-[24px] font-semibold leading-tight text-[#f7f8f8]">AI agents</h3>
         <p class="mt-3 max-w-[640px] text-[16px] leading-relaxed text-[#8a8f98]">
-          Easiest path: swap the host and fetch Markdown. For tools that need a single URL param, use <code class="code-chip">/api/convert?url=…</code>. Repo skills live under <code class="code-chip">skills/read-x-links-*</code>.
+          Easiest path: swap the host and fetch Markdown. For Cursor and other agents, install the bundled skills into <code class="code-chip">~/.agents/skills/</code> (from a clone of this repo):
         </p>
-        <pre class="code-block mt-6"># path-style (preferred)
+        <pre class="code-block mt-6">git clone https://github.com/pc-style/x-md.git
+cd x-md
+mkdir -p ~/.agents/skills
+cp -r skills/read-x-links-vercel ~/.agents/skills/
+cp -r skills/read-x-links-local ~/.agents/skills/
+chmod +x ~/.agents/skills/read-x-links-*/scripts/read-x.sh</pre>
+        <div class="mt-8 grid gap-4 lg:grid-cols-2">
+          <div class="compare-tile">
+            <h4>read-x-links-vercel</h4>
+            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Hosted API only — no local repo or Bun required. Uses FxTwitter + syndication on x.pcstyle.dev (no Firecrawl).</p>
+            <pre class="code-block mt-4 text-[12px]">~/.agents/skills/read-x-links-vercel/scripts/read-x.sh \\
+  "${EXAMPLE_X_URL}"
+
+# or from this repo without installing:
+./skills/read-x-links-vercel/scripts/read-x.sh \\
+  "${EXAMPLE_X_URL}"</pre>
+          </div>
+          <div class="compare-tile">
+            <h4>read-x-links-local</h4>
+            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Full local CLI — threads, Obsidian output, optional Firecrawl when you set <code class="code-chip">FIRECRAWL_API_KEY</code>.</p>
+            <pre class="code-block mt-4 text-[12px]">cd x-md && bun install
+cp .env.local.example .env.local   # optional
+
+bun run read-x -- "${EXAMPLE_X_URL}" --thread full
+
+# or the installed skill script (needs X_MD_ROOT):
+~/.agents/skills/read-x-links-local/scripts/read-x.sh \\
+  "${EXAMPLE_X_URL}" --thread full</pre>
+          </div>
+        </div>
+        <p class="mt-6 text-[16px] leading-relaxed text-[#8a8f98]">
+          Raw HTTP without skills — path-style first, query-style when you need an encoded URL:
+        </p>
+        <pre class="code-block mt-4"># path-style (preferred)
 curl -sS -H "Accept: text/markdown" \\
   "${EXAMPLE_HOSTED_URL}?thread=full"
 
-# query-style (agents / encoded URLs)
+# query-style (tools that only accept ?url=)
 curl -sS -G "https://x.pcstyle.dev/api/convert" \\
   --data-urlencode "url=${EXAMPLE_X_URL}" \\
   -H "Accept: text/markdown"</pre>
