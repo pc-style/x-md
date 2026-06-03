@@ -198,19 +198,24 @@ Accept: text/markdown
         <p class="eyebrow eyebrow-muted mb-3">Automation</p>
         <h3 class="text-[24px] font-semibold leading-tight text-[#f7f8f8]">AI agents</h3>
         <p class="mt-3 max-w-[640px] text-[16px] leading-relaxed text-[#8a8f98]">
-          Easiest path: swap the host and fetch Markdown. For Cursor and other agents, install the bundled skills into <code class="code-chip">~/.agents/skills/</code> (from a clone of this repo):
+          Easiest path: swap the host and fetch Markdown. For Cursor and other agents, install the bundled skills with the <a href="https://skills.sh/" class="text-[#7170ff] hover:text-[#828fff]" target="_blank" rel="noreferrer">skills</a> CLI:
         </p>
-        <pre class="code-block mt-6">git clone https://github.com/pc-style/x-md.git
-cd x-md
-mkdir -p ~/.agents/skills
-cp -r skills/read-x-links-vercel ~/.agents/skills/
-cp -r skills/read-x-links-local ~/.agents/skills/
-chmod +x ~/.agents/skills/read-x-links-*/scripts/read-x.sh</pre>
+        <pre class="code-block mt-6"># list skills in this repo
+npx skills add pc-style/x-md --list
+
+# global install (recommended — works across projects)
+npx skills add pc-style/x-md -g -y \\
+  --skill read-x-links-vercel --skill read-x-links-local
+
+# or project-only, from an x-md checkout
+npx skills add pc-style/x-md -y \\
+  --skill read-x-links-vercel --skill read-x-links-local</pre>
         <div class="mt-8 grid gap-4 lg:grid-cols-2">
           <div class="compare-tile">
             <h4>read-x-links-vercel</h4>
             <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Hosted API only — no local repo or Bun required. Uses FxTwitter + syndication on x.pcstyle.dev (no Firecrawl).</p>
-            <pre class="code-block mt-4 text-[12px]">~/.agents/skills/read-x-links-vercel/scripts/read-x.sh \\
+            <pre class="code-block mt-4 text-[12px]"># after npx skills add …
+~/.agents/skills/read-x-links-vercel/scripts/read-x.sh \\
   "${EXAMPLE_X_URL}"
 
 # or from this repo without installing:
