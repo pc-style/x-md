@@ -1,7 +1,7 @@
 {
   "name": "x-md",
   "version": "1.0.0",
-  "description": "Open-source X/Twitter to Markdown converter (FxTwitter + syndication + optional Firecrawl)",
+  "description": "Open-source X/Twitter to Markdown converter (FxTwitter + syndication + optional Context.dev/Firecrawl)",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -36,7 +36,9 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
+    "@clerk/backend": "^3.6.1",
     "@tailwindcss/vite": "^4.3.0",
+    "convex": "^1.41.0",
     "tailwindcss": "^4.3.0"
   }
 }

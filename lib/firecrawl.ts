@@ -1,5 +1,6 @@
 import { ConvertError } from './errors.js'
 import type { FxTweet } from './fxtwitter.js'
+import { extractStatusTextFromMarkdown } from './scrape-text.js'
 
 const FIRECRAWL_API = 'https://api.firecrawl.dev/v1/scrape'
 const UA = 'x-md/1.0'
@@ -53,7 +54,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
     throw new ConvertError(502, 'Firecrawl returned empty content.', 'firecrawl_empty')
   }
 
-  const text = extractTweetText(markdown) ?? payload.data?.metadata?.description ?? markdown.slice(0, 2000)
+  const text = extractStatusTextFromMarkdown(markdown) ?? payload.data?.metadata?.description ?? markdown.slice(0, 2000)
 
   return {
     id,
@@ -61,26 +62,4 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
     text,
     author: { name: handle, screen_name: handle, url: `https://x.com/${handle}` },
   }
-}
-
-function extractTweetText(markdown: string): string | undefined {
-  const lines = markdown
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l && !l.startsWith('![') && !l.startsWith('http'))
-
-  const skip = new Set(['Post', 'Thread', 'Show this thread', 'Read more on X', 'X'])
-  const body: string[] = []
-
-  for (const line of lines) {
-    if (line.startsWith('#')) continue
-    if (skip.has(line)) continue
-    if (line.match(/^@?\w+$/)) continue
-    if (line.match(/^\d+(\.\d+)?[KMB]?\s*(replies|reposts|likes|views)/i)) continue
-    body.push(line)
-    if (body.join('\n').length > 500) break
-  }
-
-  const text = body.join('\n').trim()
-  return text.length > 0 ? text : undefined
 }

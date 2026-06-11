@@ -35,3 +35,4 @@ src/assets/
 .kombai/
 
 x.md.ignore*
+.firecrawl/

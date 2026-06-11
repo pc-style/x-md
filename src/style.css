@@ -229,3 +229,16 @@
     clip-path: inset(50%);
   }
 }
+
+@layer components {
+  .pricing-card {
+    @apply rounded-2xl border p-6;
+    border-color: var(--hair);
+    background-color: var(--surface-raised);
+  }
+
+  .pricing-card-featured {
+    border-color: rgba(113, 112, 255, 0.42);
+    box-shadow: 0 0 0 1px rgba(113, 112, 255, 0.08), 0 24px 80px rgba(0, 0, 0, 0.22);
+  }
+}

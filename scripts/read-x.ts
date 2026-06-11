@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * Read a public X status URL and print Markdown (or JSON) to stdout.
- * Uses the same converter as /api/convert (FxTwitter → syndication → Firecrawl).
+ * Uses the same converter as /api/convert (FxTwitter → syndication → Context.dev → Firecrawl).
  */
 import { writeFileSync } from 'node:fs'
 import { ConvertError, convertTweet, markdownResponse } from '../lib/converter.js'
