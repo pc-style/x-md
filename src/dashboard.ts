@@ -20,6 +20,21 @@ type ApiKeyRecord = {
   revokedAt?: number
 }
 
+function statusPathFromUrl(raw: string): string | null {
+  try {
+    const parsed = new URL(raw.trim())
+    const host = parsed.hostname.replace(/^www\./, '')
+    if (!['x.com', 'twitter.com', 'mobile.twitter.com', 'x.pcstyle.dev'].includes(host) && !host.endsWith('.vercel.app')) {
+      return null
+    }
+    const match = parsed.pathname.match(/^\/([^/?#]+)\/status\/(\d+)\/?$/) ?? parsed.pathname.match(/^\/i\/status\/(\d+)\/?$/)
+    if (!match) return null
+    return match.length === 2 ? `/i/status/${match[1]}` : `/${match[1]}/status/${match[2]}`
+  } catch {
+    return null
+  }
+}
+
 const PLAN_DETAILS: Record<string, { label: string; price: string; blurb: string }> = {
   free: { label: 'Free', price: '$0/mo', blurb: 'Anonymous conversion, no credits.' },
   starter: { label: 'Starter', price: '$5/mo', blurb: '250 social credits per month.' },
@@ -146,6 +161,7 @@ app.innerHTML = `
             <input id="x-url" data-convert-input type="url" required inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://x.com/handle/status/…" class="convert-input" />
             <button type="submit" class="btn-ghost flex h-[42px] shrink-0 items-center justify-center rounded-full px-4 text-[13px]">Get Markdown</button>
           </form>
+          <p data-convert-error class="mt-3 hidden text-[13px] text-[#ff6b6b]"></p>
         </div>
       </section>
     </div>
@@ -243,11 +259,21 @@ function wireStaticActions(clerk: ClerkInstance) {
 
   const form = app.querySelector<HTMLFormElement>('[data-convert-form]')
   const input = app.querySelector<HTMLInputElement>('[data-convert-input]')
+  const convertError = app.querySelector<HTMLElement>('[data-convert-error]')
   form?.addEventListener('submit', (e) => {
     e.preventDefault()
     const raw = input?.value.trim()
     if (!raw) return
-    window.open(`/api/convert?url=${encodeURIComponent(raw)}&thread=full`, '_blank', 'noopener,noreferrer')
+    const path = statusPathFromUrl(raw)
+    if (!path) {
+      if (convertError) {
+        convertError.classList.remove('hidden')
+        convertError.textContent = 'Enter a public X/Twitter status URL (for example https://x.com/handle/status/123).'
+      }
+      return
+    }
+    convertError?.classList.add('hidden')
+    window.open(`${path}?thread=full`, '_blank', 'noopener,noreferrer')
   })
 }
 

@@ -75,7 +75,7 @@ export function summarizeBillingWebhook(event: AutumnBillingUpdated): AutumnWebh
   const planId = activeSubscription?.plan_id ?? activePurchase?.plan_id
   const status = activeSubscription?.status ?? activePurchase?.status
 
-  if (!planId && changes.every((change) => change.action === 'expired')) {
+  if (!planId && changes.length > 0 && changes.every((change) => change.action === 'expired')) {
     return {
       handled: true,
       customerId,

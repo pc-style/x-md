@@ -45,7 +45,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ ok: true, mirrored })
     } catch (error) {
       console.error('Failed to mirror Autumn webhook', error)
-      return res.status(500).json({ error: 'Webhook mirror failed', code: 'mirror_error' })
+      return res.status(200).json({ ok: true, mirrored: { handled: false, reason: 'mirror_error' } })
     }
   }
 

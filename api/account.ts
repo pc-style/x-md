@@ -32,7 +32,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const auth = await resolveAuthContext(req.headers)
-    if (!auth.userId || auth.authMethod !== 'clerk') {
+    if (!auth.userId || (auth.authMethod !== 'clerk' && auth.authMethod !== 'api_key')) {
       return res.status(401).json({ error: 'Sign in to view your account.', code: 'authentication_required' })
     }
 

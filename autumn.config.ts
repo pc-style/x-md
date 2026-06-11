@@ -38,15 +38,21 @@ export const cross_platform_parser = feature({
 	type: 'boolean',
 });
 
-export const context_window_safe_mode = feature({
-	id: 'context_window_safe_mode',
+export const context_safe_mode = feature({
+	id: 'context_safe_mode',
 	name: 'Context-Window Safe Mode',
 	type: 'boolean',
 });
 
-export const bulk_json_ld_export = feature({
-	id: 'bulk_json_ld_export',
+export const jsonld_bulk_export = feature({
+	id: 'jsonld_bulk_export',
 	name: 'Bulk JSON-LD Archive Export',
+	type: 'boolean',
+});
+
+export const author_dossier = feature({
+	id: 'author_dossier',
+	name: 'Author Dossier',
 	type: 'boolean',
 });
 
@@ -122,11 +128,11 @@ export const pro = plan({
 			included: 0,
 		}),
 		item({
-			featureId: bulk_json_ld_export.id,
+			featureId: jsonld_bulk_export.id,
 			included: 0,
 		}),
 		item({
-			featureId: context_window_safe_mode.id,
+			featureId: context_safe_mode.id,
 			included: 0,
 		}),
 		item({
@@ -158,6 +164,10 @@ export const pro = plan({
 		}),
 		item({
 			featureId: thread_briefing.id,
+			included: 0,
+		}),
+		item({
+			featureId: author_dossier.id,
 			included: 0,
 		}),
 	],

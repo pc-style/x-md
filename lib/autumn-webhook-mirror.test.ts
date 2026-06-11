@@ -30,6 +30,11 @@ describe('Autumn webhook mirror', () => {
     })
   })
 
+  test('ignores empty plan_changes payloads', () => {
+    const summary = summarizeBillingWebhook({ customer_id: 'user_123', plan_changes: [] })
+    expect(summary).toMatchObject({ handled: false, reason: 'no_active_plan' })
+  })
+
   test('falls back to free when all plans expire', () => {
     const summary = summarizeBillingWebhook({
       customer_id: 'user_123',

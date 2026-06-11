@@ -11,8 +11,9 @@ declare module '@useautumn/sdk' {
   export const json_ld_basic_export: Feature;
   export const thread_briefing: Feature;
   export const cross_platform_parser: Feature;
-  export const context_window_safe_mode: Feature;
-  export const bulk_json_ld_export: Feature;
+  export const context_safe_mode: Feature;
+  export const jsonld_bulk_export: Feature;
+  export const author_dossier: Feature;
   export const markdown_export: Feature;
   export const api_commercial_use: Feature;
 

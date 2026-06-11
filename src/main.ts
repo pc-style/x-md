@@ -494,7 +494,7 @@ async function setupAccountFlow(root: HTMLElement) {
       const plan = button.dataset.plan
       if (!plan) return
       if (!clerk.user) {
-        clerk.openSignUp({ forceRedirectUrl: window.location.href })
+        await clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
         return
       }
       await postWithClerkToken(clerk, button, `/api/billing?plan=${encodeURIComponent(plan)}`, 'Opening checkout…', (payload) => {

@@ -8,6 +8,10 @@
       "destination": "/dashboard.html"
     },
     {
+      "source": "/dashboard/",
+      "destination": "/dashboard.html"
+    },
+    {
       "source": "/:handle/status/:id",
       "destination": "/api/convert?handle=:handle&id=:id"
     }
