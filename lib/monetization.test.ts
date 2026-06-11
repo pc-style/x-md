@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   checkAndTrackPremiumUsage,
   createApiKey,
+  createAutumnCheckout,
   extractBearerToken,
   hashApiKey,
   MonetizationError,
@@ -56,17 +57,32 @@ describe('Autumn premium checks', () => {
     await expect(checkAndTrackPremiumUsage('user_123', 'thread_briefing', fetchMock)).resolves.toMatchObject({ allowed: true })
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(fetchMock.mock.calls[0][0]).toBe('https://api.useautumn.com/v1/customers.check')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.useautumn.com/v1/check')
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer am_sk_test' }),
     })
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
-      customerId: 'user_123',
-      featureId: 'social_credits',
-      requiredBalance: 3,
-      sendEvent: true,
-      eventName: 'thread_briefing',
+      customer_id: 'user_123',
+      feature_id: 'social_credits',
+      required_balance: 3,
+      send_event: true,
+      event_name: 'thread_briefing',
+    })
+  })
+
+  test('requests checkout with redirectMode always', async () => {
+    process.env.AUTUMN_SECRET_KEY = 'am_sk_test'
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ payment_url: 'https://checkout.example' }), { status: 200 }),
+    )
+
+    await createAutumnCheckout('user_123', 'starter', fetchMock)
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toMatchObject({
+      customer_id: 'user_123',
+      plan_id: 'starter',
+      redirect_mode: 'always',
     })
   })
 

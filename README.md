@@ -149,11 +149,13 @@ Premium feature costs:
 | Social archive JSON-LD bulk/export | 5 | `premium=jsonld_bulk_export` |
 | Author dossier | 10 | `premium=author_dossier` |
 
-Required env vars for the premium stack:
+Required env vars for the premium stack (`VITE_CLERK_PUBLISHABLE_KEY` is the Vite browser key; keep `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` too if provisioning through Vercel/Clerk integrations):
 
 ```bash
+VITE_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
+CLERK_JWT_ISSUER_DOMAIN=
 CONVEX_DEPLOYMENT=
 NEXT_PUBLIC_CONVEX_URL=
 CONVEX_SERVER_SECRET=
@@ -161,13 +163,26 @@ AUTUMN_SECRET_KEY=
 AUTUMN_WEBHOOK_SECRET=
 ```
 
+Set `CLERK_JWT_ISSUER_DOMAIN` in Convex as well as local/Vercel env so `convex/auth.config.ts` can validate Clerk JWTs for the `convex` JWT template.
+
 Autumn is the source of truth for plans, feature credits, checkout, customer portal, and Stripe subscription state. Do not create or mutate Stripe products/prices/subscriptions directly for this flow; configure plans/features in Autumn and let Autumn sync Stripe.
+
+Autumn config lives in `autumn.config.ts` (pulled from the Autumn dashboard with `bunx atmn pull`, pushed with `bunx atmn push`). Sandbox plans already defined there:
+
+| Plan ID | Price | Social credits |
+|---|---:|---:|
+| `free` | $0 | auto-enabled |
+| `starter` | $5/mo | 250/mo |
+| `pro` | $15/mo | 1,500/mo |
+| `credit_top_up` | $5 one-off | +500 credits (add-on) |
+
+Customers are **individual Clerk users** (`customerId` = Clerk `userId`). There is no org/workspace billing model in x.md.
 
 Premium API flow:
 
 1. Resolve auth from Clerk bearer token or `Authorization: Bearer xmd_...` API key.
 2. Mirror the Clerk user into Convex and get/create the Autumn customer with the Clerk user ID as `customerId`.
-3. For premium work, call Autumn `customers.check` with `featureId: "social_credits"`, `requiredBalance`, and `sendEvent: true` before doing expensive work.
+3. For premium work, call Autumn `POST /v1/check` with `feature_id: "social_credits"`, `required_balance`, and `send_event: true` before doing expensive work.
 4. Return `401` for missing auth and stable `402` paywall responses when Autumn denies allowance.
 5. Log request and feature-run records in Convex when configured.
 
@@ -178,12 +193,16 @@ Account and sign-up flow:
 
 Account endpoints:
 
-- `POST /api/billing?plan=starter|pro` starts Autumn checkout.
+- `GET /api/account` returns the signed-in user's Autumn plan, credit balance, and products.
+- `GET /dashboard` is the account UI for plan, credits, and API keys.
+- `POST /api/billing?plan=starter|pro` starts Autumn checkout (`redirectMode: always`).
 - `POST /api/billing?action=portal` opens the Autumn/Stripe customer portal.
 - `GET /api/api-keys` lists hashed API-key records for the authenticated user.
 - `POST /api/api-keys` creates an `xmd_...` API key and stores only its SHA-256 hash in Convex.
 - `DELETE /api/api-keys` revokes by `keyHash` or plaintext `apiKey`.
-- `POST /api/autumn-webhook` verifies the raw body with `AUTUMN_WEBHOOK_SECRET` before accepting webhook events.
+- `POST /api/autumn-webhook` verifies the raw body with `AUTUMN_WEBHOOK_SECRET`, then mirrors `billing.updated` events into Convex `billingCustomers` for account debugging.
+
+Local dev (`bun run dev`) proxies `/api/billing`, `/api/account`, and `/api/api-keys` through the same Vercel handlers used in production so the dashboard and homepage billing buttons work without `vercel dev`.
 
 Deploy Convex separately as part of release setup:
 
@@ -191,4 +210,3 @@ Deploy Convex separately as part of release setup:
 bunx convex dev      # initial link/codegen
 bunx convex deploy   # production Convex functions/schema
 ```
-

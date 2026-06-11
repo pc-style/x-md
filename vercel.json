@@ -4,6 +4,10 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/dashboard",
+      "destination": "/dashboard.html"
+    },
+    {
       "source": "/:handle/status/:id",
       "destination": "/api/convert?handle=:handle&id=:id"
     }
@@ -33,8 +37,8 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Accept, Content-Type" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, POST, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Accept, Authorization, Content-Type" }
       ]
     }
   ]
