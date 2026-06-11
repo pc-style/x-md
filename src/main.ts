@@ -589,6 +589,8 @@ async function postWithClerkToken(
     const payload = await response.json() as Record<string, string>
     if (!response.ok) throw new Error(payload.error ?? 'Request failed')
     onSuccess(payload)
+    button.textContent = original
+    button.disabled = false
   } catch (error) {
     button.textContent = error instanceof Error ? error.message : 'Request failed'
     setTimeout(() => { button.textContent = original }, 2200)

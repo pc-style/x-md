@@ -18,15 +18,23 @@ export const upsertCustomerMapping = mutation({
       .withIndex('by_userId', (q) => q.eq('userId', args.userId))
       .unique()
     const now = Date.now()
-    const value = {
+    const value: {
+      userId: string
+      autumnCustomerId: string
+      stripeCustomerId?: string
+      planId?: string
+      status?: string
+      raw?: unknown
+      updatedAt: number
+    } = {
       userId: args.userId,
       autumnCustomerId: args.autumnCustomerId,
-      stripeCustomerId: args.stripeCustomerId,
-      planId: args.planId,
-      status: args.status,
-      raw: args.raw,
       updatedAt: now,
     }
+    if (args.stripeCustomerId !== undefined) value.stripeCustomerId = args.stripeCustomerId
+    if (args.planId !== undefined) value.planId = args.planId
+    if (args.status !== undefined) value.status = args.status
+    if (args.raw !== undefined) value.raw = args.raw
     if (existing) {
       await ctx.db.patch(existing._id, value)
       return existing._id

@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 
 export const AUTUMN_API_BASE = process.env.AUTUMN_API_BASE ?? 'https://api.useautumn.com/v1'
 export const AUTUMN_SOCIAL_CREDITS_FEATURE_ID = 'social_credits'
+export const AUTUMN_FETCH_TIMEOUT_MS = 10_000
 export const API_KEY_PREFIX = 'xmd_'
 
 export const PREMIUM_FEATURES = {
@@ -140,14 +141,29 @@ export async function autumnFetch<T>(
     )
   }
 
-  const response = await fetchImpl(`${AUTUMN_API_BASE}${path}`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${secretKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), AUTUMN_FETCH_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetchImpl(`${AUTUMN_API_BASE}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    })
+  } catch (error) {
+    throw new MonetizationError(
+      controller.signal.aborted ? 504 : 502,
+      controller.signal.aborted ? 'autumn_timeout' : 'autumn_network_error',
+      controller.signal.aborted ? 'Autumn request timed out.' : 'Autumn request failed before receiving a response.',
+      error,
+    )
+  } finally {
+    clearTimeout(timeout)
+  }
 
   const text = await response.text()
   const json = text ? safeJson(text) : {}

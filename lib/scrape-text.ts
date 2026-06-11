@@ -20,7 +20,7 @@ export function extractStatusTextFromMarkdown(markdown: string): string | undefi
   for (const line of lines) {
     if (line.startsWith('#')) continue
     if (skip.has(line)) continue
-    if (line.match(/^@?\w+$/)) continue
+    if (line.match(/^@\w+$/)) continue
     if (line.match(/^\d+(\.\d+)?[KMB]?\s*(replies|reposts|likes|views)/i)) continue
     body.push(line)
     if (body.join('\n').length > 500) break
