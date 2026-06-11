@@ -2,6 +2,24 @@ import './style.css'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
+type ClerkInstance = {
+  user: {
+    primaryEmailAddress?: { emailAddress: string } | null
+    username?: string | null
+  } | null
+  session?: { getToken: () => Promise<string | null> } | null
+  addListener: (listener: () => void) => void
+  openSignUp: (props?: { forceRedirectUrl?: string }) => void
+  openSignIn: (props?: { forceRedirectUrl?: string }) => void
+  signOut: () => Promise<void>
+}
+
+const CLERK_PUBLISHABLE_KEY = (
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ??
+  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+  ''
+) as string
+
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
 const EXAMPLE_X_URL = `https://x.com/${EXAMPLE_HANDLE}/status/${EXAMPLE_ID}`
@@ -63,7 +81,8 @@ app.innerHTML = `
       </div>
       <div class="flex items-center gap-3">
         <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="nav-link hidden h-8 px-3 sm:flex">GitHub</a>
-        <a href="#convert" class="btn-primary flex h-8 items-center rounded-full px-3.5 text-[13px]">Convert a post</a>
+        <button type="button" data-auth-action="sign-in" class="nav-link hidden h-8 px-3 sm:flex">Sign in</button>
+        <button type="button" data-auth-action="sign-up" class="btn-primary flex h-8 items-center rounded-full px-3.5 text-[13px]">Sign up free</button>
       </div>
     </nav>
   </header>
@@ -80,7 +99,8 @@ app.innerHTML = `
             Use the live site at <code class="code-chip">x.pcstyle.dev</code> or deploy your own on Vercel. Threads, media, quotes, and X Articles — no paid X API keys on the default path.
           </p>
           <div class="mt-9 flex flex-wrap gap-3">
-            <a href="#convert" class="btn-primary flex h-10 items-center rounded-full px-3.5 text-[13px]">Convert a post</a>
+            <button type="button" data-auth-action="sign-up" class="btn-primary flex h-10 items-center rounded-full px-4 text-[13px]">Create free account</button>
+            <a href="#convert" class="btn-ghost flex h-10 items-center rounded-full px-3.5 text-[13px]">Convert without account</a>
             <a href="#pricing" class="btn-ghost flex h-10 items-center rounded-full px-3.5 text-[13px]">Premium plans</a>
           </div>
         </div>
@@ -191,7 +211,22 @@ app.innerHTML = `
           </tbody>
         </table>
       </div>
-      <div id="account" class="info-banner-muted mt-6">
+      <div id="account" class="account-card mt-6">
+        <div>
+          <p class="eyebrow eyebrow-muted mb-2">Account</p>
+          <h3 class="text-[22px] font-semibold text-[#f7f8f8]">Sign up to unlock premium workflows and API keys.</h3>
+          <p data-account-status class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Create a free account first, then upgrade when you need social credits.</p>
+          <p data-api-key-output class="mt-4 hidden rounded-lg border border-[#23252a] bg-[#08090a] p-3 font-mono text-[12px] leading-relaxed text-[#d0d6e0]"></p>
+        </div>
+        <div class="flex flex-col gap-3 sm:min-w-[220px]">
+          <button type="button" data-auth-action="sign-up" class="btn-primary flex h-10 items-center rounded-full px-4 text-[13px]">Sign up free</button>
+          <button type="button" data-auth-action="sign-in" class="btn-ghost flex h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign in</button>
+          <button type="button" data-account-action="create-key" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Create API key</button>
+          <button type="button" data-account-action="portal" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Manage billing</button>
+          <button type="button" data-auth-action="sign-out" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign out</button>
+        </div>
+      </div>
+      <div class="info-banner-muted mt-4">
         Account API surface: <code class="code-chip">POST /api/billing?plan=starter|pro</code> starts Autumn checkout, <code class="code-chip">POST /api/billing?action=portal</code> opens the Stripe portal through Autumn, and <code class="code-chip">/api/api-keys</code> creates/revokes hashed <code class="code-chip">xmd_...</code> tokens for <code class="code-chip">Authorization: Bearer</code> requests.
       </div>
     </section>
@@ -449,23 +484,114 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
 `
 
 setupConvertForm(app)
+void setupAccountFlow(app)
 
-app.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((button) => {
-  button.addEventListener('click', async () => {
-    const plan = button.dataset.plan
-    if (!plan) return
-    button.disabled = true
-    const original = button.textContent
-    button.textContent = 'Opening checkout…'
-    try {
-      const response = await fetch(`/api/billing?plan=${encodeURIComponent(plan)}`, { method: 'POST' })
-      const payload = await response.json() as { url?: string; error?: string }
-      if (!response.ok || !payload.url) throw new Error(payload.error ?? 'Checkout unavailable')
-      window.location.href = payload.url
-    } catch (error) {
-      button.textContent = error instanceof Error ? error.message : 'Checkout unavailable'
-      setTimeout(() => { button.textContent = original }, 2200)
-      button.disabled = false
-    }
+async function setupAccountFlow(root: HTMLElement) {
+  const clerk = await loadClerk(root)
+  updateAccountUi(root, clerk)
+
+  if (!clerk) return
+
+  clerk.addListener(() => updateAccountUi(root, clerk))
+
+  root.querySelectorAll<HTMLButtonElement>('[data-auth-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const action = button.dataset.authAction
+      if (action === 'sign-up') clerk.openSignUp({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-in') clerk.openSignIn({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-out') await clerk.signOut()
+    })
   })
-})
+
+  root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const plan = button.dataset.plan
+      if (!plan) return
+      if (!clerk.user) {
+        clerk.openSignUp({ forceRedirectUrl: window.location.href })
+        return
+      }
+      await postWithClerkToken(clerk, button, `/api/billing?plan=${encodeURIComponent(plan)}`, 'Opening checkout…', (payload) => {
+        if (!payload.url) throw new Error('Checkout unavailable')
+        window.location.href = payload.url
+      })
+    })
+  })
+
+  root.querySelector<HTMLButtonElement>('[data-account-action="portal"]')?.addEventListener('click', async (event) => {
+    await postWithClerkToken(clerk, event.currentTarget as HTMLButtonElement, '/api/billing?action=portal', 'Opening portal…', (payload) => {
+      if (!payload.url) throw new Error('Portal unavailable')
+      window.location.href = payload.url
+    })
+  })
+
+  root.querySelector<HTMLButtonElement>('[data-account-action="create-key"]')?.addEventListener('click', async (event) => {
+    await postWithClerkToken(clerk, event.currentTarget as HTMLButtonElement, '/api/api-keys', 'Creating key…', (payload) => {
+      const output = root.querySelector<HTMLElement>('[data-api-key-output]')
+      if (!payload.apiKey || !output) throw new Error('API key unavailable')
+      output.classList.remove('hidden')
+      output.textContent = `Copy this key now. It will not be shown again:
+${payload.apiKey}`
+    })
+  })
+}
+
+async function loadClerk(root: HTMLElement): Promise<ClerkInstance | null> {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    root.querySelectorAll<HTMLButtonElement>('[data-auth-action], [data-plan], [data-account-action]').forEach((button) => {
+      button.disabled = true
+    })
+    const status = root.querySelector<HTMLElement>('[data-account-status]')
+    if (status) status.textContent = 'Clerk is not configured on this deploy yet. Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-up.'
+    return null
+  }
+
+  const { Clerk } = await import('@clerk/clerk-js')
+  const clerk = new Clerk(CLERK_PUBLISHABLE_KEY)
+  await clerk.load()
+  return clerk as ClerkInstance
+}
+
+function updateAccountUi(root: HTMLElement, clerk: ClerkInstance | null) {
+  const signedIn = !!clerk?.user
+  const email = clerk?.user?.primaryEmailAddress?.emailAddress ?? clerk?.user?.username ?? 'your account'
+  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-up"], [data-auth-action="sign-in"]').forEach((el) => {
+    el.classList.toggle('hidden', signedIn)
+  })
+  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-out"], [data-account-action]').forEach((el) => {
+    el.classList.toggle('hidden', !signedIn)
+    el.classList.toggle('flex', signedIn)
+  })
+  const status = root.querySelector<HTMLElement>('[data-account-status]')
+  if (status) {
+    status.textContent = signedIn
+      ? `Signed in as ${email}. You can upgrade, manage billing, or create an API key for agent access.`
+      : 'Create a free account first, then upgrade when you need social credits.'
+  }
+}
+
+async function postWithClerkToken(
+  clerk: ClerkInstance,
+  button: HTMLButtonElement,
+  path: string,
+  pendingLabel: string,
+  onSuccess: (payload: Record<string, string>) => void,
+) {
+  button.disabled = true
+  const original = button.textContent
+  button.textContent = pendingLabel
+  try {
+    const token = await clerk.session?.getToken()
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    const payload = await response.json() as Record<string, string>
+    if (!response.ok) throw new Error(payload.error ?? 'Request failed')
+    onSuccess(payload)
+  } catch (error) {
+    button.textContent = error instanceof Error ? error.message : 'Request failed'
+    setTimeout(() => { button.textContent = original }, 2200)
+    button.disabled = false
+  }
+}

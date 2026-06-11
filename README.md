@@ -170,6 +170,11 @@ Premium API flow:
 4. Return `401` for missing auth and stable `402` paywall responses when Autumn denies allowance.
 5. Log request and feature-run records in Convex when configured.
 
+Account and sign-up flow:
+
+- The homepage shows obvious `Sign up free`, `Sign in`, `Create API key`, and `Manage billing` actions when `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is configured.
+- Pricing upgrade buttons open Clerk sign-up first for anonymous users, then call billing endpoints with the Clerk bearer token.
+
 Account endpoints:
 
 - `POST /api/billing?plan=starter|pro` starts Autumn checkout.

@@ -37,6 +37,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.6.1",
+    "@clerk/clerk-js": "^6.16.0",
     "@tailwindcss/vite": "^4.3.0",
     "convex": "^1.41.0",
     "tailwindcss": "^4.3.0"
