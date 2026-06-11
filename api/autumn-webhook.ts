@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { getConvexClient } from '../lib/auth.js'
+import { mirrorAutumnBillingWebhook } from '../lib/autumn-webhook-mirror.js'
 
 const MAX_WEBHOOK_BODY_BYTES = 1024 * 1024
 
@@ -32,9 +34,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid webhook signature', code: 'invalid_signature' })
   }
 
-  // Autumn remains the billing source of truth. Keep this endpoint small: verify
-  // the raw body, then enqueue/mirror only the data needed for account debugging.
-  return res.status(200).json({ ok: true })
+  const convex = getConvexClient()
+  if (convex) {
+    try {
+      const mirrored = await mirrorAutumnBillingWebhook(
+        convex,
+        process.env.CONVEX_SERVER_SECRET,
+        rawBody,
+      )
+      return res.status(200).json({ ok: true, mirrored })
+    } catch (error) {
+      console.error('Failed to mirror Autumn webhook', error)
+      return res.status(200).json({ ok: true, mirrored: { handled: false, reason: 'mirror_error' } })
+    }
+  }
+
+  return res.status(200).json({ ok: true, mirrored: { handled: false, reason: 'convex_not_configured' } })
 }
 
 export function verifyAutumnWebhook(

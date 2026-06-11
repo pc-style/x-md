@@ -1,24 +1,7 @@
 import './style.css'
+import { CLERK_PUBLISHABLE_KEY, loadClerk as loadClerkInstance, type ClerkInstance } from './clerk'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
-
-type ClerkInstance = {
-  user: {
-    primaryEmailAddress?: { emailAddress: string } | null
-    username?: string | null
-  } | null
-  session?: { getToken: () => Promise<string | null> } | null
-  addListener: (listener: () => void) => void
-  openSignUp: (props?: { forceRedirectUrl?: string }) => void
-  openSignIn: (props?: { forceRedirectUrl?: string }) => void
-  signOut: () => Promise<void>
-}
-
-const CLERK_PUBLISHABLE_KEY = (
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ??
-  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
-  ''
-) as string
 
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
@@ -81,6 +64,8 @@ app.innerHTML = `
       </div>
       <div class="flex items-center gap-3">
         <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="nav-link hidden h-8 px-3 sm:flex">GitHub</a>
+        <a href="/dashboard" data-dashboard-link class="nav-link hidden h-8 px-3">Dashboard</a>
+        <div data-user-button class="hidden h-8 w-8"></div>
         <button type="button" data-auth-action="sign-in" class="nav-link hidden h-8 px-3 sm:flex">Sign in</button>
         <button type="button" data-auth-action="sign-up" class="btn-primary flex h-8 items-center rounded-full px-3.5 text-[13px]">Sign up free</button>
       </div>
@@ -221,6 +206,7 @@ app.innerHTML = `
         <div class="flex flex-col gap-3 sm:min-w-[220px]">
           <button type="button" data-auth-action="sign-up" class="btn-primary flex h-10 items-center rounded-full px-4 text-[13px]">Sign up free</button>
           <button type="button" data-auth-action="sign-in" class="btn-ghost flex h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign in</button>
+          <a href="/dashboard" data-dashboard-link class="btn-primary hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Open dashboard</a>
           <button type="button" data-account-action="create-key" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Create API key</button>
           <button type="button" data-account-action="portal" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Manage billing</button>
           <button type="button" data-auth-action="sign-out" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign out</button>
@@ -497,8 +483,8 @@ async function setupAccountFlow(root: HTMLElement) {
   root.querySelectorAll<HTMLButtonElement>('[data-auth-action]').forEach((button) => {
     button.addEventListener('click', async () => {
       const action = button.dataset.authAction
-      if (action === 'sign-up') clerk.openSignUp({ forceRedirectUrl: window.location.href })
-      if (action === 'sign-in') clerk.openSignIn({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-up') await clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-in') await clerk.redirectToSignIn({ forceRedirectUrl: window.location.href })
       if (action === 'sign-out') await clerk.signOut()
     })
   })
@@ -508,7 +494,7 @@ async function setupAccountFlow(root: HTMLElement) {
       const plan = button.dataset.plan
       if (!plan) return
       if (!clerk.user) {
-        clerk.openSignUp({ forceRedirectUrl: window.location.href })
+        await clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
         return
       }
       await postWithClerkToken(clerk, button, `/api/billing?plan=${encodeURIComponent(plan)}`, 'Opening checkout…', (payload) => {
@@ -546,22 +532,35 @@ async function loadClerk(root: HTMLElement): Promise<ClerkInstance | null> {
     return null
   }
 
-  const { Clerk } = await import('@clerk/clerk-js')
-  const clerk = new Clerk(CLERK_PUBLISHABLE_KEY)
-  await clerk.load()
-  return clerk as ClerkInstance
+  return loadClerkInstance()
 }
 
 function updateAccountUi(root: HTMLElement, clerk: ClerkInstance | null) {
   const signedIn = !!clerk?.user
   const email = clerk?.user?.primaryEmailAddress?.emailAddress ?? clerk?.user?.username ?? 'your account'
+  const userButton = root.querySelector<HTMLDivElement>('[data-user-button]')
   root.querySelectorAll<HTMLElement>('[data-auth-action="sign-up"], [data-auth-action="sign-in"]').forEach((el) => {
     el.classList.toggle('hidden', signedIn)
   })
-  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-out"], [data-account-action]').forEach((el) => {
+  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-out"], [data-account-action], [data-dashboard-link]').forEach((el) => {
     el.classList.toggle('hidden', !signedIn)
     el.classList.toggle('flex', signedIn)
   })
+  if (userButton && clerk) {
+    if (signedIn) {
+      userButton.classList.remove('hidden')
+      if (!userButton.dataset.mounted) {
+        clerk.mountUserButton(userButton, { showName: false })
+        userButton.dataset.mounted = '1'
+      }
+    } else {
+      if (userButton.dataset.mounted) {
+        clerk.unmountUserButton(userButton)
+        delete userButton.dataset.mounted
+      }
+      userButton.classList.add('hidden')
+    }
+  }
   const status = root.querySelector<HTMLElement>('[data-account-status]')
   if (status) {
     status.textContent = signedIn

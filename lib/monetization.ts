@@ -186,7 +186,7 @@ export async function ensureAutumnCustomer(
   fetchImpl: typeof fetch = fetch,
 ): Promise<unknown> {
   return autumnFetch('/customers.get_or_create', {
-    customerId,
+    customer_id: customerId,
     email: attrs.email ?? undefined,
     name: attrs.name ?? undefined,
   }, fetchImpl)
@@ -198,10 +198,10 @@ export async function checkPremiumAccess(
   fetchImpl: typeof fetch = fetch,
 ): Promise<AutumnCheckResponse> {
   const feature = PREMIUM_FEATURES[featureId]
-  const response = await autumnFetch<AutumnCheckResponse>('/customers.check', {
-    customerId,
-    featureId: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
-    requiredBalance: feature.credits,
+  const response = await autumnFetch<AutumnCheckResponse>('/check', {
+    customer_id: customerId,
+    feature_id: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
+    required_balance: feature.credits,
   }, fetchImpl)
 
   if (!response.allowed) {
@@ -222,11 +222,11 @@ export async function trackPremiumUsage(
   fetchImpl: typeof fetch = fetch,
 ): Promise<AutumnCheckResponse> {
   const feature = PREMIUM_FEATURES[featureId]
-  return autumnFetch<AutumnCheckResponse>('/customers.track', {
-    customerId,
-    featureId: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
+  return autumnFetch<AutumnCheckResponse>('/track', {
+    customer_id: customerId,
+    feature_id: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
     value: feature.credits,
-    eventName: feature.id,
+    event_name: feature.id,
   }, fetchImpl)
 }
 
@@ -236,12 +236,12 @@ export async function checkAndTrackPremiumUsage(
   fetchImpl: typeof fetch = fetch,
 ): Promise<AutumnCheckResponse> {
   const feature = PREMIUM_FEATURES[featureId]
-  const response = await autumnFetch<AutumnCheckResponse>('/customers.check', {
-    customerId,
-    featureId: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
-    requiredBalance: feature.credits,
-    sendEvent: true,
-    eventName: feature.id,
+  const response = await autumnFetch<AutumnCheckResponse>('/check', {
+    customer_id: customerId,
+    feature_id: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
+    required_balance: feature.credits,
+    send_event: true,
+    event_name: feature.id,
   }, fetchImpl)
 
   if (!response.allowed) {
@@ -261,14 +261,18 @@ export async function createAutumnCheckout(
   planId: 'starter' | 'pro' | string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ customer_id?: string; customerId?: string; payment_url?: string; paymentUrl?: string } & Record<string, unknown>> {
-  return autumnFetch('/billing.attach', { customerId, planId }, fetchImpl)
+  return autumnFetch('/billing.attach', {
+    customer_id: customerId,
+    plan_id: planId,
+    redirect_mode: 'always',
+  }, fetchImpl)
 }
 
 export async function openAutumnCustomerPortal(
   customerId: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<{ url?: string; customer_portal_url?: string; customerPortalUrl?: string } & Record<string, unknown>> {
-  return autumnFetch('/billing.open_customer_portal', { customerId }, fetchImpl)
+  return autumnFetch('/billing.open_customer_portal', { customer_id: customerId }, fetchImpl)
 }
 
 function safeJson(text: string): Record<string, unknown> {
