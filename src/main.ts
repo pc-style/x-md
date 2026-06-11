@@ -2,6 +2,24 @@ import './style.css'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
+type ClerkInstance = {
+  user: {
+    primaryEmailAddress?: { emailAddress: string } | null
+    username?: string | null
+  } | null
+  session?: { getToken: () => Promise<string | null> } | null
+  addListener: (listener: () => void) => void
+  openSignUp: (props?: { forceRedirectUrl?: string }) => void
+  openSignIn: (props?: { forceRedirectUrl?: string }) => void
+  signOut: () => Promise<void>
+}
+
+const CLERK_PUBLISHABLE_KEY = (
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ??
+  import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ??
+  ''
+) as string
+
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
 const EXAMPLE_X_URL = `https://x.com/${EXAMPLE_HANDLE}/status/${EXAMPLE_ID}`
@@ -57,12 +75,14 @@ app.innerHTML = `
       <div class="hidden items-center gap-1 md:flex">
         <a href="#hosted" class="nav-link h-8 px-3">Hosted</a>
         <a href="#docs" class="nav-link h-8 px-3">Docs</a>
+        <a href="#pricing" class="nav-link h-8 px-3">Pricing</a>
         <a href="#agents" class="nav-link h-8 px-3">Agents</a>
         <a href="#routes" class="nav-link h-8 px-3">API</a>
       </div>
       <div class="flex items-center gap-3">
         <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="nav-link hidden h-8 px-3 sm:flex">GitHub</a>
-        <a href="#convert" class="btn-primary flex h-8 items-center rounded-full px-3.5 text-[13px]">Convert a post</a>
+        <button type="button" data-auth-action="sign-in" class="nav-link hidden h-8 px-3 sm:flex">Sign in</button>
+        <button type="button" data-auth-action="sign-up" class="btn-primary flex h-8 items-center rounded-full px-3.5 text-[13px]">Sign up free</button>
       </div>
     </nav>
   </header>
@@ -79,8 +99,9 @@ app.innerHTML = `
             Use the live site at <code class="code-chip">x.pcstyle.dev</code> or deploy your own on Vercel. Threads, media, quotes, and X Articles — no paid X API keys on the default path.
           </p>
           <div class="mt-9 flex flex-wrap gap-3">
-            <a href="#convert" class="btn-primary flex h-10 items-center rounded-full px-3.5 text-[13px]">Convert a post</a>
-            <a href="#hosted" class="btn-ghost flex h-10 items-center rounded-full px-3.5 text-[13px]">How hosted works</a>
+            <button type="button" data-auth-action="sign-up" class="btn-primary flex h-10 items-center rounded-full px-4 text-[13px]">Create free account</button>
+            <a href="#convert" class="btn-ghost flex h-10 items-center rounded-full px-3.5 text-[13px]">Convert without account</a>
+            <a href="#pricing" class="btn-ghost flex h-10 items-center rounded-full px-3.5 text-[13px]">Premium plans</a>
           </div>
         </div>
 
@@ -133,6 +154,83 @@ app.innerHTML = `
       </div>
     </section>
 
+
+
+    <section id="pricing" class="mx-auto max-w-[1200px] px-8 pb-[120px]">
+      <div class="mb-10 max-w-[640px]">
+        <p class="eyebrow eyebrow-accent mb-3">Premium</p>
+        <h2 class="text-[clamp(32px,4vw,48px)] font-medium leading-[1.05] tracking-[-0.03em] text-[#f7f8f8]">Free conversion stays free. Premium social workflows use credits.</h2>
+        <p class="mt-4 text-[17px] leading-[1.6] text-[#8a8f98]">x.md uses Clerk accounts, Convex-backed API keys, and Autumn + Stripe billing. Autumn is the source of truth for plans, entitlements, checkout, and social credit balances.</p>
+      </div>
+      <div class="grid gap-4 lg:grid-cols-3">
+        <div class="pricing-card">
+          <p class="font-mono text-[13px] text-[#55ccff]">Free</p>
+          <h3 class="mt-3 text-[28px] font-semibold text-[#f7f8f8]">$0<span class="text-[14px] font-normal text-[#8a8f98]">/mo</span></h3>
+          <ul class="mt-5 space-y-2 text-[14px] leading-relaxed text-[#8a8f98]">
+            <li>Anonymous X Markdown conversion</li>
+            <li>Social link bundle</li>
+            <li>Conversation map</li>
+            <li>Media manifest</li>
+          </ul>
+        </div>
+        <div class="pricing-card pricing-card-featured">
+          <p class="font-mono text-[13px] text-[#55ccff]">Starter</p>
+          <h3 class="mt-3 text-[28px] font-semibold text-[#f7f8f8]">$5<span class="text-[14px] font-normal text-[#8a8f98]">/mo</span></h3>
+          <p class="mt-2 text-[14px] text-[#d0d6e0]">250 social credits/month</p>
+          <ul class="mt-5 space-y-2 text-[14px] leading-relaxed text-[#8a8f98]">
+            <li>Obsidian social note templates</li>
+            <li>Quote expansion</li>
+            <li>JSON-LD basic export</li>
+          </ul>
+          <button type="button" data-plan="starter" class="btn-primary mt-6 flex h-10 w-full items-center rounded-full px-4 text-[13px]">Upgrade with Autumn</button>
+        </div>
+        <div class="pricing-card">
+          <p class="font-mono text-[13px] text-[#55ccff]">Pro</p>
+          <h3 class="mt-3 text-[28px] font-semibold text-[#f7f8f8]">$15<span class="text-[14px] font-normal text-[#8a8f98]">/mo</span></h3>
+          <p class="mt-2 text-[14px] text-[#d0d6e0]">1,500 social credits/month</p>
+          <ul class="mt-5 space-y-2 text-[14px] leading-relaxed text-[#8a8f98]">
+            <li>Thread briefing and author dossiers</li>
+            <li>Cross-platform parser</li>
+            <li>Context-window safe mode</li>
+            <li>Bulk JSON-LD archive export</li>
+          </ul>
+          <button type="button" data-plan="pro" class="btn-ghost mt-6 flex h-10 w-full items-center justify-center rounded-full px-4 text-[13px]">Upgrade to Pro</button>
+        </div>
+      </div>
+      <div class="mt-6 overflow-x-auto rounded-xl border border-[#23252a]">
+        <table class="docs-table">
+          <thead><tr><th>Premium feature</th><th>Credits</th><th>API mode</th></tr></thead>
+          <tbody>
+            <tr><td>Quote-post expansion</td><td>1</td><td><code>premium=quote_expansion</code></td></tr>
+            <tr><td>Obsidian social note templates</td><td>1</td><td><code>premium=obsidian_templates</code></td></tr>
+            <tr><td>Thread briefing mode</td><td>3</td><td><code>premium=thread_briefing</code></td></tr>
+            <tr><td>Context-window safe mode</td><td>3</td><td><code>premium=context_safe_mode</code></td></tr>
+            <tr><td>Cross-platform social parser</td><td>3</td><td><code>premium=cross_platform_parser</code></td></tr>
+            <tr><td>Social archive JSON-LD bulk/export</td><td>5</td><td><code>premium=jsonld_bulk_export</code></td></tr>
+            <tr><td>Author dossier</td><td>10</td><td><code>premium=author_dossier</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="account" class="account-card mt-6">
+        <div>
+          <p class="eyebrow eyebrow-muted mb-2">Account</p>
+          <h3 class="text-[22px] font-semibold text-[#f7f8f8]">Sign up to unlock premium workflows and API keys.</h3>
+          <p data-account-status class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Create a free account first, then upgrade when you need social credits.</p>
+          <p data-api-key-output class="mt-4 hidden rounded-lg border border-[#23252a] bg-[#08090a] p-3 font-mono text-[12px] leading-relaxed text-[#d0d6e0]"></p>
+        </div>
+        <div class="flex flex-col gap-3 sm:min-w-[220px]">
+          <button type="button" data-auth-action="sign-up" class="btn-primary flex h-10 items-center rounded-full px-4 text-[13px]">Sign up free</button>
+          <button type="button" data-auth-action="sign-in" class="btn-ghost flex h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign in</button>
+          <button type="button" data-account-action="create-key" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Create API key</button>
+          <button type="button" data-account-action="portal" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Manage billing</button>
+          <button type="button" data-auth-action="sign-out" class="btn-ghost hidden h-10 items-center justify-center rounded-full px-4 text-[13px]">Sign out</button>
+        </div>
+      </div>
+      <div class="info-banner-muted mt-4">
+        Account API surface: <code class="code-chip">POST /api/billing?plan=starter|pro</code> starts Autumn checkout, <code class="code-chip">POST /api/billing?action=portal</code> opens the Stripe portal through Autumn, and <code class="code-chip">/api/api-keys</code> creates/revokes hashed <code class="code-chip">xmd_...</code> tokens for <code class="code-chip">Authorization: Bearer</code> requests.
+      </div>
+    </section>
+
     <section id="docs" class="mx-auto max-w-[920px] px-8 pb-[120px]">
       <div class="mb-14 max-w-[560px]">
         <p class="eyebrow eyebrow-accent mb-3">Documentation</p>
@@ -159,31 +257,33 @@ ${EXAMPLE_HOSTED_URL}</pre>
               <li>FxTwitter primary, X syndication fallback</li>
               <li>Cached responses (about 1 hour by default)</li>
               <li>CORS open on <code class="code-chip">/api/*</code> for agents</li>
-              <li><strong class="text-[#f7f8f8]">No Firecrawl</strong> — not configured on production</li>
+              <li><strong class="text-[#f7f8f8]">No paid scrape fallback</strong> unless configured by the maintainer</li>
             </ul>
           </div>
           <div class="compare-tile">
             <h4>Self-host (your Vercel project)</h4>
             <ul class="mt-3 space-y-2 text-[14px] leading-relaxed text-[#8a8f98]">
               <li>Same FxTwitter + syndication chain</li>
-              <li>Optional <code class="code-chip">FIRECRAWL_API_KEY</code> scrape fallback</li>
+              <li>Optional <code class="code-chip">CONTEXT_DEV_API_KEY</code> and <code class="code-chip">FIRECRAWL_API_KEY</code> scrape fallbacks</li>
               <li>Your cache TTL and env vars</li>
               <li>Same URL swap on your domain</li>
             </ul>
           </div>
         </div>
         <p class="mt-4 text-[14px] text-[#62666d]">
-          <code class="code-chip">X-Source</code> is <code class="code-chip">fxtwitter</code> or <code class="code-chip">syndication</code> on the hosted site. Self-host only adds <code class="code-chip">firecrawl</code> when the key is set.
+          <code class="code-chip">X-Source</code> is <code class="code-chip">fxtwitter</code> or <code class="code-chip">syndication</code> by default. Self-hosted deploys can also return <code class="code-chip">contextdev</code> or <code class="code-chip">firecrawl</code> when keys are set.
         </p>
       </article>
 
       <div class="info-banner mb-16">
         <strong class="font-medium text-[#f7f8f8]">Provider chain:</strong> FxTwitter for rich data, X syndication as fallback.
-        <span class="text-[#8a8f98]"> Firecrawl is </span>
-        <strong class="font-medium text-[#f7f8f8]">self-host only</strong>
+        <span class="text-[#8a8f98]"> Context.dev and Firecrawl are optional </span>
+        <strong class="font-medium text-[#f7f8f8]">self-host fallbacks</strong>
         <span class="text-[#8a8f98]"> — set </span>
+        <code class="code-chip text-[#f7f8f8]">CONTEXT_DEV_API_KEY</code>
+        <span class="text-[#8a8f98]"> and/or </span>
         <code class="code-chip text-[#f7f8f8]">FIRECRAWL_API_KEY</code>
-        <span class="text-[#8a8f98]"> on your own deploy; it is not enabled on x.pcstyle.dev.</span>
+        <span class="text-[#8a8f98]"> on your own deploy.</span>
       </div>
 
       <article id="routes" class="mb-16 grid gap-8 border-t border-[#23252a] pt-12 lg:grid-cols-[1fr_1.1fr] lg:items-start">
@@ -212,20 +312,20 @@ Accept: text/markdown
           Easiest path: swap the host and fetch Markdown. For Cursor and other agents, install the bundled skills with the <a href="https://skills.sh/" class="text-[#7170ff] hover:text-[#828fff]" target="_blank" rel="noreferrer">skills</a> CLI:
         </p>
         <pre class="code-block mt-6"># list skills in this repo
-npx skills add pc-style/x-md --list
+bunx skills add pc-style/x-md --list
 
 # global install (recommended — works across projects)
-npx skills add pc-style/x-md -g -y \\
+bunx skills add pc-style/x-md -g -y \\
   --skill read-x-links-vercel --skill read-x-links-local
 
 # or project-only, from an x-md checkout
-npx skills add pc-style/x-md -y \\
+bunx skills add pc-style/x-md -y \\
   --skill read-x-links-vercel --skill read-x-links-local</pre>
         <div class="mt-8 grid gap-4 lg:grid-cols-2">
           <div class="compare-tile">
             <h4>read-x-links-vercel</h4>
-            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Hosted API only — no local repo or Bun required. Uses FxTwitter + syndication on x.pcstyle.dev (no Firecrawl).</p>
-            <pre class="code-block mt-4 text-[12px]"># after npx skills add …
+            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Hosted API only — no local repo or Bun required. Uses FxTwitter + syndication on x.pcstyle.dev by default.</p>
+            <pre class="code-block mt-4 text-[12px]"># after bunx skills add …
 ~/.agents/skills/read-x-links-vercel/scripts/read-x.sh \\
   "${EXAMPLE_X_URL}"
 
@@ -235,7 +335,7 @@ npx skills add pc-style/x-md -y \\
           </div>
           <div class="compare-tile">
             <h4>read-x-links-local</h4>
-            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Full local CLI — threads, Obsidian output, optional Firecrawl when you set <code class="code-chip">FIRECRAWL_API_KEY</code>.</p>
+            <p class="mt-2 text-[14px] leading-relaxed text-[#8a8f98]">Full local CLI — threads, Obsidian output, optional Context.dev/Firecrawl when you set fallback API keys.</p>
             <pre class="code-block mt-4 text-[12px]">cd x-md && bun install
 cp .env.local.example .env.local   # optional
 
@@ -258,7 +358,7 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
   --data-urlencode "url=${EXAMPLE_X_URL}" \\
   -H "Accept: text/markdown"</pre>
         <p class="mt-4 text-[14px] text-[#62666d]">
-          JSON: <code class="code-chip">Accept: application/json</code> includes <code class="code-chip">source</code> (<code class="code-chip">fxtwitter</code> | <code class="code-chip">syndication</code> on hosted; <code class="code-chip">firecrawl</code> only on self-host with the key set).
+          JSON: <code class="code-chip">Accept: application/json</code> includes <code class="code-chip">source</code> (<code class="code-chip">fxtwitter</code> | <code class="code-chip">syndication</code> by default; <code class="code-chip">contextdev</code> and <code class="code-chip">firecrawl</code> when configured).
         </p>
       </article>
 
@@ -297,6 +397,11 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
                 <td><code>url</code></td>
                 <td>—</td>
                 <td class="text-[#d0d6e0]">Encoded X status URL (<code class="code-chip">/api/convert</code> only; path routes omit this)</td>
+              </tr>
+              <tr>
+                <td><code>premium</code></td>
+                <td>—</td>
+                <td class="text-[#d0d6e0]">Authenticated premium mode; requires Clerk JWT or <code class="code-chip">Authorization: Bearer xmd_...</code></td>
               </tr>
             </tbody>
           </table>
@@ -347,12 +452,16 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
             <span class="text-[14px] text-[#8a8f98]">X CDN fallback for single posts (hosted + self-host)</span>
           </div>
           <div class="provider-row">
+            <strong class="text-[17px] font-medium text-[#f7f8f8]">Context.dev</strong>
+            <span class="text-[14px] text-[#8a8f98]">Optional scrape fallback when you set <code class="code-chip">CONTEXT_DEV_API_KEY</code></span>
+          </div>
+          <div class="provider-row">
             <strong class="text-[17px] font-medium text-[#f7f8f8]">Firecrawl</strong>
-            <span class="text-[14px] text-[#8a8f98]">Self-host only — optional scrape when you set <code class="code-chip">FIRECRAWL_API_KEY</code></span>
+            <span class="text-[14px] text-[#8a8f98]">Optional final scrape fallback when you set <code class="code-chip">FIRECRAWL_API_KEY</code></span>
           </div>
         </div>
         <div class="info-banner-muted mt-6">
-          The live site at <code class="code-chip">x.pcstyle.dev</code> runs FxTwitter + syndication only. Firecrawl is documented for self-hosted deploys and is not configured in production.
+          The default chain is FxTwitter → syndication. If you configure one or both optional keys, the chain extends to Context.dev → Firecrawl.
         </div>
       </article>
     </section>
@@ -365,6 +474,7 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
         <a href="#top" class="footer-link font-mono">x.md</a>
         <a href="#hosted" class="footer-link">Hosted</a>
         <a href="#docs" class="footer-link">Docs</a>
+        <a href="#pricing" class="footer-link">Pricing</a>
         <a href="#routes" class="footer-link">API</a>
       </div>
       <p class="text-[#62666d]">Not affiliated with X Corp.</p>
@@ -374,3 +484,116 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
 `
 
 setupConvertForm(app)
+void setupAccountFlow(app)
+
+async function setupAccountFlow(root: HTMLElement) {
+  const clerk = await loadClerk(root)
+  updateAccountUi(root, clerk)
+
+  if (!clerk) return
+
+  clerk.addListener(() => updateAccountUi(root, clerk))
+
+  root.querySelectorAll<HTMLButtonElement>('[data-auth-action]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const action = button.dataset.authAction
+      if (action === 'sign-up') clerk.openSignUp({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-in') clerk.openSignIn({ forceRedirectUrl: window.location.href })
+      if (action === 'sign-out') await clerk.signOut()
+    })
+  })
+
+  root.querySelectorAll<HTMLButtonElement>('[data-plan]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const plan = button.dataset.plan
+      if (!plan) return
+      if (!clerk.user) {
+        clerk.openSignUp({ forceRedirectUrl: window.location.href })
+        return
+      }
+      await postWithClerkToken(clerk, button, `/api/billing?plan=${encodeURIComponent(plan)}`, 'Opening checkout…', (payload) => {
+        if (!payload.url) throw new Error('Checkout unavailable')
+        window.location.href = payload.url
+      })
+    })
+  })
+
+  root.querySelector<HTMLButtonElement>('[data-account-action="portal"]')?.addEventListener('click', async (event) => {
+    await postWithClerkToken(clerk, event.currentTarget as HTMLButtonElement, '/api/billing?action=portal', 'Opening portal…', (payload) => {
+      if (!payload.url) throw new Error('Portal unavailable')
+      window.location.href = payload.url
+    })
+  })
+
+  root.querySelector<HTMLButtonElement>('[data-account-action="create-key"]')?.addEventListener('click', async (event) => {
+    await postWithClerkToken(clerk, event.currentTarget as HTMLButtonElement, '/api/api-keys', 'Creating key…', (payload) => {
+      const output = root.querySelector<HTMLElement>('[data-api-key-output]')
+      if (!payload.apiKey || !output) throw new Error('API key unavailable')
+      output.classList.remove('hidden')
+      output.textContent = `Copy this key now. It will not be shown again:
+${payload.apiKey}`
+    })
+  })
+}
+
+async function loadClerk(root: HTMLElement): Promise<ClerkInstance | null> {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    root.querySelectorAll<HTMLButtonElement>('[data-auth-action], [data-plan], [data-account-action]').forEach((button) => {
+      button.disabled = true
+    })
+    const status = root.querySelector<HTMLElement>('[data-account-status]')
+    if (status) status.textContent = 'Clerk is not configured on this deploy yet. Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-up.'
+    return null
+  }
+
+  const { Clerk } = await import('@clerk/clerk-js')
+  const clerk = new Clerk(CLERK_PUBLISHABLE_KEY)
+  await clerk.load()
+  return clerk as ClerkInstance
+}
+
+function updateAccountUi(root: HTMLElement, clerk: ClerkInstance | null) {
+  const signedIn = !!clerk?.user
+  const email = clerk?.user?.primaryEmailAddress?.emailAddress ?? clerk?.user?.username ?? 'your account'
+  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-up"], [data-auth-action="sign-in"]').forEach((el) => {
+    el.classList.toggle('hidden', signedIn)
+  })
+  root.querySelectorAll<HTMLElement>('[data-auth-action="sign-out"], [data-account-action]').forEach((el) => {
+    el.classList.toggle('hidden', !signedIn)
+    el.classList.toggle('flex', signedIn)
+  })
+  const status = root.querySelector<HTMLElement>('[data-account-status]')
+  if (status) {
+    status.textContent = signedIn
+      ? `Signed in as ${email}. You can upgrade, manage billing, or create an API key for agent access.`
+      : 'Create a free account first, then upgrade when you need social credits.'
+  }
+}
+
+async function postWithClerkToken(
+  clerk: ClerkInstance,
+  button: HTMLButtonElement,
+  path: string,
+  pendingLabel: string,
+  onSuccess: (payload: Record<string, string>) => void,
+) {
+  button.disabled = true
+  const original = button.textContent
+  button.textContent = pendingLabel
+  try {
+    const token = await clerk.session?.getToken()
+    const response = await fetch(path, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
+    const payload = await response.json() as Record<string, string>
+    if (!response.ok) throw new Error(payload.error ?? 'Request failed')
+    onSuccess(payload)
+    button.textContent = original
+    button.disabled = false
+  } catch (error) {
+    button.textContent = error instanceof Error ? error.message : 'Request failed'
+    setTimeout(() => { button.textContent = original }, 2200)
+    button.disabled = false
+  }
+}

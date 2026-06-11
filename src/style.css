@@ -229,3 +229,25 @@
     clip-path: inset(50%);
   }
 }
+
+@layer components {
+  .pricing-card {
+    @apply rounded-2xl border p-6;
+    border-color: var(--hair);
+    background-color: var(--surface-raised);
+  }
+
+  .pricing-card-featured {
+    border-color: rgba(113, 112, 255, 0.42);
+    box-shadow: 0 0 0 1px rgba(113, 112, 255, 0.08), 0 24px 80px rgba(0, 0, 0, 0.22);
+  }
+}
+
+@layer components {
+  .account-card {
+    @apply flex flex-col gap-6 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between;
+
+    border-color: rgba(113, 112, 255, 0.28);
+    background: linear-gradient(135deg, rgba(113, 112, 255, 0.1), rgba(85, 204, 255, 0.04));
+  }
+}

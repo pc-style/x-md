@@ -1,9 +1,10 @@
 import { ConvertError } from './errors.js'
+import { fetchContextDevStatus } from './contextdev.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
 import { fetchFxFullThread, fetchFxStatus, type FxTweet } from './fxtwitter.js'
 import { fetchSyndicationStatus } from './syndication.js'
 
-export type FetchSource = 'fxtwitter' | 'syndication' | 'firecrawl'
+export type FetchSource = 'fxtwitter' | 'syndication' | 'contextdev' | 'firecrawl'
 
 export interface FetchResult {
   tweets: FxTweet[]
@@ -19,6 +20,13 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
     async () => ({ tweets: [await fetchFxStatus(id)], source: 'fxtwitter' }),
     async () => ({ tweets: [await fetchSyndicationStatus(handle, id)], source: 'syndication' }),
   ]
+
+  if (process.env.CONTEXT_DEV_API_KEY) {
+    attempts.push(async () => ({
+      tweets: [await fetchContextDevStatus(handle, id)],
+      source: 'contextdev',
+    }))
+  }
 
   if (process.env.FIRECRAWL_API_KEY) {
     attempts.push(async () => ({

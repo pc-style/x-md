@@ -44,4 +44,4 @@ GET https://x.pcstyle.dev/:handle/status/:id
 
 ## Limits
 
-Public deploy has no Firecrawl. On `syndication_error`, use **read-x-links-local**.
+Public deploy has no optional scrape fallback unless configured by the maintainer. On `syndication_error`, use **read-x-links-local**.
