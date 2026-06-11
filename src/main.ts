@@ -1,5 +1,6 @@
 import './style.css'
 import { CLERK_PUBLISHABLE_KEY, loadClerk as loadClerkInstance, type ClerkInstance } from './clerk'
+import { setupMaintenanceNotice } from './maintenance-notice'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
@@ -470,6 +471,7 @@ curl -sS -G "https://x.pcstyle.dev/api/convert" \\
 `
 
 setupConvertForm(app)
+setupMaintenanceNotice()
 void setupAccountFlow(app)
 
 async function setupAccountFlow(root: HTMLElement) {

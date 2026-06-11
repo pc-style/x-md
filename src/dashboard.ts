@@ -1,5 +1,6 @@
 import './style.css'
 import { fetchWithClerkToken, loadClerk, type ClerkInstance } from './clerk'
+import { setupMaintenanceNotice } from './maintenance-notice'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
@@ -170,6 +171,7 @@ app.innerHTML = `
 `
 
 void main()
+setupMaintenanceNotice()
 
 async function main() {
   const clerk = await loadClerk()
