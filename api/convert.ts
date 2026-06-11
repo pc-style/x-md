@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { logRequest, recordFeatureRun, resolveAuthContext, syncUserToBackends } from '../lib/auth.js'
-import { checkAndTrackPremiumUsage, ensureAutumnCustomer, getPremiumFeature, isPremiumFeatureId, MonetizationError, type PremiumFeatureId } from '../lib/monetization.js'
+import { checkPremiumAccess, ensureAutumnCustomer, getPremiumFeature, isPremiumFeatureId, MonetizationError, trackPremiumUsage, type PremiumFeatureId } from '../lib/monetization.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -28,6 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       premiumFeature = getPremiumFeature(premiumFeatureId)
       await syncUserToBackends(auth)
       await ensureAutumnCustomer(auth.userId, { email: auth.email, name: auth.name })
+      await checkPremiumAccess(auth.userId, premiumFeatureId)
     }
 
     const result = await convertTweet({
@@ -40,8 +41,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       nocache: typeof req.query.nocache === 'string' ? req.query.nocache : undefined,
     })
 
-    if (premiumFeatureId && auth.userId && premiumFeature) {
-      const autumnCheck = await checkAndTrackPremiumUsage(auth.userId, premiumFeatureId as PremiumFeatureId)
+    if (req.method === 'GET' && premiumFeatureId && auth.userId && premiumFeature) {
+      const autumnCheck = await trackPremiumUsage(auth.userId, premiumFeatureId as PremiumFeatureId)
       await recordFeatureRun({
         userId: auth.userId,
         featureId: premiumFeatureId,

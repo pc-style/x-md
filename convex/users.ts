@@ -6,19 +6,19 @@ export const upsertFromClerk = mutation({
     clerkUserId: v.string(),
     email: v.optional(v.string()),
     name: v.optional(v.string()),
+    serverSecret: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    requireServerSecret(args.serverSecret)
     const now = Date.now()
     const existing = await ctx.db
       .query('users')
       .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', args.clerkUserId))
       .unique()
 
-    const patch = {
-      email: args.email,
-      name: args.name,
-      updatedAt: now,
-    }
+    const patch: { email?: string; name?: string; updatedAt: number } = { updatedAt: now }
+    if (args.email !== undefined) patch.email = args.email
+    if (args.name !== undefined) patch.name = args.name
 
     if (existing) {
       await ctx.db.patch(existing._id, patch)
@@ -37,11 +37,18 @@ export const upsertFromClerk = mutation({
 })
 
 export const current = query({
-  args: { clerkUserId: v.string() },
-  handler: async (ctx, { clerkUserId }) => {
+  args: { clerkUserId: v.string(), serverSecret: v.optional(v.string()) },
+  handler: async (ctx, { clerkUserId, serverSecret }) => {
+    requireServerSecret(serverSecret)
     return await ctx.db
       .query('users')
       .withIndex('by_clerkUserId', (q) => q.eq('clerkUserId', clerkUserId))
       .unique()
   },
 })
+
+function requireServerSecret(serverSecret: string | undefined) {
+  if (!process.env.CONVEX_SERVER_SECRET || serverSecret !== process.env.CONVEX_SERVER_SECRET) {
+    throw new Error('Unauthorized')
+  }
+}

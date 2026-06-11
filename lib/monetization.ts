@@ -176,6 +176,44 @@ export async function ensureAutumnCustomer(
   }, fetchImpl)
 }
 
+export async function checkPremiumAccess(
+  customerId: string,
+  featureId: PremiumFeatureId,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AutumnCheckResponse> {
+  const feature = PREMIUM_FEATURES[featureId]
+  const response = await autumnFetch<AutumnCheckResponse>('/customers.check', {
+    customerId,
+    featureId: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
+    requiredBalance: feature.credits,
+  }, fetchImpl)
+
+  if (!response.allowed) {
+    throw new MonetizationError(
+      402,
+      'premium_credits_required',
+      `${feature.label} requires ${feature.credits} social credit${feature.credits === 1 ? '' : 's'}.`,
+      response,
+    )
+  }
+
+  return response
+}
+
+export async function trackPremiumUsage(
+  customerId: string,
+  featureId: PremiumFeatureId,
+  fetchImpl: typeof fetch = fetch,
+): Promise<AutumnCheckResponse> {
+  const feature = PREMIUM_FEATURES[featureId]
+  return autumnFetch<AutumnCheckResponse>('/customers.track', {
+    customerId,
+    featureId: AUTUMN_SOCIAL_CREDITS_FEATURE_ID,
+    value: feature.credits,
+    eventName: feature.id,
+  }, fetchImpl)
+}
+
 export async function checkAndTrackPremiumUsage(
   customerId: string,
   featureId: PremiumFeatureId,

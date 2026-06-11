@@ -2,7 +2,7 @@ export function extractStatusTextFromMarkdown(markdown: string): string | undefi
   const lines = markdown
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => line && !line.startsWith('![') && !line.startsWith('http'))
+    .filter((line) => line && !line.startsWith('!['))
 
   const skip = new Set([
     'Post',

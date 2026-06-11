@@ -24,9 +24,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       code: 'body_too_large',
     })
   }
-  const signature = String(req.headers['autumn-signature'] ?? req.headers['x-autumn-signature'] ?? '')
+  const signature = String(req.headers['svix-signature'] ?? req.headers['autumn-signature'] ?? req.headers['x-autumn-signature'] ?? '')
+  const svixId = typeof req.headers['svix-id'] === 'string' ? req.headers['svix-id'] : undefined
+  const svixTimestamp = typeof req.headers['svix-timestamp'] === 'string' ? req.headers['svix-timestamp'] : undefined
 
-  if (!verifyAutumnWebhook(rawBody, signature, process.env.AUTUMN_WEBHOOK_SECRET)) {
+  if (!verifyAutumnWebhook(rawBody, signature, process.env.AUTUMN_WEBHOOK_SECRET, { svixId, svixTimestamp })) {
     return res.status(400).json({ error: 'Invalid webhook signature', code: 'invalid_signature' })
   }
 
@@ -35,17 +37,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({ ok: true })
 }
 
-export function verifyAutumnWebhook(rawBody: Buffer, signature: string, secret: string | undefined): boolean {
+export function verifyAutumnWebhook(
+  rawBody: Buffer,
+  signature: string,
+  secret: string | undefined,
+  svix?: { svixId?: string; svixTimestamp?: string },
+): boolean {
   if (!secret || !signature) return false
+
+  if (svix?.svixId && svix.svixTimestamp) {
+    const signedContent = `${svix.svixId}.${svix.svixTimestamp}.${rawBody.toString('utf8')}`
+    const expected = createHmac('sha256', decodeSvixSecret(secret)).update(signedContent).digest('base64')
+    return signature
+      .split(' ')
+      .flatMap((part) => part.split(','))
+      .map((part) => part.trim().replace(/^v\d+,/, '').replace(/^v\d+=/, ''))
+      .some((candidate) => safeEqual(candidate, expected, 'base64'))
+  }
+
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
   const candidates = signature.split(',').map((part) => part.trim().replace(/^v\d+=/, ''))
-  return candidates.some((candidate) => safeEqualHex(candidate, expected))
+  return candidates.some((candidate) => safeEqual(candidate, expected, 'hex'))
 }
 
-function safeEqualHex(a: string, b: string): boolean {
+function decodeSvixSecret(secret: string): Buffer | string {
+  if (!secret.startsWith('whsec_')) return secret
+  return Buffer.from(secret.slice('whsec_'.length), 'base64')
+}
+
+function safeEqual(a: string, b: string, encoding: BufferEncoding): boolean {
   try {
-    const left = Buffer.from(a, 'hex')
-    const right = Buffer.from(b, 'hex')
+    const left = Buffer.from(a, encoding)
+    const right = Buffer.from(b, encoding)
     return left.length === right.length && timingSafeEqual(left, right)
   } catch {
     return false

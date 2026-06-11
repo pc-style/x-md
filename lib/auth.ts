@@ -38,7 +38,10 @@ export async function resolveAuthContext(headers: HeaderBag): Promise<AuthContex
 async function resolveApiKeyUser(apiKey: string): Promise<string | null> {
   const client = getConvexClient()
   if (!client) return null
-  const record = await client.query(api.apiKeys.getActiveByHash, { keyHash: hashApiKey(apiKey) })
+  const record = await client.query(api.apiKeys.getActiveByHash, {
+    keyHash: hashApiKey(apiKey),
+    serverSecret: process.env.CONVEX_SERVER_SECRET,
+  })
   return record?.userId ?? null
 }
 
@@ -62,7 +65,7 @@ async function resolveClerkToken(token: string): Promise<Omit<AuthContext, 'auth
 }
 
 export async function syncUserToBackends(auth: AuthContext): Promise<void> {
-  if (!auth.userId) return
+  if (!auth.userId || auth.authMethod !== 'clerk') return
 
   const convex = getConvexClient()
   if (convex) {
@@ -70,6 +73,7 @@ export async function syncUserToBackends(auth: AuthContext): Promise<void> {
       clerkUserId: auth.userId,
       email: auth.email ?? undefined,
       name: auth.name ?? undefined,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
     })
   }
 }
@@ -85,16 +89,21 @@ export async function logRequest(args: {
 }): Promise<void> {
   const convex = getConvexClient()
   if (!convex) return
-  await convex.mutation(api.logs.logRequest, {
-    userId: args.auth.userId ?? undefined,
-    authMethod: args.auth.authMethod,
-    route: args.route,
-    status: args.status,
-    featureId: args.featureId,
-    credits: args.credits,
-    source: args.source,
-    cache: args.cache,
-  })
+  try {
+    await convex.mutation(api.logs.logRequest, {
+      userId: args.auth.userId ?? undefined,
+      authMethod: args.auth.authMethod,
+      route: args.route,
+      status: args.status,
+      featureId: args.featureId,
+      credits: args.credits,
+      source: args.source,
+      cache: args.cache,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
+    })
+  } catch (error) {
+    console.error('Failed to log request', error)
+  }
 }
 
 export async function recordFeatureRun(args: {
@@ -109,14 +118,19 @@ export async function recordFeatureRun(args: {
 }): Promise<void> {
   const convex = getConvexClient()
   if (!convex) return
-  await convex.mutation(api.logs.recordFeatureRun, {
-    userId: args.userId,
-    featureId: args.featureId,
-    credits: args.credits,
-    status: args.status,
-    autumnCustomerId: args.autumnCustomerId,
-    autumnCheck: args.autumnCheck,
-    input: args.input,
-    outputSummary: args.outputSummary,
-  })
+  try {
+    await convex.mutation(api.logs.recordFeatureRun, {
+      userId: args.userId,
+      featureId: args.featureId,
+      credits: args.credits,
+      status: args.status,
+      autumnCustomerId: args.autumnCustomerId,
+      autumnCheck: args.autumnCheck,
+      input: args.input,
+      outputSummary: args.outputSummary,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
+    })
+  } catch (error) {
+    console.error('Failed to record feature run', error)
+  }
 }

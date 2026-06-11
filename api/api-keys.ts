@@ -17,8 +17,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const auth = await resolveAuthContext(req.headers)
-  if (!auth.userId) {
-    return res.status(401).json({ error: 'Sign in to manage API keys.', code: 'authentication_required' })
+  if (!auth.userId || auth.authMethod !== 'clerk') {
+    return res.status(401).json({ error: 'Sign in with your account to manage API keys.', code: 'clerk_authentication_required' })
   }
 
   const convex = convexClient()
@@ -29,7 +29,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   await syncUserToBackends(auth)
 
   if (req.method === 'GET') {
-    const keys = await convex.query(api.apiKeys.listForUser, { userId: auth.userId })
+    const keys = await convex.query(api.apiKeys.listForUser, {
+      userId: auth.userId,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
+    })
     await logRequest({ auth, route: '/api/api-keys', status: 200 })
     return res.status(200).json({ keys })
   }
@@ -41,6 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       keyHash: generated.keyHash,
       tokenPreview: generated.tokenPreview,
       label: typeof req.body?.label === 'string' ? req.body.label : undefined,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
     })
     return res.status(201).json({ apiKey: generated.apiKey, tokenPreview: generated.tokenPreview })
   }
@@ -58,7 +62,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Provide `keyHash` or `apiKey` to revoke.', code: 'missing_key' })
     }
 
-    const revoked = await convex.mutation(api.apiKeys.revoke, { userId: auth.userId, keyHash })
+    const revoked = await convex.mutation(api.apiKeys.revoke, {
+      userId: auth.userId,
+      keyHash,
+      serverSecret: process.env.CONVEX_SERVER_SECRET,
+    })
     return res.status(200).json({ revoked })
   }
 
