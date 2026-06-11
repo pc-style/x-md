@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { logRequest, recordFeatureRun, resolveAuthContext, syncUserToBackends } from '../lib/auth.js'
-import { checkPremiumAccess, ensureAutumnCustomer, getPremiumFeature, isPremiumFeatureId, MonetizationError, trackPremiumUsage, type PremiumFeatureId } from '../lib/monetization.js'
+import { checkAndTrackPremiumUsage, checkPremiumAccess, ensureAutumnCustomer, getPremiumFeature, isPremiumFeatureId, MonetizationError } from '../lib/monetization.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -28,7 +28,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       premiumFeature = getPremiumFeature(premiumFeatureId)
       await syncUserToBackends(auth)
       await ensureAutumnCustomer(auth.userId, { email: auth.email, name: auth.name })
-      await checkPremiumAccess(auth.userId, premiumFeatureId)
+      if (req.method === 'GET') {
+        const autumnCheck = await checkAndTrackPremiumUsage(auth.userId, premiumFeatureId)
+        await recordFeatureRun({
+          userId: auth.userId,
+          featureId: premiumFeatureId,
+          credits: premiumFeature.credits,
+          status: 'allowed',
+          autumnCustomerId: auth.userId,
+          autumnCheck,
+          input: { url: req.query.url, handle: req.query.handle, id: req.query.id },
+        })
+      } else {
+        await checkPremiumAccess(auth.userId, premiumFeatureId)
+      }
     }
 
     const result = await convertTweet({
@@ -41,19 +54,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       nocache: typeof req.query.nocache === 'string' ? req.query.nocache : undefined,
     })
 
-    if (req.method === 'GET' && premiumFeatureId && auth.userId && premiumFeature) {
-      const autumnCheck = await trackPremiumUsage(auth.userId, premiumFeatureId as PremiumFeatureId)
-      await recordFeatureRun({
-        userId: auth.userId,
-        featureId: premiumFeatureId,
-        credits: premiumFeature.credits,
-        status: 'completed',
-        autumnCustomerId: auth.userId,
-        autumnCheck,
-        input: { url: req.query.url, handle: req.query.handle, id: req.query.id },
-        outputSummary: { postCount: result.postCount, source: result.source, cache: result.cache },
-      })
-    }
 
     await logRequest({ auth, route: '/api/convert', status: 200, featureId: premiumFeatureId, source: result.source, cache: result.cache })
 
