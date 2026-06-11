@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { requireServerSecret } from './auth'
 
 export const upsertCustomerMapping = mutation({
   args: {
@@ -53,9 +54,3 @@ export const getByUser = query({
       .unique()
   },
 })
-
-function requireServerSecret(serverSecret: string | undefined) {
-  if (!process.env.CONVEX_SERVER_SECRET || serverSecret !== process.env.CONVEX_SERVER_SECRET) {
-    throw new Error('Unauthorized')
-  }
-}

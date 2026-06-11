@@ -1,5 +1,6 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
+import { requireServerSecret } from './auth'
 
 export const create = mutation({
   args: {
@@ -58,9 +59,3 @@ export const getActiveByHash = query({
     return record
   },
 })
-
-function requireServerSecret(serverSecret: string | undefined) {
-  if (!process.env.CONVEX_SERVER_SECRET || serverSecret !== process.env.CONVEX_SERVER_SECRET) {
-    throw new Error('Unauthorized')
-  }
-}

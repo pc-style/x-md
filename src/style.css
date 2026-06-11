@@ -246,6 +246,7 @@
 @layer components {
   .account-card {
     @apply flex flex-col gap-6 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between;
+
     border-color: rgba(113, 112, 255, 0.28);
     background: linear-gradient(135deg, rgba(113, 112, 255, 0.1), rgba(85, 204, 255, 0.04));
   }
