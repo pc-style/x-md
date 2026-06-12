@@ -1,5 +1,5 @@
 import './style.css'
-import { fetchWithClerkToken, loadClerk, type ClerkInstance } from './clerk'
+import { beginClerkAuth, fetchWithClerkToken, loadClerk, type ClerkInstance } from './clerk'
 import { setupMaintenanceNotice } from './maintenance-notice'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
@@ -223,10 +223,10 @@ function mountChrome(clerk: ClerkInstance) {
 
 function wireStaticActions(clerk: ClerkInstance) {
   app.querySelector('[data-action="sign-in"]')?.addEventListener('click', () => {
-    void clerk.redirectToSignIn({ forceRedirectUrl: window.location.href })
+    void beginClerkAuth(clerk, 'sign-in')
   })
   app.querySelector('[data-action="sign-up"]')?.addEventListener('click', () => {
-    void clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
+    void beginClerkAuth(clerk, 'sign-up')
   })
   app.querySelector('[data-action="sign-out"]')?.addEventListener('click', () => {
     void clerk.signOut().then(() => { window.location.href = '/' })

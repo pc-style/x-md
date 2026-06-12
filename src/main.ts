@@ -1,5 +1,5 @@
 import './style.css'
-import { CLERK_PUBLISHABLE_KEY, loadClerk as loadClerkInstance, type ClerkInstance } from './clerk'
+import { beginClerkAuth, CLERK_PUBLISHABLE_KEY, loadClerk as loadClerkInstance, type ClerkInstance } from './clerk'
 import { setupMaintenanceNotice } from './maintenance-notice'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
@@ -484,10 +484,14 @@ async function setupAccountFlow(root: HTMLElement) {
 
   root.querySelectorAll<HTMLButtonElement>('[data-auth-action]').forEach((button) => {
     button.addEventListener('click', async () => {
-      const action = button.dataset.authAction
-      if (action === 'sign-up') await clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
-      if (action === 'sign-in') await clerk.redirectToSignIn({ forceRedirectUrl: window.location.href })
-      if (action === 'sign-out') await clerk.signOut()
+      try {
+        const action = button.dataset.authAction
+        if (action === 'sign-up') await beginClerkAuth(clerk, 'sign-up')
+        if (action === 'sign-in') await beginClerkAuth(clerk, 'sign-in')
+        if (action === 'sign-out') await clerk.signOut()
+      } catch (error) {
+        setAccountStatus(root, error instanceof Error ? error.message : 'Unable to start account flow.')
+      }
     })
   })
 
@@ -496,7 +500,7 @@ async function setupAccountFlow(root: HTMLElement) {
       const plan = button.dataset.plan
       if (!plan) return
       if (!clerk.user) {
-        await clerk.redirectToSignUp({ forceRedirectUrl: window.location.href })
+        await beginClerkAuth(clerk, 'sign-up')
         return
       }
       await postWithClerkToken(clerk, button, `/api/billing?plan=${encodeURIComponent(plan)}`, 'Opening checkout…', (payload) => {
@@ -529,8 +533,7 @@ async function loadClerk(root: HTMLElement): Promise<ClerkInstance | null> {
     root.querySelectorAll<HTMLButtonElement>('[data-auth-action], [data-plan], [data-account-action]').forEach((button) => {
       button.disabled = true
     })
-    const status = root.querySelector<HTMLElement>('[data-account-status]')
-    if (status) status.textContent = 'Clerk is not configured on this deploy yet. Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-up.'
+    setAccountStatus(root, 'Clerk is not configured on this deploy yet. Add NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY to enable sign-up.')
     return null
   }
 
@@ -563,12 +566,16 @@ function updateAccountUi(root: HTMLElement, clerk: ClerkInstance | null) {
       userButton.classList.add('hidden')
     }
   }
-  const status = root.querySelector<HTMLElement>('[data-account-status]')
-  if (status) {
-    status.textContent = signedIn
+  setAccountStatus(root,
+    signedIn
       ? `Signed in as ${email}. You can upgrade, manage billing, or create an API key for agent access.`
-      : 'Create a free account first, then upgrade when you need social credits.'
-  }
+      : 'Create a free account first, then upgrade when you need social credits.',
+  )
+}
+
+function setAccountStatus(root: HTMLElement, message: string) {
+  const status = root.querySelector<HTMLElement>('[data-account-status]')
+  if (status) status.textContent = message
 }
 
 async function postWithClerkToken(

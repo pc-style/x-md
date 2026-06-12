@@ -30,6 +30,27 @@ export async function loadClerk(): Promise<ClerkInstance | null> {
   return clerk as unknown as ClerkInstance
 }
 
+export async function beginClerkAuth(
+  clerk: ClerkInstance,
+  mode: 'sign-in' | 'sign-up',
+  forceRedirectUrl = window.location.href,
+): Promise<void> {
+  try {
+    if (mode === 'sign-in') {
+      await clerk.redirectToSignIn({ forceRedirectUrl })
+      return
+    }
+    await clerk.redirectToSignUp({ forceRedirectUrl })
+  } catch (error) {
+    console.error('Unable to start Clerk redirect flow.', error)
+    if (mode === 'sign-in') {
+      clerk.openSignIn({ forceRedirectUrl })
+    } else {
+      clerk.openSignUp({ forceRedirectUrl })
+    }
+  }
+}
+
 export async function fetchWithClerkToken(
   clerk: ClerkInstance,
   path: string,
