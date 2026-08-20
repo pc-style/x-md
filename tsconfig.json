@@ -15,6 +15,6 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "lib", "api", "scripts"],
+  "include": ["src", "lib", "api", "scripts", "skills/**/*.ts"],
   "exclude": ["**/*.test.ts"]
 }

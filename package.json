@@ -28,7 +28,7 @@
     "dev": "bun --bun vite",
     "build": "bun --bun tsc && bun --bun vite build",
     "preview": "vite preview",
-    "browse-x": "bash skills/browse-x/scripts/browse-x.sh",
+    "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run"
   },
   "devDependencies": {
