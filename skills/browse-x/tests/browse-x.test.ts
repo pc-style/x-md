@@ -10,7 +10,7 @@ const invoke = async (args: string[]) => {
     const url = String(input)
     expect(init?.headers).toEqual({ Accept: url.includes('format=json') ? 'application/json' : 'text/markdown' })
     return response()
-  }, { write: (value) => output.push(value), error: () => undefined })
+  }, { write: (value) => output.push(value) })
   return output.join('')
 }
 
@@ -32,6 +32,9 @@ describe('browse-x CLI', () => {
       '--json conflicts with --format markdown',
     )
     await expect(invoke(['profile', 'test', '--thread', 'full'])).rejects.toThrow('status options are only valid')
+    await expect(invoke(['status', '--help'])).rejects.toMatchObject({ code: 0 })
+    await expect(invoke(['status', 'https://example.test/a/status/1'])).rejects.toMatchObject({ code: 2 })
+    await expect(invoke(['https://example.test/a/status/1'])).rejects.toMatchObject({ code: 2 })
   })
 
   test('preserves API errors', async () => {

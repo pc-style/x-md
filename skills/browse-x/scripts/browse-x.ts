@@ -1,5 +1,5 @@
 type Resource = 'status' | 'profile' | 'search' | 'list'
-type Output = { write: (value: string) => void; error: (value: string) => void }
+type Output = { write: (value: string) => void }
 
 class CliError extends Error {
   readonly code: 0 | 1 | 2
@@ -71,7 +71,6 @@ const validate = (options: Map<string, string>) => {
   if (value('context') && !/^(full|thread)$/.test(value('context') as string)) fail('--context must be full or thread')
   if (value('replies') && !/^(top|recent|off)$/.test(value('replies') as string)) fail('--replies must be top, recent, or off')
   if (options.has('json') && value('format') && value('format') !== 'json') fail(`--json conflicts with --format ${value('format')}`)
-  if (options.has('full') && options.has('compact')) fail('--full/--compact was supplied with conflicting values')
 }
 
 const parse = (args: string[]) => {
@@ -82,6 +81,7 @@ const parse = (args: string[]) => {
   const first = args[0]
   if (/^(status|profile|search|followers|following)$/.test(first)) {
     command = first
+    if (args[1] === '-h' || args[1] === '--help') throw new CliError(usage, 0)
     target = args[1] ?? fail(`${first} requires a target`)
     args = args.slice(2)
   } else if (/^https?:\/\//.test(first)) {
@@ -111,11 +111,13 @@ const parse = (args: string[]) => {
 
 const request = (parsed: ReturnType<typeof parse>, base: string) => {
   const { command, target, options } = parsed
-  const handle = target.replace(/^@/, '')
+  const handle = encodeURIComponent(target.replace(/^@/, ''))
+  const publicStatusUrl = /^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/[^/?#]+\/status\/[0-9]+(?:[/?#]|$)/
   let resource: Resource = 'status'
   let endpoint = ''
   let targetParam: [string, string] | undefined
   if (command === 'status') {
+    if (!publicStatusUrl.test(target)) fail('status requires a public x.com or twitter.com status URL')
     resource = 'status'; endpoint = `${base}/api/convert`; targetParam = ['url', target]
   } else if (command === 'profile') {
     resource = 'profile'; endpoint = `${base}/${handle}`
@@ -123,7 +125,7 @@ const request = (parsed: ReturnType<typeof parse>, base: string) => {
     resource = 'search'; endpoint = `${base}/search`; targetParam = ['q', target]
   } else if (command === 'followers' || command === 'following') {
     resource = 'list'; endpoint = `${base}/${handle}/${command}`
-  } else if (/\/status\/[0-9]+(?:[/?#]|$)/.test(target)) {
+  } else if (publicStatusUrl.test(target)) {
     resource = 'status'; endpoint = `${base}/api/convert`; targetParam = ['url', target]
   } else if (/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\//.test(target)) {
     const handleFromUrl = target.replace(/^https?:\/\/[^/]+\//, '').split(/[/?#]/)[0]
@@ -151,15 +153,16 @@ export const run = async (
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
   fetcher: typeof fetch = fetch,
-  output: Output = { write: (value) => process.stdout.write(value), error: (value) => process.stderr.write(value) },
+  output: Output = { write: (value) => process.stdout.write(value) },
 ) => {
   const parsed = parse(args)
-  const { url, accept } = request(parsed, env.X_API_BASE ?? env.X_MD_API_BASE ?? 'https://x.pcstyle.dev')
+  const { url, accept } = request(parsed, env.X_API_BASE || env.X_MD_API_BASE || 'https://x.pcstyle.dev')
   let response: Response
   try {
     response = await fetcher(url, { headers: { Accept: accept } })
-  } catch {
-    throw new CliError(`browse-x: request to ${url.origin} failed\n`, 1)
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error)
+    throw new CliError(`browse-x: request to ${url.origin} failed: ${reason}\n`, 1)
   }
   const body = await response.text()
   if (!response.ok) throw new CliError(`browse-x: HTTP ${response.status} from ${url.origin}${url.pathname}\n${body}\n`, 1)

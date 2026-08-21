@@ -11,8 +11,9 @@ allowed-tools:
 
 # Browse X through x.pcstyle.dev
 
-Use the hosted, read-only API. It needs no repository checkout, Bun install, X
-login, cookies, or API key. Only public X content is available.
+Use the hosted, read-only API. The local helper requires Bun, but the hosted API
+itself needs no repository checkout, X login, cookies, or API key. Only public X
+content is available.
 
 ## Read statuses and conversations
 
