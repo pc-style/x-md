@@ -16,7 +16,20 @@
   --blume-content-width: 48rem;
 }
 h1 { text-wrap: balance; }
-pre { color: var(--color-code-ink); }
+/* Blume makes highlighted pre backgrounds transparent by default. Keep the
+   dark syntax palette on an explicit dark surface in either page theme. */
+.prose pre.astro-code {
+  background: var(--color-code) !important;
+  --blume-foreground: var(--color-code-ink);
+  --blume-muted-foreground: var(--color-code-dim);
+  --blume-border: var(--color-code-dim);
+}
+
+/* Inline code belongs to the surrounding prose, not the dark code pane. */
+.prose :not(pre) > code:not(:where([class~="not-prose"] *)) {
+  background: var(--color-raised-2);
+  color: var(--color-ink);
+}
 
 /* Keep Blume's self-hosted font families after importing the shared tokens. */
 @theme inline {
