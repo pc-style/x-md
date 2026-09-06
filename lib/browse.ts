@@ -14,7 +14,7 @@ import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
  * Per-IP ceiling on live /search lookups. Counted only when a request misses the
  * cache and is about to reach an upstream provider; cached hits are free.
  */
-const SEARCH_IP_LIMIT = 75
+const SEARCH_IP_LIMIT = 5
 const SEARCH_IP_WINDOW_SEC = 60
 import {
   fetchFxConnections,
@@ -212,13 +212,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       if (!xsearchConfigured() || (tagged && tagged.source !== 'xsearch')) {
         throw new ConvertError(503, 'X user search is temporarily unavailable. Retry shortly.', 'search_unavailable')
       }
-      const list = await walkPages(page, tagged?.raw, (cursor) => searchXUsers(query, cursor, limit))
+      const list = await walkPages(page, tagged?.raw, (cursor) => searchXUsers(query, cursor, limit, input.ip ?? undefined))
       return render({ resource, users: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor('xsearch', list.cursor?.bottom), source: 'xsearch' })
     }
 
     const live: Array<{ source: BrowseSource; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
     if (['latest', 'top'].includes(feed) && Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
-    if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit) })
+    if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit, input.ip ?? undefined) })
     // A continuation belongs to the provider that issued its cursor.
     const providers = tagged ? live.filter((provider) => provider.source === tagged.source) : live
 

@@ -21,9 +21,11 @@ For search, common codes include `missing_query`, `rate_limited`, and `search_un
 
 ## Search allowance
 
-Each IP can make **75 uncached search requests per minute**. Cached responses are free. This applies across search feeds.
+Each IP can make **5 uncached search requests per minute**. Cached responses are free. This applies across search feeds.
 
 `limit` defaults to 20 and is capped at 20. Smaller limits reduce response size but still count as one uncached request.
+
+Account-backed searches have an additional per-IP allowance per 15-minute window: **10% of healthy account capacity, capped at 20 attempts** (5 with one healthy account, 10 with two, 20 with four or more). All feeds, page walks, and candidate retries share it; cache hits are free. If account health deteriorates, the allowance can shrink during the window. A `429` includes `Retry-After`.
 
 ## Caching
 

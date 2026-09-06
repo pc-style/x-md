@@ -106,7 +106,7 @@ curl -sS -G 'https://x.pcstyle.dev/api/browse' \
   --data-urlencode 'format=json'
 ```
 
-Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets. Live search is limited to 75 uncached requests per minute per IP. Each configured account allows 100 upstream calls per 15 minutes, including page walks and failed attempts; cache hits are free. Counters are per instance unless a shared KV store is configured.
+Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets. Live search is limited to 5 uncached requests per minute per IP. Each configured account allows 50 upstream calls per 15 minutes, including page walks and failed attempts; cache hits are free. Counters are per instance unless a shared KV store is configured.
 
 Browse JSON includes the resource-specific `profile`, `posts`, or `users`, plus `page`, `limit`, optional `nextCursor`, rendered `markdown`, and cache status. The verified upstream profile API does not expose pinned-post markers, and public X lists are explicitly unsupported.
 
@@ -158,8 +158,8 @@ Optional environment variables:
 | Variable | Description |
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
-| `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 100 calls per session per 15 min |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint for shared rate-limit counters (`/search` allows 75 live, uncached lookups per minute per IP). Falls back to per-instance memory |
+| `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 50 calls per session per 15 min |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint for shared rate-limit counters (`/search` allows 5 live, uncached lookups per minute per IP). Falls back to per-instance memory |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |
@@ -184,3 +184,5 @@ src/               Vite landing page and rendered documentation
 ## Documentation
 
 Docs are Markdown pages in `docs/`, built with Blume and mounted at `/docs`. Run `bun run docs:dev` for the documentation server. `bun run build` builds docs first, then the landing page into the same `dist` directory. Configure navigation and site metadata in `blume.config.ts`; `theme.css` maps the shared `src/tokens.css` palette into Blume.
+
+Account-backed searches also share a per-IP allowance per 15-minute window: 10% of healthy account capacity, capped at 20 attempts (5 with one healthy account, 10 with two, 20 with four or more). This allowance covers all feeds, page walks, and candidate retries; cached responses are free. A reduced healthy pool can lower the allowance during the window. A rejected request returns `429` with `Retry-After`. Account-backed calls stop if the shared counter store is unavailable.

@@ -12,7 +12,7 @@ vi.mock('@the-convocation/twitter-scraper', async (importOriginal) => {
 
 import { ApiError, AuthenticationError, type Tweet } from '@the-convocation/twitter-scraper'
 import { resetRateLimits } from './ratelimit.js'
-import { resetXSessions, searchXStatuses, searchXUsers, tweetToFx, xsearchConfigured } from './xsearch.js'
+import { resetXSessions, searchXStatuses, searchXUsers, searchIpBudget, tweetToFx, xsearchConfigured } from './xsearch.js'
 
 const sessions = [
   { id: 'a', authToken: 'tokA', ct0: 'csrfA' },
@@ -78,12 +78,12 @@ describe('searchXStatuses', () => {
     expect(fetchSearchTweets).toHaveBeenCalledTimes(1)
   })
 
-  test('stops calling X once the pool budget (100 per session per 15 min) is spent', async () => {
+  test('stops calling X once the pool budget (50 per session per 15 min) is spent', async () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
-    for (let i = 0; i < 200; i += 1) await searchXStatuses('q', 'latest')
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(200)
+    for (let i = 0; i < 100; i += 1) await searchXStatuses('q', 'latest')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(100)
     await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(200)
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(100)
   })
 
   test.each([['latest', 1], ['top', 0], ['photos', 2], ['media', 2], ['videos', 3]])('maps %s and caps upstream count', async (feed, mode) => {
@@ -99,7 +99,7 @@ describe('searchXStatuses', () => {
     const result = await searchXUsers('ada', 'C', 50)
     expect(fetchSearchProfiles).toHaveBeenCalledWith('ada', 20, 'C')
     expect(result).toMatchObject({ results: [{ screen_name: 'ada', description: 'Builder', followers: 42 }], cursor: { bottom: 'N' } })
-    for (let i = 0; i < 99; i++) await searchXStatuses('q', 'latest')
+    for (let i = 0; i < 49; i++) await searchXStatuses('q', 'latest')
     await expect(searchXUsers('ada')).rejects.toMatchObject({ code: 'search_unavailable' })
     expect(fetchSearchProfiles).toHaveBeenCalledTimes(1)
   })
@@ -108,5 +108,41 @@ describe('searchXStatuses', () => {
     resetXSessions([])
     expect(xsearchConfigured()).toBe(false)
     await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
+  })
+})
+
+describe('per-IP account fairness', () => {
+  test('scales with healthy capacity and caps the allowance', () => {
+    expect(searchIpBudget(1)).toBe(5)
+    expect(searchIpBudget(2)).toBe(10)
+    expect(searchIpBudget(4)).toBe(20)
+  })
+
+  test('four callers cannot drain the pool, and another caller can still search', async () => {
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    for (const ip of ['a', 'b', 'c', 'd']) {
+      for (let n = 0; n < 10; n++) await searchXStatuses('q', 'latest', undefined, 20, ip)
+      await expect(searchXStatuses('q', 'latest', undefined, 20, ip)).rejects.toMatchObject({ status: 429 })
+    }
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(40)
+    await searchXStatuses('q', 'latest', undefined, 20, 'e')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(41)
+  })
+
+  test('charges retries and lowers the allowance when an account becomes unhealthy', async () => {
+    fetchSearchTweets.mockRejectedValueOnce(new AuthenticationError('bad')).mockResolvedValue({ tweets: [] })
+    await searchXStatuses('q', 'latest', undefined, 20, 'a')
+    // Two candidate attempts consumed; only one healthy account remains (limit 5).
+    for (let n = 0; n < 3; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
+    await expect(searchXStatuses('q', 'latest', undefined, 20, 'a')).rejects.toMatchObject({ status: 429 })
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(5)
+  })
+
+  test('post and user searches share one IP allowance', async () => {
+    resetXSessions([sessions[0]!])
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    for (let n = 0; n < 5; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
+    await expect(searchXUsers('q', undefined, 20, 'a')).rejects.toMatchObject({ status: 429 })
+    expect(fetchSearchProfiles).not.toHaveBeenCalled()
   })
 })

@@ -73,17 +73,17 @@ export function resetRateLimits(): void {
 /**
  * Count one hit for `key` and report whether it is within `limit` per `windowSec`.
  * Fixed windows are aligned to the clock so every instance agrees on the bucket.
- * Store failures fail open: a broken counter must not take the API down.
+ * Store failures fail open by default; scarce account capacity opts into fail-closed checks.
  */
-export async function rateLimit(key: string, limit: number, windowSec: number): Promise<RateLimitResult> {
+export async function rateLimit(key: string, limit: number, windowSec: number, failClosed = false): Promise<RateLimitResult> {
   const bucket = Math.floor(Date.now() / 1000 / windowSec)
   const retryAfter = (bucket + 1) * windowSec - Math.floor(Date.now() / 1000)
   let count: number
   try {
     count = await store().incr(`rl:${key}:${bucket}`, windowSec + 1)
   } catch (error) {
-    console.warn(`[ratelimit] store failure, allowing request: ${String(error).slice(0, 120)}`)
-    return { allowed: true, limit, remaining: limit, retryAfter }
+    console.warn(`[ratelimit] store failure, ${failClosed ? 'blocking' : 'allowing'} request: ${String(error).slice(0, 120)}`)
+    return { allowed: !failClosed, limit, remaining: failClosed ? 0 : limit, retryAfter }
   }
   return { allowed: count <= limit, limit, remaining: Math.max(0, limit - count), retryAfter }
 }

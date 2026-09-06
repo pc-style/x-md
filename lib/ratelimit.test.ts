@@ -56,6 +56,7 @@ describe('rateLimit (redis store)', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')))
     expect((await rateLimit('k', 1, 60)).allowed).toBe(true)
+    expect((await rateLimit('k', 1, 60, true)).allowed).toBe(false)
   })
 })
 

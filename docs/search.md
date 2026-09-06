@@ -71,7 +71,9 @@ for (const user of users) console.log(user.screen_name, user.name)
 
 ## Availability and limits
 
-The hosted service allows **75 uncached search requests per minute per IP**. Cache hits do not consume this allowance. A `429` response includes `Retry-After` in seconds.
+The hosted service allows **5 uncached search requests per minute per IP**. Cache hits do not consume this allowance. A `429` response includes `Retry-After` in seconds.
+
+Account-backed searches have an additional per-IP allowance per 15-minute window: **10% of healthy account capacity, capped at 20 attempts** (5 with one healthy account, 10 with two, 20 with four or more). All feeds, page walks, and candidate retries share it; cache hits are free. If account health deteriorates, the allowance can shrink during the window. A `429` includes `Retry-After`.
 
 When live search is unavailable, Latest and Top may return web-indexed snippets. These responses include `X-Search-Degraded: true` and a note in the Markdown. Their ordering, coverage, and text can differ from live results, and they do not paginate.
 
