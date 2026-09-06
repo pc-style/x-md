@@ -10,6 +10,7 @@ vi.mock('@the-convocation/twitter-scraper', async (importOriginal) => {
 })
 
 import { ApiError, AuthenticationError, type Tweet } from '@the-convocation/twitter-scraper'
+import { resetRateLimits } from './ratelimit.js'
 import { resetXSessions, searchXStatuses, tweetToFx, xsearchConfigured } from './xsearch.js'
 
 const sessions = [
@@ -25,6 +26,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   resetXSessions(sessions)
+  resetRateLimits()
 })
 afterEach(() => resetXSessions(undefined))
 
@@ -73,6 +75,14 @@ describe('searchXStatuses', () => {
     expect(fetchSearchTweets).toHaveBeenCalledTimes(1)
     await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
     expect(fetchSearchTweets).toHaveBeenCalledTimes(1)
+  })
+
+  test('stops calling X once the pool budget (40 per session per 15 min) is spent', async () => {
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    for (let i = 0; i < 80; i += 1) await searchXStatuses('q', 'latest')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
+    await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
   })
 
   test('503s with no sessions', async () => {

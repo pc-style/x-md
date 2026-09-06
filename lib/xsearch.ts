@@ -18,6 +18,7 @@ import {
 } from '@the-convocation/twitter-scraper'
 import { ConvertError } from './errors.js'
 import type { FxListResponse, FxTweet } from './fxtwitter.js'
+import { rateLimit } from './ratelimit.js'
 
 export interface XSession {
   id: string
@@ -35,6 +36,12 @@ interface SessionState {
 const RATE_LIMIT_COOLDOWN_MS = 15 * 60_000
 const TRANSIENT_COOLDOWN_MS = 30_000
 const REQUEST_TIMEOUT_MS = 12_000
+/**
+ * X allows roughly 50 SearchTimeline calls per account per 15 minutes. Budget
+ * below that across the pool so our own accounts never see X's 429.
+ */
+const BUDGET_PER_SESSION = 40
+const BUDGET_WINDOW_SEC = 15 * 60
 
 let states: SessionState[] | undefined
 
@@ -163,6 +170,12 @@ export async function searchXStatuses(
     .filter((state) => !state.disabled && state.coolUntil <= now)
     .sort((a, b) => a.coolUntil - b.coolUntil)
   if (candidates.length === 0) {
+    throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
+  }
+
+  const budget = await rateLimit('xsearch:global', BUDGET_PER_SESSION * candidates.length, BUDGET_WINDOW_SEC)
+  if (!budget.allowed) {
+    console.warn(`[xsearch] pool budget exhausted (${budget.limit}/${BUDGET_WINDOW_SEC}s); resets in ${budget.retryAfter}s`)
     throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
