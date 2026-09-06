@@ -37,8 +37,12 @@ interface SessionState {
 const RATE_LIMIT_COOLDOWN_MS = 15 * 60_000
 const TRANSIENT_COOLDOWN_MS = 30_000
 const REQUEST_TIMEOUT_MS = 12_000
-/** Maximum upstream calls per account in a 15-minute window. */
-const BUDGET_PER_SESSION = 100
+/**
+ * Maximum upstream calls per account in a 15-minute window. X allows about 50
+ * SearchTimeline requests per account per window; staying under it means we
+ * cool down on our own terms instead of eating X's 429 and its 15-minute penalty.
+ */
+const BUDGET_PER_SESSION = 50
 const BUDGET_WINDOW_SEC = 15 * 60
 
 let states: SessionState[] | undefined
@@ -158,11 +162,11 @@ function classify(error: unknown): Failure {
  * Search X with the healthiest own account. Tries each available session at
  * most once; a rate limit or auth failure takes that session out of rotation.
  */
-export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20): Promise<FxListResponse<FxTweet>> {
+export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20, ip?: string): Promise<FxListResponse<FxTweet>> {
   return withSearchSession(async (scraper) => {
     const page = await scraper.fetchSearchTweets(queryText, Math.min(count, 20), feedToMode(feed), cursor)
     return { results: page.tweets.map(tweetToFx), cursor: { bottom: page.next, top: page.previous } }
-  })
+  }, ip)
 }
 
 export function profileToFx(profile: Profile): FxAuthor {
@@ -176,14 +180,18 @@ export function profileToFx(profile: Profile): FxAuthor {
   }
 }
 
-export function searchXUsers(queryText: string, cursor?: string, count = 20): Promise<FxListResponse<FxAuthor>> {
+export function searchXUsers(queryText: string, cursor?: string, count = 20, ip?: string): Promise<FxListResponse<FxAuthor>> {
   return withSearchSession(async (scraper) => {
     const page = await scraper.fetchSearchProfiles(queryText, Math.min(count, 20), cursor)
     return { results: page.profiles.map(profileToFx), cursor: { bottom: page.next, top: page.previous } }
-  })
+  }, ip)
 }
 
-async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>): Promise<T> {
+export function searchIpBudget(healthyAccounts: number): number {
+  return Math.max(1, Math.min(20, Math.floor(healthyAccounts * BUDGET_PER_SESSION * 0.1)))
+}
+
+async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ip?: string): Promise<T> {
   const now = Date.now()
   const candidates = sessionStates()
     .filter((state) => !state.disabled && state.coolUntil <= now)
@@ -194,8 +202,19 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>): P
 
   let last: Failure | undefined
   for (const state of candidates) {
-    const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, BUDGET_WINDOW_SEC)
-    if (!budget.allowed) continue
+    // Charge every candidate attempt, including retries and numbered page walks.
+    // Check fairness first so rejected callers cannot consume account quota.
+    if (ip) {
+      const fair = await rateLimit(`xsearch:ip:${ip}`, searchIpBudget(candidates.length), BUDGET_WINDOW_SEC, true)
+      if (!fair.allowed) {
+        throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter)
+      }
+    }
+    const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, BUDGET_WINDOW_SEC, true)
+    if (!budget.allowed) {
+      console.warn(`[xsearch] session ${state.session.id} budget spent (${BUDGET_PER_SESSION}/${BUDGET_WINDOW_SEC}s), resets in ${budget.retryAfter}s`)
+      continue
+    }
     try {
       const scraper = await scraperFor(state)
       return await search(scraper)

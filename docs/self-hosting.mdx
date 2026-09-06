@@ -51,7 +51,7 @@ Latest and Top try FxTwitter, then configured X sessions, then an optional Firec
 
 Set `X_SEARCH_SESSIONS_JSON` to an array of account records with `id`, `authToken`, and `ct0`. For local development, use the gitignored `accounts.local.json`; see `accounts.example.json`. Keep account credentials out of version control.
 
-Each session has a **100-call allowance per 15 minutes**, shared across post and user searches. Failed attempts and page walks count. Accounts that return authentication failures are disabled in the current process; rate-limited accounts cool down for 15 minutes. Session health is per instance.
+Each session has a **50-call allowance per 15 minutes**, shared across post and user searches. Failed attempts and page walks count. Accounts that return authentication failures are disabled in the current process; rate-limited accounts cool down for 15 minutes. Session health is per instance.
 
 ## Shared counters
 
@@ -60,7 +60,7 @@ Attach Upstash Redis through the Vercel marketplace or CLI. The service automati
 - `KV_REST_API_URL` and `KV_REST_API_TOKEN`
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 
-These share IP and account counters across instances. Without them, counters fall back to process memory. Counter-store failures allow requests through; they do not take the API down. Redeploy after connecting environment variables.
+These share IP and account counters across instances. Without them, counters fall back to process memory. Account-budget and per-IP account-allowance checks fail closed when the counter store is unavailable, protecting the shared pool. The general request limiter still fails open. Redeploy after connecting environment variables.
 
 ## Optional configuration
 
