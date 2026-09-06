@@ -106,7 +106,7 @@ curl -sS -G 'https://x.pcstyle.dev/api/browse' \
   --data-urlencode 'format=json'
 ```
 
-Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets. Live search is limited to 5 uncached requests per minute per IP. Each configured account allows 100 upstream calls per 15 minutes, including page walks and failed attempts; cache hits are free. Counters are per instance unless a shared KV store is configured.
+Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets. Live search is limited to 5 uncached requests per minute per IP. Each configured account allows 50 upstream calls per 15 minutes, including page walks and failed attempts; cache hits are free. Counters are per instance unless a shared KV store is configured.
 
 Browse JSON includes the resource-specific `profile`, `posts`, or `users`, plus `page`, `limit`, optional `nextCursor`, rendered `markdown`, and cache status. The verified upstream profile API does not expose pinned-post markers, and public X lists are explicitly unsupported.
 
