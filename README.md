@@ -157,7 +157,7 @@ Optional environment variables:
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
 | `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 40 calls per session per 15 min |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint for shared rate-limit counters (`/search` is 30 req/min per IP). Falls back to per-instance memory |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint for shared rate-limit counters (`/search` allows 30 live, uncached lookups per minute per IP). Falls back to per-instance memory |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |

@@ -12,6 +12,10 @@ vi.mock('./firecrawl.js', () => ({
   searchFirecrawlStatuses: vi.fn(),
 }))
 
+vi.mock('./ratelimit.js', () => ({
+  rateLimit: vi.fn(async () => ({ allowed: true, limit: 30, remaining: 29, retryAfter: 60 })),
+}))
+
 vi.mock('./xsearch.js', () => ({
   xsearchConfigured: vi.fn(() => false),
   searchXStatuses: vi.fn(),
@@ -28,6 +32,7 @@ import { browse, browseResponse, isOriginalPost, resetSearchBreaker } from './br
 import { buildCacheKey } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, xsearchConfigured } from './xsearch.js'
 import { fetchFxConnections, fetchFxProfile, fetchFxProfileStatuses, searchFxStatuses } from './fxtwitter.js'
 
@@ -206,5 +211,27 @@ describe('search provider chain', () => {
     const result = await browse({ resource: 'search', q: 'hello', nocache: true })
     expect(result.source).toBe('firecrawl')
     await expect(browse({ resource: 'search', q: 'hello', cursor: 'xsearch:abc', nocache: true })).rejects.toBe(outage)
+  })
+})
+
+describe('search per-IP limit', () => {
+  test('counts only live lookups and rejects with 429 + retryAfter when exceeded', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    await browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' })
+    expect(rateLimit).toHaveBeenCalledWith('search:ip:1.2.3.4', 30, 60)
+    vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: false, limit: 30, remaining: 0, retryAfter: 17 })
+    await expect(browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' }))
+      .rejects.toMatchObject({ status: 429, code: 'rate_limited', retryAfter: 17 })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  test('skips the limiter without an IP and never counts a cache hit', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    await browse({ resource: 'search', q: 'hello', nocache: true })
+    expect(rateLimit).not.toHaveBeenCalled()
+    const { withCache } = await import('./cache.js')
+    vi.mocked(withCache).mockResolvedValueOnce({ value: { resource: 'search', markdown: '', page: 1, limit: 20, source: 'fxtwitter' } as never, status: 'hit' })
+    await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' })
+    expect(rateLimit).not.toHaveBeenCalled()
   })
 })

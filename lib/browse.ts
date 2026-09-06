@@ -7,7 +7,15 @@ import {
 } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, xsearchConfigured } from './xsearch.js'
+
+/**
+ * Per-IP ceiling on live /search lookups. Counted only when a request misses the
+ * cache and is about to reach an upstream provider; cached hits are free.
+ */
+const SEARCH_IP_LIMIT = 30
+const SEARCH_IP_WINDOW_SEC = 60
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -62,6 +70,8 @@ export interface BrowseInput {
   full?: string | boolean | null
   format?: string | null
   nocache?: string | boolean | null
+  /** Client IP for per-IP limiting of live lookups. */
+  ip?: string | null
 }
 
 export interface BrowseResult {
@@ -187,6 +197,12 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const query = input.q?.trim()
     if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
     const feed = ['latest', 'top', 'media'].includes(input.feed ?? '') ? String(input.feed) : 'latest'
+    if (input.ip) {
+      const verdict = await rateLimit(`search:ip:${input.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
+      if (!verdict.allowed) {
+        throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
+      }
+    }
     const tagged = splitCursor(input.cursor ?? undefined)
     const render = (base: Omit<BrowseResult, 'markdown' | 'cache'>): BrowsePayload => ({ ...base, markdown: renderMarkdown(input, base, full) })
 
