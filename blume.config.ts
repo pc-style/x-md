@@ -40,7 +40,26 @@ export default defineConfig({
     llmsTxt: true,
     skills: './skills',
   },
-  seo: { og: { enabled: false } },
+  seo: {
+    og: {
+      enabled: true,
+      // Fontshare fonts can't flow into the card renderer, so the card reads Satoshi from local files.
+      fonts: [
+        { name: 'Satoshi', src: 'docs-assets/fonts/Satoshi-Bold.otf', weight: 700 },
+        { name: 'Satoshi', src: 'docs-assets/fonts/Satoshi-Regular.otf', weight: 400 },
+      ],
+      logo: 'public/logo.svg',
+      site: 'x.pcstyle.dev/docs',
+      palette: {
+        background: '#f7f6f2',
+        foreground: '#1a1915',
+        muted: '#6e6b62',
+        accent: '#146c43',
+        border: '#e5e2d9',
+      },
+    },
+    x: { handle: '@pcstyle53', creator: '@pcstyle53' },
+  },
   markdown: {
     codeBlocks: {
       theme: { light: 'github-dark', dark: 'github-dark' },

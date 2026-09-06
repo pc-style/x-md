@@ -57,7 +57,7 @@
       ]
     },
     {
-      "source": "/(favicon.svg|logo.svg|site.webmanifest|og.png)",
+      "source": "/(favicon.svg|logo.svg|site.webmanifest|og.png|og/.*\\.png)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
       ]
