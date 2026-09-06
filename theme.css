@@ -1,0 +1,25 @@
+/* Blume inlines this file into .blume/src/generated/app.css. */
+@import "../../../src/tokens.css";
+
+:root, :root[data-theme="dark"] {
+  --blume-background: var(--color-surface);
+  --blume-foreground: var(--color-ink);
+  --blume-muted: var(--color-raised-2);
+  --blume-muted-foreground: var(--color-ink-3);
+  --blume-border: var(--color-line);
+  --blume-accent: var(--color-accent);
+  --blume-accent-foreground: var(--color-raised);
+  --blume-action: var(--color-accent);
+  --blume-action-foreground: var(--color-raised);
+  --blume-code-background: var(--color-code);
+  --blume-radius: 1rem;
+  --blume-content-width: 48rem;
+}
+h1 { text-wrap: balance; }
+pre { color: var(--color-code-ink); }
+
+/* Keep Blume's self-hosted font families after importing the shared tokens. */
+@theme inline {
+  --font-sans: var(--blume-font-body);
+  --font-mono: var(--blume-font-mono);
+}

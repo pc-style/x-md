@@ -22,4 +22,18 @@ Discord, Telegram, Slack, and other preview bots receive Open Graph embed HTML o
 
 ## Scope
 
-x.md only reads public content and does not post, follow, like, or authenticate as an X user. X Lists are not supported.
+x.md only reads public content and does not post, follow, or like on your behalf. X Lists are not supported.
+
+## Documentation
+
+- [Agent skill](https://x.pcstyle.dev/docs/agents)
+- [Start reading X](https://x.pcstyle.dev/docs)
+- [Pagination](https://x.pcstyle.dev/docs/pagination)
+- [Posts and threads](https://x.pcstyle.dev/docs/posts)
+- [Profiles and connections](https://x.pcstyle.dev/docs/profiles)
+- [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
+- [Response formats](https://x.pcstyle.dev/docs/responses)
+- [Search X](https://x.pcstyle.dev/docs/search)
+- [Self-hosting](https://x.pcstyle.dev/docs/self-hosting)
+
+Full documentation: https://x.pcstyle.dev/llms-full.txt

@@ -40,3 +40,6 @@ x.md.ignore*
 demo/
 video/
 accounts.local.json
+
+.blume/
+.blume-verify/

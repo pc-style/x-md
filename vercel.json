@@ -5,11 +5,7 @@
   "rewrites": [
     {
       "source": "/docs",
-      "destination": "/docs.html"
-    },
-    {
-      "source": "/docs/",
-      "destination": "/docs.html"
+      "destination": "/docs/index.html"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)",
@@ -41,6 +37,7 @@
     }
   ],
   "redirects": [
+    { "source": "/docs.html", "destination": "/docs", "permanent": true },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "x-md.vercel.app" }],
@@ -49,6 +46,10 @@
     }
   ],
   "headers": [
+    {
+      "source": "/_astro/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
     {
       "source": "/assets/(.*)",
       "headers": [

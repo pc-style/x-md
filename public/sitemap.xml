@@ -10,4 +10,12 @@
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
+  <url><loc>https://x.pcstyle.dev/docs/agents</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/pagination</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/posts</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/profiles</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/reliability</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/responses</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/search</loc></url>
+  <url><loc>https://x.pcstyle.dev/docs/self-hosting</loc></url>
 </urlset>

@@ -439,7 +439,7 @@ app.innerHTML = `
             <div id="agent-panel-api" class="acc-body">
               <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
                 <code class="code-chip">GET /api/convert?url=…</code> returns the same Markdown
-                with JSON and raw variants. <a href="/docs#posts" class="font-bold text-accent hover:text-accent-deep">API reference →</a>
+                with JSON and raw variants. <a href="/docs/posts" class="font-bold text-accent hover:text-accent-deep">API reference →</a>
               </p>
             </div>
           </div>
@@ -459,7 +459,7 @@ app.innerHTML = `
         </div>
         <p class="mt-8 text-[14px] text-ink-3">
           MIT-licensed. Fork it, deploy to Vercel, and the same swap works on
-          <a href="/docs#deploy" class="font-medium text-accent hover:text-accent-deep">your own domain</a>.
+          <a href="/docs/self-hosting" class="font-medium text-accent hover:text-accent-deep">your own domain</a>.
         </p>
       </div>
     </section>

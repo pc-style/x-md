@@ -4,7 +4,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Convert', href: '/#convert' },
   { label: 'Agents', href: '/#agents' },
   { label: 'Docs', href: '/docs' },
-  { label: 'API', href: '/docs#posts' },
+  { label: 'API', href: '/docs/posts' },
 ]
 
 export function headerHtml(options: { page: 'landing' | 'docs' }) {
@@ -64,7 +64,7 @@ export function footerHtml() {
           <a href="/#convert" class="footer-link">Convert</a>
           <a href="/#agents" class="footer-link">Agents</a>
           <a href="/docs" class="footer-link">Docs</a>
-          <a href="/docs#posts" class="footer-link">API</a>
+          <a href="/docs/posts" class="footer-link">API</a>
           <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="footer-link">GitHub</a>
         </div>
       </div>

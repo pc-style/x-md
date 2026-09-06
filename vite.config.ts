@@ -12,10 +12,10 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [tailwindcss(), apiDevPlugin()],
     build: {
+      emptyOutDir: false,
       rollupOptions: {
         input: {
           main: resolve(import.meta.dirname, 'index.html'),
-          docs: resolve(import.meta.dirname, 'docs.html'),
         },
       },
     },
