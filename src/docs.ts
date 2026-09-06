@@ -46,6 +46,7 @@ curl -sS -H "Accept: text/markdown" "${example}"</pre>
         <article id="posts" class="docs-article">
           <p class="eyebrow eyebrow-muted mb-3">Conversion</p>
           <h2 class="text-[24px] leading-tight font-semibold text-ink">Posts, threads, and replies</h2>
+          <p class="mt-3 text-[16px] leading-relaxed text-ink-3">Search supports Latest, Top, Photos, Videos, and Users (case-insensitive); <code class="code-chip">media</code> aliases Photos. Users returns profiles in the JSON <code class="code-chip">users</code> field. Photos, Videos, and Users require configured X sessions. Latest and Top can fall back to web-indexed snippets when live search is unavailable. Limits: 75 uncached searches per minute per IP and 100 upstream calls per account per 15 minutes. Page walks and failed account attempts consume account quota; cache hits are free. Counters are per instance unless shared KV is configured.</p>
           <p class="mt-3 text-[16px] leading-relaxed text-ink-3">The default response includes available parents, the author's thread, and top replies. It labels conversation roles and emits direct images, video URLs, thumbnails, metadata, and available bitrate variants. X Articles are included when the provider supplies their blocks.</p>
           <div class="mt-6 overflow-x-auto rounded-xl border border-line"><table class="docs-table"><thead><tr><th>Param</th><th>Default</th><th>Values</th></tr></thead><tbody>
             <tr><td><code>full</code></td><td>false</td><td><code>true</code>, <code>1</code>, or <code>yes</code> adds dates, stats, and expanded details</td></tr>
@@ -78,7 +79,7 @@ curl -sS -G "https://x.pcstyle.dev/oembed" --data-urlencode "url=https://x.com/n
           <p class="mt-3 text-[16px] leading-relaxed text-ink-3"><code class="code-chip">/:handle</code> returns profile data and the latest 20 original posts by default; replies and reposts are filtered out. Search and connection routes use the same compact Markdown and <code class="code-chip">full=true</code> convention.</p>
           <div class="mt-6 space-y-0">
             <div class="provider-row"><strong class="text-[16px] font-medium text-ink">/:handle</strong><span class="text-[14px] text-ink-3">Profile and latest originals</span></div>
-            <div class="provider-row"><strong class="text-[16px] font-medium text-ink">/search?q=…</strong><span class="text-[14px] text-ink-3"><code class="code-chip">feed=latest|top|media</code></span></div>
+            <div class="provider-row"><strong class="text-[16px] font-medium text-ink">/search?q=…</strong><span class="text-[14px] text-ink-3"><code class="code-chip">feed=latest|top|photos|videos|users|media</code></span></div>
             <div class="provider-row"><strong class="text-[16px] font-medium text-ink">/:handle/followers</strong><span class="text-[14px] text-ink-3">Public followers</span></div>
             <div class="provider-row"><strong class="text-[16px] font-medium text-ink">/:handle/following</strong><span class="text-[14px] text-ink-3">Public following</span></div>
           </div>
@@ -92,7 +93,8 @@ curl -sS -G "https://x.pcstyle.dev/api/browse" \\
   --data-urlencode "q=typescript" \\
   --data-urlencode "feed=top"</pre>
           <h3 class="mt-8 text-[19px] font-semibold text-ink">Pagination</h3>
-          <p class="mt-3 text-[16px] leading-relaxed text-ink-3">The default <code class="code-chip">limit</code> is 20 and the maximum is 50. Follow the opaque <code class="code-chip">nextCursor</code> as <code class="code-chip">cursor=…</code>, or request <code class="code-chip">page=1</code> through <code class="code-chip">page=10</code>; larger page values are clamped. Page mode walks upstream pages and can be slower, while a supplied cursor fetches one upstream page. Filtering can leave profile pages shorter than the requested limit.</p>
+          <p class="mt-3 text-[16px] leading-relaxed text-ink-3">Search supports Latest, Top, Photos, Videos, and Users (case-insensitive); <code class="code-chip">media</code> aliases Photos. Users returns profiles in the JSON <code class="code-chip">users</code> field. Photos, Videos, and Users require configured X sessions. Latest and Top can fall back to web-indexed snippets when live search is unavailable. Limits: 75 uncached searches per minute per IP and 100 upstream calls per account per 15 minutes. Page walks and failed account attempts consume account quota; cache hits are free. Counters are per instance unless shared KV is configured.</p>
+          <p class="mt-3 text-[16px] leading-relaxed text-ink-3">The default <code class="code-chip">limit</code> is 20 and the maximum is 20. Follow the opaque <code class="code-chip">nextCursor</code> as <code class="code-chip">cursor=…</code>, or request <code class="code-chip">page=1</code> through <code class="code-chip">page=10</code>; larger page values are clamped. Page mode walks upstream pages and can be slower, while a supplied cursor fetches one upstream page. Filtering can leave profile pages shorter than the requested limit.</p>
           <div class="info-banner-muted mt-6">The verified upstream API does not expose pinned-post markers or public X lists, so neither is inferred or fabricated.</div>
         </article>
 

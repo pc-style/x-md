@@ -1,17 +1,18 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const fetchSearchTweets = vi.fn()
+const fetchSearchProfiles = vi.fn()
 vi.mock('@the-convocation/twitter-scraper', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@the-convocation/twitter-scraper')>()
   return {
     ...actual,
-    Scraper: class { setCookies = vi.fn(async () => {}); fetchSearchTweets = fetchSearchTweets },
+    Scraper: class { setCookies = vi.fn(async () => {}); fetchSearchTweets = fetchSearchTweets; fetchSearchProfiles = fetchSearchProfiles },
   }
 })
 
 import { ApiError, AuthenticationError, type Tweet } from '@the-convocation/twitter-scraper'
 import { resetRateLimits } from './ratelimit.js'
-import { resetXSessions, searchXStatuses, tweetToFx, xsearchConfigured } from './xsearch.js'
+import { resetXSessions, searchXStatuses, searchXUsers, tweetToFx, xsearchConfigured } from './xsearch.js'
 
 const sessions = [
   { id: 'a', authToken: 'tokA', ct0: 'csrfA' },
@@ -77,12 +78,30 @@ describe('searchXStatuses', () => {
     expect(fetchSearchTweets).toHaveBeenCalledTimes(1)
   })
 
-  test('stops calling X once the pool budget (40 per session per 15 min) is spent', async () => {
+  test('stops calling X once the pool budget (100 per session per 15 min) is spent', async () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
-    for (let i = 0; i < 80; i += 1) await searchXStatuses('q', 'latest')
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
+    for (let i = 0; i < 200; i += 1) await searchXStatuses('q', 'latest')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(200)
     await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(200)
+  })
+
+  test.each([['latest', 1], ['top', 0], ['photos', 2], ['media', 2], ['videos', 3]])('maps %s and caps upstream count', async (feed, mode) => {
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    await searchXStatuses('q', feed as string, 'cursor', 50)
+    expect(fetchSearchTweets).toHaveBeenCalledWith('q', 20, mode, 'cursor')
+  })
+
+  test('maps user profiles and shares the account budget with post searches', async () => {
+    resetXSessions([sessions[0]!])
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    fetchSearchProfiles.mockResolvedValue({ profiles: [{ userId: '1', username: 'ada', name: 'Ada', biography: 'Builder', followersCount: 42 }], next: 'N' })
+    const result = await searchXUsers('ada', 'C', 50)
+    expect(fetchSearchProfiles).toHaveBeenCalledWith('ada', 20, 'C')
+    expect(result).toMatchObject({ results: [{ screen_name: 'ada', description: 'Builder', followers: 42 }], cursor: { bottom: 'N' } })
+    for (let i = 0; i < 99; i++) await searchXStatuses('q', 'latest')
+    await expect(searchXUsers('ada')).rejects.toMatchObject({ code: 'search_unavailable' })
+    expect(fetchSearchProfiles).toHaveBeenCalledTimes(1)
   })
 
   test('503s with no sessions', async () => {

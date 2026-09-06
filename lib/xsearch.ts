@@ -15,9 +15,10 @@ import {
   Scraper,
   SearchMode,
   type Tweet,
+  type Profile,
 } from '@the-convocation/twitter-scraper'
 import { ConvertError } from './errors.js'
-import type { FxListResponse, FxTweet } from './fxtwitter.js'
+import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
 import { rateLimit } from './ratelimit.js'
 
 export interface XSession {
@@ -36,11 +37,8 @@ interface SessionState {
 const RATE_LIMIT_COOLDOWN_MS = 15 * 60_000
 const TRANSIENT_COOLDOWN_MS = 30_000
 const REQUEST_TIMEOUT_MS = 12_000
-/**
- * X allows roughly 50 SearchTimeline calls per account per 15 minutes. Budget
- * below that across the pool so our own accounts never see X's 429.
- */
-const BUDGET_PER_SESSION = 40
+/** Maximum upstream calls per account in a 15-minute window. */
+const BUDGET_PER_SESSION = 100
 const BUDGET_WINDOW_SEC = 15 * 60
 
 let states: SessionState[] | undefined
@@ -105,7 +103,8 @@ async function scraperFor(state: SessionState): Promise<Scraper> {
 
 function feedToMode(feed: string): SearchMode {
   if (feed === 'top') return SearchMode.Top
-  if (feed === 'media') return SearchMode.Photos
+  if (feed === 'photos' || feed === 'media') return SearchMode.Photos
+  if (feed === 'videos') return SearchMode.Videos
   return SearchMode.Latest
 }
 
@@ -159,12 +158,32 @@ function classify(error: unknown): Failure {
  * Search X with the healthiest own account. Tries each available session at
  * most once; a rate limit or auth failure takes that session out of rotation.
  */
-export async function searchXStatuses(
-  queryText: string,
-  feed: string,
-  cursor?: string,
-  count = 20,
-): Promise<FxListResponse<FxTweet>> {
+export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20): Promise<FxListResponse<FxTweet>> {
+  return withSearchSession(async (scraper) => {
+    const page = await scraper.fetchSearchTweets(queryText, Math.min(count, 20), feedToMode(feed), cursor)
+    return { results: page.tweets.map(tweetToFx), cursor: { bottom: page.next, top: page.previous } }
+  })
+}
+
+export function profileToFx(profile: Profile): FxAuthor {
+  return {
+    id: profile.userId, name: profile.name, screen_name: profile.username,
+    url: profile.username ? `https://x.com/${profile.username}` : profile.url,
+    description: profile.biography, followers: profile.followersCount,
+    following: profile.followingCount, statuses: profile.statusesCount ?? profile.tweetsCount,
+    avatar_url: profile.avatar, banner_url: profile.banner, location: profile.location,
+    protected: profile.isPrivate, verification: { verified: profile.isVerified || profile.isBlueVerified },
+  }
+}
+
+export function searchXUsers(queryText: string, cursor?: string, count = 20): Promise<FxListResponse<FxAuthor>> {
+  return withSearchSession(async (scraper) => {
+    const page = await scraper.fetchSearchProfiles(queryText, Math.min(count, 20), cursor)
+    return { results: page.profiles.map(profileToFx), cursor: { bottom: page.next, top: page.previous } }
+  })
+}
+
+async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>): Promise<T> {
   const now = Date.now()
   const candidates = sessionStates()
     .filter((state) => !state.disabled && state.coolUntil <= now)
@@ -173,18 +192,13 @@ export async function searchXStatuses(
     throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
-  const budget = await rateLimit('xsearch:global', BUDGET_PER_SESSION * candidates.length, BUDGET_WINDOW_SEC)
-  if (!budget.allowed) {
-    console.warn(`[xsearch] pool budget exhausted (${budget.limit}/${BUDGET_WINDOW_SEC}s); resets in ${budget.retryAfter}s`)
-    throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
-  }
-
   let last: Failure | undefined
   for (const state of candidates) {
+    const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, BUDGET_WINDOW_SEC)
+    if (!budget.allowed) continue
     try {
       const scraper = await scraperFor(state)
-      const page = await scraper.fetchSearchTweets(queryText, count, feedToMode(feed), cursor)
-      return { results: page.tweets.map(tweetToFx), cursor: { bottom: page.next, top: page.previous } }
+      return await search(scraper)
     } catch (error) {
       last = classify(error)
       if (last.kind === 'auth') state.disabled = last.detail

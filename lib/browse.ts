@@ -8,13 +8,13 @@ import {
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { rateLimit } from './ratelimit.js'
-import { searchXStatuses, xsearchConfigured } from './xsearch.js'
+import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
 
 /**
  * Per-IP ceiling on live /search lookups. Counted only when a request misses the
  * cache and is about to reach an upstream provider; cached hits are free.
  */
-const SEARCH_IP_LIMIT = 30
+const SEARCH_IP_LIMIT = 75
 const SEARCH_IP_WINDOW_SEC = 60
 import {
   fetchFxConnections,
@@ -27,7 +27,7 @@ import {
 } from './fxtwitter.js'
 
 const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 50
+const MAX_LIMIT = 20
 const MAX_PAGE = 10
 /** Degraded search results are re-checked quickly so recovery of the live source shows up. */
 const DEGRADED_TTL_MS = 60_000
@@ -180,6 +180,7 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
   } else if (result.resource === 'search') {
     lines.push(`# X search: ${result.query}`, '')
     if (result.degraded) lines.push(`> ${DEGRADED_NOTE}`, '')
+    lines.push(...(result.users ?? []).map((user) => userLine(user, full)))
     lines.push(...(result.posts ?? []).map((post) => postLine(post, result.degraded ? false : full)))
   } else {
     lines.push(`# @${result.handle} ${result.resource}`, '', ...(result.users ?? []).map((user) => userLine(user, full)))
@@ -196,7 +197,8 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
   if (resource === 'search') {
     const query = input.q?.trim()
     if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
-    const feed = ['latest', 'top', 'media'].includes(input.feed ?? '') ? String(input.feed) : 'latest'
+    const requestedFeed = input.feed?.toLowerCase() ?? 'latest'
+    const feed = requestedFeed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requestedFeed) ? requestedFeed : 'latest'
     if (input.ip) {
       const verdict = await rateLimit(`search:ip:${input.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
       if (!verdict.allowed) {
@@ -206,8 +208,16 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const tagged = splitCursor(input.cursor ?? undefined)
     const render = (base: Omit<BrowseResult, 'markdown' | 'cache'>): BrowsePayload => ({ ...base, markdown: renderMarkdown(input, base, full) })
 
+    if (feed === 'users') {
+      if (!xsearchConfigured() || (tagged && tagged.source !== 'xsearch')) {
+        throw new ConvertError(503, 'X user search is temporarily unavailable. Retry shortly.', 'search_unavailable')
+      }
+      const list = await walkPages(page, tagged?.raw, (cursor) => searchXUsers(query, cursor, limit))
+      return render({ resource, users: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor('xsearch', list.cursor?.bottom), source: 'xsearch' })
+    }
+
     const live: Array<{ source: BrowseSource; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
-    if (Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
+    if (['latest', 'top'].includes(feed) && Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
     if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit) })
     // A continuation belongs to the provider that issued its cursor.
     const providers = tagged ? live.filter((provider) => provider.source === tagged.source) : live
@@ -225,7 +235,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
-    if (page === 1 && !tagged && firecrawlSearchConfigured()) {
+    if (['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
       const posts = await searchFirecrawlStatuses(query, feed, limit)
       return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
     }
@@ -262,7 +272,7 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
   }
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
   const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), MAX_LIMIT)
-  const key = buildCacheKey({ v: 3, resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', page, limit, full: truthy(input.full) ? 1 : 0, format: input.format ?? 'markdown' })
+  const key = buildCacheKey({ v: 4, resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', page, limit, full: truthy(input.full) ? 1 : 0, format: input.format ?? 'markdown' })
   const cached = await withCache(
     key,
     truthy(input.nocache),

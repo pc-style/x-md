@@ -19,6 +19,7 @@ vi.mock('./ratelimit.js', () => ({
 vi.mock('./xsearch.js', () => ({
   xsearchConfigured: vi.fn(() => false),
   searchXStatuses: vi.fn(),
+  searchXUsers: vi.fn(),
 }))
 
 vi.mock('./fxtwitter.js', () => ({
@@ -33,7 +34,7 @@ import { buildCacheKey } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { rateLimit } from './ratelimit.js'
-import { searchXStatuses, xsearchConfigured } from './xsearch.js'
+import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
 import { fetchFxConnections, fetchFxProfile, fetchFxProfileStatuses, searchFxStatuses } from './fxtwitter.js'
 
 const post = { id: '1', text: 'hello', url: 'https://x.com/ada/status/1', author: { screen_name: 'ada' } }
@@ -83,7 +84,7 @@ describe('browse', () => {
   test('dispatches following and caps the local limit', async () => {
     vi.mocked(fetchFxConnections).mockResolvedValue({ results: [{ screen_name: 'bob' }] })
     const result = await browse({ resource: 'following', handle: 'ada', limit: 999, nocache: true })
-    expect(fetchFxConnections).toHaveBeenCalledWith('ada', 'following', undefined, 50)
+    expect(fetchFxConnections).toHaveBeenCalledWith('ada', 'following', undefined, 20)
     expect(result.users?.[0]?.screen_name).toBe('bob')
   })
 
@@ -112,7 +113,7 @@ describe('browse', () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     await browse({ resource: 'search', q: 'x-md', format: 'json' })
     expect(vi.mocked(buildCacheKey)).toHaveBeenCalledWith(
-      expect.objectContaining({ format: 'json', v: 3 }),
+      expect.objectContaining({ format: 'json', v: 4 }),
     )
   })
 })
@@ -218,7 +219,7 @@ describe('search per-IP limit', () => {
   test('counts only live lookups and rejects with 429 + retryAfter when exceeded', async () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     await browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' })
-    expect(rateLimit).toHaveBeenCalledWith('search:ip:1.2.3.4', 30, 60)
+    expect(rateLimit).toHaveBeenCalledWith('search:ip:1.2.3.4', 75, 60)
     vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: false, limit: 30, remaining: 0, retryAfter: 17 })
     await expect(browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' }))
       .rejects.toMatchObject({ status: 429, code: 'rate_limited', retryAfter: 17 })
@@ -233,5 +234,35 @@ describe('search per-IP limit', () => {
     vi.mocked(withCache).mockResolvedValueOnce({ value: { resource: 'search', markdown: '', page: 1, limit: 20, source: 'fxtwitter' } as never, status: 'hit' })
     await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' })
     expect(rateLimit).not.toHaveBeenCalled()
+  })
+})
+
+describe('search modes', () => {
+  test.each(['Photos', 'Videos', 'media'])('routes %s to own accounts with a 20-result cap', async (feed) => {
+    vi.mocked(xsearchConfigured).mockReturnValue(true)
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: Array.from({ length: 30 }, () => post) })
+    const result = await browse({ resource: 'search', q: 'hello', feed, limit: 50, nocache: true })
+    expect(result.posts).toHaveLength(20)
+    expect(searchXStatuses).toHaveBeenCalledWith('hello', feed === 'Videos' ? 'videos' : 'photos', undefined, 20)
+    expect(searchFxStatuses).not.toHaveBeenCalled()
+    expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
+  })
+
+  test('renders users, counts them, and preserves their cursor and feed', async () => {
+    vi.mocked(xsearchConfigured).mockReturnValue(true)
+    vi.mocked(searchXUsers).mockResolvedValue({ results: [{ name: 'Ada', screen_name: 'ada', followers: 42 }], cursor: { bottom: 'next' } })
+    const result = await browse({ resource: 'search', q: 'ada', feed: 'Users', full: true, cursor: 'xsearch:prev', nocache: true })
+    expect(searchXUsers).toHaveBeenCalledWith('ada', 'prev', 20)
+    expect(result.posts).toBeUndefined()
+    expect(result.markdown).toContain('Ada (@ada)')
+    expect(result.markdown).toContain('42 followers')
+    expect(result.markdown).toContain('feed=users&cursor=xsearch%3Anext')
+    expect(browseResponse(result, true).headers['X-Result-Count']).toBe('1')
+  })
+
+  test.each(['photos', 'videos', 'users'])('does not degrade %s into unrelated posts', async (feed) => {
+    vi.mocked(xsearchConfigured).mockReturnValue(false)
+    await expect(browse({ resource: 'search', q: 'hello', feed, nocache: true })).rejects.toMatchObject({ code: 'search_unavailable' })
+    expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
   })
 })

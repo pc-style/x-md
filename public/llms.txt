@@ -10,9 +10,11 @@ Source: https://github.com/pc-style/x-md
 
 - Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
 - Profile and latest original posts: `https://x.pcstyle.dev/{handle}`
-- Search public posts: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|media`
+- Search public posts or users: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
 - Followers: `https://x.pcstyle.dev/{handle}/followers`
 - Following: `https://x.pcstyle.dev/{handle}/following`
+
+Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default and maximum limit: 20. Live search allows 75 uncached requests per minute per IP; configured X accounts have a 100-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
 
 Browse routes accept `cursor`, `page`, `limit`, `full=true`, and `format=json`. Post routes also support thread, conversation context, reply ordering, and Obsidian output; see the documentation for exact query parameters.
 

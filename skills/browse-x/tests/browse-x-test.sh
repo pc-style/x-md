@@ -50,6 +50,11 @@ done
 expect_usage status 'https://x.com/a/status/1' --json --format markdown
 expect_usage search test --full --compact
 expect_usage search test --limit 4 --limit 5
+for feed in latest top photos videos users; do
+  $script search test --feed "$feed" --limit 20 >/dev/null
+  grep -qx "feed=$feed" "$CURL_ARGS" || fail "missing feed: $feed"
+done
+expect_usage search test --limit 21
 expect_usage search test --page 11
 expect_usage search test --feed newest
 expect_usage profile test --thread full

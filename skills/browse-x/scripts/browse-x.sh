@@ -14,7 +14,7 @@ Usage:
   browse-x.sh following <handle> [options]
 
 Output: --json, --full, --compact, --format markdown|obsidian, --headers
-Lists:  --page 1-10, --limit 1-50, --cursor <cursor>, --feed latest|top|media
+Lists:  --page 1-10, --limit 1-20, --cursor <cursor>, --feed latest|top|photos|videos|users|media
 Status: --thread off|full|conversation|2-100, --userinfo off|author|all,
         --context full|thread, --replies top|recent|off
 Other:  --nocache, --help
@@ -74,8 +74,8 @@ done
 
 [[ ! ${format_value+x} || "$format_value" =~ ^(markdown|obsidian|json)$ ]] || fail "--format must be markdown, obsidian, or json"
 [[ ! ${page_value+x} || "$page_value" =~ ^([1-9]|10)$ ]] || fail "--page must be an integer from 1 to 10"
-[[ ! ${limit_value+x} || ( "$limit_value" =~ ^[0-9]+$ && "$limit_value" -ge 1 && "$limit_value" -le 50 ) ]] || fail "--limit must be an integer from 1 to 50"
-[[ ! ${feed_value+x} || "$feed_value" =~ ^(latest|top|media)$ ]] || fail "--feed must be latest, top, or media"
+[[ ! ${limit_value+x} || ( "$limit_value" =~ ^[0-9]+$ && "$limit_value" -ge 1 && "$limit_value" -le 20 ) ]] || fail "--limit must be an integer from 1 to 20"
+[[ ! ${feed_value+x} || "$feed_value" =~ ^(latest|top|photos|videos|users|media)$ ]] || fail "--feed must be latest, top, photos, videos, users, or media"
 [[ ! ${thread_value+x} || "$thread_value" =~ ^(off|full|conversation|[0-9]+)$ ]] || fail "--thread must be off, full, conversation, or an integer from 2 to 100"
 if [[ ${thread_value+x} && "$thread_value" =~ ^[0-9]+$ ]]; then
   [[ "$thread_value" -ge 2 && "$thread_value" -le 100 ]] || fail "--thread must be off, full, conversation, or an integer from 2 to 100"
