@@ -3,6 +3,7 @@ title: Self-hosting
 description: Run the service and its documentation from the same Vercel project.
 sidebar:
   order: 8
+  icon: server
 ---
 
 ## Run locally
@@ -24,6 +25,25 @@ vercel --prod
 ```
 
 The build generates Blume docs, then the Vite landing page into `dist`. The included Vercel configuration serves `/docs`, the static assets, and the API rewrites together.
+
+<FileTree>
+
+- docs/
+  - index.mdx
+  - (api)/
+    - posts.mdx
+    - search.mdx
+    - profiles.mdx
+    - pagination.mdx
+    - responses.mdx
+    - reliability.mdx
+    - meta.ts
+  - agents.mdx
+  - self-hosting.mdx
+- blume.config.ts
+- theme.css
+
+</FileTree>
 
 ## Search sessions
 
@@ -52,4 +72,6 @@ These share IP and account counters across instances. Without them, counters fal
 | `CACHE_DISABLED` | Disable application caching |
 | `CACHE_PERSIST` | Control persistent application caching |
 
+:::tip
 FxTwitter is the primary conversion provider, followed by X syndication and configured fallbacks. Inspect `X-Source` when diagnosing a response.
+:::

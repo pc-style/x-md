@@ -3,6 +3,7 @@ title: Pagination
 description: Fetch up to 20 results at a time and continue with the returned cursor.
 sidebar:
   order: 4
+  icon: chevrons-right
 ---
 
 ## Prefer cursors
@@ -41,4 +42,6 @@ curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&page=2'
 
 The default and maximum `limit` is **20** for all browse routes. Larger API values are clamped; the CLI rejects values above 20.
 
+:::tip
 A page can be short or empty because of filtering or upstream coverage. Use the presence of `nextCursor` to determine whether a continuation is available. Degraded web search has no cursor.
+:::

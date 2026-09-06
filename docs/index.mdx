@@ -1,0 +1,72 @@
+---
+title: Start reading X
+description: Turn a public X URL into Markdown. No API key, login, or SDK needed.
+sidebar:
+  label: Quickstart
+  order: 0
+  icon: rocket
+---
+
+Replace `x.com` with `x.pcstyle.dev` in a post URL. Keep the handle and status ID.
+
+<Steps>
+  <Step title="Read a post">
+    ```bash
+    curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+    ```
+
+    You get readable Markdown with the post text, source links, and available thread context. Add `?thread=off` to read only the requested post.
+  </Step>
+
+  <Step title="Search instead">
+    ```bash
+    curl -sS -G 'https://x.pcstyle.dev/search' \
+      --data-urlencode 'q=typescript' \
+      --data-urlencode 'feed=latest'
+    ```
+
+    Search returns up to **20 results**. Choose Latest, Top, Photos, Videos, or Users with the `feed` parameter.
+  </Step>
+
+  <Step title="Get structured data">
+    Use `format=json` when your code needs fields instead of prose.
+
+    ```js
+    const response = await fetch(
+      'https://x.pcstyle.dev/search?q=typescript&feed=latest&format=json'
+    )
+    if (!response.ok) throw new Error(`x.md returned ${response.status}`)
+    const { posts, nextCursor } = await response.json()
+    console.log(posts, nextCursor)
+    ```
+
+    JSON includes the rendered `markdown` too. [See response formats](/responses).
+  </Step>
+</Steps>
+
+:::note
+x.md reads public content. Private posts and X Lists are unavailable.
+:::
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Posts and threads" href="/posts" icon="message-square">
+    Read a post, follow a thread, or include the surrounding conversation.
+  </Card>
+  <Card title="Search" href="/search" icon="search">
+    Find posts, photos, videos, or people with the same feeds as X.
+  </Card>
+  <Card title="Profiles" href="/profiles" icon="user">
+    Read an account and its followers or following.
+  </Card>
+  <Card title="Agent skill" href="/agents" icon="bot">
+    Give your coding agent a small, read-only tool for X.
+  </Card>
+  <Card title="Pagination" href="/pagination" icon="chevrons-right">
+    Fetch the next page with a cursor.
+  </Card>
+  <Card title="Self-hosting" href="/self-hosting" icon="server">
+    Run the service from your own Vercel project.
+  </Card>
+</CardGroup>

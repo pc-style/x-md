@@ -3,6 +3,7 @@ title: Search X
 description: Find posts and people with the same five feeds as X search.
 sidebar:
   order: 2
+  icon: search
 ---
 
 ## Search for posts
@@ -30,16 +31,23 @@ Use `--data-urlencode` for spaces, hashtags, and query operators. The query is p
 
 Feed names are case-insensitive. `media` is an alias for `photos`; unknown values fall back to `latest`.
 
-```bash
-# Photos
-curl -sS 'https://x.pcstyle.dev/search?q=architecture&feed=photos'
-
-# Videos
-curl -sS 'https://x.pcstyle.dev/search?q=animation&feed=videos'
-
-# People, with profile details
-curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=users&full=true'
-```
+<Tabs>
+  <Tab title="Photos">
+    ```bash
+    curl -sS 'https://x.pcstyle.dev/search?q=architecture&feed=photos'
+    ```
+  </Tab>
+  <Tab title="Videos">
+    ```bash
+    curl -sS 'https://x.pcstyle.dev/search?q=animation&feed=videos'
+    ```
+  </Tab>
+  <Tab title="Users">
+    ```bash
+    curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=users&full=true'
+    ```
+  </Tab>
+</Tabs>
 
 ## Parameters
 
@@ -73,6 +81,10 @@ for (const user of users) console.log(user.screen_name, user.name)
 
 The hosted service allows **75 uncached search requests per minute per IP**. Cache hits do not consume this allowance. A `429` response includes `Retry-After` in seconds.
 
+:::warning
 When live search is unavailable, Latest and Top may return web-indexed snippets. These responses include `X-Search-Degraded: true` and a note in the Markdown. Their ordering, coverage, and text can differ from live results, and they do not paginate.
 
-Photos, Videos, and Users return `503` when their live source is unavailable. They never substitute unfiltered web snippets. See [errors and caching](/reliability).
+Photos, Videos, and Users return `503` when their live source is unavailable. They never substitute unfiltered web snippets.
+:::
+
+See [errors and caching](/reliability).

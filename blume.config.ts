@@ -6,18 +6,44 @@ export default defineConfig({
   basePath: '/docs',
   logo: { text: 'x.md', href: 'https://x.pcstyle.dev' },
   content: { root: 'docs' },
-  deployment: { output: 'static', site: 'https://x.pcstyle.dev' },
+  deployment: {
+    output: 'static',
+    site: 'https://x.pcstyle.dev',
+  },
   theme: {
-    accent: 'green', radius: 'lg', mode: 'light',
+    accent: 'green',
+    radius: 'lg',
+    mode: 'light',
     fonts: {
       body: { name: 'Satoshi', provider: 'fontshare' },
       display: { name: 'Satoshi', provider: 'fontshare' },
     },
   },
-  navigation: { actions: [{ label: 'Website', href: 'https://x.pcstyle.dev' }] },
+  navigation: {
+    sidebar: [
+      '/',
+      {
+        label: 'API',
+        icon: 'code',
+        items: ['/posts', '/search', '/profiles', '/pagination', '/responses', '/reliability'],
+      },
+      '/agents',
+      '/self-hosting',
+    ],
+    actions: [{ label: 'Website', href: 'https://x.pcstyle.dev' }],
+    cta: { label: 'Convert', href: 'https://x.pcstyle.dev/#convert' },
+  },
   github: { owner: 'pc-style', repo: 'x-md', branch: 'main' },
+  lastModified: true,
   search: { provider: 'orama' },
-  ai: { llmsTxt: true },
+  ai: {
+    llmsTxt: true,
+    skills: './skills',
+  },
   seo: { og: { enabled: false } },
-  markdown: { codeBlocks: { theme: { light: 'github-dark', dark: 'github-dark' } } },
+  markdown: {
+    codeBlocks: {
+      theme: { light: 'github-dark', dark: 'github-dark' },
+    },
+  },
 })

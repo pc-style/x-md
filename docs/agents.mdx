@@ -3,6 +3,7 @@ title: Agent skill
 description: Give your coding agent a small, read-only tool for X.
 sidebar:
   order: 6
+  icon: bot
 ---
 
 ## Install browse-x
@@ -39,6 +40,8 @@ The script exits with `2` for invalid arguments and `1` for network or API error
 
 ## Read docs as Markdown
 
-Each documentation page has a **Copy as Markdown** action. The [documentation manifest](https://x.pcstyle.dev/llms.txt) is also available for tools.
+Each documentation page has a **Copy as Markdown** action. Append `.md` to any docs URL, or fetch the [documentation manifest](https://x.pcstyle.dev/llms.txt).
 
+:::warning
 Requested URLs and queries are sent to the hosted service and its data providers. Keep secrets out of queries and URLs.
+:::

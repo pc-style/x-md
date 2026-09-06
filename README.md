@@ -183,4 +183,4 @@ src/               Vite landing page and rendered documentation
 
 ## Documentation
 
-Docs are Markdown pages in `docs/`, built with Blume and mounted at `/docs`. Run `bun run docs:dev` for the documentation server. `bun run build` builds docs first, then the landing page into the same `dist` directory. Configure navigation and site metadata in `blume.config.ts`; `theme.css` maps the shared `src/tokens.css` palette into Blume.
+Docs are MDX pages in `docs/`, built with Blume and mounted at `/docs`. Run `bun run docs:dev` for the documentation server. `bun run build` builds docs first, then the landing page into the same `dist` directory. Configure navigation and site metadata in `blume.config.ts`; `theme.css` maps the shared `src/tokens.css` palette into Blume.

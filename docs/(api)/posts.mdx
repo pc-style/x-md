@@ -3,6 +3,7 @@ title: Posts and threads
 description: Read a single post, follow an author's thread, or include the surrounding conversation.
 sidebar:
   order: 1
+  icon: message-square
 ---
 
 ## Read a post
@@ -51,7 +52,9 @@ curl -sS -G 'https://x.pcstyle.dev/api/convert' \
 
 Responses include available image links, video URLs, thumbnails, and media variants. X Articles are included when the source supplies their content. Media is linked, not downloaded; CDN links can expire.
 
+:::warning
 Missing or gated context can produce a shorter thread. Inspect JSON `warnings` before assuming a conversation is complete.
+:::
 
 ## Save to Obsidian
 

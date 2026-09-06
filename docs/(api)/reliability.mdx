@@ -3,6 +3,7 @@ title: Errors, limits, and caching
 description: Handle temporary failures and understand where results can be incomplete.
 sidebar:
   order: 7
+  icon: shield-alert
 ---
 
 ## Errors
@@ -33,7 +34,9 @@ Successful responses cache for about one hour by default. Degraded search result
 
 ## Incomplete results
 
+:::warning
 Deleted or protected posts, missing replies, provider delays, and unavailable media can all reduce the response. A successful response does not guarantee an entire conversation or all matching search results.
+:::
 
 Latest and Top search can fall back to web-indexed snippets. Check `degraded` or `X-Search-Degraded`; snippets may be truncated, contain no metrics, and have different ordering. Photos, Videos, and Users require live search.
 
