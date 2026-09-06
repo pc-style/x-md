@@ -7,6 +7,7 @@ import {
 } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { searchXStatuses, xsearchConfigured } from './xsearch.js'
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -25,7 +26,30 @@ const DEGRADED_TTL_MS = 60_000
 const DEGRADED_NOTE = 'Live X search is unavailable right now. These are web-indexed snippets of x.com posts, not a live timeline: ordering and coverage differ, snippet text may be truncated, and no metrics are available.'
 
 export type BrowseResource = 'profile' | 'search' | 'followers' | 'following'
-export type BrowseSource = 'fxtwitter' | 'firecrawl'
+export type BrowseSource = 'fxtwitter' | 'xsearch' | 'firecrawl'
+
+/** After FxTwitter search fails, skip it for this long so requests go straight to the next tier. */
+const FX_SEARCH_BREAKER_MS = 60_000
+let fxSearchDownUntil = 0
+
+/** Test hook. */
+export function resetSearchBreaker(): void {
+  fxSearchDownUntil = 0
+}
+
+/**
+ * Search cursors are tagged with the provider that issued them (`xsearch:abc`).
+ * Untagged cursors predate tagging and belong to FxTwitter.
+ */
+function splitCursor(cursor: string | undefined): { source: BrowseSource; raw?: string } | undefined {
+  if (!cursor) return undefined
+  const match = cursor.match(/^(fxtwitter|xsearch):(.*)$/s)
+  return match ? { source: match[1] as BrowseSource, raw: match[2] } : { source: 'fxtwitter', raw: cursor }
+}
+
+function tagCursor(source: BrowseSource, raw: string | undefined): string | undefined {
+  return raw ? `${source}:${raw}` : undefined
+}
 
 export interface BrowseInput {
   resource?: string | null
@@ -163,20 +187,33 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const query = input.q?.trim()
     if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
     const feed = ['latest', 'top', 'media'].includes(input.feed ?? '') ? String(input.feed) : 'latest'
-    try {
-      const list = await walkPages(page, input.cursor ?? undefined, (cursor) => searchFxStatuses(query, feed, cursor, limit))
-      const base = { resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: list.cursor?.bottom, source: 'fxtwitter' as const }
-      return { ...base, markdown: renderMarkdown(input, base, full) }
-    } catch (error) {
-      // Fall back only for a fresh first page: a cursor or page number belongs to
-      // the live source and cannot be continued by the web index.
-      const firstPage = page === 1 && !input.cursor
-      const outage = error instanceof ConvertError && error.code === 'search_unavailable'
-      if (!outage || !firstPage || !firecrawlSearchConfigured()) throw error
-      const posts = await searchFirecrawlStatuses(query, feed, limit)
-      const base = { resource, posts, query, feed, page, limit, source: 'firecrawl' as const, degraded: true }
-      return { ...base, markdown: renderMarkdown(input, base, full) }
+    const tagged = splitCursor(input.cursor ?? undefined)
+    const render = (base: Omit<BrowseResult, 'markdown' | 'cache'>): BrowsePayload => ({ ...base, markdown: renderMarkdown(input, base, full) })
+
+    const live: Array<{ source: BrowseSource; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
+    if (Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
+    if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit) })
+    // A continuation belongs to the provider that issued its cursor.
+    const providers = tagged ? live.filter((provider) => provider.source === tagged.source) : live
+
+    let outage: ConvertError | undefined
+    for (const provider of providers) {
+      try {
+        const list = await walkPages(page, tagged?.raw, provider.search)
+        return render({ resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor(provider.source, list.cursor?.bottom), source: provider.source })
+      } catch (error) {
+        if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
+        if (provider.source === 'fxtwitter') fxSearchDownUntil = Date.now() + FX_SEARCH_BREAKER_MS
+        outage = error
+      }
     }
+
+    // Web-index fallback only for a fresh first page: it has no notion of X cursors.
+    if (page === 1 && !tagged && firecrawlSearchConfigured()) {
+      const posts = await searchFirecrawlStatuses(query, feed, limit)
+      return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
+    }
+    throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
   const handle = validHandle(input.handle)

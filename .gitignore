@@ -39,3 +39,4 @@ x.md.ignore*
 .env*
 demo/
 video/
+accounts.local.json

@@ -40,6 +40,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@the-convocation/twitter-scraper": "^0.22.3",
     "gsap": "^3.15.0",
     "tailwindcss": "^4.3.0"
   }

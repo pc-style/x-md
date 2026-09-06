@@ -1,0 +1,12 @@
+[
+  {
+    "id": "a",
+    "authToken": "auth_token cookie value from a logged-in x.com session",
+    "ct0": "ct0 cookie value from the same session"
+  },
+  {
+    "id": "b",
+    "authToken": "...",
+    "ct0": "..."
+  }
+]

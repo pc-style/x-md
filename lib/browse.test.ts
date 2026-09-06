@@ -12,6 +12,11 @@ vi.mock('./firecrawl.js', () => ({
   searchFirecrawlStatuses: vi.fn(),
 }))
 
+vi.mock('./xsearch.js', () => ({
+  xsearchConfigured: vi.fn(() => false),
+  searchXStatuses: vi.fn(),
+}))
+
 vi.mock('./fxtwitter.js', () => ({
   fetchFxProfile: vi.fn(),
   fetchFxProfileStatuses: vi.fn(),
@@ -19,15 +24,19 @@ vi.mock('./fxtwitter.js', () => ({
   searchFxStatuses: vi.fn(),
 }))
 
-import { browse, browseResponse, isOriginalPost } from './browse.js'
+import { browse, browseResponse, isOriginalPost, resetSearchBreaker } from './browse.js'
 import { buildCacheKey } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { searchXStatuses, xsearchConfigured } from './xsearch.js'
 import { fetchFxConnections, fetchFxProfile, fetchFxProfileStatuses, searchFxStatuses } from './fxtwitter.js'
 
 const post = { id: '1', text: 'hello', url: 'https://x.com/ada/status/1', author: { screen_name: 'ada' } }
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  resetSearchBreaker()
+})
 
 describe('browse', () => {
   test('filters replies and reposts from a profile and includes source links', async () => {
@@ -50,7 +59,7 @@ describe('browse', () => {
       .mockResolvedValueOnce({ results: [post], cursor: { bottom: 'page-3' } })
     const result = await browse({ resource: 'search', q: 'hello world', page: 2, nocache: true })
     expect(searchFxStatuses).toHaveBeenNthCalledWith(2, 'hello world', 'latest', 'page-2', 20)
-    expect(result.markdown).toContain('/search?q=hello+world&feed=latest&cursor=page-3')
+    expect(result.markdown).toContain('/search?q=hello+world&feed=latest&cursor=fxtwitter%3Apage-3')
     expect(result.markdown).toContain('/search?q=hello+world&feed=latest&page=3')
   })
 
@@ -62,7 +71,7 @@ describe('browse', () => {
     const result = await browse({ resource: 'search', q: 'x-md', full, limit: 7, page: 3, nocache: true })
     expect(result.markdown.includes('full=true')).toBe(expected)
     expect(result.markdown).toContain('limit=7')
-    expect(result.markdown).toContain('cursor=next')
+    expect(result.markdown).toContain('cursor=fxtwitter%3Anext')
     expect(result.markdown).toContain('page=4')
   })
 
@@ -127,10 +136,11 @@ describe('search fallback', () => {
 
   test('does not fall back for continuations or when unconfigured', async () => {
     vi.mocked(searchFxStatuses).mockRejectedValue(outage)
-    await expect(browse({ resource: 'search', q: 'hello', cursor: 'c1', nocache: true })).rejects.toBe(outage)
-    await expect(browse({ resource: 'search', q: 'hello', page: 2, nocache: true })).rejects.toBe(outage)
+    const unavailable = { status: 503, code: 'search_unavailable' }
+    await expect(browse({ resource: 'search', q: 'hello', cursor: 'c1', nocache: true })).rejects.toMatchObject(unavailable)
+    await expect(browse({ resource: 'search', q: 'hello', page: 2, nocache: true })).rejects.toMatchObject(unavailable)
     vi.mocked(firecrawlSearchConfigured).mockReturnValueOnce(false)
-    await expect(browse({ resource: 'search', q: 'hello', nocache: true })).rejects.toBe(outage)
+    await expect(browse({ resource: 'search', q: 'hello', nocache: true })).rejects.toMatchObject(unavailable)
     expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
   })
 
@@ -147,5 +157,54 @@ describe('search fallback', () => {
     const response = browseResponse(result, false)
     expect(response.headers['X-Source']).toBe('fxtwitter')
     expect(response.headers['X-Search-Degraded']).toBeUndefined()
+  })
+})
+
+describe('search provider chain', () => {
+  const outage = new ConvertError(503, 'down', 'search_unavailable')
+  const live = { id: '9', text: 'live', url: 'https://x.com/bob/status/9', author: { screen_name: 'bob' } }
+
+  beforeEach(() => vi.mocked(xsearchConfigured).mockReturnValue(true))
+
+  test('uses own accounts when FxTwitter is down and tags the cursor with the source', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live], cursor: { bottom: 'raw-next' } })
+    const result = await browse({ resource: 'search', q: 'hello', nocache: true })
+    expect(searchXStatuses).toHaveBeenCalledWith('hello', 'latest', undefined, 20)
+    expect(result).toMatchObject({ source: 'xsearch', nextCursor: 'xsearch:raw-next' })
+    expect(result.degraded).toBeUndefined()
+    expect(result.markdown).toContain('cursor=xsearch%3Araw-next')
+    expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
+    expect(browseResponse(result, false).headers['X-Source']).toBe('xsearch')
+  })
+
+  test('skips FxTwitter for a minute after it fails', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live] })
+    await browse({ resource: 'search', q: 'a', nocache: true })
+    await browse({ resource: 'search', q: 'b', nocache: true })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+    expect(searchXStatuses).toHaveBeenCalledTimes(2)
+  })
+
+  test('routes tagged cursors to their provider only', async () => {
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live] })
+    await browse({ resource: 'search', q: 'hello', cursor: 'xsearch:abc', nocache: true })
+    expect(searchFxStatuses).not.toHaveBeenCalled()
+    expect(searchXStatuses).toHaveBeenCalledWith('hello', 'latest', 'abc', 20)
+
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post], cursor: { bottom: 'n2' } })
+    const legacy = await browse({ resource: 'search', q: 'hello', cursor: 'legacy-cursor', nocache: true })
+    expect(searchFxStatuses).toHaveBeenLastCalledWith('hello', 'latest', 'legacy-cursor', 20)
+    expect(legacy.nextCursor).toBe('fxtwitter:n2')
+  })
+
+  test('falls through to Firecrawl only after every live provider fails, and 503s otherwise', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchXStatuses).mockRejectedValue(outage)
+    vi.mocked(searchFirecrawlStatuses).mockResolvedValue([post])
+    const result = await browse({ resource: 'search', q: 'hello', nocache: true })
+    expect(result.source).toBe('firecrawl')
+    await expect(browse({ resource: 'search', q: 'hello', cursor: 'xsearch:abc', nocache: true })).rejects.toBe(outage)
   })
 })
