@@ -1,4 +1,5 @@
 import './style.css'
+import { captureLandingEvent } from './posthog'
 import { inject } from '@vercel/analytics'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -54,6 +55,7 @@ function setupConvertForm(root: HTMLElement) {
     const target = path
       ? `${path}?thread=full`
       : `/api/convert?url=${encodeURIComponent(raw)}&thread=full`
+    captureLandingEvent('conversion_requested')
     window.open(target, '_blank', 'noopener,noreferrer')
   })
 }
@@ -66,6 +68,7 @@ function setupCopyButtons(root: HTMLElement) {
       if (!text) return
       try {
         await navigator.clipboard.writeText(text)
+        captureLandingEvent('skill_install_command_copied')
         btn.dataset.copied = ''
         btn.textContent = 'Copied'
         window.setTimeout(() => {

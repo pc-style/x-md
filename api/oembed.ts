@@ -1,8 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { trackRequest } from '../lib/analytics.js'
 import { oembedResponse } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  trackRequest(req, res, 'oembed')
   setCorsHeaders(res)
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'GET' && req.method !== 'HEAD') {
