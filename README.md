@@ -111,8 +111,8 @@ Search feeds are case-insensitive. `users` returns account profiles in `users`; 
 ### Search limits
 
 - Live search allows **5 uncached requests per minute per IP**. Cache hits are free.
-- Requests served by the live provider have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds, page walks, and retries share it.
-- A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503`.
+- Requests served by the live provider have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds share it, and each page of a page walk counts as one request.
+- A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503` with `Retry-After: 30`.
 
 Counters are per instance unless a shared KV store is configured.
 
