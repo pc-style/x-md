@@ -34,7 +34,7 @@
     "docs:build": "bun --bun blume build"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^26.4.1",
     "@vercel/node": "^5.8.4",
     "blume": "^1.6.3",
     "typescript": "~6.0.2",
