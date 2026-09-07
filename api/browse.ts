@@ -1,10 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { trackRequest } from '../lib/analytics.js'
 import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
 import { setCorsHeaders, wantsJson } from '../lib/http.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const identity = trackRequest(req, res, 'browse', req.query.resource)
   setCorsHeaders(res)
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -14,6 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
 
   const resolved = await resolveCaller(req.headers)
+  if (resolved.status === 'valid' && resolved.caller.kind === 'key') identity.keyId = resolved.caller.id
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   if (resolved.status === 'invalid') {
     return res.status(401).json({ error: 'Invalid or disabled API key.', code: 'invalid_key' })

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>x.md — Admin</title>
+    <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" />
+  </head>
+  <body>
+    <header class="masthead">
+      <a class="wordmark" href="/" aria-label="x.md home">x.md</a>
+      <div id="sessionControls" class="session-controls" hidden>
+        <span id="snapshotStatus">Loading…</span>
+        <span class="reset">Reset <span id="resetTime">—</span></span>
+        <button id="refresh" class="icon-button" aria-label="Refresh" title="Refresh">
+          <svg class="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6.1A8 8 0 0 1 20 12M4 12a8 8 0 0 0 13.9 5.9"/></svg>
+        </button>
+        <button id="lock" class="ghost">Lock</button>
+      </div>
+    </header>
+    <main>
+      <section id="login" class="login">
+        <h1>Admin</h1>
+        <form id="loginForm">
+          <label for="token">Token</label>
+          <input id="token" type="password" autocomplete="off" required />
+          <button id="unlock" type="submit">Unlock</button>
+        </form>
+        <p id="loginMsg" class="message error" role="alert" hidden></p>
+      </section>
+
+      <section id="app" aria-label="Admin dashboard" hidden>
+        <p id="appMsg" class="message error" role="alert" hidden></p>
+        <div id="dashboard" hidden>
+          <div class="metrics">
+            <section class="metric" aria-labelledby="poolTitle">
+              <h2 id="poolTitle">Pool remaining</h2>
+              <div class="value"><strong id="remaining">—</strong><span>/ <span id="capacity">—</span></span></div>
+              <div id="capacityMeter" class="meter" role="meter" aria-label="Pool capacity remaining" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill"></div></div>
+              <p class="metric-note"><span id="used">—</span> used</p>
+            </section>
+            <section class="metric" aria-labelledby="publicTitle">
+              <h2 id="publicTitle">Public remaining</h2>
+              <div class="value"><strong id="publicRemaining">—</strong><span>/ <span id="publicCap">—</span></span></div>
+              <div id="publicMeter" class="meter" role="meter" aria-label="Public allowance remaining" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill"></div></div>
+              <p class="metric-note"><span id="ipBudget">—</span> / IP</p>
+            </section>
+            <section class="metric" aria-labelledby="trafficTitle">
+              <h2 id="trafficTitle">Key usage</h2>
+              <div class="value"><strong id="keysUsed">—</strong><span>used</span></div>
+              <p class="metric-note"><span id="reserved">—</span> reserved</p>
+              <p class="metric-note"><span id="activeKeys">—</span> enabled · <span id="idleKeys">—</span> idle</p>
+            </section>
+            <section class="metric" aria-labelledby="healthTitle" title="Readiness on the instance serving this snapshot">
+              <h2 id="healthTitle">Accounts</h2>
+              <div class="value"><strong id="healthy">—</strong><span>/ <span id="accounts">—</span> ready</span></div>
+              <p id="cooldownNote" class="metric-note"></p>
+            </section>
+          </div>
+          <p id="poolWarning" class="message warning" role="status" hidden></p>
+
+          <section class="keys-section" aria-labelledby="keysTitle">
+            <div class="section-heading"><h1 id="keysTitle">Keys <span id="keyCount" class="count">0</span></h1><button id="newKey">New key</button></div>
+            <div class="table-scroll" role="region" aria-label="API keys" tabindex="0">
+              <table>
+                <thead><tr><th scope="col">Key</th><th scope="col">Limit / 15m</th><th scope="col">Remaining</th><th scope="col">Status</th><th scope="col">Last used</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody id="keys"></tbody>
+              </table>
+            </div>
+            <p id="keysMsg" class="message" role="status" hidden></p>
+          </section>
+
+          <details id="settings" class="settings">
+            <summary>Settings</summary>
+            <div class="settings-body">
+              <dl>
+                <div><dt>Storage</dt><dd id="storage">—</dd></div>
+                <div><dt>Per account</dt><dd id="accountBudget">—</dd></div>
+                <div><dt>Headroom</dt><dd id="headroom">—</dd></div>
+                <div><dt>Default key limit</dt><dd id="defaultLimit">—</dd></div>
+                <div><dt>Assigned to keys</dt><dd id="assigned">—</dd></div>
+              </dl>
+              <div>
+                <form id="idleForm" class="toolbar"><div><label for="idleMinutes">Release idle reservations (minutes)</label><input id="idleMinutes" type="number" min="15" max="1440" step="1" required /></div><button id="saveIdle" class="ghost" type="submit">Save</button></form>
+                <p id="idleMsg" class="message" role="status" hidden></p>
+                <label class="check-label"><input id="autoRefresh" type="checkbox" />Refresh every 30 seconds</label>
+              </div>
+            </div>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="createDialog" aria-labelledby="createTitle">
+      <div class="section-heading"><h2 id="createTitle">New key</h2><button id="closeDialog" class="icon-button" aria-label="Close"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+      <form id="createForm">
+        <label for="newLabel">Label</label><input id="newLabel" maxlength="80" autofocus />
+        <label for="newLimit">Limit / 15m</label><input id="newLimit" type="number" min="1" step="1" placeholder="Default" />
+        <button id="create" type="submit">Create key</button>
+      </form>
+      <div id="secretBox" hidden><p class="secret-heading">Copy now. Shown only once.</p><div class="secret" id="secret"></div><button id="copySecret" class="ghost">Copy secret</button></div>
+      <p id="createMsg" class="message" role="status" hidden></p>
+    </dialog>
+    <script type="module" src="/src/admin.ts"></script>
+  </body>
+</html>

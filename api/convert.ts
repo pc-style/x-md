@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { trackRequest } from '../lib/analytics.js'
 import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  trackRequest(req, res, 'convert')
   setCorsHeaders(res)
   if (req.method === 'OPTIONS') return res.status(204).end()
   if (req.method !== 'GET' && req.method !== 'HEAD') {

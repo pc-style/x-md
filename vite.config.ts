@@ -11,11 +11,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), apiDevPlugin()],
+    define: {
+      'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
+    },
     build: {
       emptyOutDir: false,
       rollupOptions: {
         input: {
           main: resolve(import.meta.dirname, 'index.html'),
+          admin: resolve(import.meta.dirname, 'admin.html'),
         },
       },
     },

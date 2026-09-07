@@ -62,6 +62,22 @@ Attach Upstash Redis through the Vercel marketplace or CLI. The service automati
 
 These share per-IP and provider counters across instances. Without them, counters fall back to process memory. Live-provider checks fail closed when the counter store is unavailable, protecting the shared pool; the general request limiter still fails open. Redeploy after connecting environment variables.
 
+## Historical statistics
+
+PostHog is optional. Connect its Vercel Marketplace integration to the production environment, choose your data region, and review its billing terms. It supplies `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` and `NEXT_PUBLIC_POSTHOG_HOST`; the API reads these on the server only. Alternatively, set `POSTHOG_PROJECT_TOKEN` and `POSTHOG_HOST` (for example, `https://eu.i.posthog.com`). Redeploy after configuring them.
+
+Production API functions send a `request_completed` event with the route category, method, HTTP status, duration in milliseconds, application-cache result, key-validation status, public/key access, and degraded-search flag. Use these for request volume by endpoint, error and `429` rates, latency percentiles, and application-cache hit rate. Delivery runs in the background with a three-second timeout; failures do not change API responses.
+
+Events contain no search text, URLs, client IPs, bearer tokens, or key labels. Verified keys use a pseudonymous ID derived from their internal ID and the PostHog project token; rotating that token changes the pseudonyms. Public requests have a new ID per event, so distinct-user counts and anonymous retention are not meaningful. Person profiles, geolocation enrichment, and session replay are not enabled by this instrumentation.
+
+These statistics cover completed function responses, not requests served by Vercel's CDN, aborted requests, or platform errors before the handler runs. They are not billing-grade totals. Local development, previews, admin routes, and CORS preflights are excluded. Redis remains the source of truth for live limits and capacity; PostHog is only for historical analysis.
+
+### Landing-page actions
+
+Optionally set `VITE_POSTHOG_KEY` to the same project token and `VITE_POSTHOG_HOST` to its ingestion host in Vercel's production environment. These are public build-time values, not personal API credentials. Rebuild after changing them. Landing-page capture requires a production build with `VERCEL_ENV=production`; local development and previews do not send events.
+
+PostHog capture on the landing page sends only `conversion_requested` and `skill_install_command_copied`, with a new anonymous ID for each event. It does not collect form contents, URLs, referrers, cookies, automatic pageviews, errors, or session recordings. Browser requests go directly to PostHog, which necessarily receives the connection's source IP; event properties disable IP-based enrichment. These action counts are separate from API request totals and cannot measure unique visitors. Existing Vercel Web Analytics on the public landing page is unchanged. The admin dashboard includes no analytics scripts.
+
 ## Optional configuration
 
 | Variable | Purpose |
