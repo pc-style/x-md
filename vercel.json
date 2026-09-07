@@ -16,6 +16,10 @@
       "destination": "/api/oembed"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/search",
       "destination": "/api/browse?resource=search"
     },
@@ -78,8 +82,9 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Accept, Content-Type" }
+        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, POST, PATCH, DELETE, OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Accept, Content-Type, Authorization" },
+        { "key": "Access-Control-Expose-Headers", "value": "Retry-After, X-Api-Key-Status" }
       ]
     }
   ]

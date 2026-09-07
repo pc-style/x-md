@@ -1,8 +1,11 @@
 import './style.css'
+import { inject } from '@vercel/analytics'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { footerHtml, headerHtml, setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome'
 
+// Vercel Web Analytics for the landing page (docs pages are a separate static build).
+inject()
 gsap.registerPlugin(ScrollTrigger)
 
 const app = document.querySelector<HTMLDivElement>('#app')!

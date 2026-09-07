@@ -146,9 +146,19 @@ done
 
 body_file="$(mktemp)"
 header_file="$(mktemp)"
-trap 'rm -f "$body_file" "$header_file"' EXIT
+auth_file="$(mktemp)"
+trap 'rm -f "$body_file" "$header_file" "$auth_file"' EXIT
 
-http_code="$(curl -sS -G "$endpoint" ${params[@]+"${params[@]}"} \
+# Optional API key (private; not documented in the public API). Higher, per-key
+# search allowance. Set X_MD_API_KEY in the environment to use one. The header is
+# passed through a private temp file so the secret never appears in `ps` output.
+auth=()
+if [[ -n "${X_MD_API_KEY:-}" ]]; then
+  printf 'header = "Authorization: Bearer %s"\n' "$X_MD_API_KEY" > "$auth_file"
+  auth=(-K "$auth_file")
+fi
+
+http_code="$(curl -sS -G "$endpoint" ${params[@]+"${params[@]}"} ${auth[@]+"${auth[@]}"} \
   -H "Accept: $accept" -D "$header_file" -o "$body_file" -w '%{http_code}')" || {
   printf 'browse-x: request to %s failed\n' "$X_API_BASE" >&2
   exit 1
@@ -156,8 +166,11 @@ http_code="$(curl -sS -G "$endpoint" ${params[@]+"${params[@]}"} \
 
 if [[ "$http_code" -lt 200 || "$http_code" -ge 300 ]]; then
   printf 'browse-x: HTTP %s from %s\n' "$http_code" "$endpoint" >&2
+  # Surface rate-limit / auth signal so the caller (and its agent) sees it immediately.
+  grep -iE '^(retry-after|x-ratelimit-[a-z]+|x-api-key-status):' "$header_file" >&2 || true
   cat "$body_file" >&2
   printf '\n' >&2
+  [[ "$http_code" == 429 ]] && exit 3
   exit 1
 fi
 

@@ -36,6 +36,7 @@ export default defineConfig({
   github: { owner: 'pc-style', repo: 'x-md', branch: 'main' },
   lastModified: true,
   search: { provider: 'orama' },
+  analytics: { vercel: true },
   ai: {
     llmsTxt: true,
     skills: './skills',

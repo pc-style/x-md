@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
 import { setCorsHeaders, wantsJson } from '../lib/http.js'
-import { clientIp } from '../lib/ratelimit.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res)
@@ -12,10 +12,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
+
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  if (resolved.status === 'invalid') {
+    return res.status(401).json({ error: 'Invalid or disabled API key.', code: 'invalid_key' })
+  }
+
   try {
-    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: clientIp(req.headers) })
+    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: resolved.ip, caller: resolved.caller })
     const response = browseResponse(result, wantsJson(param('format'), String(req.headers.accept ?? '')))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
+    // Keyed responses stay private even if the browse layer marked them cacheable.
+    for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
     return req.method === 'HEAD' ? res.status(response.status).end() : res.status(response.status).send(response.body)
   } catch (error) {
     if (error instanceof ConvertError) {

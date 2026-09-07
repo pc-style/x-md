@@ -29,4 +29,4 @@ Direct API: `curl -sS -G https://x.pcstyle.dev/api/convert --data-urlencode "url
 - `--page` caps at 10, `--limit` at 20. Prefer the opaque cursor for continuation.
 - Profiles return details and recent original posts. The upstream API exposes no pinned-post markers; don't invent them.
 - Video isn't downloaded; links are preserved.
-- Exit 2 is bad usage, 1 is network or API error. Private, deleted, or gated posts can't be read. Fallback sources may omit replies, quotes, or media; check `warnings` instead of inventing content.
+- Exit 2 is bad usage, 3 is rate limited (a `Retry-After` header/seconds is printed — wait that long before retrying), 1 is any other network or API error. Private, deleted, or gated posts can't be read. Fallback sources may omit replies, quotes, or media; check `warnings` instead of inventing content.

@@ -8,7 +8,7 @@ import {
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { rateLimit } from './ratelimit.js'
-import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
+import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
 
 /**
  * Per-IP ceiling on live /search lookups. Counted only when a request misses the
@@ -16,6 +16,8 @@ import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
  */
 const SEARCH_IP_LIMIT = 5
 const SEARCH_IP_WINDOW_SEC = 60
+/** Per-key burst gate per minute; the real per-key allowance is enforced per 15 minutes in xsearch. */
+const SEARCH_KEY_BURST_LIMIT = 30
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -70,8 +72,10 @@ export interface BrowseInput {
   full?: string | boolean | null
   format?: string | null
   nocache?: string | boolean | null
-  /** Client IP for per-IP limiting of live lookups. */
+  /** Client IP for per-IP limiting of live lookups (anonymous callers). */
   ip?: string | null
+  /** Resolved caller identity. Defaults to a public caller keyed by `ip`. */
+  caller?: SearchCaller
 }
 
 export interface BrowseResult {
@@ -199,8 +203,16 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
     const requestedFeed = input.feed?.toLowerCase() ?? 'latest'
     const feed = requestedFeed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requestedFeed) ? requestedFeed : 'latest'
-    if (input.ip) {
-      const verdict = await rateLimit(`search:ip:${input.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
+    // Front-door burst gate for every live search provider (FxTwitter, own accounts,
+    // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
+    const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
+    if (caller.kind === 'key') {
+      const verdict = await rateLimit(`search:key:${caller.id}`, SEARCH_KEY_BURST_LIMIT, SEARCH_IP_WINDOW_SEC)
+      if (!verdict.allowed) {
+        throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
+      }
+    } else if (caller.ip) {
+      const verdict = await rateLimit(`search:ip:${caller.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
       if (!verdict.allowed) {
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
       }
@@ -212,13 +224,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       if (!xsearchConfigured() || (tagged && tagged.source !== 'xsearch')) {
         throw new ConvertError(503, 'X user search is temporarily unavailable. Retry shortly.', 'search_unavailable')
       }
-      const list = await walkPages(page, tagged?.raw, (cursor) => searchXUsers(query, cursor, limit, input.ip ?? undefined))
+      const list = await walkPages(page, tagged?.raw, (cursor) => searchXUsers(query, cursor, limit, caller))
       return render({ resource, users: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor('xsearch', list.cursor?.bottom), source: 'xsearch' })
     }
 
     const live: Array<{ source: BrowseSource; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
     if (['latest', 'top'].includes(feed) && Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
-    if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit, input.ip ?? undefined) })
+    if (xsearchConfigured()) live.push({ source: 'xsearch', search: (cursor) => searchXStatuses(query, feed, cursor, limit, caller) })
     // A continuation belongs to the provider that issued its cursor.
     const providers = tagged ? live.filter((provider) => provider.source === tagged.source) : live
 

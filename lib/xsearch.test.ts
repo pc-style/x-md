@@ -11,8 +11,11 @@ vi.mock('@the-convocation/twitter-scraper', async (importOriginal) => {
 })
 
 import { ApiError, AuthenticationError, type Tweet } from '@the-convocation/twitter-scraper'
+import { createApiKey, touchApiKey } from './apikeys.js'
+import { resetKv } from './kv.js'
+import { resetPool } from './pool.js'
 import { resetRateLimits } from './ratelimit.js'
-import { resetXSessions, searchXStatuses, searchXUsers, searchIpBudget, tweetToFx, xsearchConfigured } from './xsearch.js'
+import { defaultKeyLimitPer15m, healthyAccountCount, poolCapacityPer15m, resetXSessions, searchRateModel, searchXStatuses, searchXUsers, tweetToFx, xsearchConfigured } from './xsearch.js'
 
 const sessions = [
   { id: 'a', authToken: 'tokA', ct0: 'csrfA' },
@@ -28,8 +31,12 @@ beforeEach(() => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   resetXSessions(sessions)
   resetRateLimits()
+  resetKv()
 })
-afterEach(() => resetXSessions(undefined))
+afterEach(() => {
+  resetXSessions(undefined)
+  vi.useRealTimers()
+})
 
 describe('tweetToFx', () => {
   test('maps ids, author, metrics, media, reply parent and quote', () => {
@@ -78,12 +85,12 @@ describe('searchXStatuses', () => {
     expect(fetchSearchTweets).toHaveBeenCalledTimes(1)
   })
 
-  test('stops calling X once the pool budget (50 per session per 15 min) is spent', async () => {
+  test('stops calling X once the per-session budget (40 per 15 min, 2 sessions) is spent', async () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
-    for (let i = 0; i < 100; i += 1) await searchXStatuses('q', 'latest')
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(100)
+    for (let i = 0; i < 80; i += 1) await searchXStatuses('q', 'latest')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
     await expect(searchXStatuses('q', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(100)
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
   })
 
   test.each([['latest', 1], ['top', 0], ['photos', 2], ['media', 2], ['videos', 3]])('maps %s and caps upstream count', async (feed, mode) => {
@@ -99,7 +106,7 @@ describe('searchXStatuses', () => {
     const result = await searchXUsers('ada', 'C', 50)
     expect(fetchSearchProfiles).toHaveBeenCalledWith('ada', 20, 'C')
     expect(result).toMatchObject({ results: [{ screen_name: 'ada', description: 'Builder', followers: 42 }], cursor: { bottom: 'N' } })
-    for (let i = 0; i < 49; i++) await searchXStatuses('q', 'latest')
+    for (let i = 0; i < 39; i++) await searchXStatuses('q', 'latest')
     await expect(searchXUsers('ada')).rejects.toMatchObject({ code: 'search_unavailable' })
     expect(fetchSearchProfiles).toHaveBeenCalledTimes(1)
   })
@@ -111,14 +118,21 @@ describe('searchXStatuses', () => {
   })
 })
 
-describe('per-IP account fairness', () => {
-  test('scales with healthy capacity and caps the allowance', () => {
-    expect(searchIpBudget(1)).toBe(5)
-    expect(searchIpBudget(2)).toBe(10)
-    expect(searchIpBudget(4)).toBe(20)
+describe('rate model', () => {
+  test('applies X cap with 20% headroom and derives the pool', () => {
+    const model = searchRateModel()
+    expect(model.xCapPerAccount).toBe(50)
+    expect(model.perAccountBudget).toBe(40) // floor(50 * 0.8)
+    expect(model.publicIpBudget).toBe(10)
+    expect(model.activeAccounts).toBe(2)
+    expect(poolCapacityPer15m()).toBe(80) // 2 * 40
+    expect(healthyAccountCount()).toBe(2)
+    expect(defaultKeyLimitPer15m()).toBe(26) // floor(80 / 3)
   })
+})
 
-  test('four callers cannot drain the pool, and another caller can still search', async () => {
+describe('per-IP account fairness', () => {
+  test('public IP allowance is a fixed 10 per window regardless of account count', async () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
     for (const ip of ['a', 'b', 'c', 'd']) {
       for (let n = 0; n < 10; n++) await searchXStatuses('q', 'latest', undefined, 20, ip)
@@ -129,20 +143,78 @@ describe('per-IP account fairness', () => {
     expect(fetchSearchTweets).toHaveBeenCalledTimes(41)
   })
 
-  test('charges retries and lowers the allowance when an account becomes unhealthy', async () => {
+  test('per-IP allowance is charged once per search, even when a failover retries upstream', async () => {
     fetchSearchTweets.mockRejectedValueOnce(new AuthenticationError('bad')).mockResolvedValue({ tweets: [] })
+    // First call: auth failure disables one account and retries on the other (2 upstream calls, 1 IP charge).
     await searchXStatuses('q', 'latest', undefined, 20, 'a')
-    // Two candidate attempts consumed; only one healthy account remains (limit 5).
-    for (let n = 0; n < 3; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
+    for (let n = 0; n < 9; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
     await expect(searchXStatuses('q', 'latest', undefined, 20, 'a')).rejects.toMatchObject({ status: 429 })
-    expect(fetchSearchTweets).toHaveBeenCalledTimes(5)
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(11)
   })
 
   test('post and user searches share one IP allowance', async () => {
     resetXSessions([sessions[0]!])
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
-    for (let n = 0; n < 5; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
+    for (let n = 0; n < 10; n++) await searchXStatuses('q', 'latest', undefined, 20, 'a')
     await expect(searchXUsers('q', undefined, 20, 'a')).rejects.toMatchObject({ status: 429 })
     expect(fetchSearchProfiles).not.toHaveBeenCalled()
+  })
+})
+
+describe('API-key allowance', () => {
+  test('a key gets its own quota, separate from public IP limits', async () => {
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+    const caller = { kind: 'key' as const, id: 'k1', limit: 3 }
+    for (let n = 0; n < 3; n++) await searchXStatuses('q', 'latest', undefined, 20, caller)
+    await expect(searchXStatuses('q', 'latest', undefined, 20, caller)).rejects.toMatchObject({ status: 429 })
+    // A public caller is unaffected by the key's exhausted quota.
+    await searchXStatuses('q', 'latest', undefined, 20, 'fresh-ip')
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(4)
+  })
+})
+
+describe('dynamic public pool', () => {
+  const WINDOW_START = new Date('2026-09-07T12:00:00Z').getTime()
+  const publicBurst = async (ips: string[]) => {
+    for (const ip of ips) for (let n = 0; n < 10; n++) await searchXStatuses('q', 'latest', undefined, 20, ip)
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(WINDOW_START)
+    fetchSearchTweets.mockResolvedValue({ tweets: [] })
+  })
+
+  test('an active key reservation caps what the public can draw from the 80-call pool', async () => {
+    const { record } = await createApiKey('friend', 70)
+    await touchApiKey(record)
+    resetPool()
+    await publicBurst(['a']) // public cap = 80 − 70 = 10
+    await expect(searchXStatuses('q', 'latest', undefined, 20, 'b')).rejects.toMatchObject({ status: 429, message: expect.stringMatching(/Public search capacity/) })
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(10)
+    // The friend is untouched by the public exhaustion.
+    await searchXStatuses('q', 'latest', undefined, 20, { kind: 'key', id: record.id, limit: 70 })
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(11)
+  })
+
+  test('rejected public requests are refunded, so capacity released later is usable', async () => {
+    const { record } = await createApiKey('friend', 70)
+    await touchApiKey(record)
+    resetPool()
+    await publicBurst(['a'])
+    for (let n = 0; n < 5; n++) await expect(searchXStatuses('q', 'latest', undefined, 20, 'b')).rejects.toMatchObject({ status: 429 })
+    // 14 minutes in with the friend never having used the window: reservation decays to ceil(70/15) = 5 → public cap 75.
+    vi.setSystemTime(WINDOW_START + 14 * 60_000)
+    resetPool()
+    await publicBurst(['b', 'c', 'd', 'e', 'f', 'g']) // 10 + 60 = 70 ≤ 75
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(70)
+  })
+
+  test('an idle key releases its whole allowance to the public', async () => {
+    const { record } = await createApiKey('sleeper', 70)
+    await touchApiKey(record, WINDOW_START - 3 * 3_600_000)
+    resetPool()
+    await publicBurst(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) // full 80
+    expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
   })
 })
