@@ -133,7 +133,7 @@ export interface PoolSnapshot {
   keys: KeyShare[]
 }
 
-let snapshotCache: { value: PoolSnapshot; at: number; capacity: number } | undefined
+let snapshotCache: { value: PoolSnapshot; at: number; capacity: number; bucket: number } | undefined
 
 /** Test/admin hook: drop cached settings and snapshot. */
 export function resetPool(): void {
@@ -147,9 +147,13 @@ export function resetPool(): void {
  */
 export async function poolSnapshot(capacity: number, windowSec: number): Promise<PoolSnapshot> {
   const now = Date.now()
-  if (snapshotCache && snapshotCache.capacity === capacity && now - snapshotCache.at < SNAPSHOT_TTL_MS) return snapshotCache.value
+  const { bucket } = windowClock(windowSec, now)
+  // Never serve a snapshot across a window boundary: the counters it was built from have rolled over.
+  if (snapshotCache && snapshotCache.capacity === capacity && snapshotCache.bucket === bucket && now - snapshotCache.at < SNAPSHOT_TTL_MS) {
+    return snapshotCache.value
+  }
   const value = await computeSnapshot(capacity, windowSec, now)
-  snapshotCache = { value, at: now, capacity }
+  snapshotCache = { value, at: now, capacity, bucket }
   return value
 }
 

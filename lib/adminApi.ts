@@ -27,7 +27,12 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
     }
     case 'POST': {
       const label = (typeof input.label === 'string' ? input.label : '').trim().slice(0, 80) || 'unnamed'
-      const limit = positiveLimit(input.limitPer15m) ?? defaultKeyLimitPer15m()
+      let limit = defaultKeyLimitPer15m()
+      if (input.limitPer15m !== undefined && input.limitPer15m !== null && input.limitPer15m !== '') {
+        const given = positiveLimit(input.limitPer15m)
+        if (given === undefined) return { status: 400, body: { error: 'limitPer15m must be a positive integer' } }
+        limit = given
+      }
       const { record, secret } = await createApiKey(label, limit)
       return { status: 201, body: { key: toView(record), secret } }
     }
@@ -36,8 +41,11 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
       if (!id) return { status: 400, body: { error: 'id is required' } }
       const patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'disabled'>> = {}
       if (typeof input.label === 'string') patch.label = input.label.trim().slice(0, 80)
-      const limit = positiveLimit(input.limitPer15m)
-      if (limit !== undefined) patch.limitPer15m = limit
+      if (input.limitPer15m !== undefined) {
+        const limit = positiveLimit(input.limitPer15m)
+        if (limit === undefined) return { status: 400, body: { error: 'limitPer15m must be a positive integer' } }
+        patch.limitPer15m = limit
+      }
       if (typeof input.disabled === 'boolean') patch.disabled = input.disabled
       const updated = await updateApiKey(id, patch)
       resetPool()

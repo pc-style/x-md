@@ -4,11 +4,9 @@ import type { Plugin } from 'vite'
 import { browse, browseResponse, type BrowseResource } from '../lib/browse'
 import { adminAuthorized, adminConfigured } from '../lib/admin'
 import { handleKeysApi, handlePoolApi } from '../lib/adminApi'
-import { resolveApiKey, touchApiKey } from '../lib/apikeys'
+import { callerHeaders, resolveCaller } from '../lib/apiauth'
 import { ConvertError as BrowseError } from '../lib/errors'
-import { presentedApiKey, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
-import { clientIp } from '../lib/ratelimit'
-import type { SearchCaller } from '../lib/xsearch'
+import { parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
 import {
   acceptPrefersHtml,
   ConvertError,
@@ -138,22 +136,18 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   if (!resource) return false
   setCorsHeaders(res)
   if (guardMethod(req, res)) return true
-  const resolved = await resolveApiKey(presentedApiKey(req.headers))
-  if (resolved === 'invalid') {
-    res.setHeader('X-Api-Key-Status', 'invalid')
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  if (resolved.status === 'invalid') {
     respondJson(res, 401, { error: 'Invalid or disabled API key.', code: 'invalid_key' })
     return true
   }
-  const caller: SearchCaller = resolved
-    ? { kind: 'key', id: resolved.id, limit: resolved.limitPer15m }
-    : { kind: 'public', ip: clientIp(req.headers) }
-  res.setHeader('X-Api-Key-Status', resolved ? 'valid' : 'anonymous')
-  if (resolved) void touchApiKey(resolved)
   try {
-    const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: clientIp(req.headers), caller })
+    const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
     res.statusCode = response.status
     for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)
+    for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
     res.end(req.method === 'HEAD' ? undefined : response.body)
   } catch (error) {
     if (error instanceof BrowseError) {
@@ -167,26 +161,20 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   return true
 }
 
-function readBody(req: IncomingMessage): Promise<unknown> {
+function readBody(req: IncomingMessage): Promise<ReturnType<typeof parseJsonBody>> {
   return new Promise((resolve) => {
     const chunks: Buffer[] = []
     req.on('data', (c) => chunks.push(Buffer.from(c)))
-    req.on('end', () => {
-      const raw = Buffer.concat(chunks).toString('utf8')
-      try {
-        resolve(raw ? JSON.parse(raw) : {})
-      } catch {
-        resolve({})
-      }
-    })
-    req.on('error', () => resolve({}))
+    req.on('end', () => resolve(parseJsonBody(Buffer.concat(chunks).toString('utf8'))))
+    req.on('error', () => resolve({ ok: false }))
   })
 }
 
 async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const path = url.pathname.replace(/\/$/, '')
   if (path !== '/api/admin/keys' && path !== '/api/admin/pool') return false
-  setCorsHeaders(res, 'GET, POST, PATCH, DELETE, OPTIONS')
+  const methods = path === '/api/admin/pool' ? 'GET, PATCH, OPTIONS' : 'GET, POST, PATCH, DELETE, OPTIONS'
+  setCorsHeaders(res, methods)
   if (req.method === 'OPTIONS') {
     res.statusCode = 204
     res.end()
@@ -200,13 +188,15 @@ async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse):
     respondJson(res, 401, { error: 'Unauthorized' })
     return true
   }
-  const body = req.method === 'GET' ? {} : await readBody(req)
-  if (path === '/api/admin/pool') {
-    const { status, body: payload } = await handlePoolApi(req.method ?? 'GET', body)
-    respondJson(res, status, payload)
+  const parsed = req.method === 'GET' ? { ok: true as const, value: {} } : await readBody(req)
+  if (!parsed.ok) {
+    respondJson(res, 400, { error: 'Invalid JSON body' })
     return true
   }
-  const { status, body: payload } = await handleKeysApi(req.method ?? 'GET', body)
+  const { status, body: payload } = path === '/api/admin/pool'
+    ? await handlePoolApi(req.method ?? 'GET', parsed.value)
+    : await handleKeysApi(req.method ?? 'GET', parsed.value)
+  if (status === 405) res.setHeader('Allow', methods)
   respondJson(res, status, payload)
   return true
 }

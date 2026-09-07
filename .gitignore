@@ -39,6 +39,7 @@ x.md.ignore*
 .env*
 demo/
 video/
+press-kit/
 accounts.local.json
 
 .blume/

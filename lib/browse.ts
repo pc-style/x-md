@@ -16,6 +16,8 @@ import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } f
  */
 const SEARCH_IP_LIMIT = 5
 const SEARCH_IP_WINDOW_SEC = 60
+/** Per-key burst gate per minute; the real per-key allowance is enforced per 15 minutes in xsearch. */
+const SEARCH_KEY_BURST_LIMIT = 30
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -201,10 +203,15 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
     const requestedFeed = input.feed?.toLowerCase() ?? 'latest'
     const feed = requestedFeed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requestedFeed) ? requestedFeed : 'latest'
-    // Anonymous callers pass a front-door burst gate; API-key callers skip it and
-    // are governed by their own per-key allowance inside the account pool.
+    // Front-door burst gate for every live search provider (FxTwitter, own accounts,
+    // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
     const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
-    if (caller.kind === 'public' && caller.ip) {
+    if (caller.kind === 'key') {
+      const verdict = await rateLimit(`search:key:${caller.id}`, SEARCH_KEY_BURST_LIMIT, SEARCH_IP_WINDOW_SEC)
+      if (!verdict.allowed) {
+        throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
+      }
+    } else if (caller.ip) {
       const verdict = await rateLimit(`search:ip:${caller.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
       if (!verdict.allowed) {
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)

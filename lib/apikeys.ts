@@ -15,6 +15,7 @@ export interface ApiKeyRecord {
   limitPer15m: number
   disabled: boolean
   createdAt: number
+  /** Stored under its own key so activity stamps never race admin edits of the record. */
   lastUsedAt?: number
   /** SHA-256 of the secret; server-side only, stripped from admin responses. */
   hash: string
@@ -26,6 +27,7 @@ export type ApiKeyView = Omit<ApiKeyRecord, 'hash'>
 const INDEX = 'apikeys:ids'
 const recordKey = (id: string) => `apikey:rec:${id}`
 const hashKey = (hash: string) => `apikey:hash:${hash}`
+const lastUsedKey = (id: string) => `apikey:last:${id}`
 
 function hashSecret(raw: string): string {
   return createHash('sha256').update(raw).digest('hex')
@@ -36,28 +38,43 @@ export function toView(record: ApiKeyRecord): ApiKeyView {
   return view
 }
 
+function parseRecord(raw: string | null, lastUsed: string | null): ApiKeyRecord | null {
+  if (!raw) return null
+  const record = JSON.parse(raw) as ApiKeyRecord
+  const stamp = lastUsed ? Number(lastUsed) : NaN
+  return Number.isFinite(stamp) ? { ...record, lastUsedAt: stamp } : record
+}
+
+function stripStamp(record: ApiKeyRecord): ApiKeyRecord {
+  const { lastUsedAt: _stamp, ...rest } = record
+  return rest as ApiKeyRecord
+}
+
 export async function createApiKey(label: string, limitPer15m: number): Promise<{ record: ApiKeyRecord; secret: string }> {
   const id = randomBytes(6).toString('hex')
   const secret = `xmd_${randomBytes(24).toString('hex')}`
   const hash = hashSecret(secret)
   const record: ApiKeyRecord = { id, label, limitPer15m, disabled: false, createdAt: Date.now(), hash }
+  // Record and index first, hash mapping last: a partial failure leaves a visible,
+  // unusable key that the dashboard can delete, never an invisible usable one.
   await kv().set(recordKey(id), JSON.stringify(record))
-  await kv().set(hashKey(hash), id)
   await kv().sadd(INDEX, id)
+  await kv().set(hashKey(hash), id)
   return { record, secret }
 }
 
 export async function getApiKey(id: string): Promise<ApiKeyRecord | null> {
-  const raw = await kv().get(recordKey(id))
-  return raw ? (JSON.parse(raw) as ApiKeyRecord) : null
+  const [raw, last] = await kv().mget([recordKey(id), lastUsedKey(id)])
+  return parseRecord(raw ?? null, last ?? null)
 }
 
 export async function listApiKeys(): Promise<ApiKeyRecord[]> {
   const ids = await kv().smembers(INDEX)
-  const raws = await Promise.all(ids.map((id) => kv().get(recordKey(id))))
-  return raws
-    .filter((raw): raw is string => raw !== null)
-    .map((raw) => JSON.parse(raw) as ApiKeyRecord)
+  if (ids.length === 0) return []
+  const values = await kv().mget([...ids.map(recordKey), ...ids.map(lastUsedKey)])
+  return ids
+    .map((_, i) => parseRecord(values[i] ?? null, values[ids.length + i] ?? null))
+    .filter((record): record is ApiKeyRecord => record !== null)
     .sort((a, b) => b.createdAt - a.createdAt)
 }
 
@@ -68,7 +85,7 @@ export async function updateApiKey(
   const current = await getApiKey(id)
   if (!current) return null
   const next: ApiKeyRecord = { ...current, ...patch }
-  await kv().set(recordKey(id), JSON.stringify(next))
+  await kv().set(recordKey(id), JSON.stringify(stripStamp(next)))
   return next
 }
 
@@ -77,6 +94,7 @@ export async function deleteApiKey(id: string): Promise<boolean> {
   if (!current) return false
   await kv().del(hashKey(current.hash))
   await kv().del(recordKey(id))
+  await kv().del(lastUsedKey(id))
   await kv().srem(INDEX, id)
   return true
 }
@@ -98,11 +116,14 @@ export async function resolveApiKey(raw: string | undefined | null): Promise<Api
 /** Re-stamp at most this often; idle detection works in minutes, so seconds of slack are fine. */
 const TOUCH_INTERVAL_MS = 30_000
 
-/** Best-effort last-used stamp; failures are ignored so they never block a request. */
+/**
+ * Best-effort last-used stamp. Writes only the stamp key, so it can never
+ * overwrite a concurrent admin edit (disable, limit change) of the record.
+ */
 export async function touchApiKey(record: ApiKeyRecord, now = Date.now()): Promise<void> {
   if (record.lastUsedAt && now - record.lastUsedAt < TOUCH_INTERVAL_MS) return
   try {
-    await kv().set(recordKey(record.id), JSON.stringify({ ...record, lastUsedAt: now }))
+    await kv().set(lastUsedKey(record.id), String(now))
   } catch {
     // non-critical
   }

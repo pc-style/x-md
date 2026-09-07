@@ -285,21 +285,23 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
 
   // Charge the caller once per search (numbered page walks call this once per page).
   // Checked before any account budget so rejected callers cannot consume account quota.
-  if (caller?.kind === 'public' && caller.ip) {
-    const ipKey = `xsearch:ip:${caller.ip}`
+  if (caller?.kind === 'public') {
+    // An unknown IP is still metered (as one shared "unknown" bucket) rather than left unaccounted.
+    const ipKey = `xsearch:ip:${caller.ip || 'unknown'}`
     const fair = await rateLimit(ipKey, PUBLIC_IP_BUDGET, BUDGET_WINDOW_SEC, true)
     if (!fair.allowed) {
-      throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window, or use an API key.', 'rate_limited', fair.retryAfter)
+      throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter)
     }
     // Shared public cap: whatever the pool has left after key usage and reservations.
     // Refund both counters on reject so retries do not burn capacity that keys release later in the window.
     const shared = await rateLimit(PUBLIC_COUNTER, await publicCapNow(), BUDGET_WINDOW_SEC, true, true)
     if (!shared.allowed) {
-      await refundRateLimit(ipKey, BUDGET_WINDOW_SEC)
-      throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets, or use an API key.', 'rate_limited', shared.retryAfter)
+      await refundRateLimit(ipKey, BUDGET_WINDOW_SEC, fair.bucket)
+      throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets.', 'rate_limited', shared.retryAfter)
     }
   } else if (caller?.kind === 'key') {
-    const fair = await rateLimit(KEY_COUNTER(caller.id), caller.limit, BUDGET_WINDOW_SEC, true)
+    // Refund rejected attempts: they must not count as pool usage in the snapshot.
+    const fair = await rateLimit(KEY_COUNTER(caller.id), caller.limit, BUDGET_WINDOW_SEC, true, true)
     if (!fair.allowed) {
       throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter)
     }

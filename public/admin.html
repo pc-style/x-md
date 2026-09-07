@@ -181,11 +181,21 @@
               <button class="ghost toggle">${k.disabled ? 'Enable' : 'Disable'}</button>
               <button class="danger del">Delete</button>
             </div></td>`
-          tr.querySelector('.save').onclick = () => act(() => api('/api/admin/keys', 'PATCH', { id: k.id, limitPer15m: Number(tr.querySelector('input').value) }))
+          tr.querySelector('.save').onclick = () => {
+            const limit = parseLimit(tr.querySelector('input').value)
+            if (limit === null) { $('keysMsg').textContent = 'Limit must be a whole number of at least 1.'; return }
+            act(() => api('/api/admin/keys', 'PATCH', { id: k.id, limitPer15m: limit }))
+          }
           tr.querySelector('.toggle').onclick = () => act(() => api('/api/admin/keys', 'PATCH', { id: k.id, disabled: !k.disabled }))
           tr.querySelector('.del').onclick = () => { if (confirm(`Delete key "${k.label}"? Requests using it will fail immediately.`)) act(() => api('/api/admin/keys', 'DELETE', { id: k.id })) }
           tb.appendChild(tr)
         }
+      }
+
+      // Whole number ≥ 1, or null when invalid. Blank is handled by the caller.
+      function parseLimit(raw) {
+        const n = Number(String(raw).trim())
+        return Number.isInteger(n) && n >= 1 ? n : null
       }
 
       function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
@@ -227,8 +237,11 @@
       $('saveIdle').onclick = () => act(() => api('/api/admin/pool', 'PATCH', { idleReleaseMinutes: Number($('idleMinutes').value) }))
       $('create').onclick = async () => {
         $('createMsg').hidden = true; $('secretBox').hidden = true
+        const rawLimit = $('newLimit').value.trim()
+        const limit = rawLimit === '' ? undefined : parseLimit(rawLimit)
+        if (limit === null) { $('createMsg').textContent = 'Limit must be a whole number of at least 1, or blank for the default.'; $('createMsg').hidden = false; return }
         try {
-          const out = await api('/api/admin/keys', 'POST', { label: $('newLabel').value, limitPer15m: Number($('newLimit').value) || undefined })
+          const out = await api('/api/admin/keys', 'POST', { label: $('newLabel').value, limitPer15m: limit })
           $('secret').textContent = out.secret
           $('secretBox').hidden = false
           $('newLabel').value = ''

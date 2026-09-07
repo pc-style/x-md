@@ -7,12 +7,16 @@
  * map otherwise, which still bounds a single warm instance.
  */
 
+import { redisConfig, redisPipeline, type RedisCommand, type RedisConfig } from './redis.js'
+
 export interface RateLimitResult {
   allowed: boolean
   limit: number
   remaining: number
   /** Seconds until the window resets. */
   retryAfter: number
+  /** Window bucket that was charged; pass to `refundRateLimit` to undo exactly that charge. */
+  bucket: number
 }
 
 interface Store {
@@ -51,23 +55,8 @@ const memoryStore: Store = {
   },
 }
 
-function redisConfig(): { url: string; token: string } | undefined {
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN
-  return url && token ? { url, token } : undefined
-}
-
-function redisStore(config: { url: string; token: string }): Store {
-  async function pipeline<T>(commands: (string | number)[][]): Promise<Array<{ result?: T; error?: string }>> {
-    const response = await fetch(`${config.url}/pipeline`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${config.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(commands),
-      signal: AbortSignal.timeout(2000),
-    })
-    if (!response.ok) throw new Error(`rate limit store HTTP ${response.status}`)
-    return (await response.json()) as Array<{ result?: T; error?: string }>
-  }
+function redisStore(config: RedisConfig): Store {
+  const pipeline = <T,>(commands: RedisCommand[]) => redisPipeline<T>(config, commands)
   return {
     async incr(key, windowSec) {
       const data = await pipeline<number>([['INCR', key], ['EXPIRE', key, windowSec, 'NX']])
@@ -123,16 +112,18 @@ export async function rateLimit(key: string, limit: number, windowSec: number, f
     count = await store().incr(storeKey, 2 * windowSec + 1)
   } catch (error) {
     console.warn(`[ratelimit] store failure, ${failClosed ? 'blocking' : 'allowing'} request: ${String(error).slice(0, 120)}`)
-    return { allowed: !failClosed, limit, remaining: failClosed ? 0 : limit, retryAfter }
+    return { allowed: !failClosed, limit, remaining: failClosed ? 0 : limit, retryAfter, bucket }
   }
   const allowed = count <= limit
   if (!allowed && refundOnReject) await store().decr(storeKey).catch(() => undefined)
-  return { allowed, limit, remaining: Math.max(0, limit - count), retryAfter }
+  return { allowed, limit, remaining: Math.max(0, limit - count), retryAfter, bucket }
 }
 
-/** Give back one hit charged to `key` in the current window (best effort). */
-export async function refundRateLimit(key: string, windowSec: number): Promise<void> {
-  const { bucket } = windowClock(windowSec)
+/**
+ * Give back one hit charged to `key` (best effort). Pass the `bucket` from the
+ * charging call so a window rollover in between cannot decrement the wrong counter.
+ */
+export async function refundRateLimit(key: string, windowSec: number, bucket = windowClock(windowSec).bucket): Promise<void> {
   await store().decr(bucketKey(key, bucket)).catch(() => undefined)
 }
 

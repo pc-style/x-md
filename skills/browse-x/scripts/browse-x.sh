@@ -146,12 +146,17 @@ done
 
 body_file="$(mktemp)"
 header_file="$(mktemp)"
-trap 'rm -f "$body_file" "$header_file"' EXIT
+auth_file="$(mktemp)"
+trap 'rm -f "$body_file" "$header_file" "$auth_file"' EXIT
 
 # Optional API key (private; not documented in the public API). Higher, per-key
-# search allowance. Set X_MD_API_KEY in the environment to use one.
+# search allowance. Set X_MD_API_KEY in the environment to use one. The header is
+# passed through a private temp file so the secret never appears in `ps` output.
 auth=()
-[[ -n "${X_MD_API_KEY:-}" ]] && auth=(-H "Authorization: Bearer $X_MD_API_KEY")
+if [[ -n "${X_MD_API_KEY:-}" ]]; then
+  printf 'header = "Authorization: Bearer %s"\n' "$X_MD_API_KEY" > "$auth_file"
+  auth=(-K "$auth_file")
+fi
 
 http_code="$(curl -sS -G "$endpoint" ${params[@]+"${params[@]}"} ${auth[@]+"${auth[@]}"} \
   -H "Accept: $accept" -D "$header_file" -o "$body_file" -w '%{http_code}')" || {
