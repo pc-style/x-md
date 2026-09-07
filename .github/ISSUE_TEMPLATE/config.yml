@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://x.pcstyle.dev/docs
+    about: API routes, parameters, limits, and self-hosting.
+  - name: Security report
+    url: https://github.com/pc-style/x-md/security/advisories/new
+    about: Report a vulnerability privately. Do not open a public issue.

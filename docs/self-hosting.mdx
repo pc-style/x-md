@@ -51,7 +51,7 @@ Latest and Top try FxTwitter, then configured X sessions, then an optional Firec
 
 Set `X_SEARCH_SESSIONS_JSON` to an array of account records with `id`, `authToken`, and `ct0`. For local development, use the gitignored `accounts.local.json`; see `accounts.example.json`. Keep account credentials out of version control.
 
-Each session has a **50-call allowance per 15 minutes**, shared across post and user searches. Failed attempts and page walks count. Accounts that return authentication failures are disabled in the current process; rate-limited accounts cool down for 15 minutes. Session health is per instance.
+Each session has a **40-call allowance per 15 minutes**: X's SearchTimeline cap is about 50, and the service keeps 20% headroom so accounts never hit X's own limit and its 15-minute penalty. The allowance is shared across post and user searches. Failed attempts and page walks count. Accounts that return authentication failures are disabled in the current process; rate-limited accounts cool down for 15 minutes. Session health is per instance.
 
 ## Shared counters
 

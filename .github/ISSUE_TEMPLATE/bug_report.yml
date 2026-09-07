@@ -1,0 +1,44 @@
+name: Bug report
+description: Wrong output, an error, or a route that stopped working.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only public X content is supported. Do not paste private-account data, cookies, or API keys.
+  - type: input
+    id: request
+    attributes:
+      label: Request
+      description: The exact URL or command, with the handle or query. Redact anything private.
+      placeholder: curl -sS 'https://x.pcstyle.dev/handle/status/123?full=true'
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Hosted API (x.pcstyle.dev)
+        - Self-hosted
+        - browse-x skill
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Paste the response body and the `X-Source`, `X-Cache`, and any `Retry-After` headers if you have them.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Post type (thread, quote, video, poll), time it started, whether `nocache=true` changes it.

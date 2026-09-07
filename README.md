@@ -3,7 +3,7 @@
 Turn public X posts, conversations, profiles, search results, and social graphs into compact Markdown for agents. The hosted API is available at [x.pcstyle.dev](https://x.pcstyle.dev); no X API key is required for the default provider path.
 
 > [!IMPORTANT]
-> **Status: beta.** Routes and output fields can change as upstream X providers change. The compatibility target for self-hosting is Bun 1.3.10 and the locked dependencies in this repository.
+> **Status: beta.** Routes and output fields can change as upstream X providers change. The compatibility target for self-hosting is Bun 1.4 (see `.bun-version`) and the locked dependencies in this repository.
 
 **Not affiliated with X Corp. Public lists are not available.**
 
@@ -106,7 +106,16 @@ curl -sS -G 'https://x.pcstyle.dev/api/browse' \
   --data-urlencode 'format=json'
 ```
 
-Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets. Live search is limited to 5 uncached requests per minute per IP. Each configured account allows 50 upstream calls per 15 minutes, including page walks and failed attempts; cache hits are free. Counters are per instance unless a shared KV store is configured.
+Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets.
+
+### Search limits
+
+- Live search allows **5 uncached requests per minute per IP**. Cache hits are free.
+- Account-backed searches (Photos, Videos, Users, and the account fallback for Latest and Top) have an additional allowance of **10 attempts per IP per 15-minute window**, and draw from a shared public pool sized from the healthy account capacity. All feeds, page walks, and candidate retries share it.
+- Each configured account is budgeted at **40 upstream calls per 15 minutes**: X's cap of about 50 with 20% headroom so accounts never hit X's own limit.
+- A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503`. Account-backed calls stop if the shared counter store is unavailable.
+
+Counters are per instance unless a shared KV store is configured.
 
 Browse JSON includes the resource-specific `profile`, `posts`, or `users`, plus `page`, `limit`, optional `nextCursor`, rendered `markdown`, and cache status. The verified upstream profile API does not expose pinned-post markers, and public X lists are explicitly unsupported.
 
@@ -118,9 +127,9 @@ Install the hosted skill, `browse-x`, with the [skills CLI](https://skills.sh/):
 bunx skills add pc-style/x-md -g -y --skill browse-x
 ```
 
-The skill uses `https://x.pcstyle.dev`; it does not require a local checkout or local API keys.
+The skill uses `https://x.pcstyle.dev`; it does not require a local checkout or local API keys. Its helper is a TypeScript CLI (`bun skills/browse-x/scripts/browse-x.ts …`) that needs Bun, and exits with code 3 on a rate limit after printing `Retry-After`, so agents know exactly how long to wait.
 
-The skills CLI command follows the repository's current default branch. This project has no tag or release to pin yet, so treat that command as a convenience install: review the copied `SKILL.md` and script before use. For an immutable audit, inspect commit `146d116a19c93da81a0ae741c19bc3bd74435229` and copy `skills/browse-x` from that checkout.
+The skills CLI command follows the repository's current default branch. For a reviewable, immutable copy, check out the [latest release tag](https://github.com/pc-style/x-md/releases) (`v1.0.0`) and copy `skills/browse-x` from that checkout.
 
 ## Caching and reliability
 
@@ -140,26 +149,22 @@ x.md is read-only and does not accept X credentials, post content, or account mu
 ## Self-host
 
 ```bash
-REF=146d116a19c93da81a0ae741c19bc3bd74435229
-git init x-md
-git -C x-md remote add origin https://github.com/pc-style/x-md.git
-git -C x-md fetch --depth 1 origin "$REF"
-git -C x-md checkout --detach "$REF"
+git clone --branch v1.0.0 --depth 1 https://github.com/pc-style/x-md.git
 cd x-md
 bun install --frozen-lockfile
 cp .env.local.example .env.local
 bun run dev
 ```
 
-The commit pin and lockfile make this a reviewable source snapshot. No signed image, deployment artifact, tag, or release checksum is published yet; update `REF` deliberately.
+Pin to a [release tag](https://github.com/pc-style/x-md/releases) and the lockfile for a reviewable source snapshot; `main` is the moving target. No container image or deployment artifact is published; you deploy the source.
 
 Optional environment variables:
 
 | Variable | Description |
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
-| `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 50 calls per session per 15 min |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint for shared rate-limit counters (`/search` allows 5 live, uncached lookups per minute per IP). Falls back to per-instance memory |
+| `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 40 calls per session per 15 min (X's ~50 cap with 20% headroom) |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters and durable app state. Falls back to per-instance memory |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |
@@ -185,4 +190,6 @@ src/               Vite landing page and rendered documentation
 
 Docs are MDX pages in `docs/`, built with Blume and mounted at `/docs`. Run `bun run docs:dev` for the documentation server. `bun run build` builds docs first, then the landing page into the same `dist` directory. Configure navigation and site metadata in `blume.config.ts`; `theme.css` maps the shared `src/tokens.css` palette into Blume.
 
-Account-backed searches also share a per-IP allowance per 15-minute window: 10% of healthy account capacity, capped at 20 attempts (5 with one healthy account, 10 with two, 20 with four or more). This allowance covers all feeds, page walks, and candidate retries; cached responses are free. A reduced healthy pool can lower the allowance during the window. A rejected request returns `429` with `Retry-After`. Account-backed calls stop if the shared counter store is unavailable.
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks, and PR expectations, and [SECURITY.md](SECURITY.md) for private vulnerability reports.
