@@ -82,7 +82,7 @@ for (const user of users) console.log(user.screen_name, user.name)
 The hosted service allows **5 uncached search requests per minute per IP**. Cache hits do not consume this allowance. A `429` response includes `Retry-After` in seconds.
 
 :::warning
-Account-backed searches (Photos, Videos, Users, and the account fallback for Latest and Top) have an additional allowance of **10 attempts per IP per 15-minute window**, and draw from a shared public pool sized from the healthy account capacity. All feeds, page walks, and candidate retries share it; cache hits are free. When your allowance or the shared pool is exhausted, the response is `429` with `Retry-After` set to the seconds until the window resets.
+Requests served by the live search provider (Photos, Videos, Users, and the Latest/Top fallback) have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds, page walks, and retries share it; cache hits are free. When your allowance or the shared pool is exhausted, the response is `429` with `Retry-After` set to the seconds until the window resets.
 
 When live search is unavailable, Latest and Top may return web-indexed snippets. These responses include `X-Search-Degraded: true` and a note in the Markdown. Their ordering, coverage, and text can differ from live results, and they do not paginate.
 

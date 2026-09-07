@@ -106,14 +106,13 @@ curl -sS -G 'https://x.pcstyle.dev/api/browse' \
   --data-urlencode 'format=json'
 ```
 
-Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Photos, Videos, and Users require configured X sessions; Latest and Top try FxTwitter first and can fall back to web-indexed snippets.
+Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Latest and Top try FxTwitter first, then a custom-built live search provider, and can fall back to web-indexed snippets. Photos, Videos, and Users use the live provider directly.
 
 ### Search limits
 
 - Live search allows **5 uncached requests per minute per IP**. Cache hits are free.
-- Account-backed searches (Photos, Videos, Users, and the account fallback for Latest and Top) have an additional allowance of **10 attempts per IP per 15-minute window**, and draw from a shared public pool sized from the healthy account capacity. All feeds, page walks, and candidate retries share it.
-- Each configured account is budgeted at **40 upstream calls per 15 minutes**: X's cap of about 50 with 20% headroom so accounts never hit X's own limit.
-- A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503`. Account-backed calls stop if the shared counter store is unavailable.
+- Requests served by the live provider have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds, page walks, and retries share it.
+- A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503`.
 
 Counters are per instance unless a shared KV store is configured.
 
@@ -163,7 +162,7 @@ Optional environment variables:
 | Variable | Description |
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
-| `X_SEARCH_SESSIONS_JSON` | Own X sessions for `/search` when FxTwitter is down: `[{"id":"a","authToken":"…","ct0":"…"}]`. Locally, `accounts.local.json` (see `accounts.example.json`) is read instead. Budgeted to 40 calls per session per 15 min (X's ~50 cap with 20% headroom) |
+| `X_SEARCH_SESSIONS_JSON` | Configuration for the live search provider (see `lib/xsearch.ts` and `accounts.example.json`). Locally, the gitignored `accounts.local.json` is read instead. Without it, Photos, Videos, and Users return `503` |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters and durable app state. Falls back to per-instance memory |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |

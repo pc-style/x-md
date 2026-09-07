@@ -10,7 +10,7 @@ First tagged release. Everything below is live on the hosted API.
 - Browse: profiles, followers, following, and search (`latest`, `top`, `photos`, `videos`, `users`) with cursor and bounded page pagination.
 - Chat previews: Discord, Telegram, and Slack bots get Open Graph embed HTML and a `/oembed` document.
 - `browse-x` agent skill with a cross-platform TypeScript CLI (`bun skills/browse-x/scripts/browse-x.ts`). It prints `Retry-After` and exits with code 3 on a rate limit so agents can back off precisely.
-- Search capacity model: each account is budgeted at 40 calls per 15 minutes (X's ~50 cap with 20% headroom). Anonymous callers keep a fixed 10 account-backed attempts per IP per 15 minutes and draw from a shared public pool; rejected requests are refunded so capacity that frees up later in the window stays usable. `429` responses always carry `Retry-After`.
+- Custom-built live search provider behind Photos, Videos, Users, and the Latest/Top fallback, with a fixed allowance of 10 requests per IP per 15 minutes drawn from a shared public pool. Rejected requests are refunded so capacity that frees up later in the window stays usable. `429` responses always carry `Retry-After`.
 - People search fix: patched `@the-convocation/twitter-scraper` so `users` results read `name`, `screen_name`, avatar, and join date from X's newer `core`/`avatar` fields instead of returning `@unknown`.
 - Shared Upstash/Vercel KV counters and state, with an in-memory fallback for local development.
 - Vercel Web Analytics on the landing page, docs, and admin page.
