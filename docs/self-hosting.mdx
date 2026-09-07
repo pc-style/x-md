@@ -45,13 +45,13 @@ The build generates Blume docs, then the Vite landing page into `dist`. The incl
 
 </FileTree>
 
-## Search sessions
+## Live search provider
 
-Latest and Top try FxTwitter, then configured X sessions, then an optional Firecrawl web fallback. Photos, Videos, and Users use configured X sessions directly.
+Latest and Top try FxTwitter, then the custom-built live search provider, then an optional Firecrawl web fallback. Photos, Videos, and Users use the live provider directly and return `503` when it is not configured.
 
-Set `X_SEARCH_SESSIONS_JSON` to an array of account records with `id`, `authToken`, and `ct0`. For local development, use the gitignored `accounts.local.json`; see `accounts.example.json`. Keep account credentials out of version control.
+The provider is configured through `X_SEARCH_SESSIONS_JSON`; the shape is documented in `lib/xsearch.ts` and `accounts.example.json`. For local development, use the gitignored `accounts.local.json`. Treat its contents as secrets and keep them out of version control.
 
-Each session has a **50-call allowance per 15 minutes**, shared across post and user searches. Failed attempts and page walks count. Accounts that return authentication failures are disabled in the current process; rate-limited accounts cool down for 15 minutes. Session health is per instance.
+The provider budgets its own upstream capacity per 15-minute window, shared across post and user searches. Failed attempts and page walks count. Unhealthy entries are taken out of rotation in the current process and retried later; health is per instance.
 
 ## Shared counters
 
@@ -60,7 +60,7 @@ Attach Upstash Redis through the Vercel marketplace or CLI. The service automati
 - `KV_REST_API_URL` and `KV_REST_API_TOKEN`
 - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
 
-These share IP and account counters across instances. Without them, counters fall back to process memory. Account-budget and per-IP account-allowance checks fail closed when the counter store is unavailable, protecting the shared pool. The general request limiter still fails open. Redeploy after connecting environment variables.
+These share per-IP and provider counters across instances. Without them, counters fall back to process memory. Live-provider checks fail closed when the counter store is unavailable, protecting the shared pool; the general request limiter still fails open. Redeploy after connecting environment variables.
 
 ## Optional configuration
 

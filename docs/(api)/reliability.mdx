@@ -26,7 +26,7 @@ Each IP can make **5 uncached search requests per minute**. Cached responses are
 
 `limit` defaults to 20 and is capped at 20. Smaller limits reduce response size but still count as one uncached request.
 
-Account-backed searches have an additional per-IP allowance per 15-minute window: **10% of healthy account capacity, capped at 20 attempts** (5 with one healthy account, 10 with two, 20 with four or more). All feeds, page walks, and candidate retries share it; cache hits are free. If account health deteriorates, the allowance can shrink during the window. A `429` includes `Retry-After`.
+Requests served by the live search provider (Photos, Videos, Users, and the Latest/Top fallback) have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds share it, and each page of a page walk counts as one request; upstream retries inside a single request are not charged again. Cache hits are free. When your allowance or the shared pool is exhausted, the response is `429` with `Retry-After` set to the seconds until the window resets; an upstream outage is `503` with `Retry-After: 30`. Agents should wait that long before retrying rather than polling.
 
 ## Caching
 

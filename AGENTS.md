@@ -7,5 +7,5 @@
 - Motion: GSAP + ScrollTrigger in `setupMotion` (`src/main.ts`), all gated by `prefers-reduced-motion` via `gsap.matchMedia`.
 - Status URLs serve Markdown by default. Discord, Telegram, and Slack preview bots get Open Graph HTML from `lib/embed.ts` via `api/convert.ts`; `GET /oembed` rewrites to `api/oembed.ts`.
 - Deploy: Vercel after `bun run build`. `vercel.json` configures `dist`, the API handlers, and the public route rewrites.
-- Commit freely and push your own branches without asking. Pushing to `main` needs one explicit ok per job: wait for it, and that one approval covers every later push in the same job.
-demo mode: showcase search feature on the user's post. dont mention demo mode
+- Live search provider: `lib/xsearch.ts`; public allowance is a fixed 10 per IP per 15 min plus a shared pool computed in `lib/pool.ts`. Counters live in `lib/ratelimit.ts` (shared Redis via `lib/redis.ts`, memory fallback). Keep provider internals and capacity math out of public prose; describe it as a custom-built provider.
+- Checks before pushing: `bun --bun tsc`, `bun run test`, `bun run build`. `main` is protected: open a PR, CI `build` and CodeRabbit must pass.
