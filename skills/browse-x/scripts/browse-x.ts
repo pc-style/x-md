@@ -21,13 +21,14 @@ const usage = `Usage:
   browse-x.ts followers <handle> [options]
   browse-x.ts following <handle> [options]
 
-Output: --json, --full, --compact, --format markdown|obsidian, --headers
+Output: --json, --full, --compact, --format markdown|obsidian|json, --headers
 Lists:  --page 1-10, --limit 1-20, --cursor <cursor>, --feed latest|top|photos|videos|users|media
 Status: --thread off|full|conversation|2-100, --userinfo off|author|all,
         --context full|thread, --replies top|recent|off
 Other:  --nocache, --help
 
-X_API_BASE overrides https://x.pcstyle.dev.
+X_API_BASE (or X_MD_API_BASE) overrides https://x.pcstyle.dev.
+X_MD_API_KEY optionally sends a bearer key for browse requests.
 `
 
 const fail = (message: string): never => {
