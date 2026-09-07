@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { clientIp, rateLimit, resetRateLimits } from './ratelimit.js'
+import { clientIp, peekRateLimit, rateLimit, resetRateLimits } from './ratelimit.js'
 
 beforeEach(() => {
   resetRateLimits()
@@ -47,7 +47,23 @@ describe('rateLimit (redis store)', () => {
     const body = JSON.parse(init.body)
     expect(body[0][0]).toBe('INCR')
     expect(body[0][1]).toMatch(/^rl:k:\d+$/)
-    expect(body[1]).toEqual(['EXPIRE', body[0][1], 61, 'NX'])
+    // Counters are kept for one extra window so peekRateLimit can read the previous one.
+    expect(body[1]).toEqual(['EXPIRE', body[0][1], 121, 'NX'])
+  })
+
+  test('refunds a rejected hit when asked and can peek both windows', async () => {
+    vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+    vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ result: 5 }, { result: 1 }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ result: 4 }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ result: ['7', null, '3', '0'] }]), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    expect((await rateLimit('k', 4, 60, true, true)).allowed).toBe(false)
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)[0][0]).toBe('DECR')
+    const peek = await peekRateLimit(['a', 'b'], 60)
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body)[0][0]).toBe('MGET')
+    expect(peek).toEqual({ current: [7, 0], previous: [3, 0] })
   })
 
   test('fails open when the store errors', async () => {

@@ -16,6 +16,10 @@
       "destination": "/api/oembed"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/search",
       "destination": "/api/browse?resource=search"
     },

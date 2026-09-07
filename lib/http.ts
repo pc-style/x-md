@@ -46,7 +46,17 @@ export function requestOrigin(req: OriginRequest, fallback = 'https://x.pcstyle.
 export function setCorsHeaders(res: HeaderWriter, methods = 'GET, HEAD, OPTIONS'): void {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', methods)
-  res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type, Authorization, X-Api-Key')
+  res.setHeader('Access-Control-Expose-Headers', 'Retry-After, X-Api-Key-Status')
+}
+
+type HeaderBag = Record<string, string | string[] | undefined>
+
+/** The API secret a caller presented, from `Authorization: Bearer` or `X-Api-Key`. */
+export function presentedApiKey(headers: HeaderBag): string | undefined {
+  const auth = headerValue(headers['authorization'])
+  if (auth && /^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim() || undefined
+  return headerValue(headers['x-api-key'])?.trim() || undefined
 }
 
 export function wantsJson(format: string | null | undefined, accept: string): boolean {

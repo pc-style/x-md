@@ -1,8 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { resolveApiKey, touchApiKey } from '../lib/apikeys.js'
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
-import { setCorsHeaders, wantsJson } from '../lib/http.js'
+import { presentedApiKey, setCorsHeaders, wantsJson } from '../lib/http.js'
 import { clientIp } from '../lib/ratelimit.js'
+import type { SearchCaller } from '../lib/xsearch.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res)
@@ -12,8 +14,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
+
+  const resolved = await resolveApiKey(presentedApiKey(req.headers))
+  if (resolved === 'invalid') {
+    res.setHeader('X-Api-Key-Status', 'invalid')
+    return res.status(401).json({ error: 'Invalid or disabled API key.', code: 'invalid_key' })
+  }
+  const caller: SearchCaller = resolved
+    ? { kind: 'key', id: resolved.id, limit: resolved.limitPer15m }
+    : { kind: 'public', ip: clientIp(req.headers) }
+  res.setHeader('X-Api-Key-Status', resolved ? 'valid' : 'anonymous')
+  if (resolved) void touchApiKey(resolved)
+
   try {
-    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: clientIp(req.headers) })
+    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: clientIp(req.headers), caller })
     const response = browseResponse(result, wantsJson(param('format'), String(req.headers.accept ?? '')))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
     return req.method === 'HEAD' ? res.status(response.status).end() : res.status(response.status).send(response.body)

@@ -2,8 +2,13 @@ import type { Connect } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
 import { browse, browseResponse, type BrowseResource } from '../lib/browse'
+import { adminAuthorized, adminConfigured } from '../lib/admin'
+import { handleKeysApi, handlePoolApi } from '../lib/adminApi'
+import { resolveApiKey, touchApiKey } from '../lib/apikeys'
 import { ConvertError as BrowseError } from '../lib/errors'
-import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
+import { presentedApiKey, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
+import { clientIp } from '../lib/ratelimit'
+import type { SearchCaller } from '../lib/xsearch'
 import {
   acceptPrefersHtml,
   ConvertError,
@@ -133,20 +138,76 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   if (!resource) return false
   setCorsHeaders(res)
   if (guardMethod(req, res)) return true
+  const resolved = await resolveApiKey(presentedApiKey(req.headers))
+  if (resolved === 'invalid') {
+    res.setHeader('X-Api-Key-Status', 'invalid')
+    respondJson(res, 401, { error: 'Invalid or disabled API key.', code: 'invalid_key' })
+    return true
+  }
+  const caller: SearchCaller = resolved
+    ? { kind: 'key', id: resolved.id, limit: resolved.limitPer15m }
+    : { kind: 'public', ip: clientIp(req.headers) }
+  res.setHeader('X-Api-Key-Status', resolved ? 'valid' : 'anonymous')
+  if (resolved) void touchApiKey(resolved)
   try {
-    const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache') })
+    const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: clientIp(req.headers), caller })
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
     res.statusCode = response.status
     for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)
     res.end(req.method === 'HEAD' ? undefined : response.body)
   } catch (error) {
     if (error instanceof BrowseError) {
+      if (error.status === 429 && error.retryAfter) res.setHeader('Retry-After', String(error.retryAfter))
       respondJson(res, error.status, { error: error.message, code: error.code })
     } else {
       console.error(error)
       respondJson(res, 500, { error: 'Internal browse error' })
     }
   }
+  return true
+}
+
+function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c) => chunks.push(Buffer.from(c)))
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8')
+      try {
+        resolve(raw ? JSON.parse(raw) : {})
+      } catch {
+        resolve({})
+      }
+    })
+    req.on('error', () => resolve({}))
+  })
+}
+
+async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const path = url.pathname.replace(/\/$/, '')
+  if (path !== '/api/admin/keys' && path !== '/api/admin/pool') return false
+  setCorsHeaders(res, 'GET, POST, PATCH, DELETE, OPTIONS')
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.end()
+    return true
+  }
+  if (!adminConfigured()) {
+    respondJson(res, 503, { error: 'Admin is not configured (set X_MD_ADMIN_TOKEN).' })
+    return true
+  }
+  if (!adminAuthorized(req.headers)) {
+    respondJson(res, 401, { error: 'Unauthorized' })
+    return true
+  }
+  const body = req.method === 'GET' ? {} : await readBody(req)
+  if (path === '/api/admin/pool') {
+    const { status, body: payload } = await handlePoolApi(req.method ?? 'GET', body)
+    respondJson(res, status, payload)
+    return true
+  }
+  const { status, body: payload } = await handleKeysApi(req.method ?? 'GET', body)
+  respondJson(res, status, payload)
   return true
 }
 
@@ -160,6 +221,7 @@ function installConvertMiddleware(middlewares: Connect.Server) {
         }
         const url = new URL(req.url, 'http://localhost')
         const handled =
+          (await handleAdmin(url, req, res)) ||
           (await handleOembed(url, req, res)) ||
           (await handleConvert(url, req, res)) ||
           (await handleBrowse(url, req, res))

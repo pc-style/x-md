@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>x.md — API keys</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fbfbfa; --panel: #fff; --ink: #16161d; --muted: #6b6b76;
+        --line: #e6e6e2; --accent: #1d9bf0; --danger: #d33; --ok: #178a4c;
+        --radius: 10px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #0f0f12; --panel: #17171c; --ink: #ececf1; --muted: #9a9aa6; --line: #262630; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+      main { max-width: 940px; margin: 0 auto; padding: 32px 20px 80px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: var(--muted); margin: 0 0 24px; }
+      .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 20px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+      .stat { border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+      .stat b { display: block; font-size: 22px; }
+      .stat span { color: var(--muted); font-size: 12px; }
+      label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+      input, button { font: inherit; }
+      input { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); width: 100%; }
+      button { padding: 8px 14px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+      button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+      button.danger { background: transparent; color: var(--danger); border: 1px solid var(--line); }
+      button:disabled { opacity: .5; cursor: default; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+      th { font-size: 12px; color: var(--muted); font-weight: 600; }
+      td.num input { width: 90px; }
+      .row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+      .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+      .pill.off { color: var(--danger); }
+      .pill.on { color: var(--ok); }
+      .toolbar { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+      .toolbar > div { flex: 1; min-width: 140px; }
+      .secret { background: var(--bg); border: 1px dashed var(--accent); border-radius: 8px; padding: 12px; margin-top: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; word-break: break-all; }
+      .msg { margin-top: 10px; font-size: 13px; }
+      .msg.err { color: var(--danger); }
+      .muted { color: var(--muted); }
+      #login { max-width: 420px; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>x.md — API keys</h1>
+      <p class="sub">Private admin. Keys get an assigned search allowance per 15 minutes; whatever they are not predicted to use flows to the public pool.</p>
+
+      <section id="login" class="panel">
+        <label for="token">Admin token</label>
+        <input id="token" type="password" placeholder="X_MD_ADMIN_TOKEN" autocomplete="off" />
+        <p class="msg muted">Stored only in this tab's session storage.</p>
+        <button id="unlock">Unlock</button>
+        <p id="loginMsg" class="msg err" hidden></p>
+      </section>
+
+      <section id="app" hidden>
+        <div class="panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <strong>Pool</strong>
+            <button class="ghost" id="refresh">Refresh</button>
+          </div>
+          <div class="grid" id="pool"></div>
+          <p class="msg muted" id="poolNote"></p>
+          <div class="toolbar" style="margin-top:14px">
+            <div style="max-width:220px">
+              <label for="idleMinutes">Release idle key reservations after (minutes)</label>
+              <input id="idleMinutes" type="number" min="15" max="1440" />
+            </div>
+            <button class="ghost" id="saveIdle">Save</button>
+            <span class="muted" style="flex:2;min-width:220px;font-size:12px">A key that has made no request for this long stops holding its allowance back from the public until it is used again.</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <strong>Create key</strong>
+          <div class="toolbar" style="margin-top:12px">
+            <div><label for="newLabel">Label</label><input id="newLabel" placeholder="e.g. alice" /></div>
+            <div><label for="newLimit">Limit / 15 min</label><input id="newLimit" type="number" min="1" /></div>
+            <button id="create">Create</button>
+          </div>
+          <div id="secretBox" hidden>
+            <p class="msg">Copy this secret now — it is shown only once:</p>
+            <div class="secret" id="secret"></div>
+          </div>
+          <p id="createMsg" class="msg err" hidden></p>
+        </div>
+
+        <div class="panel">
+          <strong>Keys</strong>
+          <table style="margin-top:12px">
+            <thead><tr><th>Label</th><th>ID</th><th>Limit / 15m</th><th>This window</th><th>Status</th><th>Last used</th><th></th></tr></thead>
+            <tbody id="keys"></tbody>
+          </table>
+          <p id="keysMsg" class="msg muted"></p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      const TOKEN_KEY = 'xmd_admin_token'
+      let token = sessionStorage.getItem(TOKEN_KEY) || ''
+
+      async function api(path, method = 'GET', body) {
+        const res = await fetch(path, {
+          method,
+          headers: { Authorization: 'Bearer ' + token, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+          body: body ? JSON.stringify(body) : undefined,
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status))
+        return data
+      }
+
+      function fmtTime(ts) { return ts ? new Date(ts).toLocaleString() : '—' }
+
+      let shares = {}
+
+      function mmss(sec) { return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}` }
+
+      function renderPool(p) {
+        const s = p.share || {}
+        shares = Object.fromEntries((s.keys || []).map((k) => [k.id, k]))
+        const stats = [
+          ['Total pool / 15m', p.poolPer15m],
+          ['Public cap right now', s.publicCap],
+          ['Public used this window', s.publicUsed],
+          ['Keys used this window', s.keysUsed],
+          ['Reserved for keys now', s.keysReserved],
+          ['Window resets in', s.windowRemainingSec == null ? '—' : mmss(s.windowRemainingSec)],
+          ['Active accounts', `${p.healthyAccounts}/${p.activeAccounts}`],
+          ['Per account / 15m', p.perAccountBudget],
+          ['Public per IP / 15m', p.publicIpBudget],
+          ['Default key / 15m', p.defaultKeyLimit],
+          ['Assigned to keys', p.allocatedToKeysPer15m],
+          ['Active keys', p.activeKeyCount],
+        ]
+        $('pool').innerHTML = stats.map(([k, v]) => `<div class="stat"><b>${v ?? '—'}</b><span>${k}</span></div>`).join('')
+        const over = p.allocatedToKeysPer15m > p.poolPer15m
+        $('poolNote').textContent =
+          `X cap ${p.xCapPerAccount}/account with ${Math.round(p.headroom * 100)}% headroom → ${p.perAccountBudget} usable. ` +
+          `Public cap = pool − keys used − keys reserved; reservations decay as the window runs out and vanish for idle or disabled keys. ` +
+          (over ? `⚠ Keys are assigned ${p.allocatedToKeysPer15m} but the pool is ${p.poolPer15m}: with every key active the public gets nothing. ` : '') +
+          (p.durableStore ? 'Durable KV store connected.' : '⚠ In-memory store: keys reset on redeploy (set KV_REST_API_URL/TOKEN).')
+        if (s.idleReleaseMinutes && document.activeElement !== $('idleMinutes')) $('idleMinutes').value = s.idleReleaseMinutes
+      }
+
+      function shareCell(k) {
+        const s = shares[k.id]
+        if (!s) return '<span class="muted">—</span>'
+        const state = k.disabled ? 'off' : s.idle ? 'idle · released' : `holding ${s.reserved}`
+        return `<span title="used / limit, then what is still held back from the public">${s.used}/${s.limit}</span> <span class="muted">· ${state}</span>`
+      }
+
+      function renderKeys(keys, defaultLimit) {
+        if (!$('newLimit').value) $('newLimit').value = defaultLimit
+        const tb = $('keys')
+        if (!keys.length) { tb.innerHTML = `<tr><td colspan="7" class="muted">No keys yet.</td></tr>`; return }
+        tb.innerHTML = ''
+        for (const k of keys) {
+          const tr = document.createElement('tr')
+          tr.innerHTML = `
+            <td>${escapeHtml(k.label)}</td>
+            <td><code>${k.id}</code></td>
+            <td class="num"><input type="number" min="1" value="${k.limitPer15m}" /></td>
+            <td>${shareCell(k)}</td>
+            <td><span class="pill ${k.disabled ? 'off' : 'on'}">${k.disabled ? 'disabled' : 'active'}</span></td>
+            <td class="muted">${fmtTime(k.lastUsedAt)}</td>
+            <td><div class="row-actions">
+              <button class="ghost save">Save</button>
+              <button class="ghost toggle">${k.disabled ? 'Enable' : 'Disable'}</button>
+              <button class="danger del">Delete</button>
+            </div></td>`
+          tr.querySelector('.save').onclick = () => act(() => api('/api/admin/keys', 'PATCH', { id: k.id, limitPer15m: Number(tr.querySelector('input').value) }))
+          tr.querySelector('.toggle').onclick = () => act(() => api('/api/admin/keys', 'PATCH', { id: k.id, disabled: !k.disabled }))
+          tr.querySelector('.del').onclick = () => { if (confirm(`Delete key "${k.label}"? Requests using it will fail immediately.`)) act(() => api('/api/admin/keys', 'DELETE', { id: k.id })) }
+          tb.appendChild(tr)
+        }
+      }
+
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+
+      async function refresh() {
+        try {
+          const [pool, keys] = await Promise.all([api('/api/admin/pool'), api('/api/admin/keys')])
+          renderPool(pool)
+          renderKeys(keys.keys, keys.defaultLimit)
+          $('keysMsg').textContent = ''
+        } catch (e) {
+          if (String(e.message).includes('Unauthorized')) return lock('Wrong token.')
+          $('keysMsg').textContent = e.message
+        }
+      }
+
+      async function act(fn) {
+        try { await fn(); await refresh() } catch (e) { $('keysMsg').textContent = e.message }
+      }
+
+      function unlock() {
+        token = $('token').value.trim()
+        if (!token) return
+        sessionStorage.setItem(TOKEN_KEY, token)
+        $('login').hidden = true
+        $('app').hidden = false
+        refresh()
+      }
+
+      function lock(msg) {
+        sessionStorage.removeItem(TOKEN_KEY); token = ''
+        $('app').hidden = true; $('login').hidden = false
+        if (msg) { $('loginMsg').textContent = msg; $('loginMsg').hidden = false }
+      }
+
+      $('unlock').onclick = unlock
+      $('token').addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock() })
+      $('refresh').onclick = refresh
+      $('saveIdle').onclick = () => act(() => api('/api/admin/pool', 'PATCH', { idleReleaseMinutes: Number($('idleMinutes').value) }))
+      $('create').onclick = async () => {
+        $('createMsg').hidden = true; $('secretBox').hidden = true
+        try {
+          const out = await api('/api/admin/keys', 'POST', { label: $('newLabel').value, limitPer15m: Number($('newLimit').value) || undefined })
+          $('secret').textContent = out.secret
+          $('secretBox').hidden = false
+          $('newLabel').value = ''
+          await refresh()
+        } catch (e) { $('createMsg').textContent = e.message; $('createMsg').hidden = false }
+      }
+
+      if (token) { $('login').hidden = true; $('app').hidden = false; refresh() }
+    </script>
+  </body>
+</html>

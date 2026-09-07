@@ -19,7 +19,8 @@ import {
 } from '@the-convocation/twitter-scraper'
 import { ConvertError } from './errors.js'
 import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
-import { rateLimit } from './ratelimit.js'
+import { KEY_COUNTER, PUBLIC_COUNTER, poolSnapshot, resetPool, type PoolSnapshot } from './pool.js'
+import { rateLimit, refundRateLimit } from './ratelimit.js'
 
 export interface XSession {
   id: string
@@ -38,12 +39,32 @@ const RATE_LIMIT_COOLDOWN_MS = 15 * 60_000
 const TRANSIENT_COOLDOWN_MS = 30_000
 const REQUEST_TIMEOUT_MS = 12_000
 /**
- * Maximum upstream calls per account in a 15-minute window. X allows about 50
- * SearchTimeline requests per account per window; staying under it means we
- * cool down on our own terms instead of eating X's 429 and its 15-minute penalty.
+ * X's authenticated SearchTimeline endpoint allows ~50 requests per account per
+ * 15-minute window. We hold back a safety headroom below that ceiling so we cool
+ * down on our own terms instead of eating X's 429 and its 15-minute penalty
+ * (repeatedly hitting the ceiling is what risks an account lock).
  */
-const BUDGET_PER_SESSION = 50
+const X_SEARCH_CAP_PER_WINDOW = 50
+/** Fraction of X's cap we keep in reserve (0.2 = 20% headroom → 40 usable). */
+const SEARCH_HEADROOM = 0.2
+const BUDGET_PER_SESSION = Math.floor(X_SEARCH_CAP_PER_WINDOW * (1 - SEARCH_HEADROOM))
 const BUDGET_WINDOW_SEC = 15 * 60
+/**
+ * Fixed per-IP allowance for anonymous callers, deliberately pinned to the value
+ * the two-account pool produced (floor(2 * 50 * 0.1) = 10) so public limits do
+ * not change as we add accounts. New capacity is reserved for API-key callers.
+ */
+const PUBLIC_IP_BUDGET = 10
+
+/** Who is making a search, for quota accounting. */
+export type SearchCaller =
+  | { kind: 'public'; ip?: string }
+  | { kind: 'key'; id: string; limit: number }
+
+function normalizeCaller(caller?: SearchCaller | string): SearchCaller | undefined {
+  if (caller === undefined) return undefined
+  return typeof caller === 'string' ? { kind: 'public', ip: caller } : caller
+}
 
 let states: SessionState[] | undefined
 
@@ -85,6 +106,7 @@ function sessionStates(): SessionState[] {
 /** Test hook: replace the loaded sessions and reset health state. */
 export function resetXSessions(sessions?: XSession[]): void {
   states = sessions?.map((session) => ({ session, coolUntil: 0 }))
+  resetPool()
 }
 
 export function xsearchConfigured(): boolean {
@@ -162,11 +184,11 @@ function classify(error: unknown): Failure {
  * Search X with the healthiest own account. Tries each available session at
  * most once; a rate limit or auth failure takes that session out of rotation.
  */
-export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20, ip?: string): Promise<FxListResponse<FxTweet>> {
+export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20, caller?: SearchCaller | string): Promise<FxListResponse<FxTweet>> {
   return withSearchSession(async (scraper) => {
     const page = await scraper.fetchSearchTweets(queryText, Math.min(count, 20), feedToMode(feed), cursor)
     return { results: page.tweets.map(tweetToFx), cursor: { bottom: page.next, top: page.previous } }
-  }, ip)
+  }, normalizeCaller(caller))
 }
 
 export function profileToFx(profile: Profile): FxAuthor {
@@ -180,18 +202,79 @@ export function profileToFx(profile: Profile): FxAuthor {
   }
 }
 
-export function searchXUsers(queryText: string, cursor?: string, count = 20, ip?: string): Promise<FxListResponse<FxAuthor>> {
+export function searchXUsers(queryText: string, cursor?: string, count = 20, caller?: SearchCaller | string): Promise<FxListResponse<FxAuthor>> {
   return withSearchSession(async (scraper) => {
     const page = await scraper.fetchSearchProfiles(queryText, Math.min(count, 20), cursor)
     return { results: page.profiles.map(profileToFx), cursor: { bottom: page.next, top: page.previous } }
-  }, ip)
+  }, normalizeCaller(caller))
 }
 
-export function searchIpBudget(healthyAccounts: number): number {
-  return Math.max(1, Math.min(20, Math.floor(healthyAccounts * BUDGET_PER_SESSION * 0.1)))
+/** Accounts configured (not permanently disabled), i.e. the capacity we can lean on. */
+function activeAccountCount(): number {
+  return sessionStates().filter((state) => !state.disabled).length
 }
 
-async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ip?: string): Promise<T> {
+/** Accounts ready right now (not disabled and not cooling down). */
+export function healthyAccountCount(): number {
+  const now = Date.now()
+  return sessionStates().filter((state) => !state.disabled && state.coolUntil <= now).length
+}
+
+/** Total account-backed search calls available across the pool per 15-minute window. */
+export function poolCapacityPer15m(): number {
+  return activeAccountCount() * BUDGET_PER_SESSION
+}
+
+/** Suggested default per-key allowance: about one-third of the total pool. */
+export function defaultKeyLimitPer15m(): number {
+  return Math.max(1, Math.floor(poolCapacityPer15m() / 3))
+}
+
+/** Live split of the pool between key reservations and the public (see `pool.ts`). */
+export function searchPoolSnapshot(): Promise<PoolSnapshot> {
+  return poolSnapshot(poolCapacityPer15m(), BUDGET_WINDOW_SEC)
+}
+
+/**
+ * Capacity the public may draw right now. If the snapshot cannot be computed
+ * (store outage) we fall back to the full pool rather than blocking everyone;
+ * the per-session budgets still protect the accounts.
+ */
+async function publicCapNow(): Promise<number> {
+  try {
+    return (await searchPoolSnapshot()).publicCap
+  } catch (error) {
+    console.warn(`[xsearch] pool snapshot failed, using full capacity for public: ${String(error).slice(0, 120)}`)
+    return poolCapacityPer15m()
+  }
+}
+
+/** Snapshot of the rate model for the admin dashboard. */
+export function searchRateModel(): {
+  xCapPerAccount: number
+  headroom: number
+  perAccountBudget: number
+  windowSec: number
+  publicIpBudget: number
+  activeAccounts: number
+  healthyAccounts: number
+  poolPer15m: number
+  defaultKeyLimit: number
+} {
+  return {
+    xCapPerAccount: X_SEARCH_CAP_PER_WINDOW,
+    headroom: SEARCH_HEADROOM,
+    perAccountBudget: BUDGET_PER_SESSION,
+    windowSec: BUDGET_WINDOW_SEC,
+    publicIpBudget: PUBLIC_IP_BUDGET,
+    activeAccounts: activeAccountCount(),
+    healthyAccounts: healthyAccountCount(),
+    poolPer15m: poolCapacityPer15m(),
+    defaultKeyLimit: defaultKeyLimitPer15m(),
+  }
+}
+
+async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, caller?: SearchCaller): Promise<T> {
   const now = Date.now()
   const candidates = sessionStates()
     .filter((state) => !state.disabled && state.coolUntil <= now)
@@ -200,16 +283,30 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ip
     throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
+  // Charge the caller once per search (numbered page walks call this once per page).
+  // Checked before any account budget so rejected callers cannot consume account quota.
+  if (caller?.kind === 'public' && caller.ip) {
+    const ipKey = `xsearch:ip:${caller.ip}`
+    const fair = await rateLimit(ipKey, PUBLIC_IP_BUDGET, BUDGET_WINDOW_SEC, true)
+    if (!fair.allowed) {
+      throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window, or use an API key.', 'rate_limited', fair.retryAfter)
+    }
+    // Shared public cap: whatever the pool has left after key usage and reservations.
+    // Refund both counters on reject so retries do not burn capacity that keys release later in the window.
+    const shared = await rateLimit(PUBLIC_COUNTER, await publicCapNow(), BUDGET_WINDOW_SEC, true, true)
+    if (!shared.allowed) {
+      await refundRateLimit(ipKey, BUDGET_WINDOW_SEC)
+      throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets, or use an API key.', 'rate_limited', shared.retryAfter)
+    }
+  } else if (caller?.kind === 'key') {
+    const fair = await rateLimit(KEY_COUNTER(caller.id), caller.limit, BUDGET_WINDOW_SEC, true)
+    if (!fair.allowed) {
+      throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter)
+    }
+  }
+
   let last: Failure | undefined
   for (const state of candidates) {
-    // Charge every candidate attempt, including retries and numbered page walks.
-    // Check fairness first so rejected callers cannot consume account quota.
-    if (ip) {
-      const fair = await rateLimit(`xsearch:ip:${ip}`, searchIpBudget(candidates.length), BUDGET_WINDOW_SEC, true)
-      if (!fair.allowed) {
-        throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter)
-      }
-    }
     const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, BUDGET_WINDOW_SEC, true)
     if (!budget.allowed) {
       console.warn(`[xsearch] session ${state.session.id} budget spent (${BUDGET_PER_SESSION}/${BUDGET_WINDOW_SEC}s), resets in ${budget.retryAfter}s`)
