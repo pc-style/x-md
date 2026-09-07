@@ -68,7 +68,7 @@ PostHog is optional. Connect its Vercel Marketplace integration to the productio
 
 Production API functions send a `request_completed` event with the route category, method, HTTP status, duration in milliseconds, application-cache result, key-validation status, public/key access, and degraded-search flag. Use these for request volume by endpoint, error and `429` rates, latency percentiles, and application-cache hit rate. Delivery runs in the background with a three-second timeout; failures do not change API responses.
 
-Events contain no search text, URLs, client IPs, bearer tokens, or key labels. Verified keys use a pseudonymous ID derived from their internal ID and the PostHog project token; rotating that token changes the pseudonyms. Public requests have a new ID per event, so distinct-user counts and anonymous retention are not meaningful. Person profiles, geolocation enrichment, and session replay are not enabled by this instrumentation.
+`request_completed` events contain no search text, URLs, client IPs, bearer tokens, or key labels. Verified keys use a pseudonymous ID derived from their internal ID and the PostHog project token; rotating that token changes the pseudonyms. Public requests have a new ID per event, so distinct-user counts and anonymous retention are not meaningful. Person profiles, geolocation enrichment, and session replay are not enabled by this instrumentation.
 
 These statistics cover completed function responses, not requests served by Vercel's CDN, aborted requests, or platform errors before the handler runs. They are not billing-grade totals. Local development, previews, admin routes, and CORS preflights are excluded. Redis remains the source of truth for live limits and capacity; PostHog is only for historical analysis.
 
@@ -79,6 +79,10 @@ Set `VITE_POSTHOG_KEY` to the project token and `VITE_POSTHOG_HOST` to its inges
 The landing page sends pageviews, page leaves, `conversion_requested`, and `skill_install_command_copied`. Anonymous browser IDs persist in local storage to measure returning visitors; session and browser/device properties support Web Analytics. No person profiles are created. Event URLs contain only the landing-page origin and `/`, without query strings or fragments. Referrers, form contents, automatic clicks, errors, and recordings are excluded; traffic-source attribution and geographic reports are therefore limited. The proxy receives the browser's source IP, while event properties disable IP-based enrichment.
 
 This covers the landing page only, not docs, converted posts, or admin. API events remain separate from browser visits. Existing Vercel Web Analytics on the public landing page is unchanged. The admin dashboard includes no analytics scripts.
+
+## Optional public-result archive
+
+A separate, disabled-by-default content archive can send structured public results to PostHog for later dataset export. It has different privacy and retention implications from request metrics. Read the [archive policy and v1 contract](/docs/archive) before enabling it.
 
 ## Optional configuration
 

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
+import { captureArchive } from '../lib/archive.js'
 import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
@@ -42,6 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
     }
+
+    if (status === 200) captureArchive(req, res, { ...result, resource: 'tweet', degraded: result.source !== 'fxtwitter' })
 
     if (req.method === 'HEAD') {
       return res.status(status).end()

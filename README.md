@@ -141,6 +141,7 @@ Successful responses are cached for about one hour by default (`CACHE_TTL_SECOND
 - The hosted service receives the public X URL, handle, or search query you request and sends it to FxTwitter or X's public syndication service. Successful results are cached for about one hour and can be served to other callers requesting the same public resource.
 - Optional Context.dev and Firecrawl fallbacks are disabled unless a self-hosted operator configures their API keys. When enabled, the public X URL is sent to that provider.
 - The hosted `browse-x` skill sends its arguments to `x.pcstyle.dev`. Do not put secrets or private-account information in URLs or search terms.
+- Optional, disabled-by-default PostHog dataset capture archives allowlisted structured public results, not just metrics. See the [archive/privacy policy](docs/archive.mdx) for actor pseudonyms, opt-out controls, retention duties, and delivery limits.
 - Media links point to upstream X/FxTwitter CDNs. Fetching those links is outside x.md's cache and privacy boundary.
 
 x.md is read-only and does not accept X credentials, post content, or account mutations. It is the canonical implementation, has no successor, and is not affiliated with X Corp.

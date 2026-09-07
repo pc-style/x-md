@@ -1,0 +1,106 @@
+[
+  {
+    "api_key": "phc_fixture_not_a_real_token",
+    "event": "xmd_data_captured",
+    "uuid": "4af73e25-a9bd-4721-bb19-93f6695b7b8d",
+    "distinct_id": "anonymous:00000000-0000-4000-8000-000000000002",
+    "timestamp": "2026-09-07T00:00:00.000Z",
+    "properties": {
+      "archive_schema_version": 1,
+      "request_id": "00000000-0000-4000-8000-000000000002",
+      "captured_at": "2026-09-07T00:00:00.000Z",
+      "resource": "tweet",
+      "http_status": 200,
+      "source": "fxtwitter",
+      "cache": "miss",
+      "degraded": false,
+      "chunk_index": 0,
+      "chunk_count": 1,
+      "payload": {
+        "posts": [
+          {
+            "id": "1234567890123456789",
+            "text": "Public fixture post with photo and quote",
+            "created_at": "Mon Sep 07 00:00:00 +0000 2026",
+            "lang": "en",
+            "url": "https://x.com/example/status/1234567890123456789",
+            "created_timestamp": 1788739200,
+            "replies": 1,
+            "retweets": 2,
+            "likes": 10,
+            "views": 500,
+            "bookmarks": 2,
+            "quotes": 1,
+            "possibly_sensitive": false,
+            "media": {
+              "photos": [
+                {
+                  "type": "photo",
+                  "alt": "Example photo",
+                  "url": "https://pbs.twimg.com/media/example.jpg",
+                  "width": 1200,
+                  "height": 800
+                }
+              ]
+            },
+            "author": {
+              "id": "12345",
+              "name": "Example",
+              "screen_name": "example",
+              "description": "Public example profile",
+              "joined": "Mon Jan 01 00:00:00 +0000 2024",
+              "url": "https://x.com/example",
+              "avatar_url": "https://pbs.twimg.com/profile_images/example.jpg",
+              "followers": 120,
+              "following": 25,
+              "likes": 50,
+              "media_count": 3,
+              "statuses": 30,
+              "protected": false,
+              "verification": {
+                "verified": false,
+                "type": "none"
+              }
+            },
+            "quote": {
+              "id": "1234567890123456788",
+              "text": "A public quoted post",
+              "created_at": "Sun Sep 06 00:00:00 +0000 2026",
+              "lang": "en",
+              "url": "https://x.com/quoted/status/1234567890123456788",
+              "created_timestamp": 1788652800,
+              "replies": 0,
+              "retweets": 1,
+              "likes": 5,
+              "views": 100,
+              "bookmarks": 0,
+              "quotes": 1,
+              "possibly_sensitive": false,
+              "author": {
+                "id": "54321",
+                "name": "Quoted Author",
+                "screen_name": "quoted",
+                "description": "Another public profile",
+                "joined": "Mon Jan 01 00:00:00 +0000 2024",
+                "avatar_url": "https://pbs.twimg.com/profile_images/quoted.jpg",
+                "followers": 55,
+                "following": 15,
+                "likes": 12,
+                "media_count": 0,
+                "statuses": 100,
+                "protected": false,
+                "verification": {
+                  "verified": false
+                }
+              }
+            }
+          }
+        ],
+        "users": []
+      },
+      "$process_person_profile": false,
+      "$geoip_disable": true,
+      "$ip": null
+    }
+  }
+]
