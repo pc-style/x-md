@@ -49,7 +49,7 @@ The build generates Blume docs, then the Vite landing page into `dist`. The incl
 
 Latest and Top try FxTwitter, then the custom-built live search provider, then an optional Firecrawl web fallback. Photos, Videos, and Users use the live provider directly and return `503` when it is not configured.
 
-The provider is configured through `X_SEARCH_SESSIONS_JSON`; the shape is documented in `lib/xsearch.ts` and `accounts.example.json`. For local development, use the gitignored `accounts.local.json`. Treat its contents as secrets and keep them out of version control.
+The provider is configured through `X_SEARCH_SESSIONS_JSON`; the expected shape is defined in `lib/xsearch.ts`. For local development, use the gitignored `accounts.local.json`. Treat its contents as secrets and keep them out of version control.
 
 The provider budgets its own upstream capacity per 15-minute window, shared across post and user searches. Failed attempts and page walks count. Unhealthy entries are taken out of rotation in the current process and retried later; health is per instance.
 

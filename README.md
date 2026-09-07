@@ -162,7 +162,7 @@ Optional environment variables:
 | Variable | Description |
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
-| `X_SEARCH_SESSIONS_JSON` | Configuration for the live search provider (see `lib/xsearch.ts` and `accounts.example.json`). Locally, the gitignored `accounts.local.json` is read instead. Without it, Photos, Videos, and Users return `503` |
+| `X_SEARCH_SESSIONS_JSON` | Configuration for the live search provider; the expected shape is defined in `lib/xsearch.ts`. Locally, the gitignored `accounts.local.json` is read instead. Without it, Photos, Videos, and Users return `503` |
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters and durable app state. Falls back to per-instance memory |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
