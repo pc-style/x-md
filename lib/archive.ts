@@ -185,6 +185,8 @@ export function captureArchive(req: IncomingMessage, res: ServerResponse, input:
       for (const event of events) {
         const response = await fetch(`${host!.replace(/\/$/, '')}/i/v0/e/`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
+          // Never replay content or the project token to a redirect target.
+          redirect: 'error',
           signal: AbortSignal.timeout(3000), body: JSON.stringify(event),
         })
         if (!response.ok) { console.warn('[archive] PostHog rejected a chunk; archive may be incomplete'); return }

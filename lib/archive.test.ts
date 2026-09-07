@@ -167,3 +167,15 @@ test('unverified key IDs never establish a stable actor', async () => {
   expect(event.distinct_id).toBe(`anonymous:${event.properties.request_id}`)
   expect(JSON.stringify(event)).not.toContain('private-')
 })
+
+
+test('rejects redirects so archive content cannot be replayed to another origin or HTTP', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  fetchMock.mockRejectedValue(new TypeError('redirect encountered'))
+  const { req, res } = request()
+  captureArchive(req, res, input); await finish(res)
+  expect(fetchMock).toHaveBeenCalledOnce()
+  expect(fetchMock.mock.calls[0][1]).toMatchObject({ redirect: 'error' })
+  expect(warn).toHaveBeenCalledWith('[archive] delivery_or_serialization_failed; archive not guaranteed')
+  expect(res.statusCode).toBe(200)
+})

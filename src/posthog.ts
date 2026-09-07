@@ -21,8 +21,9 @@ function clearActor() {
 }
 
 function bridgeActor() {
-  if (!actorBridgeEnabled || window.location.protocol !== 'https:') return
+  if (window.location.protocol !== 'https:') return
   try {
+    if (!actorBridgeEnabled) { clearActor(); return }
     if (posthog.has_opted_out_capturing()) {
       document.cookie = '__Host-xmd_archive_optout=1; Secure; SameSite=Lax; Path=/; Max-Age=2592000'
       clearActor()
@@ -47,6 +48,9 @@ function bridgeActor() {
 
 let blocked = true
 try {
+  // A previous enabled build may have left an actor cookie behind. Clean up
+  // even when configuration prevents the SDK from initializing.
+  if (!actorBridgeEnabled) clearActor()
   blocked = privacyBlocked()
   if (blocked) clearActor()
 } catch { /* Fail closed when privacy settings cannot be read. */ }

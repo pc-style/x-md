@@ -109,7 +109,8 @@ test('bridge is disabled by default without changing ordinary analytics', async 
   const { captureLandingEvent } = await import('./posthog')
   loaded()
   captureLandingEvent('conversion_requested')
-  expect(cookieWrites).toEqual([])
+  expect(cookieWrites.length).toBeGreaterThan(0)
+  expect(cookieWrites.every(cookie => cookie.includes('Max-Age=0'))).toBe(true)
   expect(posthog.get_distinct_id).not.toHaveBeenCalled()
 })
 
@@ -133,7 +134,8 @@ test.each(['false', 'TRUE', '1'])('requires exact bridge flag: %s', async value 
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', value)
   await import('./posthog')
   loaded()
-  expect(cookieWrites).toEqual([])
+  expect(cookieWrites.length).toBeGreaterThan(0)
+  expect(cookieWrites.every(cookie => cookie.includes('Max-Age=0'))).toBe(true)
 })
 
 test('never writes bridge cookies on HTTP', async () => {
@@ -234,4 +236,22 @@ test('mirrors existing SDK optout when the SDK loads', async () => {
   loaded()
   expect(cookies.get('__Host-xmd_archive_optout')).toBe('1')
   expect(cookies.has('__Host-xmd_actor')).toBe(false)
+})
+
+
+test.each([true, false])('disabling an enabled bridge clears its actor even with SDK available=%s', async sdkAvailable => {
+  vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
+  await import('./posthog')
+  loaded()
+  expect(cookies.get('__Host-xmd_actor')).toBe(actorId)
+  vi.resetModules()
+  vi.mocked(posthog.init).mockClear()
+  vi.mocked(posthog.get_distinct_id).mockClear()
+  vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'false')
+  if (!sdkAvailable) vi.stubEnv('VITE_POSTHOG_KEY', '')
+  await import('./posthog')
+  expect(cookies.has('__Host-xmd_actor')).toBe(false)
+  expect(cookieWrites.at(-1)).toBe('__Host-xmd_actor=; Secure; SameSite=Lax; Path=/; Max-Age=0')
+  expect(posthog.get_distinct_id).not.toHaveBeenCalled()
+  if (!sdkAvailable) expect(posthog.init).not.toHaveBeenCalled()
 })
