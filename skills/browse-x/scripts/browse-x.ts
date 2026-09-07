@@ -2,11 +2,11 @@ type Resource = 'status' | 'profile' | 'search' | 'list'
 type Output = { write: (value: string) => void }
 
 class CliError extends Error {
-  readonly code: 0 | 1 | 2
+  readonly code: 0 | 1 | 2 | 3
 
   constructor(
     message: string,
-    code: 0 | 1 | 2,
+    code: 0 | 1 | 2 | 3,
   ) {
     super(message)
     this.code = code
@@ -22,7 +22,7 @@ const usage = `Usage:
   browse-x.ts following <handle> [options]
 
 Output: --json, --full, --compact, --format markdown|obsidian, --headers
-Lists:  --page 1-10, --limit 1-50, --cursor <cursor>, --feed latest|top|media
+Lists:  --page 1-10, --limit 1-20, --cursor <cursor>, --feed latest|top|photos|videos|users|media
 Status: --thread off|full|conversation|2-100, --userinfo off|author|all,
         --context full|thread, --replies top|recent|off
 Other:  --nocache, --help
@@ -56,11 +56,11 @@ const validate = (options: Map<string, string>) => {
   if (value('page') && !/^(?:[1-9]|10)$/.test(value('page') as string)) {
     fail('--page must be an integer from 1 to 10')
   }
-  if (value('limit') && !/^(?:[1-9]|[1-4][0-9]|50)$/.test(value('limit') as string)) {
-    fail('--limit must be an integer from 1 to 50')
+  if (value('limit') && !/^(?:[1-9]|1[0-9]|20)$/.test(value('limit') as string)) {
+    fail('--limit must be an integer from 1 to 20')
   }
-  if (value('feed') && !/^(latest|top|media)$/.test(value('feed') as string)) {
-    fail('--feed must be latest, top, or media')
+  if (value('feed') && !/^(latest|top|photos|videos|users|media)$/.test(value('feed') as string)) {
+    fail('--feed must be latest, top, photos, videos, users, or media')
   }
   if (value('thread') && !/^(off|full|conversation|(?:[2-9]|[1-9][0-9]|100))$/.test(value('thread') as string)) {
     fail('--thread must be off, full, conversation, or an integer from 2 to 100')
@@ -109,15 +109,28 @@ const parse = (args: string[]) => {
   return { command, target, options, headers }
 }
 
+const publicHosts = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com', 'mobile.twitter.com'])
+
+const publicUrl = (target: string) => {
+  try {
+    const url = new URL(target)
+    return /^https?:$/.test(url.protocol) && publicHosts.has(url.hostname.toLowerCase()) ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const isStatusUrl = (url: URL | undefined) => Boolean(url && /^\/[^/]+\/status\/[0-9]+\/?$/.test(url.pathname))
+
 const request = (parsed: ReturnType<typeof parse>, base: string) => {
   const { command, target, options } = parsed
   const handle = encodeURIComponent(target.replace(/^@/, ''))
-  const publicStatusUrl = /^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\/[^/?#]+\/status\/[0-9]+(?:[/?#]|$)/
+  const targetUrl = publicUrl(target)
   let resource: Resource = 'status'
   let endpoint = ''
   let targetParam: [string, string] | undefined
   if (command === 'status') {
-    if (!publicStatusUrl.test(target)) fail('status requires a public x.com or twitter.com status URL')
+    if (!isStatusUrl(targetUrl)) fail('status requires a public x.com or twitter.com status URL')
     resource = 'status'; endpoint = `${base}/api/convert`; targetParam = ['url', target]
   } else if (command === 'profile') {
     resource = 'profile'; endpoint = `${base}/${handle}`
@@ -125,12 +138,13 @@ const request = (parsed: ReturnType<typeof parse>, base: string) => {
     resource = 'search'; endpoint = `${base}/search`; targetParam = ['q', target]
   } else if (command === 'followers' || command === 'following') {
     resource = 'list'; endpoint = `${base}/${handle}/${command}`
-  } else if (publicStatusUrl.test(target)) {
+  } else if (isStatusUrl(targetUrl)) {
     resource = 'status'; endpoint = `${base}/api/convert`; targetParam = ['url', target]
-  } else if (/^https?:\/\/(?:www\.)?(?:x\.com|twitter\.com)\//.test(target)) {
-    const handleFromUrl = target.replace(/^https?:\/\/[^/]+\//, '').split(/[/?#]/)[0]
+  } else if (targetUrl) {
+    if (!/^\/[^/]+\/?$/.test(targetUrl.pathname)) fail('only public x.com or twitter.com status/profile URLs are supported')
+    const handleFromUrl = targetUrl.pathname.split('/').filter(Boolean)[0]
     if (!handleFromUrl) fail('profile URL must contain a handle')
-    resource = 'profile'; endpoint = `${base}/${handleFromUrl}`
+    resource = 'profile'; endpoint = `${base}/${encodeURIComponent(handleFromUrl)}`
   } else fail('only public x.com or twitter.com status/profile URLs are supported')
 
   const statusOptions = ['thread', 'userinfo', 'context', 'replies']
@@ -157,17 +171,28 @@ export const run = async (
 ) => {
   const parsed = parse(args)
   const { url, accept } = request(parsed, env.X_API_BASE || env.X_MD_API_BASE || 'https://x.pcstyle.dev')
+  const headers: Record<string, string> = { Accept: accept }
+  if (env.X_MD_API_KEY) headers.Authorization = `Bearer ${env.X_MD_API_KEY}`
   let response: Response
   try {
-    response = await fetcher(url, { headers: { Accept: accept } })
+    response = await fetcher(url, { headers })
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error)
     throw new CliError(`browse-x: request to ${url.origin} failed: ${reason}\n`, 1)
   }
   const body = await response.text()
-  if (!response.ok) throw new CliError(`browse-x: HTTP ${response.status} from ${url.origin}${url.pathname}\n${body}\n`, 1)
+  if (!response.ok) {
+    const signals = ['retry-after', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset', 'x-api-key-status']
+      .flatMap((name) => response.headers.has(name) ? [`${name}: ${response.headers.get(name)}`] : [])
+      .join('\n')
+    const details = [signals, body].filter(Boolean).join('\n')
+    throw new CliError(
+      `browse-x: HTTP ${response.status} from ${url.origin}${url.pathname}${details ? `\n${details}` : ''}\n`,
+      response.status === 429 ? 3 : 1,
+    )
+  }
   if (parsed.headers) {
-    output.write(`HTTP/1.1 ${response.status} ${response.statusText}\r\n`)
+    output.write(`HTTP ${response.status}${response.statusText ? ` ${response.statusText}` : ''}\r\n`)
     response.headers.forEach((value, key) => output.write(`${key}: ${value}\r\n`))
     output.write('\r\n')
   }

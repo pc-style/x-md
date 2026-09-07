@@ -46,7 +46,32 @@ export function requestOrigin(req: OriginRequest, fallback = 'https://x.pcstyle.
 export function setCorsHeaders(res: HeaderWriter, methods = 'GET, HEAD, OPTIONS'): void {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', methods)
-  res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type, Authorization')
+  res.setHeader('Access-Control-Expose-Headers', 'Retry-After, X-Api-Key-Status')
+}
+
+type HeaderBag = Record<string, string | string[] | undefined>
+
+/**
+ * The API secret a caller presented via `Authorization: Bearer`. Only that
+ * header is honored: the CDN never caches Authorization requests, which keeps
+ * keyed responses out of the shared cache.
+ */
+export function presentedApiKey(headers: HeaderBag): string | undefined {
+  const auth = headerValue(headers['authorization'])
+  if (auth && /^Bearer\s+/i.test(auth)) return auth.replace(/^Bearer\s+/i, '').trim() || undefined
+  return undefined
+}
+
+/** Parse a JSON request body; empty is `{}`, malformed is rejected so callers can 400. */
+export function parseJsonBody(raw: unknown): { ok: true; value: unknown } | { ok: false } {
+  if (raw === undefined || raw === null || raw === '') return { ok: true, value: {} }
+  if (typeof raw !== 'string') return { ok: true, value: raw }
+  try {
+    return { ok: true, value: JSON.parse(raw) }
+  } catch {
+    return { ok: false }
+  }
 }
 
 export function wantsJson(format: string | null | undefined, accept: string): boolean {

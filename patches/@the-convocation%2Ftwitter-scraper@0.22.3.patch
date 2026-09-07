@@ -1,0 +1,96 @@
+diff --git a/dist/default/cjs/index.js b/dist/default/cjs/index.js
+index 6b6aaf4a4cff943eff13e702afb24a31d8805b81..d630646c4dfdb02fcd6f74bc7d507395c282bc00 100644
+--- a/dist/default/cjs/index.js
++++ b/dist/default/cjs/index.js
+@@ -2905,6 +2905,19 @@ function parseSearchTimelineUsers(timeline) {
+             if (!profile.userId) {
+               profile.userId = userResultRaw.rest_id;
+             }
++            if (!profile.username && userResultRaw.core?.screen_name) {
++              profile.username = userResultRaw.core.screen_name;
++              profile.url = `https://x.com/${profile.username}`;
++            }
++            if (!profile.name && userResultRaw.core?.name) {
++              profile.name = userResultRaw.core.name;
++            }
++            if (!profile.avatar && userResultRaw.avatar?.image_url) {
++              profile.avatar = getAvatarOriginalSizeUrl(userResultRaw.avatar.image_url);
++            }
++            if (!profile.joined && userResultRaw.core?.created_at) {
++              profile.joined = new Date(Date.parse(userResultRaw.core.created_at));
++            }
+             profiles.push(profile);
+           }
+         } else if (entry.content?.cursorType === "Bottom") {
+diff --git a/dist/default/esm/index.mjs b/dist/default/esm/index.mjs
+index 2c0b74e314fca12b9eedb7cf006cf5073dd076fc..0fefcf9ee52b6fb99ed07db0ae21a0f07a4c2a09 100644
+--- a/dist/default/esm/index.mjs
++++ b/dist/default/esm/index.mjs
+@@ -2884,6 +2884,19 @@ function parseSearchTimelineUsers(timeline) {
+             if (!profile.userId) {
+               profile.userId = userResultRaw.rest_id;
+             }
++            if (!profile.username && userResultRaw.core?.screen_name) {
++              profile.username = userResultRaw.core.screen_name;
++              profile.url = `https://x.com/${profile.username}`;
++            }
++            if (!profile.name && userResultRaw.core?.name) {
++              profile.name = userResultRaw.core.name;
++            }
++            if (!profile.avatar && userResultRaw.avatar?.image_url) {
++              profile.avatar = getAvatarOriginalSizeUrl(userResultRaw.avatar.image_url);
++            }
++            if (!profile.joined && userResultRaw.core?.created_at) {
++              profile.joined = new Date(Date.parse(userResultRaw.core.created_at));
++            }
+             profiles.push(profile);
+           }
+         } else if (entry.content?.cursorType === "Bottom") {
+diff --git a/dist/node/cjs/index.cjs b/dist/node/cjs/index.cjs
+index 0b1395d0a53532dbfd80f03cce21780de909868c..3e95834c11180e5465c15b6b7ab64408f15b3e73 100644
+--- a/dist/node/cjs/index.cjs
++++ b/dist/node/cjs/index.cjs
+@@ -2904,6 +2904,19 @@ function parseSearchTimelineUsers(timeline) {
+             if (!profile.userId) {
+               profile.userId = userResultRaw.rest_id;
+             }
++            if (!profile.username && userResultRaw.core?.screen_name) {
++              profile.username = userResultRaw.core.screen_name;
++              profile.url = `https://x.com/${profile.username}`;
++            }
++            if (!profile.name && userResultRaw.core?.name) {
++              profile.name = userResultRaw.core.name;
++            }
++            if (!profile.avatar && userResultRaw.avatar?.image_url) {
++              profile.avatar = getAvatarOriginalSizeUrl(userResultRaw.avatar.image_url);
++            }
++            if (!profile.joined && userResultRaw.core?.created_at) {
++              profile.joined = new Date(Date.parse(userResultRaw.core.created_at));
++            }
+             profiles.push(profile);
+           }
+         } else if (entry.content?.cursorType === "Bottom") {
+diff --git a/dist/node/esm/index.mjs b/dist/node/esm/index.mjs
+index bbde9f0481cc1c218b485a4b28967fe16545a503..34087c71cdcf70e331b97ddf79c8f75003f77814 100644
+--- a/dist/node/esm/index.mjs
++++ b/dist/node/esm/index.mjs
+@@ -2883,6 +2883,19 @@ function parseSearchTimelineUsers(timeline) {
+             if (!profile.userId) {
+               profile.userId = userResultRaw.rest_id;
+             }
++            if (!profile.username && userResultRaw.core?.screen_name) {
++              profile.username = userResultRaw.core.screen_name;
++              profile.url = `https://x.com/${profile.username}`;
++            }
++            if (!profile.name && userResultRaw.core?.name) {
++              profile.name = userResultRaw.core.name;
++            }
++            if (!profile.avatar && userResultRaw.avatar?.image_url) {
++              profile.avatar = getAvatarOriginalSizeUrl(userResultRaw.avatar.image_url);
++            }
++            if (!profile.joined && userResultRaw.core?.created_at) {
++              profile.joined = new Date(Date.parse(userResultRaw.core.created_at));
++            }
+             profiles.push(profile);
+           }
+         } else if (entry.content?.cursorType === "Bottom") {

@@ -10,9 +10,11 @@ Source: https://github.com/pc-style/x-md
 
 - Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
 - Profile and latest original posts: `https://x.pcstyle.dev/{handle}`
-- Search public posts: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|media`
+- Search public posts or users: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
 - Followers: `https://x.pcstyle.dev/{handle}/followers`
 - Following: `https://x.pcstyle.dev/{handle}/following`
+
+Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default and maximum limit: 20. Live search allows 5 uncached requests per minute per IP; configured X accounts have a 50-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
 
 Browse routes accept `cursor`, `page`, `limit`, `full=true`, and `format=json`. Post routes also support thread, conversation context, reply ordering, and Obsidian output; see the documentation for exact query parameters.
 
@@ -20,4 +22,20 @@ Discord, Telegram, Slack, and other preview bots receive Open Graph embed HTML o
 
 ## Scope
 
-x.md only reads public content and does not post, follow, like, or authenticate as an X user. X Lists are not supported.
+x.md only reads public content and does not post, follow, or like on your behalf. X Lists are not supported.
+
+## Documentation
+
+- [Agent skill](https://x.pcstyle.dev/docs/agents)
+- [Start reading X](https://x.pcstyle.dev/docs)
+- [Pagination](https://x.pcstyle.dev/docs/pagination)
+- [Posts and threads](https://x.pcstyle.dev/docs/posts)
+- [Profiles and connections](https://x.pcstyle.dev/docs/profiles)
+- [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
+- [Response formats](https://x.pcstyle.dev/docs/responses)
+- [Search X](https://x.pcstyle.dev/docs/search)
+- [Self-hosting](https://x.pcstyle.dev/docs/self-hosting)
+
+Full documentation: https://x.pcstyle.dev/llms-full.txt
+
+Account-backed searches also share a per-IP allowance per 15-minute window: 10% of healthy account capacity, capped at 20 attempts (5 with one healthy account, 10 with two, 20 with four or more). This allowance covers all feeds, page walks, and candidate retries; cached responses are free. A reduced healthy pool can lower the allowance during the window. A rejected request returns `429` with `Retry-After`. Account-backed calls stop if the shared counter store is unavailable.

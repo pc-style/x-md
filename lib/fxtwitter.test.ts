@@ -4,6 +4,7 @@ import {
   fetchFxConversationChain,
   fetchFxFullThread,
   fetchFxConversationReplies,
+  searchFxStatuses,
   type FxTweet,
   type FxReplyingTo,
 } from './fxtwitter.js'
@@ -407,5 +408,33 @@ describe('fetchFxConversationReplies', () => {
       variants: [{ url: 'https://video/high.mp4', content_type: 'video/mp4', bitrate: 832000 }],
     })
     expect(result[0].quote?.quote?.media?.videos?.[0]?.duration_ms).toBe(2000)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// searchFxStatuses — upstream outage mapping
+// ---------------------------------------------------------------------------
+
+describe('searchFxStatuses', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  test('maps FxTwitter code 404 (no timeline) to a retryable 503, not not_found', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 404, results: [], cursor: { top: null, bottom: null } }), { status: 404 }),
+    ))
+    await expect(searchFxStatuses('supabase', 'latest')).rejects.toMatchObject({
+      status: 503,
+      code: 'search_unavailable',
+    })
+  })
+
+  test('returns empty results on code 200 with no matches', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ code: 200, results: [], cursor: { top: null, bottom: null } }), { status: 200 }),
+    ))
+    await expect(searchFxStatuses('xyzzyqwv9182nothing', 'latest')).resolves.toEqual({
+      results: [],
+      cursor: { top: null, bottom: null },
+    })
   })
 })

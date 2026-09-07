@@ -53,3 +53,14 @@ describe('wantsJson', () => {
     expect(wantsJson(undefined, 'text/markdown')).toBe(false)
   })
 })
+
+describe('parseJsonBody', () => {
+  test('accepts empty, objects, and valid JSON; rejects malformed JSON', async () => {
+    const { parseJsonBody } = await import('./http.js')
+    expect(parseJsonBody(undefined)).toEqual({ ok: true, value: {} })
+    expect(parseJsonBody('')).toEqual({ ok: true, value: {} })
+    expect(parseJsonBody({ a: 1 })).toEqual({ ok: true, value: { a: 1 } })
+    expect(parseJsonBody('{"label":"x"}')).toEqual({ ok: true, value: { label: 'x' } })
+    expect(parseJsonBody('{oops')).toEqual({ ok: false })
+  })
+})

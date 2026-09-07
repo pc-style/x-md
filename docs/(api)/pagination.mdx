@@ -1,0 +1,47 @@
+---
+title: Pagination
+description: Fetch up to 20 results at a time and continue with the returned cursor.
+sidebar:
+  order: 4
+  icon: chevrons-right
+---
+
+## Prefer cursors
+
+Search, profiles, followers, and following return an optional `nextCursor` in JSON. Pass it back as `cursor` with the same query, feed, and options.
+
+```js
+const url = new URL('https://x.pcstyle.dev/search')
+url.search = new URLSearchParams({
+  q: 'typescript', feed: 'latest', format: 'json', limit: '20'
+}).toString()
+
+for (let page = 0; page < 3; page++) {
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`Request failed: ${response.status}`)
+  const data = await response.json()
+  console.log(data.posts)
+  if (!data.nextCursor) break
+  url.searchParams.set('cursor', data.nextCursor)
+}
+```
+
+Treat cursors as opaque strings. Do not remove prefixes, decode their contents, or reuse them with another feed. Search continuations return to the provider that issued the cursor.
+
+Markdown responses include a **Continue** link when a cursor is available.
+
+## Request a numbered page
+
+```bash
+curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&page=2'
+```
+
+`page` accepts 1–10, with larger values clamped to 10. Numbered pagination walks the preceding upstream pages, so it is slower and consumes more upstream calls. A supplied cursor takes precedence and fetches one upstream page.
+
+## Result limits
+
+The default and maximum `limit` is **20** for all browse routes. Larger API values are clamped; the CLI rejects values above 20.
+
+:::tip
+A page can be short or empty because of filtering or upstream coverage. Use the presence of `nextCursor` to determine whether a continuation is available. Degraded web search has no cursor.
+:::

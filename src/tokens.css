@@ -1,0 +1,53 @@
+@theme {
+  --font-sans: "Satoshi", "SF Pro Display", -apple-system, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --color-surface: #f7f6f2;
+  --color-raised: #ffffff;
+  --color-raised-2: #efede7;
+
+  --color-ink: #1a1915;
+  --color-ink-2: #45433c;
+  --color-ink-3: #6e6b62;
+  --color-ink-4: #949085;
+
+  --color-line: #e5e2d9;
+  --color-hair: rgb(26 25 21 / 0.08);
+  --color-hair-strong: rgb(26 25 21 / 0.15);
+
+  --color-accent: #146c43;
+  --color-accent-deep: #0c4a2f;
+  --color-accent-soft: rgb(20 108 67 / 0.1);
+  --color-cyan: #0f6b5c;
+  --color-danger: #b3362c;
+
+  --color-code: #16150f;
+  --color-code-ink: #e9e7de;
+  --color-code-dim: #8d8a7e;
+}
+
+html[data-theme="dark"] {
+  --color-surface: #11120f;
+  --color-raised: #181a16;
+  --color-raised-2: #20221d;
+
+  --color-ink: #f1f0e9;
+  --color-ink-2: #c5c3ba;
+  --color-ink-3: #99978f;
+  --color-ink-4: #747269;
+
+  --color-line: #2c2e28;
+  --color-hair: rgb(255 255 255 / 0.08);
+  --color-hair-strong: rgb(255 255 255 / 0.15);
+
+  --color-accent: #4fb27d;
+  --color-accent-deep: #72c99a;
+  --color-accent-soft: rgb(79 178 125 / 0.14);
+  --color-cyan: #67bcae;
+  --color-danger: #f07f72;
+
+  --color-code: #090a08;
+  --color-code-ink: #f0eee6;
+  --color-code-dim: #96938a;
+}
+

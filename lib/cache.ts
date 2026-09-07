@@ -104,11 +104,11 @@ export async function getCached<T>(key: string): Promise<{ value: T; status: Cac
   return undefined
 }
 
-export async function setCached<T>(key: string, value: T): Promise<void> {
+export async function setCached<T>(key: string, value: T, ttl = ttlMs()): Promise<void> {
   const entry: CacheEnvelope<T> = {
     value,
     storedAt: Date.now(),
-    expiresAt: Date.now() + ttlMs(),
+    expiresAt: Date.now() + ttl,
   }
 
   touchMemory(key, entry)
@@ -116,10 +116,15 @@ export async function setCached<T>(key: string, value: T): Promise<void> {
   await writeDisk(key, entry)
 }
 
+/**
+ * `ttlFor` lets a caller shorten the TTL based on the produced value, e.g. a
+ * degraded fallback result that should be re-checked soon.
+ */
 export async function withCache<T>(
   key: string,
   nocache: boolean,
   fn: () => Promise<T>,
+  ttlFor?: (value: T) => number | undefined,
 ): Promise<{ value: T; status: CacheStatus }> {
   if (nocache || cacheDisabled()) {
     return { value: await fn(), status: 'bypass' }
@@ -129,7 +134,7 @@ export async function withCache<T>(
   if (hit) return hit
 
   const value = await fn()
-  await setCached(key, value)
+  await setCached(key, value, ttlFor?.(value) ?? ttlMs())
   return { value, status: 'miss' }
 }
 
@@ -137,7 +142,9 @@ export function cacheControlHeader(): string {
   return 'public, max-age=0, must-revalidate'
 }
 
-export function vercelCacheControlHeader(): string {
-  const seconds = Math.floor(ttlMs() / 1000)
-  return `public, s-maxage=${seconds}, stale-while-revalidate=86400`
+export function vercelCacheControlHeader(ttlSeconds?: number): string {
+  if (ttlSeconds === undefined) {
+    return `public, s-maxage=${Math.floor(ttlMs() / 1000)}, stale-while-revalidate=86400`
+  }
+  return `public, s-maxage=${ttlSeconds}, stale-while-revalidate=${ttlSeconds * 4}`
 }

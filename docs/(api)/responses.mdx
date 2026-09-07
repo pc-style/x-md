@@ -1,0 +1,59 @@
+---
+title: Response formats
+description: Use Markdown for reading and JSON for integration.
+sidebar:
+  order: 5
+  icon: file-json
+---
+
+<Tabs>
+  <Tab title="Markdown">
+    Markdown is the default. `full=true` expands metadata without changing the format.
+
+    ```bash
+    curl -sS 'https://x.pcstyle.dev/search?q=typescript&full=true'
+    ```
+  </Tab>
+  <Tab title="JSON">
+    Add `format=json` or send `Accept: application/json`.
+
+    ```bash
+    curl -sS -H 'Accept: application/json' \
+      'https://x.pcstyle.dev/search?q=typescript'
+    ```
+  </Tab>
+</Tabs>
+
+## Browse responses
+
+| Field | Meaning |
+| --- | --- |
+| `resource` | `profile`, `search`, `followers`, or `following` |
+| `profile` | Profile details on the profile route |
+| `posts` | Posts on profile and post-search routes |
+| `users` | Accounts on Users search and connection routes |
+| `query`, `feed` | Effective search query and feed, when searching |
+| `page`, `limit` | Effective pagination settings |
+| `nextCursor` | Optional continuation token |
+| `markdown` | Rendered version of the same result |
+| `source` | Provider that served the result |
+| `cache` | Application cache status |
+| `degraded` | `true` when search uses web-indexed snippets |
+
+Not every field is present on every route. Profile and post metadata can also be absent when upstream data is incomplete.
+
+## Post conversion responses
+
+Conversion JSON includes `markdown`, `posts`, the URL, compact flag, warnings, count, provider source, format, and cache status. It is a different shape from browse JSON.
+
+## Useful headers
+
+| Header | Meaning |
+| --- | --- |
+| `X-Source` | Provider used for this response |
+| `X-Cache` | Application cache status |
+| `X-Result-Count` | Number of items in a browse response |
+| `X-Search-Degraded` | `true` for web-indexed search fallback |
+| `Retry-After` | Seconds to wait after a rate limit or temporary search outage |
+
+Inspect headers with `curl -i`. [Handle failures](/reliability).

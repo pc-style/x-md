@@ -26,21 +26,29 @@
   ],
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun --bun tsc && bun --bun vite build",
+    "build": "bun --bun tsc && bun run docs:build && bun --bun vite build",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
-    "test": "bun --bun vitest --run"
+    "test": "bun --bun vitest --run",
+    "docs:dev": "bun --bun blume dev",
+    "docs:build": "bun --bun blume build"
   },
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@vercel/node": "^5.8.4",
+    "blume": "^1.6.3",
     "typescript": "~6.0.2",
     "vite": "^8.0.12",
     "vitest": "^4.1.8"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@the-convocation/twitter-scraper": "^0.22.3",
+    "@vercel/analytics": "^2.0.1",
     "gsap": "^3.15.0",
     "tailwindcss": "^4.3.0"
+  },
+  "patchedDependencies": {
+    "@the-convocation/twitter-scraper@0.22.3": "patches/@the-convocation%2Ftwitter-scraper@0.22.3.patch"
   }
 }

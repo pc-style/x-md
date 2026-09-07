@@ -1,0 +1,47 @@
+---
+title: Errors, limits, and caching
+description: Handle temporary failures and understand where results can be incomplete.
+sidebar:
+  order: 7
+  icon: shield-alert
+---
+
+## Errors
+
+Errors return JSON with an `error` message and a machine-readable `code` for known failures.
+
+| Status | Typical cause | What to do |
+| --- | --- | --- |
+| `400` | Missing query, invalid handle, unsupported format | Fix the request. |
+| `404` | Post missing, deleted, or unavailable | Check the public source URL. |
+| `429` | IP search allowance exhausted | Wait for `Retry-After` seconds. |
+| `503` | Live search temporarily unavailable | Wait for `Retry-After`, then retry. |
+| `5xx` | Provider or service failure | Retry with backoff; avoid tight loops. |
+
+For search, common codes include `missing_query`, `rate_limited`, and `search_unavailable`.
+
+## Search allowance
+
+Each IP can make **5 uncached search requests per minute**. Cached responses are free. This applies across search feeds.
+
+`limit` defaults to 20 and is capped at 20. Smaller limits reduce response size but still count as one uncached request.
+
+Account-backed searches have an additional per-IP allowance per 15-minute window: **10% of healthy account capacity, capped at 20 attempts** (5 with one healthy account, 10 with two, 20 with four or more). All feeds, page walks, and candidate retries share it; cache hits are free. If account health deteriorates, the allowance can shrink during the window. A `429` includes `Retry-After`.
+
+## Caching
+
+Successful responses cache for about one hour by default. Degraded search results are rechecked after about one minute.
+
+`nocache=true` skips x.md's application cache. It cannot bypass a provider's own cache. Use it when freshness matters, rather than on every request.
+
+## Incomplete results
+
+:::warning
+Deleted or protected posts, missing replies, provider delays, and unavailable media can all reduce the response. A successful response does not guarantee an entire conversation or all matching search results.
+:::
+
+Latest and Top search can fall back to web-indexed snippets. Check `degraded` or `X-Search-Degraded`; snippets may be truncated, contain no metrics, and have different ordering. Photos, Videos, and Users require live search.
+
+## Public data and privacy
+
+x.md is read-only. It does not post, follow, or like on your behalf. Public X Lists and private posts are not supported. Successful responses may be cached and served to other callers requesting the same resource.

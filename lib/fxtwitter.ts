@@ -274,7 +274,18 @@ export async function searchFxStatuses(
   count = 20,
 ): Promise<FxListResponse<FxTweet>> {
   const query = encodeQuery({ q: queryText, feed, cursor, count })
-  const data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(`2/search?${query}`)
+  let data: Partial<FxListResponse<FxTweet>>
+  try {
+    data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(`2/search?${query}`)
+  } catch (error) {
+    // FxTwitter answers `{code:404, results:[]}` when X's SearchTimeline gives it no
+    // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
+    // an outage, not a missing post, so surface it as retryable.
+    if (error instanceof ConvertError && error.code === 'not_found') {
+      throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
+    }
+    throw error
+  }
   return { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor }
 }
 

@@ -1,0 +1,40 @@
+---
+title: Profiles and connections
+description: Read an account's profile, recent original posts, followers, and following.
+sidebar:
+  order: 3
+  icon: user
+---
+
+## Read a profile
+
+```bash
+curl -sS 'https://x.pcstyle.dev/vercel?full=true'
+```
+
+`GET /{handle}` returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
+
+## Read connections
+
+```bash
+curl -sS 'https://x.pcstyle.dev/vercel/followers'
+curl -sS 'https://x.pcstyle.dev/vercel/following?format=json'
+```
+
+| Route | JSON fields |
+| --- | --- |
+| `/{handle}` | `profile` and `posts` |
+| `/{handle}/followers` | `users` |
+| `/{handle}/following` | `users` |
+
+Use a handle without `@` in the URL. Connection data depends on upstream availability.
+
+## Options
+
+All three routes accept `limit` (default and maximum 20), `cursor`, `page` (1–10), `full=true`, `format=json`, and `nocache=true`.
+
+Follow `nextCursor` to continue. [See pagination](/pagination).
+
+:::note
+Pinned posts are not identified, and X Lists are unsupported.
+:::
