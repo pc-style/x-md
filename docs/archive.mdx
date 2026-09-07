@@ -1,0 +1,74 @@
+---
+title: Optional data archive
+description: Public-result capture through PostHog, privacy controls, and export contract.
+sidebar:
+  order: 9
+  icon: database
+---
+
+## Disabled by default
+
+The optional archive sends useful structured public results from completed HTTP `200` GET responses in the production convert and browse functions to PostHog. This includes application-cache hits and profile, search, followers, and following results. It does not make additional X/provider calls. Ordinary `request_completed` and landing-page events remain metadata-only; their allowlists are unchanged.
+
+Enable only after reviewing data rights, your privacy notice, PostHog retention, project access, billing, and any required consent. This repository change does not enable or deploy capture. Set all of:
+
+- `XMD_ARCHIVE_ENABLED=true`
+- `VERCEL_ENV=production`
+- `POSTHOG_PROJECT_TOKEN` and an HTTPS `POSTHOG_HOST` (the existing `NEXT_PUBLIC_POSTHOG_*` integration variables also work).
+- `XMD_ARCHIVE_ACTOR_SECRET`: a separate random server-only secret of at least 32 characters. Never use an admin token or put this in a `VITE_` variable. Rotating it breaks linkage to older actors.
+
+No personal PostHog API key is needed for capture. Export credentials belong in a restricted offline export job, not the browser or public API. The Vite development middleware does not archive.
+
+## Data and privacy boundary
+
+This is a **content archive**, not anonymous aggregate analytics. Public post text, articles, media metadata, public author/profile fields, and social connections can identify X users. Review whether you have permission to retain and redistribute them. Public availability does not itself grant reuse rights.
+
+Archive payloads use explicit nested field allowlists. They exclude rendered Markdown/response bodies, incoming URLs and search queries, request headers, IPs, credentials, API-key labels, cursors, unknown provider fields, and unstructured community notes. Public content URLs are allowed, but only HTTPS URLs without user credentials. URL query strings and fragments are removed: signed links or media URLs that depend on query parameters may stop working. Unknown or unmodeled fields are omitted, so this is not a lossless copy of provider responses. Warning text is reduced to the fixed code `source_result_warning`, not copied from arbitrary upstream messages.
+
+Protected authors are excluded, including nested quoted/reposted authors. A protected profile excludes its entire returned timeline. Only public-result routes are wired: no admin, private-account, personalized home-timeline, or credential-management routes. Filtering relies on upstream protection flags and cannot prove that content will remain public. Operators must define retention, deletion/takedown, and downstream access rules before enabling capture; the repository does not automate PostHog or downstream deletion.
+
+## Actor association and opt-out
+
+Archive `distinct_id` is separate from the content payload:
+
+- A verified internal API-key ID is HMAC-hashed with the archive secret. Raw keys, internal IDs, and key labels are not sent.
+- Optionally, an anonymous website actor UUID is read from a same-origin cookie and HMAC-hashed with a separate namespace.
+- Otherwise a fresh request UUID is used. It cannot identify repeat visitors.
+
+These are pseudonyms, not proof of a person's identity. Client-set cookies can be spoofed. Browser archive HMAC IDs link repeat archive requests but **do not automatically equal or join to the landing-page PostHog `distinct_id`**. Existing `request_completed` key pseudonyms also use a different derivation. No identity map or alias event is sent. Do not send archive actors to Xearch ingress.
+
+The optional browser cookie bridge needs a rebuild with `VITE_XMD_ARCHIVE_ACTOR_BRIDGE=true`, plus existing production landing-page PostHog settings and HTTPS. It is off by default. The bridge copies only an anonymous UUID, never an identified user's ID, into `__Host-xmd_actor` with `Secure; SameSite=Lax; Path=/; Max-Age=2592000` and no Domain. JavaScript must read/write it, so it is not HttpOnly. It is not placed in a URL, response body, response header, or application/shared cache entry. API handlers never set actor cookies. A website visit may establish the cookie; direct API callers generally have no cookie.
+
+This is an operator opt-in, not a consent-management UI. Where prior visitor consent is required, keep the bridge disabled until your consent system permits it. The bridge checks the SDK capture opt-out, DNT, GPC, and `__Host-xmd_archive_optout=1`, and clears its actor cookie on the next bridge check when opted out. Server archive capture honors that opt-out cookie, `DNT: 1`, `Sec-GPC: 1`, or `X-Xmd-Archive-Opt-Out: 1`. API clients can send the latter header directly. SDK opt-out stored only in browser local storage cannot be read by the server; the landing-page bridge mirrors it into the opt-out cookie when it runs. Clearing only the actor cookie removes repeat-actor association, not public-result capture. Cross-origin requests do not get credentialed CORS access. These archive controls do not change the separate server `request_completed` metadata instrumentation or Vercel analytics.
+
+## Export contract v1
+
+Event name: `xmd_data_captured`. PostHog properties:
+
+```json
+{
+  "archive_schema_version": 1,
+  "request_id": "UUID shared by all chunks of one response",
+  "captured_at": "ISO timestamp",
+  "resource": "tweet",
+  "http_status": 200,
+  "source": "fxtwitter",
+  "cache": "hit",
+  "degraded": false,
+  "chunk_index": 0,
+  "chunk_count": 1,
+  "payload": { "posts": [], "users": [] }
+}
+```
+
+`resource` is `tweet`, `profile`, `search`, `followers`, or `following`. `payload.posts` contains structured `FxTweet` objects; `payload.users` and optional `payload.profile` contain structured `FxAuthor` objects. These types are in `lib/fxtwitter.ts`. Optional `warnings` is a string-code array. `cache` is omitted when unavailable. PostHog privacy properties disable person profiles and IP enrichment. Source/degraded flags distinguish fallbacks; captured data is not necessarily complete, live, or untruncated upstream.
+
+Each record occurs in one chunk, without splitting or truncating the record. The serialized UTF-8 capture envelope (including token and PostHog fields) stays below 190,000 bytes. Empty/non-useful results are skipped. If an individual record cannot fit, the **entire request archive is rejected before any chunk is sent**, with fixed log reason `archive_record_oversized`. Excessive nested quote depth is similarly rejected. No raw record is logged.
+
+Export only this event with schema version 1 and HTTP status 200. Export adapters must parse properties supplied either as an object or as a JSON-encoded string. Group by `request_id`; verify unique zero-based indexes and matching `chunk_count` before treating a response as complete. Import public `payload` records, source, timestamps and quality metadata into Xearch batches, not `distinct_id`, cookies, or PostHog/export credentials. Use stable public X record IDs for downstream upserts/deduplication; repeat requests and exports can contain the same records.
+
+## Delivery limits
+
+Delivery starts on response `finish` through Vercel `waitUntil`. Each chunk has a three-second fetch timeout. The first failed chunk stops delivery and emits a fixed, non-sensitive warning. A successful HTTP acknowledgement is not proof of durable retention. There is no retry queue, durable outbox, automatic reconciliation, or completeness guarantee; earlier chunks can have arrived before a later failure. Oversized-record failures leave that request absent from the archive.
+
+CDN hits never run these functions. HEAD, OPTIONS, non-200 responses, disconnected requests, local/preview traffic, admin routes, empty results, opt-outs, and disabled/misconfigured capture do not archive. Platform failures, browser blocking, and failed delivery further limit coverage. Cookie/CDN behavior and ad blockers can prevent actor linkage. This is a best-effort dataset feed, not complete traffic capture or a billing ledger.

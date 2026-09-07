@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
+import { captureArchive } from '../lib/archive.js'
 import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
@@ -28,6 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
     // Keyed responses stay private even if the browse layer marked them cacheable.
     for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+    if (response.status === 200) captureArchive(req, res, result, identity)
     return req.method === 'HEAD' ? res.status(response.status).end() : res.status(response.status).send(response.body)
   } catch (error) {
     if (error instanceof ConvertError) {

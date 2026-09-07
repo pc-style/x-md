@@ -1,0 +1,44 @@
+[
+  {
+    "api_key": "phc_fixture_not_a_real_token",
+    "event": "xmd_data_captured",
+    "uuid": "17581b79-f1b5-4f0d-b457-6f1b1e3a9184",
+    "distinct_id": "anonymous:00000000-0000-4000-8000-000000000001",
+    "timestamp": "2026-09-07T00:00:00.000Z",
+    "properties": {
+      "archive_schema_version": 1,
+      "request_id": "00000000-0000-4000-8000-000000000001",
+      "captured_at": "2026-09-07T00:00:00.000Z",
+      "resource": "profile",
+      "http_status": 200,
+      "source": "fxtwitter",
+      "cache": "hit",
+      "degraded": false,
+      "chunk_index": 0,
+      "chunk_count": 1,
+      "payload": {
+        "posts": [
+          {
+            "id": "1234567890123456789",
+            "text": "Public fixture post",
+            "created_at": "2026-09-07T00:00:00.000Z",
+            "author": {
+              "id": "12345",
+              "name": "Example",
+              "screen_name": "example"
+            }
+          }
+        ],
+        "users": [],
+        "profile": {
+          "id": "12345",
+          "name": "Example",
+          "screen_name": "example"
+        }
+      },
+      "$process_person_profile": false,
+      "$geoip_disable": true,
+      "$ip": null
+    }
+  }
+]
