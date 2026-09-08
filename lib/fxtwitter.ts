@@ -303,7 +303,7 @@ export async function fetchFxConnections(
 }
 
 export async function fetchFxStatus(id: string): Promise<FxTweet> {
-  const data = await fxFetch(`2/status/${id}`)
+  const data = await fxFetch(`2/status/${encodeURIComponent(id)}`)
   const tweet = pickTweet(data)
   if (!tweet) {
     throw new ConvertError(404, 'Post not found.', 'not_found')
@@ -351,7 +351,7 @@ export async function fetchFxConversationChain(
 }
 
 export async function fetchFxThread(id: string): Promise<FxTweet[]> {
-  const data = await fxFetch(`2/thread/${id}`)
+  const data = await fxFetch(`2/thread/${encodeURIComponent(id)}`)
   if (data.thread?.length) {
     return data.thread.map(normalizeTweet)
   }
