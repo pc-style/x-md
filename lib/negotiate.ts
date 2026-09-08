@@ -64,6 +64,21 @@ function score(entries: Entry[], media: string): { q: number; spec: number } | n
 }
 
 /**
+ * How this header rates one concrete media type: its q, and whether the caller
+ * named the type itself rather than reaching it through a wildcard. Null when
+ * nothing in the header matches.
+ *
+ * Media types that are not page representations — `application/problem+json`,
+ * `text/event-stream` — negotiate through this instead of joining `Repr`, which
+ * stays the set of things a page can be rendered as.
+ */
+export function mediaQuality(accept: string | null | undefined, media: string): { q: number; exact: boolean } | null {
+  if (!accept || !accept.trim()) return null
+  const match = score(parseAccept(accept), media)
+  return match ? { q: match.q, exact: match.spec === 3 } : null
+}
+
+/**
  * Pick a representation from `offers`, or null when the caller accepts none of
  * them (the caller should answer 406). A missing Accept and a bare `*\/*` both
  * mean "no preference", which resolves to `fallback`.
@@ -89,11 +104,14 @@ export function selectRepresentation(
   }
   if (!winner) return null
 
-  // Only a wildcard matched, so the caller expressed no preference between our
-  // representations: keep the resource's own default.
-  if (winning.spec === 1 && offers.includes(fallback)) {
+  // The winner was reached through a wildcard, `*\/*` or `text/*`, so the caller
+  // named no concrete type and expressed no preference between the ones it
+  // covers: keep the resource's own default, as long as the default is covered
+  // just as well. A fallback the header rates lower than the winner (`text/*,
+  // text/html;q=0.5`) is a real preference and stands.
+  if (winning.spec < 3 && offers.includes(fallback)) {
     const fb = score(entries, MEDIA[fallback])
-    if (fb && fb.q > 0) return fallback
+    if (fb && fb.q > 0 && fb.q >= winning.q) return fallback
   }
   return winner
 }

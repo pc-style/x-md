@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { notAcceptableBody, parseAccept, selectRepresentation, type Repr } from './negotiate'
+import { mediaQuality, notAcceptableBody, parseAccept, selectRepresentation, type Repr } from './negotiate'
 
 const PAGE: Repr[] = ['html', 'markdown']
 
@@ -63,8 +63,50 @@ describe('selectRepresentation', () => {
     expect(selectRepresentation('text/*', ['markdown', 'json'], 'markdown')).toBe('markdown')
   })
 
+  test('text/* is no preference between text offers, so the default wins', () => {
+    // Naming no concrete type must not hand the caller whichever offer is
+    // listed first: an agent sending text/* gets the resource's own default.
+    expect(selectRepresentation('text/*', PAGE, 'markdown')).toBe('markdown')
+    expect(selectRepresentation('text/*', ['html', 'markdown', 'json'], 'markdown')).toBe('markdown')
+  })
+
+  test('text/* keeps the first match when the default is not a text type', () => {
+    expect(selectRepresentation('text/*', ['html', 'markdown', 'json'], 'json')).toBe('html')
+  })
+
+  test('a concrete type outranks the wildcard that covers the default', () => {
+    expect(selectRepresentation('text/*;q=0.9, text/html;q=0.5', PAGE, 'html')).toBe('markdown')
+    expect(selectRepresentation('text/*, text/html', PAGE, 'markdown')).toBe('html')
+  })
+
   test('a subtype wildcard does not match a different type', () => {
     expect(selectRepresentation('text/*', ['json'], 'json')).toBeNull()
+  })
+})
+
+describe('mediaQuality', () => {
+  test('reports the q of a named type and marks it exact', () => {
+    expect(mediaQuality('application/json;q=0.4, text/event-stream', 'text/event-stream')).toEqual({ q: 1, exact: true })
+    expect(mediaQuality('application/json;q=0.4', 'application/json')).toEqual({ q: 0.4, exact: true })
+  })
+
+  test('an explicit rejection reports q=0 rather than no match', () => {
+    expect(mediaQuality('text/event-stream;q=0, application/json', 'text/event-stream')).toEqual({ q: 0, exact: true })
+  })
+
+  test('a wildcard match is not exact', () => {
+    expect(mediaQuality('*/*', 'application/problem+json')).toEqual({ q: 1, exact: false })
+    expect(mediaQuality('text/*', 'text/event-stream')).toEqual({ q: 1, exact: false })
+  })
+
+  test('an absent header and an unmatched type are both null', () => {
+    expect(mediaQuality('', 'application/json')).toBeNull()
+    expect(mediaQuality(undefined, 'application/json')).toBeNull()
+    expect(mediaQuality('text/html', 'application/json')).toBeNull()
+  })
+
+  test('media type matching is case-insensitive', () => {
+    expect(mediaQuality('Text/Event-Stream', 'text/event-stream')).toEqual({ q: 1, exact: true })
   })
 })
 

@@ -8,6 +8,7 @@
  */
 
 import { ConvertError } from './errors.js'
+import { mediaQuality } from './negotiate.js'
 
 const SITE = 'https://x.pcstyle.dev'
 const REPO = 'https://github.com/pc-style/x-md'
@@ -245,16 +246,25 @@ export function problemDetails(code: string, init: ProblemInit): ProblemDetails 
   return problem
 }
 
+const PROBLEM_JSON = 'application/problem+json'
+
 /**
  * `application/problem+json` by default. A caller that asks for
  * `application/json` specifically gets exactly that, so clients matching on the
  * literal type still recognise the body.
+ *
+ * The two types are weighed through the RFC 9110 parser, not by substring, so
+ * `application/problem+json;q=0, application/json` honours the rejection. They
+ * stay out of negotiate's `Repr` union, which is the set of representations a
+ * page renders as; these are two encodings of one error body.
  */
 export function problemMediaType(accept: string): string {
-  const value = accept.toLowerCase()
-  if (value.includes('application/problem+json')) return 'application/problem+json'
-  if (value.includes('application/json')) return 'application/json'
-  return 'application/problem+json'
+  const problem = mediaQuality(accept, PROBLEM_JSON)
+  const plain = mediaQuality(accept, 'application/json')
+  // An error body is never withheld over Accept, so anything short of a caller
+  // ranking plain JSON above problem+json keeps the documented default.
+  if (plain && plain.q > 0 && (!problem || problem.q === 0 || plain.q > problem.q)) return 'application/json'
+  return PROBLEM_JSON
 }
 
 export interface ProblemResponse {

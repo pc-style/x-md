@@ -68,12 +68,14 @@ Link: <https://x.pcstyle.dev/api/v1/posts>; rel="successor-version", <https://x.
 
 The `/api/*` routes list `Deprecation`, `Sunset`, and `Link` in `Access-Control-Expose-Headers`, so a browser client can read them cross-origin.
 
-## Deprecated today
+## Scheduled for deprecation
 
-| Route | Successor | Deprecated | Sunset |
+| Route | Successor | Deprecation date | Sunset |
 | --- | --- | --- | --- |
 | `GET /api/convert` | `GET /api/v1/posts` | 2026-09-15 | 2027-09-15 |
 | `GET /api/browse` | `GET /api/v1/profiles/{handle}`, `/followers`, `/following`, `GET /api/v1/search` | 2026-09-15 | 2027-09-15 |
+
+Both aliases send `Deprecation` and `Sunset` on every response *now*, before the date the `Deprecation` field names. That is the point of a future date: it is notice that the route becomes deprecated on 2026-09-15, not a claim that it already is.
 
 `/api/browse` selects its successor by `resource`: `profile`, `followers`, and `following` map to the matching `/api/v1/profiles/{handle}` route, and `search` maps to `/api/v1/search`. A call that names no resolvable resource still carries `Deprecation` and `Sunset`, but no `successor-version` link.
 
@@ -96,8 +98,8 @@ A reasonable client policy: log a warning when `Deprecation` is present, follow 
 
 The same policy is machine-readable in two places:
 
-- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — the `x-api-lifecycle` object carries `current_major_version`, `supported_versions`, `minimum_support_window_months`, `deprecation_signals`, and every deprecated operation with its dates and successor. Deprecated operations also carry OpenAPI's own `deprecated: true`.
-- [`/api`](https://x.pcstyle.dev/api) — the `versioning` object repeats the same dates in a smaller document, for an agent that has only the domain.
+- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — the `x-api-lifecycle` object carries `current_major_version`, `supported_versions`, `minimum_support_window_months`, `deprecation_signals`, and every deprecated operation with its dates and its replacement: `successor` when one route replaces the alias, `successor_parameter` plus `successors` for `/api/browse`, which picks its replacement from `resource`. The operations themselves carry `x-successor-version` (`/api/convert`) or `x-successor-version-map` (`/api/browse`), alongside OpenAPI's own `deprecated: true`.
+- [`/api`](https://x.pcstyle.dev/api) — the `versioning` object repeats the same dates in a smaller document, for an agent that has only the domain. Its `/api/browse` entry carries `successor_parameter` and `successors` rather than a single `successor` string, so parse both shapes.
 
 ## Release notes
 

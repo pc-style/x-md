@@ -4,7 +4,7 @@
     "title": "x.md API",
     "version": "1.1.0",
     "summary": "Read public X posts, threads, profiles, connections and search results as Markdown or JSON.",
-    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 20.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nDeprecated today: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse` (successors `/api/v1/posts`, `/api/v1/profiles/{handle}`, `/api/v1/profiles/{handle}/followers`, `/api/v1/profiles/{handle}/following`, `/api/v1/search`). Every response from a deprecated route carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header with `rel=\"successor-version\"`, `rel=\"deprecation\"` and `rel=\"sunset\"`. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` automatically, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
+    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 20.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`); a browse call that names no resolvable resource carries no `successor-version` link. Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header with `rel=\"successor-version\"`, `rel=\"deprecation\"` and `rel=\"sunset\"`. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` automatically, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
     "termsOfService": "https://x.pcstyle.dev/terms",
     "license": {
       "name": "MIT",
@@ -61,7 +61,7 @@
       "Link; rel=\"successor-version\""
     ],
     "deprecation_policy_url": "https://x.pcstyle.dev/docs/versioning",
-    "policy": "Versioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nDeprecated today: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse` (successors `/api/v1/posts`, `/api/v1/profiles/{handle}`, `/api/v1/profiles/{handle}/followers`, `/api/v1/profiles/{handle}/following`, `/api/v1/search`). Every response from a deprecated route carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header with `rel=\"successor-version\"`, `rel=\"deprecation\"` and `rel=\"sunset\"`. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` automatically, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
+    "policy": "Versioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`); a browse call that names no resolvable resource carries no `successor-version` link. Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header with `rel=\"successor-version\"`, `rel=\"deprecation\"` and `rel=\"sunset\"`. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` automatically, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
     "deprecated_operations": [
       {
         "operationId": "getPostLegacy",
@@ -75,7 +75,13 @@
         "path": "/api/browse",
         "deprecated": "2026-09-15T00:00:00Z",
         "sunset": "2027-09-15T00:00:00Z",
-        "successor": "/api/v1/search"
+        "successor_parameter": "resource",
+        "successors": {
+          "profile": "/api/v1/profiles/{handle}",
+          "followers": "/api/v1/profiles/{handle}/followers",
+          "following": "/api/v1/profiles/{handle}/following",
+          "search": "/api/v1/search"
+        }
       }
     ]
   },
@@ -6844,7 +6850,7 @@
       "get": {
         "operationId": "browseLegacy",
         "summary": "Read a profile, connections or search results (deprecated alias)",
-        "description": "Deprecated compatibility alias for the `/api/v1/profiles/*` and `/api/v1/search` operations, selected by the `resource` query parameter. Responses carry the RFC 9745 `Deprecation` header, the RFC 8594 `Sunset` header, and a `Link` with `rel=\"successor-version\"`. Scheduled for removal on 2027-09-15; move to the versioned routes before then.\n\nSuccessors: `resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`.",
+        "description": "Deprecated compatibility alias for the `/api/v1/profiles/*` and `/api/v1/search` operations, selected by the `resource` query parameter. Responses carry the RFC 9745 `Deprecation` header, the RFC 8594 `Sunset` header, and a `Link` with `rel=\"successor-version\"`. Scheduled for removal on 2027-09-15; move to the versioned routes before then.\n\nThere is no single successor: the replacement depends on `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`), and `x-successor-version-map` publishes the same mapping. A call that names no resolvable resource still carries `Deprecation` and `Sunset`, but no `successor-version` link.",
         "tags": [
           "Profiles",
           "Search"
@@ -7035,7 +7041,7 @@
                 "$ref": "#/components/headers/Sunset"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               }
             },
             "content": {
@@ -7079,7 +7085,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Deprecation": {
                 "$ref": "#/components/headers/Deprecation"
@@ -7133,7 +7139,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Deprecation": {
                 "$ref": "#/components/headers/Deprecation"
@@ -7187,7 +7193,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Deprecation": {
                 "$ref": "#/components/headers/Deprecation"
@@ -7253,7 +7259,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Allow": {
                 "$ref": "#/components/headers/Allow"
@@ -7310,7 +7316,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -7367,7 +7373,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Deprecation": {
                 "$ref": "#/components/headers/Deprecation"
@@ -7421,7 +7427,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Deprecation": {
                 "$ref": "#/components/headers/Deprecation"
@@ -7475,7 +7481,7 @@
                 "$ref": "#/components/headers/CacheControl"
               },
               "Link": {
-                "$ref": "#/components/headers/DeprecationLink"
+                "$ref": "#/components/headers/BrowseDeprecationLink"
               },
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"
@@ -7524,7 +7530,15 @@
         "deprecated": true,
         "x-deprecation": "2026-09-15T00:00:00Z",
         "x-sunset": "2027-09-15T00:00:00Z",
-        "x-successor-version": "https://x.pcstyle.dev/api/v1/search"
+        "x-successor-version-map": {
+          "parameter": "resource",
+          "routes": {
+            "profile": "https://x.pcstyle.dev/api/v1/profiles/{handle}",
+            "followers": "https://x.pcstyle.dev/api/v1/profiles/{handle}/followers",
+            "following": "https://x.pcstyle.dev/api/v1/profiles/{handle}/following",
+            "search": "https://x.pcstyle.dev/api/v1/search"
+          }
+        }
       }
     }
   },
@@ -7603,6 +7617,13 @@
           "type": "string"
         },
         "example": "<https://x.pcstyle.dev/api/v1/posts>; rel=\"successor-version\", <https://x.pcstyle.dev/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://x.pcstyle.dev/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
+      },
+      "BrowseDeprecationLink": {
+        "description": "RFC 8288 links for the retirement. `rel=\"successor-version\"` names the replacement for this exact call, chosen by `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`), and is absent when the request names no resolvable resource, because a Link target is a URI and never a URI Template. `rel=\"deprecation\"` and `rel=\"sunset\"` point at the written policy.",
+        "schema": {
+          "type": "string"
+        },
+        "example": "<https://x.pcstyle.dev/api/v1/profiles/jack/followers>; rel=\"successor-version\", <https://x.pcstyle.dev/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://x.pcstyle.dev/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
       },
       "DiscoveryLink": {
         "description": "RFC 8288 links to this OpenAPI description, the human docs, the API catalog, the llms.txt manifest and the versioning policy.",
@@ -8835,7 +8856,18 @@
                     },
                     "successor": {
                       "type": "string",
-                      "description": "What to call instead."
+                      "description": "What to call instead, when one route replaces the alias outright."
+                    },
+                    "successor_parameter": {
+                      "type": "string",
+                      "description": "Query parameter that picks the successor, when the alias multiplexes several resources onto one path."
+                    },
+                    "successors": {
+                      "type": "object",
+                      "description": "The successor route for each value of `successor_parameter`. Present instead of `successor`.",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
                     },
                     "deprecation": {
                       "type": "string",

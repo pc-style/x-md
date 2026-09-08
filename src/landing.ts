@@ -58,7 +58,7 @@ const MARQUEE_ITEMS = [
   'X Articles, headings and all',
   'text/markdown response',
   '?thread=off for a single post',
-  'No account, no API key',
+  'No account, no API key required',
 ]
 
 const marqueeTrack = MARQUEE_ITEMS.map(
@@ -375,7 +375,7 @@ export function landingHtml(): string {
             </button>
             <div id="agent-panel-api" class="acc-body">
               <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
-                <code class="code-chip">GET /api/convert?url=…</code> returns the same Markdown
+                <code class="code-chip">GET /api/v1/posts?url=…</code> returns the same Markdown
                 with JSON and raw variants. Every route, parameter, and limit is written down in the
                 <a href="/docs" class="font-bold text-accent hover:text-accent-deep">API documentation</a>
                 and described again in

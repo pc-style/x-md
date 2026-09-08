@@ -12,6 +12,7 @@ import {
   sendProblem,
 } from '../lib/apierror.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
+import { BROWSE_SUCCESSORS } from '../lib/openapi.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 import { CONTENT_TYPE, selectRepresentation } from '../lib/negotiate.js'
@@ -22,6 +23,26 @@ interface Operation {
   path: string
   description: string
   example?: string
+}
+
+interface DeprecatedAlias {
+  path: string
+  /** Set when one route replaces the alias outright. */
+  successor?: string
+  /** Set instead when the alias multiplexes: the parameter that picks the successor. */
+  successor_parameter?: string
+  successors?: Readonly<Record<string, string>>
+  deprecation: string
+  sunset: string
+  sunset_iso: string
+}
+
+/** The successors of one alias as prose, for the Markdown rendering of /api. */
+function successorProse(alias: DeprecatedAlias): string {
+  if (alias.successor) return `\`${alias.successor}\``
+  return Object.entries(alias.successors ?? {})
+    .map(([value, path]) => `\`${path}\` for \`${alias.successor_parameter}=${value}\``)
+    .join(', ')
 }
 
 function operations(origin: string): Operation[] {
@@ -118,7 +139,7 @@ export function apiIndexDocument(origin: string) {
       base_path: '/api/v1',
       policy_url: VERSIONING_DOC,
       description:
-        'Breaking changes ship as a new path version. The permalink routes are unversioned and stable. Deprecated routes answer with RFC 9745 `Deprecation` and RFC 8594 `Sunset` headers plus a `successor-version` link.',
+        'Breaking changes ship as a new path version. The permalink routes are unversioned and stable. Deprecated routes answer with RFC 9745 `Deprecation` and RFC 8594 `Sunset` headers plus a `successor-version` link. `/api/browse` picks that link from its `resource`, and omits it when the call names none.',
       deprecated_aliases: [
         {
           path: '/api/convert',
@@ -129,12 +150,13 @@ export function apiIndexDocument(origin: string) {
         },
         {
           path: '/api/browse',
-          successor: '/api/v1/profiles/{handle}, /api/v1/search',
+          successor_parameter: 'resource',
+          successors: BROWSE_SUCCESSORS,
           deprecation: LEGACY_DEPRECATION,
           sunset: LEGACY_SUNSET,
           sunset_iso: LEGACY_SUNSET_ISO,
         },
-      ],
+      ] as DeprecatedAlias[],
     },
     endpoints: operations(origin),
     errors: {
@@ -191,7 +213,7 @@ export function apiIndexMarkdown(origin: string): string {
     '',
     doc.versioning.description,
     ...doc.versioning.deprecated_aliases.map(
-      (alias) => `- \`${alias.path}\` is deprecated; use \`${alias.successor}\`. Sunset ${alias.sunset_iso}.`,
+      (alias) => `- \`${alias.path}\` is deprecated; use ${successorProse(alias)}. Sunset ${alias.sunset_iso}.`,
     ),
     `- Policy: ${doc.versioning.policy_url}`,
     '',
@@ -214,10 +236,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'index')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
-  if (req.method === 'OPTIONS') {
-    applyQuotaPolicyOnly(res, 'read', caller)
-    return res.status(204).end()
-  }
+  // Preflight and 405 are never charged, so they advertise the policy alone; a
+  // charged request overwrites this with its own state below.
+  applyQuotaPolicyOnly(res, 'read', caller)
+  if (req.method === 'OPTIONS') return res.status(204).end()
 
   const origin = requestOrigin(req)
   const accept = String(req.headers.accept ?? '')

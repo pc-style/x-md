@@ -46,9 +46,11 @@ function setupConvertForm(root: HTMLElement) {
     const raw = input.value.trim()
     if (!raw) return
     const path = statusPathFromUrl(raw)
+    // The versioned route, not the deprecated /api/convert alias: the page
+    // should not send its own traffic somewhere it tells everyone else to leave.
     const target = path
       ? `${path}?thread=full`
-      : `/api/convert?url=${encodeURIComponent(raw)}&thread=full`
+      : `/api/v1/posts?url=${encodeURIComponent(raw)}&thread=full`
     captureLandingEvent('conversion_requested')
     window.open(target, '_blank', 'noopener,noreferrer')
   })

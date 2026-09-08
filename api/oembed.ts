@@ -10,10 +10,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'oembed')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
-  if (req.method === 'OPTIONS') {
-    applyQuotaPolicyOnly(res, 'read', caller)
-    return res.status(204).end()
-  }
+  // Preflight and 405 are never charged, so they advertise the policy alone; a
+  // charged request overwrites this with its own state below.
+  applyQuotaPolicyOnly(res, 'read', caller)
+  if (req.method === 'OPTIONS') return res.status(204).end()
 
   const origin = requestOrigin(req)
   const accept = String(req.headers.accept ?? '')

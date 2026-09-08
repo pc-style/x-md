@@ -396,6 +396,28 @@ describe('the HTTP transport', () => {
     expect(JSON.parse(stream.body().slice('event: message\ndata: '.length)).result.protocolVersion).toBe('2025-06-18')
   })
 
+  test('the Accept header is parsed, not substring-matched, before SSE is chosen', async () => {
+    const message = { jsonrpc: '2.0', id: 1, method: 'tools/list' }
+
+    // q=0 is a rejection: a client that cannot read SSE must not be sent it.
+    const rejected = await call('POST', { accept: 'application/json, text/event-stream;q=0', body: message })
+    expect(rejected.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
+    expect(JSON.parse(rejected.body()).result.tools).toHaveLength(MCP_TOOLS.length)
+
+    // Media types are case-insensitive (RFC 9110 8.3.1).
+    const cased = await call('POST', { accept: 'Application/JSON, Text/Event-Stream', body: message })
+    expect(cased.res.getHeader('Content-Type')).toBe('text/event-stream; charset=utf-8')
+
+    // A wildcard names no stream, so a browser or curl still gets JSON.
+    const wildcard = await call('POST', { accept: '*/*', body: message })
+    expect(wildcard.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
+
+    // The same parse gates the GET that would open a standalone stream.
+    const get = await call('GET', { accept: 'application/json, text/event-stream;q=0' })
+    expect(get.res.statusCode).toBe(200)
+    expect(get.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
+  })
+
   test('a notification is accepted with no body', async () => {
     const held = await call('POST', { accept: 'application/json', body: { jsonrpc: '2.0', method: 'notifications/initialized' } })
     expect(held.res.statusCode).toBe(202)

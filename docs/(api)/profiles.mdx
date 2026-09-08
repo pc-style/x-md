@@ -8,17 +8,29 @@ sidebar:
 
 ## Read a profile
 
+`GET /{handle}` — the permalink form. It returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
+
 ```bash
 curl -sS 'https://x.pcstyle.dev/vercel?full=true'
+```
+
+`GET /api/v1/profiles/{handle}` — the same read on the [versioned surface](/versioning).
+
+```bash
 curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
 ```
 
-`GET /{handle}` returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
-
 ## Read connections
+
+`GET /{handle}/followers` and `GET /{handle}/following` list who follows an account and who it follows.
 
 ```bash
 curl -sS 'https://x.pcstyle.dev/vercel/followers'
+```
+
+The same two lists sit under `/api/v1/profiles/{handle}`:
+
+```bash
 curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel/following?format=json'
 ```
 

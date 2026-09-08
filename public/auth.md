@@ -103,8 +103,9 @@ holds no user account, no scopes, and no delegated permissions.
 
 There is no assertion to exchange and no `token_endpoint` to exchange it at.
 Skip this step. Any key you may have been given is already the final
-credential — it is an opaque string, not the output of a grant, and it is never
-refreshed, rotated, or minted by an exchange.
+credential — it is an opaque string, not the output of a grant. Nothing refreshes
+or rotates it automatically; a key changes only when the maintainer issues a new
+one by hand, as described under [Revocation](#revocation).
 
 ## Use the access_token
 

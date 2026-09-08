@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
 import { parseJsonBody } from '../lib/http.js'
+import { mediaQuality } from '../lib/negotiate.js'
 import { applyQuotaPolicyOnly } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 import {
@@ -45,7 +46,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   applyQuotaPolicyOnly(res, 'read', { ip: clientIp(req.headers) })
 
   const accept = String(req.headers.accept ?? '')
-  const wantsStream = accept.includes('text/event-stream')
+  // Only a client that names text/event-stream itself, at a q above 0, opts
+  // into SSE: `;q=0` means the opposite, and a wildcard from a browser or curl
+  // is not a request for a stream it cannot read.
+  const stream = mediaQuality(accept, 'text/event-stream')
+  const wantsStream = stream !== null && stream.exact && stream.q > 0
 
   if (req.query.doc === 'server-card') {
     if (req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS') {

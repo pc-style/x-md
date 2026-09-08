@@ -297,6 +297,15 @@ describe('embed and oEmbed responses', () => {
     })
   })
 
+  test('rejects an over-long author instead of truncating it into a handle', () => {
+    expect(oembedPayload({ author: 'a'.repeat(30), status: '1' }, 'https://x.pcstyle.dev').author_url).toBe(
+      'https://x.com/i/status/1',
+    )
+    expect(oembedPayload({ author: 'a'.repeat(15), status: '1' }, 'https://x.pcstyle.dev').author_url).toBe(
+      `https://x.com/${'a'.repeat(15)}/status/1`,
+    )
+  })
+
   test('marks video oEmbed payloads as rich so Slack renders the media', () => {
     expect(
       oembedPayload(

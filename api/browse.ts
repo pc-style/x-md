@@ -22,10 +22,12 @@ export function browseSuccessor(resource?: string, handle?: string): string | un
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'browse', req.query.resource)
   setCorsHeaders(res)
-  if (req.method === 'OPTIONS') {
-    applyQuotaPolicyOnly(res, req.query.resource === 'search' ? 'search' : 'read', { ip: clientIp(req.headers) })
-    return res.status(204).end()
-  }
+  // Preflight, 405 and a rejected key are never charged, so they advertise the
+  // policy alone; a charged request overwrites this with its own state below.
+  // No key is resolved this early, so an uncharged response names the anonymous
+  // shape of the policy, which is the only one it can honestly claim.
+  applyQuotaPolicyOnly(res, req.query.resource === 'search' ? 'search' : 'read', { ip: clientIp(req.headers) })
+  if (req.method === 'OPTIONS') return res.status(204).end()
 
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
   const accept = String(req.headers.accept ?? '')

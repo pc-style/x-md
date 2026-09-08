@@ -1,6 +1,6 @@
 ---
 title: "x.md — read public X posts as Markdown"
-description: "Read public X posts, videos, threads, profiles, search results, followers, and following as compact Markdown or structured JSON. Read-only, no API key, open source."
+description: "Read public X posts, videos, threads, profiles, search results, followers, and following as compact Markdown or structured JSON. Read-only, no API key required, open source."
 canonical: https://x.pcstyle.dev/
 last-updated: 2026-09-08
 ---
@@ -8,8 +8,8 @@ last-updated: 2026-09-08
 # x.md
 
 > x.md turns public X (Twitter) content into compact Markdown an agent can read.
-> Swap `x.com` for `x.pcstyle.dev` in any public post URL. No account, no API key,
-> read-only, MIT-licensed.
+> Swap `x.com` for `x.pcstyle.dev` in any public post URL. No account and no API
+> key required, read-only, MIT-licensed.
 
 ## Quick start
 

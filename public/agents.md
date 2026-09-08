@@ -8,8 +8,10 @@ last-updated: 2026-09-08
 # x.md for agents
 
 x.md is a read-only browser for public X (Twitter) content. Give it a public X
-URL, handle, or query; it answers with compact Markdown or structured JSON. No
-account, no API key, no OAuth. MIT-licensed, free, best effort.
+URL, handle, or query; it answers with compact Markdown or structured JSON.
+Anonymous is the default and needs no account, no API key, and no OAuth; an
+optional bearer key, issued by hand, raises the search allowance
+([/auth.md](https://x.pcstyle.dev/auth.md)). MIT-licensed, free, best effort.
 
 ## When to use x.md
 
@@ -51,7 +53,7 @@ The same reads, versioned and stable for machine callers, live under
 `/api/v1/`: `POST`-free, `GET`-only, and described field by field in
 [openapi.json](https://x.pcstyle.dev/openapi.json).
 
-```
+```text
 GET /api/v1/posts?url={status url}
 GET /api/v1/search?q={query}
 GET /api/v1/profiles/{handle}
@@ -94,8 +96,10 @@ are filtered after retrieval.
 - `503` with `Retry-After: 30` means an upstream provider is down.
 - Errors are RFC 9457 problem documents (`application/problem+json`) with a
   stable machine `code` and a `resolution` hint that says what to do next.
-- Successful responses are cached for about an hour; `X-Cache` reports the
-  outcome and `X-Source` names the upstream provider.
+- Successful anonymous responses stay cacheable for about an hour; `X-Cache`
+  reports the outcome and `X-Source` names the upstream provider. A keyed
+  response is `Cache-Control: private, no-store` and never enters a shared
+  cache, though x.md's own result cache still spares the upstream call.
 
 ## When not to use x.md
 

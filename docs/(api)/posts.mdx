@@ -17,10 +17,12 @@ curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?thread=off'
 `GET /api/v1/posts` — the same reader on the [versioned surface](/versioning), for a client that holds a URL rather than a path. Identify the post either with `url`, or with the `handle` and `id` pair.
 
 ```bash
+# By URL
 curl -sS -G 'https://x.pcstyle.dev/api/v1/posts' \
   --data-urlencode 'url=https://x.com/trq212/status/2052809885763747935' \
   --data-urlencode 'thread=off'
 
+# Or by handle and id
 curl -sS 'https://x.pcstyle.dev/api/v1/posts?handle=trq212&id=2052809885763747935'
 ```
 

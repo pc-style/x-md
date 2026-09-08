@@ -7,7 +7,14 @@ import { handleKeysApi, handlePoolApi } from '../lib/adminApi'
 import { callerHeaders, resolveCaller } from '../lib/apiauth'
 import { ConvertError as BrowseError } from '../lib/errors'
 import { parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
-import { applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers'
+import {
+  applyExhaustedQuota,
+  applyQuotaPolicyOnly,
+  applyRequestQuota,
+  chargeRequestQuota,
+  type QuotaCaller,
+  type QuotaScope,
+} from '../lib/ratelimit-headers'
 import { clientIp } from '../lib/ratelimit'
 import {
   acceptPrefersHtml,
@@ -59,19 +66,48 @@ function fail(req: IncomingMessage, res: ServerResponse, code: string, detail?: 
   respondProblem(req, res, problemDetails(code, { instance: problemInstance(req), detail }))
 }
 
-/** Handles OPTIONS preflight and rejects non-GET/HEAD methods. Returns true if the request was fully handled. */
-function guardMethod(req: IncomingMessage, res: ServerResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204
-    res.end()
-    return true
-  }
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.setHeader('Allow', 'GET, HEAD, OPTIONS')
-    fail(req, res, 'method_not_allowed', `${req.method} is not supported on this route. x.md only reads public X content.`)
-    return true
-  }
-  return false
+/**
+ * Advertises the route's policies, which is all an uncharged response — a
+ * preflight or a 405 — can claim, then answers OPTIONS. A charged request
+ * overwrites the header with its own state, as the deployed handlers do.
+ */
+function preflight(req: IncomingMessage, res: ServerResponse, scope: QuotaScope, caller: QuotaCaller): boolean {
+  applyQuotaPolicyOnly(res, scope, caller)
+  if (req.method !== 'OPTIONS') return false
+  res.statusCode = 204
+  res.end()
+  return true
+}
+
+/** Rejects non-GET/HEAD methods. Returns true if the request was answered. Call after `preflight`. */
+function rejectMethod(req: IncomingMessage, res: ServerResponse): boolean {
+  if (req.method === 'GET' || req.method === 'HEAD') return false
+  res.setHeader('Allow', 'GET, HEAD, OPTIONS')
+  fail(req, res, 'method_not_allowed', `${req.method} is not supported on this route. x.md only reads public X content.`)
+  return true
+}
+
+/** Charges the request against its quota and answers 429 once the front door is spent. */
+async function enforceQuota(
+  req: IncomingMessage,
+  res: ServerResponse,
+  scope: QuotaScope,
+  caller: QuotaCaller,
+): Promise<boolean> {
+  const quota = await chargeRequestQuota(scope, caller)
+  applyRequestQuota(res, quota)
+  if (quota.allowed) return false
+  applyExhaustedQuota(res, quota, 'api-ip', quota.retryAfter)
+  respondProblem(
+    req,
+    res,
+    problemDetails('rate_limited', {
+      instance: problemInstance(req),
+      detail: 'Too many requests from this address. Cached responses do not count against the allowance.',
+      retryAfter: quota.retryAfter,
+    }),
+  )
+  return true
 }
 
 async function handleConvert(
@@ -87,13 +123,18 @@ async function handleConvert(
   if (!isApi && !statusMatch) return false
 
   setCorsHeaders(res)
-  applyRequestQuota(res, await chargeRequestQuota('read', { ip: clientIp(req.headers) }))
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
   // Mirrors production: the unversioned alias is deprecated, the permalink and
-  // versioned routes (which carry via=route) are not.
+  // versioned routes (which carry via=route) are not. Set before the guards so
+  // a 429 and a 405 carry the signal too.
   if (isApi && url.searchParams.get('via') !== 'route' && !(url.searchParams.get('handle') && url.searchParams.get('id'))) {
     setDeprecationHeaders(res, '/api/v1/posts')
   }
-  if (guardMethod(req, res)) return true
+  // Charged ahead of the method guard, as api/convert.ts does, so a 405 reports
+  // the remaining allowance too.
+  if (await enforceQuota(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
 
   const accept = String(req.headers.accept ?? '')
   const userAgent = String(req.headers['user-agent'] ?? '')
@@ -141,8 +182,10 @@ async function handleOembed(url: URL, req: IncomingMessage, res: ServerResponse)
   const path = url.pathname.replace(/\/$/, '')
   if (path !== '/oembed' && path !== '/api/oembed') return false
   setCorsHeaders(res)
-  applyRequestQuota(res, await chargeRequestQuota('read', { ip: clientIp(req.headers) }))
-  if (guardMethod(req, res)) return true
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
+  if (await enforceQuota(req, res, 'read', caller)) return true
   const { status, headers, body } = oembedResponse(
     {
       url: url.searchParams.get('url'),
@@ -178,18 +221,26 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   }
   if (!resource && !isBrowseApi) return false
   setCorsHeaders(res)
-  applyRequestQuota(res, await chargeRequestQuota(resource === 'search' ? 'search' : 'read', { ip: clientIp(req.headers) }))
+  const scope: QuotaScope = resource === 'search' ? 'search' : 'read'
+  if (preflight(req, res, scope, { ip: clientIp(req.headers) })) return true
   // Mirrors production: only a direct /api/browse call is the deprecated alias.
   if (isBrowseApi && url.searchParams.get('via') !== 'route') {
     setDeprecationHeaders(res, browseSuccessor(resource, url.searchParams.get('handle') ?? undefined))
   }
-  if (guardMethod(req, res)) return true
+  if (rejectMethod(req, res)) return true
   const resolved = await resolveCaller(req.headers)
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   if (resolved.status === 'invalid') {
     fail(req, res, 'invalid_key', 'Invalid or disabled API key.')
     return true
   }
+  // Charged after the caller is known, so a verified key's own policy is part of
+  // the quota it is measured against.
+  const quotaCaller: QuotaCaller =
+    resolved.caller.kind === 'key'
+      ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
+      : { ip: resolved.ip }
+  if (await enforceQuota(req, res, scope, quotaCaller)) return true
   try {
     const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
@@ -249,12 +300,12 @@ async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse):
     fail(req, res, 'invalid_body')
     return true
   }
-  const { status, body: payload } = path === '/api/admin/pool'
+  const { status, body: payload, failure } = path === '/api/admin/pool'
     ? await handlePoolApi(req.method ?? 'GET', parsed.value)
     : await handleKeysApi(req.method ?? 'GET', parsed.value)
-  if (status === 405) {
-    res.setHeader('Allow', methods)
-    fail(req, res, 'method_not_allowed', `${req.method} is not supported on this route.`)
+  if (failure) {
+    if (status === 405) res.setHeader('Allow', methods)
+    fail(req, res, failure.code, failure.detail)
     return true
   }
   respondJson(res, status, payload)
@@ -327,12 +378,16 @@ async function handleMcp(url: URL, req: IncomingMessage, res: ServerResponse): P
   return true
 }
 
-function handleApiIndex(url: URL, req: IncomingMessage, res: ServerResponse): boolean {
+async function handleApiIndex(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const path = url.pathname.replace(/\/$/, '') || '/'
   if (path !== '/api' && path !== '/api/index') return false
   setCorsHeaders(res)
-  applyQuotaPolicyOnly(res, 'read', { ip: clientIp(req.headers) })
-  if (guardMethod(req, res)) return true
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
+  // The index is an API response like any other, so it charges the same
+  // allowance the operations it describes will charge.
+  if (await enforceQuota(req, res, 'read', caller)) return true
   const origin = requestOrigin(req)
   const accept = String(req.headers.accept ?? '')
   const chosen = selectRepresentation(accept, ['json', 'markdown'], 'json') ?? 'json'
@@ -385,7 +440,7 @@ function installConvertMiddleware(middlewares: Connect.Server) {
         const url = applyVersionedRoutes(new URL(req.url, 'http://localhost'))
         const handled =
           (await handleAdmin(url, req, res)) ||
-          handleApiIndex(url, req, res) ||
+          (await handleApiIndex(url, req, res)) ||
           (await handleMcp(url, req, res)) ||
           (await handleOembed(url, req, res)) ||
           (await handleConvert(url, req, res)) ||

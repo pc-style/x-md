@@ -362,7 +362,10 @@ function echoable(value: string | null | undefined, max = 200): string | undefin
 
 export function oembedPayload(query: OEmbedQuery, origin: string): Record<string, string> {
   const fromUrl = query.url ? parseStatusUrlSafe(query.url) : undefined
-  const handle = echoable(query.author, 15)
+  // Validated at full length, not truncated into validity: capping first would
+  // let a 30-character author pass as its own first 15 characters, so the card
+  // would name an account the caller never asked for.
+  const handle = echoable(query.author)
   const author = fromUrl?.handle || (handle && /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : undefined) || 'i'
   const status = fromUrl?.id || (/^\d{1,25}$/.test(query.status ?? '') ? query.status : undefined) || '0'
   const provider = echoable(query.provider, 60)

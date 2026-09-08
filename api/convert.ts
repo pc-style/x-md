@@ -21,6 +21,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const accept = String(req.headers.accept ?? '')
   const instance = requestInstance(req, requestOrigin(req))
 
+  // A vercel.json rewrite hands the function its destination path, so the
+  // permalink routes arrive here looking like /api/convert too. They are the
+  // only ones that can be told apart (they inject handle and id), so the
+  // deprecated alias is "a direct /api/convert call that is not a permalink".
+  // `via=route` lets a rewrite opt out explicitly once one carries the marker.
+  // RFC 9745 wants the signal on error responses too, hence before the guards.
+  if (
+    (req.url ?? '').split('?')[0] === '/api/convert' &&
+    param('via') !== 'route' &&
+    !(param('handle') && param('id'))
+  ) {
+    setDeprecationHeaders(res, '/api/v1/posts')
+  }
+
   // Charged before anything can return, so every response — success, error and
   // 405 alike — tells the caller how much room is left.
   const quota = await chargeRequestQuota('read', caller)
@@ -37,19 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       accept,
       req.method,
     )
-  }
-
-  // A vercel.json rewrite hands the function its destination path, so the
-  // permalink routes arrive here looking like /api/convert too. They are the
-  // only ones that can be told apart (they inject handle and id), so the
-  // deprecated alias is "a direct /api/convert call that is not a permalink".
-  // `via=route` lets a rewrite opt out explicitly once one carries the marker.
-  if (
-    (req.url ?? '').split('?')[0] === '/api/convert' &&
-    param('via') !== 'route' &&
-    !(param('handle') && param('id'))
-  ) {
-    setDeprecationHeaders(res, '/api/v1/posts')
   }
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {

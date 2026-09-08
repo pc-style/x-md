@@ -41,8 +41,10 @@ you need any of those, self-host: `git clone https://github.com/pc-style/x-md`.
 - **Overage behaviour:** none. There is no overage billing — a request over the
   limit is refused with `429` and a `Retry-After` in seconds. Wait that long
   and retry once; do not loop, and do not spread the same workload across IPs.
-- **Caching:** successful responses are cached about an hour. Re-reading the
-  same public post costs nothing.
+- **Caching:** successful anonymous responses are cached about an hour, so
+  re-reading the same public post costs nothing. A keyed response is
+  `Cache-Control: private, no-store` and never enters the shared cache; it still
+  reads x.md's own result cache, so the repeat read is free either way.
 - **Page walks:** each page of a `page=` walk counts as one request. Prefer the
   `cursor` from `nextCursor`, which costs one upstream page.
 - **Not included at any price:** private, protected, or deleted content; X

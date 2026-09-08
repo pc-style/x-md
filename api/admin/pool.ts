@@ -20,10 +20,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const parsed = parseJsonBody(req.body)
   if (!parsed.ok) return fail('invalid_body')
-  const { status, body: payload } = await handlePoolApi(req.method ?? 'GET', parsed.value)
-  if (status === 405) {
-    res.setHeader('Allow', METHODS)
-    return fail('method_not_allowed', `${req.method} is not supported on this route.`)
+  const { status, body: payload, failure } = await handlePoolApi(req.method ?? 'GET', parsed.value)
+  if (failure) {
+    if (status === 405) res.setHeader('Allow', METHODS)
+    return fail(failure.code, failure.detail)
   }
   return res.status(status).json(payload)
 }

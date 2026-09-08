@@ -22,6 +22,24 @@ export const SPEC_VERSION = '1.1.0'
  */
 const LEGACY_DEPRECATION_ISO = new Date(Number(LEGACY_DEPRECATION.slice(1)) * 1000).toISOString().replace('.000Z', 'Z')
 
+/**
+ * `/api/browse` routes on its `resource` parameter, so it has no single
+ * replacement: each resource is replaced by a different v1 route. Mirrors
+ * `browseSuccessor()` in `api/browse.ts`, the function that emits the runtime
+ * `successor-version` link, and `lib/openapi.test.ts` pins the two together.
+ */
+export const BROWSE_SUCCESSORS: Readonly<Record<string, string>> = {
+  profile: '/api/v1/profiles/{handle}',
+  followers: '/api/v1/profiles/{handle}/followers',
+  following: '/api/v1/profiles/{handle}/following',
+  search: '/api/v1/search',
+}
+
+/** The same mapping as prose, so the written policy cannot drift from the table. */
+const BROWSE_SUCCESSOR_PROSE = Object.entries(BROWSE_SUCCESSORS)
+  .map(([resource, path]) => `\`resource=${resource}\` → \`${path}\``)
+  .join(', ')
+
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 20
 const MAX_PAGE = 10
@@ -88,6 +106,7 @@ export interface OperationObject {
   'x-sunset'?: string
   'x-deprecation'?: string
   'x-successor-version'?: string
+  'x-successor-version-map'?: { parameter: string; routes: Record<string, string> }
 }
 
 export interface OpenApiDocument {
@@ -132,10 +151,13 @@ const RATE_LIMIT_HEADERS: Record<string, HeaderObject> = {
   'RateLimit-Reset': headerRef('RateLimitReset'),
 }
 
-const DEPRECATION_HEADERS: Record<string, HeaderObject> = {
-  Deprecation: headerRef('Deprecation'),
-  Sunset: headerRef('Sunset'),
-  Link: headerRef('DeprecationLink'),
+/** RFC 9745 wants these on every response a deprecated route produces. */
+function deprecationHeaders(link: 'DeprecationLink' | 'BrowseDeprecationLink'): Record<string, HeaderObject> {
+  return {
+    Deprecation: headerRef('Deprecation'),
+    Sunset: headerRef('Sunset'),
+    Link: headerRef(link),
+  }
 }
 
 const COMPONENT_HEADERS: Record<string, HeaderObject> = {
@@ -183,6 +205,11 @@ const COMPONENT_HEADERS: Record<string, HeaderObject> = {
     description: 'RFC 8288 links for the retirement: `rel="successor-version"` names the replacement route, `rel="deprecation"` and `rel="sunset"` point at the written policy.',
     schema: { type: 'string' },
     example: `<${SITE}/api/v1/posts>; rel="successor-version", <${SITE}/docs/versioning>; rel="deprecation"; type="text/html", <${SITE}/docs/versioning>; rel="sunset"; type="text/html"`,
+  },
+  BrowseDeprecationLink: {
+    description: `RFC 8288 links for the retirement. \`rel="successor-version"\` names the replacement for this exact call, chosen by \`resource\` (${BROWSE_SUCCESSOR_PROSE}), and is absent when the request names no resolvable resource, because a Link target is a URI and never a URI Template. \`rel="deprecation"\` and \`rel="sunset"\` point at the written policy.`,
+    schema: { type: 'string' },
+    example: `<${SITE}/api/v1/profiles/jack/followers>; rel="successor-version", <${SITE}/docs/versioning>; rel="deprecation"; type="text/html", <${SITE}/docs/versioning>; rel="sunset"; type="text/html"`,
   },
   DiscoveryLink: {
     description: 'RFC 8288 links to this OpenAPI description, the human docs, the API catalog, the llms.txt manifest and the versioning policy.',
@@ -662,8 +689,14 @@ interface OperationSpec {
   recoverable404?: boolean
   security?: readonly Record<string, readonly string[]>[]
   /** Set on the two unversioned aliases scheduled for removal. */
-  successor?: string
+  successor?: Successor
 }
+
+/**
+ * What replaces a deprecated alias: one route, or one route per value of a
+ * query parameter when the alias multiplexes several resources onto one path.
+ */
+type Successor = string | { parameter: string; routes: Readonly<Record<string, string>> }
 
 function operation(spec: OperationSpec): { get: OperationObject } {
   const get: OperationObject = {
@@ -680,9 +713,18 @@ function operation(spec: OperationSpec): { get: OperationObject } {
     get.deprecated = true
     get['x-deprecation'] = LEGACY_DEPRECATION_ISO
     get['x-sunset'] = LEGACY_SUNSET_ISO
-    get['x-successor-version'] = `${SITE}${spec.successor}`
+    // A multiplexed alias has no single successor, so it publishes the mapping
+    // instead of a `x-successor-version` that would be wrong for most callers.
+    if (typeof spec.successor === 'string') get['x-successor-version'] = `${SITE}${spec.successor}`
+    else {
+      get['x-successor-version-map'] = {
+        parameter: spec.successor.parameter,
+        routes: Object.fromEntries(Object.entries(spec.successor.routes).map(([value, path]) => [value, `${SITE}${path}`])),
+      }
+    }
+    const link = typeof spec.successor === 'string' ? 'DeprecationLink' : 'BrowseDeprecationLink'
     for (const response of Object.values(get.responses)) {
-      response.headers = { ...response.headers, ...DEPRECATION_HEADERS }
+      response.headers = { ...response.headers, ...deprecationHeaders(link) }
     }
   }
   return { get }
@@ -871,7 +913,7 @@ function paths(): Record<string, { get: OperationObject }> {
         path: '/api/browse',
         operationId: 'browseLegacy',
         summary: 'Read a profile, connections or search results (deprecated alias)',
-        description: `Deprecated compatibility alias for the \`/api/v1/profiles/*\` and \`/api/v1/search\` operations, selected by the \`resource\` query parameter. Responses carry the RFC 9745 \`Deprecation\` header, the RFC 8594 \`Sunset\` header, and a \`Link\` with \`rel="successor-version"\`. Scheduled for removal on ${LEGACY_SUNSET_ISO.slice(0, 10)}; move to the versioned routes before then.\n\nSuccessors: \`resource=profile\` → \`/api/v1/profiles/{handle}\`, \`resource=followers\` → \`/api/v1/profiles/{handle}/followers\`, \`resource=following\` → \`/api/v1/profiles/{handle}/following\`, \`resource=search\` → \`/api/v1/search\`.`,
+        description: `Deprecated compatibility alias for the \`/api/v1/profiles/*\` and \`/api/v1/search\` operations, selected by the \`resource\` query parameter. Responses carry the RFC 9745 \`Deprecation\` header, the RFC 8594 \`Sunset\` header, and a \`Link\` with \`rel="successor-version"\`. Scheduled for removal on ${LEGACY_SUNSET_ISO.slice(0, 10)}; move to the versioned routes before then.\n\nThere is no single successor: the replacement depends on \`resource\` (${BROWSE_SUCCESSOR_PROSE}), and \`x-successor-version-map\` publishes the same mapping. A call that names no resolvable resource still carries \`Deprecation\` and \`Sunset\`, but no \`successor-version\` link.`,
         tags: ['Profiles', 'Search'],
         parameters: [RESOURCE_PARAM, handleParam('query'), LEGACY_Q_PARAM, FEED_PARAM, ...LIST_PARAMS],
         success: browseSuccess('The requested browse resource. The body shape depends on `resource`.', true),
@@ -879,7 +921,7 @@ function paths(): Record<string, { get: OperationObject }> {
         docs: 'profiles',
         recoverable404: true,
         security: OPTIONAL_KEY_SECURITY,
-        successor: '/api/v1/search',
+        successor: { parameter: 'resource', routes: BROWSE_SUCCESSORS },
       }),
     },
   ]
@@ -1183,7 +1225,13 @@ function schemas(): Record<string, JsonSchema> {
                 additionalProperties: true,
                 properties: {
                   path: str('The deprecated route.'),
-                  successor: str('What to call instead.'),
+                  successor: str('What to call instead, when one route replaces the alias outright.'),
+                  successor_parameter: str('Query parameter that picks the successor, when the alias multiplexes several resources onto one path.'),
+                  successors: {
+                    type: 'object',
+                    description: 'The successor route for each value of `successor_parameter`. Present instead of `successor`.',
+                    additionalProperties: { type: 'string' },
+                  },
                   deprecation: str('The RFC 9745 `Deprecation` header value.'),
                   sunset: str('The RFC 8594 `Sunset` header value.'),
                   sunset_iso: str('The same retirement date in ISO 8601.'),
@@ -1279,7 +1327,7 @@ const VERSIONING_POLICY = [
   '',
   'The permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.',
   '',
-  `Deprecated today: \`GET /api/convert\` (successor \`GET /api/v1/posts\`) and \`GET /api/browse\` (successors \`/api/v1/posts\`, \`/api/v1/profiles/{handle}\`, \`/api/v1/profiles/{handle}/followers\`, \`/api/v1/profiles/{handle}/following\`, \`/api/v1/search\`). Every response from a deprecated route carries \`Deprecation: ${LEGACY_DEPRECATION}\` (RFC 9745, an \`@\`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), \`Sunset: ${LEGACY_SUNSET}\` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a \`Link\` header with \`rel="successor-version"\`, \`rel="deprecation"\` and \`rel="sunset"\`. Read \`Deprecation\` and \`Sunset\` on every response, follow \`rel="successor-version"\` automatically, and stop calling the alias before the sunset date.`,
+  `Scheduled for deprecation on 2026-09-15: \`GET /api/convert\` (successor \`GET /api/v1/posts\`) and \`GET /api/browse\`, whose successor depends on its \`resource\` (${BROWSE_SUCCESSOR_PROSE}); a browse call that names no resolvable resource carries no \`successor-version\` link. Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the \`Deprecation\` field names: every response from them carries \`Deprecation: ${LEGACY_DEPRECATION}\` (RFC 9745, an \`@\`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), \`Sunset: ${LEGACY_SUNSET}\` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a \`Link\` header with \`rel="successor-version"\`, \`rel="deprecation"\` and \`rel="sunset"\`. Read \`Deprecation\` and \`Sunset\` on every response, follow \`rel="successor-version"\` automatically, and stop calling the alias before the sunset date.`,
   '',
   `Written policy: ${SITE}/docs/versioning. Machine description: ${SITE}/openapi.json.`,
 ].join('\n')
@@ -1436,7 +1484,7 @@ export function openapiDocument(): OpenApiDocument {
       policy: VERSIONING_POLICY,
       deprecated_operations: [
         { operationId: 'getPostLegacy', path: '/api/convert', deprecated: LEGACY_DEPRECATION_ISO, sunset: LEGACY_SUNSET_ISO, successor: '/api/v1/posts' },
-        { operationId: 'browseLegacy', path: '/api/browse', deprecated: LEGACY_DEPRECATION_ISO, sunset: LEGACY_SUNSET_ISO, successor: '/api/v1/search' },
+        { operationId: 'browseLegacy', path: '/api/browse', deprecated: LEGACY_DEPRECATION_ISO, sunset: LEGACY_SUNSET_ISO, successor_parameter: 'resource', successors: BROWSE_SUCCESSORS },
       ],
     },
     'x-rate-limit-policy': [

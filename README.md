@@ -56,7 +56,7 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents 
 
 `/api/v1/*` is the stable machine surface: `/api/v1/posts`, `/api/v1/profiles/{handle}` (`/followers`, `/following`), `/api/v1/search`, `/api/v1/oembed`. Additive changes ship inside `v1`; breaking ones ship as a new path prefix, and `v1` keeps working for at least 12 months after a successor appears. The permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/search`, `/oembed`) are the unversioned product surface and are not deprecated.
 
-`GET /api/convert` and `GET /api/browse` are deprecated aliases with a **2027-09-15** sunset. They still work unchanged and announce themselves on every response:
+`GET /api/convert` and `GET /api/browse` are aliases scheduled for deprecation on **2026-09-15**, with a **2027-09-15** sunset. They still work unchanged and already announce the schedule on every response:
 
 ```http
 Deprecation: @1789430400
@@ -167,7 +167,7 @@ bunx skills add pc-style/x-md -g -y --skill browse-x
 
 The skill uses `https://x.pcstyle.dev`; it does not require a local checkout or local API keys. Its helper is a TypeScript CLI (`bun skills/browse-x/scripts/browse-x.ts …`) that needs Bun, and exits with code 3 on a rate limit after printing `Retry-After`, so agents know exactly how long to wait.
 
-The skills CLI command follows the repository's current default branch. For a reviewable, immutable copy, check out the [latest release tag](https://github.com/pc-style/x-md/releases) (`v1.0.0`) and copy `skills/browse-x` from that checkout.
+The skills CLI command follows the repository's current default branch. For a reviewable, immutable copy, check out the newest tag on the [releases page](https://github.com/pc-style/x-md/releases) and copy `skills/browse-x` from that checkout.
 
 ## Caching and reliability
 
@@ -188,14 +188,14 @@ x.md is read-only and does not accept X credentials, post content, or account mu
 ## Self-host
 
 ```bash
-git clone --branch v1.0.0 --depth 1 https://github.com/pc-style/x-md.git
+git clone --depth 1 https://github.com/pc-style/x-md.git
 cd x-md
 bun install --frozen-lockfile
 cp .env.local.example .env.local
 bun run dev
 ```
 
-Pin to a [release tag](https://github.com/pc-style/x-md/releases) and the lockfile for a reviewable source snapshot; `main` is the moving target. No container image or deployment artifact is published; you deploy the source.
+That clones `main`, which is the moving target. For a reviewable source snapshot, clone with `--branch` and the newest tag from the [releases page](https://github.com/pc-style/x-md/releases) — the hosted API runs the newest tag — and keep the lockfile. No container image or deployment artifact is published; you deploy the source.
 
 Optional environment variables:
 

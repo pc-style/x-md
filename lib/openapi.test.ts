@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
+import { browseSuccessor } from '../api/browse.js'
+import { apiIndexDocument } from '../api/index.js'
 import { ERROR_CATALOG, LEGACY_SUNSET_ISO, problemDetails } from './apierror'
-import { openapiDocument, openapiJson, SITE } from './openapi'
+import { BROWSE_SUCCESSORS, openapiDocument, openapiJson, SITE } from './openapi'
 import type { OperationObject, ResponseObject } from './openapi'
 import { ACCOUNT_IP, ACCOUNT_KEY_NAME, ACCOUNT_WINDOW_SEC, API_IP, SEARCH_IP, SEARCH_KEY } from './quotas'
 import { policyField, stateField } from './ratelimit-headers'
@@ -266,13 +268,78 @@ describe('versioning and deprecation', () => {
     for (const [path, operation] of operations) {
       if (!operation.deprecated) continue
       expect(operation['x-sunset'], path).toBe(LEGACY_SUNSET_ISO)
-      expect(operation['x-successor-version'], path).toMatch(/\/api\/v1\//)
+      // One route, or one per query value: never neither, never both.
+      const single = operation['x-successor-version']
+      const map = operation['x-successor-version-map']
+      expect(Boolean(single) !== Boolean(map), path).toBe(true)
+      for (const target of single ? [single] : Object.values(map?.routes ?? {})) {
+        expect(target, path).toMatch(new RegExp(`^${SITE}/api/v1/`))
+      }
       for (const [status, response] of Object.entries(operation.responses)) {
         for (const header of ['Deprecation', 'Sunset', 'Link']) {
           expect(response.headers?.[header], `${path} ${status} ${header}`).toBeDefined()
         }
       }
     }
+  })
+
+  test('/api/convert names /api/v1/posts as its one successor', () => {
+    const convert = doc.paths['/api/convert'].get
+    expect(convert['x-successor-version']).toBe(`${SITE}/api/v1/posts`)
+    expect(convert.responses['200'].headers?.Link).toEqual({ $ref: '#/components/headers/DeprecationLink' })
+  })
+
+  test('/api/browse publishes a successor per resource, not a single route', () => {
+    const browse = doc.paths['/api/browse'].get
+    expect(browse['x-successor-version']).toBeUndefined()
+    expect(browse['x-successor-version-map']).toEqual({
+      parameter: 'resource',
+      routes: {
+        profile: `${SITE}/api/v1/profiles/{handle}`,
+        followers: `${SITE}/api/v1/profiles/{handle}/followers`,
+        following: `${SITE}/api/v1/profiles/{handle}/following`,
+        search: `${SITE}/api/v1/search`,
+      },
+    })
+    // The `resource` values the document maps are exactly the ones it accepts.
+    const resource = browse.parameters.find((parameter) => parameter.name === 'resource')
+    expect([...(resource?.schema.enum ?? [])].sort()).toEqual(Object.keys(BROWSE_SUCCESSORS).sort())
+  })
+
+  test('the published browse successors are the ones api/browse.ts links to', () => {
+    for (const [resource, template] of Object.entries(BROWSE_SUCCESSORS)) {
+      expect(browseSuccessor(resource, 'jack'), resource).toBe(template.replace('{handle}', 'jack'))
+    }
+    // Search needs no handle; the profile routes emit no link without one,
+    // because a Link target is a URI and never a URI Template.
+    expect(browseSuccessor('search')).toBe('/api/v1/search')
+    expect(browseSuccessor('profile')).toBeUndefined()
+    expect(browseSuccessor('followers', 'not a handle')).toBeUndefined()
+    expect(browseSuccessor(undefined, 'jack')).toBeUndefined()
+  })
+
+  test('the browse Link example is a browse successor, not the post route', () => {
+    const link = String(doc.components.headers.BrowseDeprecationLink.example)
+    expect(link).toContain(`<${SITE}/api/v1/profiles/jack/followers>; rel="successor-version"`)
+    expect(link).not.toContain('/api/v1/posts')
+    for (const response of Object.values(doc.paths['/api/browse'].get.responses)) {
+      expect(response.headers?.Link).toEqual({ $ref: '#/components/headers/BrowseDeprecationLink' })
+    }
+  })
+
+  test('x-api-lifecycle, the written policy and /api tell the same story', () => {
+    const lifecycle = doc['x-api-lifecycle'] as { policy: string; deprecated_operations: Record<string, unknown>[] }
+    const browse = lifecycle.deprecated_operations.find((entry) => entry.path === '/api/browse')
+    expect(browse).toMatchObject({ successor_parameter: 'resource', successors: BROWSE_SUCCESSORS })
+    expect(browse?.successor).toBeUndefined()
+    for (const [resource, template] of Object.entries(BROWSE_SUCCESSORS)) {
+      expect(lifecycle.policy).toContain(`\`resource=${resource}\` → \`${template}\``)
+    }
+
+    const alias = apiIndexDocument(SITE).versioning.deprecated_aliases.find((entry) => entry.path === '/api/browse')
+    expect(alias?.successor).toBeUndefined()
+    expect(alias?.successor_parameter).toBe('resource')
+    expect(alias?.successors).toEqual(BROWSE_SUCCESSORS)
   })
 
   test('a live route is never marked deprecated', () => {

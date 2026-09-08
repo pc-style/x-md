@@ -103,8 +103,28 @@ describe('problem documents', () => {
     ['text/markdown', 'application/problem+json'],
     ['application/json', 'application/json'],
     ['application/problem+json', 'application/problem+json'],
+    // q-values decide, so an explicit rejection is not answered with the type
+    // it rejected, and a caller that ranks one type higher gets that one.
+    ['application/problem+json;q=0, application/json', 'application/json'],
+    ['application/json;q=0, application/problem+json', 'application/problem+json'],
+    ['application/json;q=0', 'application/problem+json'],
+    ['application/json;q=0.5, application/problem+json', 'application/problem+json'],
+    ['application/json, application/problem+json;q=0.5', 'application/json'],
+    ['*/*;q=0.8, application/json', 'application/json'],
+    ['Application/JSON', 'application/json'],
+    // Both types match the same wildcard equally, which is no preference.
+    ['application/*', 'application/problem+json'],
   ])('Accept %s selects %s', (accept, expected) => {
     expect(problemMediaType(accept)).toBe(expected)
+  })
+
+  test('a rejected problem+json still ships the problem body under the type asked for', () => {
+    const { headers, body } = problemResponse(
+      problemDetails('not_found', { instance: 'https://x.pcstyle.dev/api/v1/nope' }),
+      'application/problem+json;q=0, application/json',
+    )
+    expect(headers['Content-Type']).toBe('application/json; charset=utf-8')
+    expect(JSON.parse(body).code).toBe('not_found')
   })
 
   test('the body is JSON and the response varies on Accept', () => {
