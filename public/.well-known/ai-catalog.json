@@ -185,6 +185,64 @@
       }
     },
     {
+      "identifier": "urn:air:x.pcstyle.dev:skill:browse-x-md",
+      "displayName": "browse-x skill (Markdown)",
+      "type": "text/markdown",
+      "url": "https://x.pcstyle.dev/.well-known/agent-skills/browse-x.md",
+      "description": "The browse-x skill as readable Markdown: what it does, when to reach for it, when not to, and the exact commands. Readable without unpacking the installable archive.",
+      "tags": [
+        "agent-skill",
+        "when-to-use",
+        "x",
+        "twitter"
+      ],
+      "representativeQueries": [
+        "when should I use x.md",
+        "what can the browse-x skill do"
+      ],
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
       "identifier": "urn:air:x.pcstyle.dev:skill:browse-x",
       "displayName": "browse-x agent skill",
       "type": "application/json",
