@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>x.md — Public X, ready for your agent</title>
+  <link rel="stylesheet" href="assets/brand.css">
+  <link rel="stylesheet" href="film.css">
+  <script src="assets/gsap.min.js"></script>
+</head>
+<body>
+  <main id="film" data-composition-id="xmd" data-start="0" data-duration="30" data-width="1920" data-height="1080" data-fps="30">
+    <section id="feed-scene" class="clip scene grid-paper" data-start="0" data-duration="4.5" data-track-index="1">
+      <div class="lens"><div id="feed-world" class="world" data-layout-allow-overflow>
+        <div id="feed-matrix"></div>
+      </div></div>
+      <!-- Opaque lower thirds intentionally cover the traveling background cards. -->
+      <div id="opening-label" class="eyebrow" data-layout-allow-overlap data-layout-allow-occlusion>THE CONVERSATION IS THE CONTEXT.</div>
+      <div id="opening-title" data-layout-allow-overlap data-layout-allow-occlusion><span>Tweets.</span><span>Meet markdown.</span></div>
+    </section>
+
+    <section id="convert-scene" class="clip scene grid-paper" data-start="4.5" data-duration="4.5" data-track-index="1">
+      <div class="corner">x.md</div><div class="eyebrow top-label">ONE SMALL CHANGE.</div>
+      <div class="lens"><div id="convert-world" class="world" data-layout-allow-overflow>
+        <div id="browser" class="panel">
+          <div class="browser-toolbar"><span class="dots">● ● ●</span><div class="address"><span>https://</span><div class="domain-slot"><b id="domain-before">x.com</b><b id="domain-after">x.pcstyle.dev</b></div><span class="address-path">/handle/status/123</span></div><span>↗</span></div>
+          <div class="browser-body">
+            <aside id="browser-nav"><strong class="x-symbol">X</strong><span>Home</span><span>Explore</span><span>Notifications</span><span>Messages</span><span>Bookmarks</span><b class="pill">Post</b></aside>
+            <div id="browser-feed"><div class="tabs"><b>For you</b><span>Following</span></div><div id="browser-post"></div><div class="feed-tail">Discover more <span>Keep scrolling →</span></div></div>
+            <aside id="browser-trends"><b>Search</b><strong>What’s happening</strong><span>Trending now</span><span>More to explore</span><span>Who to follow</span></aside>
+          </div>
+        </div>
+        <div id="conversion-output" class="panel terminal"><div class="panel-bar">post.md <span>text/markdown</span></div><pre><em># Post</em> · x.md (@handle)
+
+The good stuff is in the conversation.
+
+<em>## Thread</em>
+Keep the whole idea, not just the headline.
+
+<em>## Replies</em>
+The useful details live here, too.
+
+<em>Source:</em> https://x.com/handle/status/123</pre></div>
+      </div></div>
+      <svg id="convert-cursor" class="cursor" viewBox="0 0 60 70" aria-hidden="true"><path d="M4 3 L48 38 L28 40 L20 61 Z"/></svg>
+      <div id="convert-ring" class="click-ring" aria-hidden="true"></div>
+      <div id="conversion-caption" class="bottom-title">Keep the post. Lose the noise.</div>
+    </section>
+
+    <section id="extract-scene" class="clip scene dark-grid" data-start="9" data-duration="4.5" data-track-index="1">
+      <div class="corner">x.md</div><div class="eyebrow top-label">NOT A SCREENSHOT. THE ACTUAL CONTEXT.</div>
+      <div class="lens"><div id="extract-world" class="world" data-layout-allow-overflow>
+        <div id="source-card" class="panel light-panel"><div class="panel-bar">What you see <span>Public post</span></div><div id="source-post"></div></div>
+        <div id="code-card" class="panel terminal"><div class="panel-bar">What your agent gets <span>post.md</span></div><div class="code-lines">
+          <div><em># Post</em> · x.md (@handle)</div><div>The good stuff is in the conversation.</div><div class="code-space"><em>## Thread</em></div><div>Follow the idea from start to finish.</div><div class="code-space"><em>## Replies</em></div><div>Questions. Answers. The missing details.</div><div class="code-space"><em>![Image]</em>(https://…/diagram.png)</div><div><em>[Video]</em>(https://…/clip.mp4)</div><div class="code-space"><em>Source:</em> https://x.com/handle/status/123</div>
+        </div></div>
+        <svg id="extract-wires" viewBox="0 0 1920 1080" aria-hidden="true"><path d="M740 400 C850 400 850 360 945 360"/><path d="M740 560 C850 560 850 550 945 550"/><path d="M740 740 C850 740 850 750 945 750"/></svg>
+        <div id="tracking-box" aria-hidden="true"></div>
+        <div class="data-tag" id="tag-thread">THREAD</div><div class="data-tag" id="tag-media">MEDIA</div><div class="data-tag" id="tag-source">SOURCE</div>
+      </div></div>
+      <div class="footnote">Illustrative content · context availability varies by post.</div>
+    </section>
+
+    <section id="discover-scene" class="clip scene grid-paper" data-start="13.5" data-duration="6" data-track-index="1">
+      <div class="corner">x.md</div><div class="eyebrow top-label">FOLLOW MORE THAN ONE POST.</div>
+      <div class="lens"><div id="discovery-world" class="world" data-layout-allow-overflow>
+        <div class="station" id="thread-station"><div class="station-heading"><h2>Threads.</h2><span>/handle/status/…</span></div><div id="thread-stack"></div><div class="thread-rail" aria-hidden="true"></div></div>
+        <div class="station" id="profile-station"><div class="station-heading"><h2>Profiles.</h2><span>/handle</span></div><div class="profile-panel panel"><div class="profile-banner"><svg viewBox="0 0 900 190" aria-hidden="true"><path d="M0 160 L150 100 L280 145 L430 30 L580 90 L740 10 L900 70"/></svg></div><div class="profile-body"><div class="avatar">x</div><h3>x.md</h3><p>@handle · Building in public.</p><div class="profile-tabs"><b>Posts</b><span>Replies</span><span>Media</span></div><div id="profile-posts"></div></div></div></div>
+        <div class="station" id="search-station"><div class="station-heading"><h2>Search.</h2><span>/search?q=…</span></div><div class="search-panel panel"><div class="search-input"><span>⌕</span><b id="search-query">agent memory</b><span class="search-submit">↵</span></div><div class="search-filters"><b>Latest</b><span>Top</span><span>Photos</span><span>Videos</span></div><div id="search-results"></div><div class="search-scan" aria-hidden="true"></div></div></div>
+      </div></div>
+      <div class="footnote">Illustrative posts and results.</div>
+    </section>
+
+    <section id="agent-scene" class="clip scene dark-grid" data-start="19.5" data-duration="6.5" data-track-index="1">
+      <div class="corner">x.md</div><div class="eyebrow top-label">GIVE YOUR AGENT THE SOURCE.</div>
+      <div class="lens"><div id="agent-world" class="world" data-layout-allow-overflow>
+        <svg id="network" viewBox="0 0 1920 1080" aria-hidden="true"><g id="network-orbits"><ellipse cx="960" cy="540" rx="680" ry="290"/><ellipse cx="960" cy="540" rx="440" ry="420"/><circle cx="960" cy="540" r="190"/></g><g id="network-paths"><path d="M330 290 Q610 290 860 490"/><path d="M330 770 Q610 770 860 590"/><path d="M1590 290 Q1310 290 1060 490"/><path d="M1590 770 Q1310 770 1060 590"/></g></svg>
+        <div class="network-node" id="node-post"><span class="node-icon">↳</span><b>Posts</b><small>Ideas worth keeping</small></div><div class="network-node" id="node-thread"><span class="node-icon">≡</span><b>Threads</b><small>The whole conversation</small></div><div class="network-node" id="node-media"><span class="node-icon">▧</span><b>Media</b><small>Images and video links</small></div><div class="network-node" id="node-search"><span class="node-icon">⌕</span><b>Search</b><small>Find the source</small></div>
+        <div id="agent-hub">x.md</div>
+        <div id="agent-terminal" class="panel terminal"><div class="panel-bar">Your agent <span>Illustrative workflow</span></div><div class="agent-prompt">Read this thread. What’s the idea?</div><div class="command"><em>$</em> curl -sS x.pcstyle.dev/handle/status/123</div><div class="agent-stream"><div><em>↳</em> # Post · The good stuff is in the conversation.</div><div><em>↳</em> ## Thread · Follow the whole idea.</div><div><em>↳</em> ## Replies · Keep the discussion.</div><div><em>↳</em> Source: https://x.com/handle/status/123</div></div><div class="answer"><span>↗</span><div><b>Now there’s context to work with.</b><p>Source links included.</p></div></div></div>
+      </div></div>
+      <div id="agent-benefit" class="bottom-title">No X API key required.</div>
+    </section>
+
+    <section id="outro-scene" class="clip scene green" data-start="26" data-duration="4" data-track-index="1">
+      <div id="outro-grid" aria-hidden="true" data-layout-allow-overflow></div><div id="outro-lockup"><div id="wordmark">x.md</div><h2>Tweets are just markdown now.</h2><div id="outro-link">x.pcstyle.dev <span>↗</span></div></div>
+      <div class="outro-footer"><span>Public X → Markdown</span><span>Built for agents. Useful for humans.</span></div>
+    </section>
+    <audio id="score" src="assets/meaningful-love.wav" data-start="0" data-duration="30" data-track-index="2" data-volume="1"></audio>
+  </main>
+  <script>
+    // Illustrative product surfaces, built once before the deterministic timeline.
+    const topics = ['Agent memory is a retrieval problem.', 'Small tools. Better context.', 'The useful details are in the replies.', 'A thread is more than its first post.', 'Sources beat screenshots.', 'The good stuff is in the conversation.', 'Keep the question and the answer.', 'Build with the whole conversation.', 'One link. Readable context.'];
+    const graph = '<svg class="post-graphic" viewBox="0 0 600 170" aria-hidden="true"><g class="graph-grid"><path d="M0 42H600 M0 85H600 M0 128H600 M100 0V170 M200 0V170 M300 0V170 M400 0V170 M500 0V170"/></g><path class="graph-line" d="M20 130L100 110L175 125L255 70L325 95L410 45L485 60L580 20"/><circle cx="580" cy="20" r="7"/></svg>';
+    function post(text, media = false) {
+      return '<article class="post"><div class="author"><div class="avatar">x</div><div><b>x.md</b><small>@handle · Illustrative post</small></div><span class="post-menu">···</span></div><p>' + text + '</p>' + (media ? '<div class="media-art">' + graph + '<span>IDEAS → CONTEXT → SOURCES</span></div>' : '') + '<div class="post-actions"><span>↳ Reply</span><span>⇄ Repost</span><span>♡ Like</span><span>↗ Share</span></div></article>';
+    }
+    document.querySelector('#feed-matrix').innerHTML = topics.map((text, i) => '<div class="matrix-card panel" id="matrix-' + i + '">' + post(text, i === 4 || i === 5) + '</div>').join('');
+    for (const id of ['browser-post', 'source-post']) document.getElementById(id).innerHTML = post(topics[5], true);
+    document.querySelector('#thread-stack').innerHTML = ['The whole idea starts here.', 'Then comes the part that changes it.', 'And the detail you would have missed.'].map((text, i) => '<div class="thread-card panel"><span class="thread-number">0' + (i + 1) + '</span>' + post(text) + '</div>').join('');
+    document.querySelector('#profile-posts').innerHTML = topics.slice(0, 2).map(text => post(text)).join('');
+    document.querySelector('#search-results').innerHTML = [topics[0], 'How should an agent remember a conversation?', 'Context windows are not long-term memory.'].map(text => post(text)).join('');
+
+    const tl = gsap.timeline({ paused: true, defaults: { ease: 'power3.out' } });
+    // Close-up → tilted matrix → one selected post. Type never occupies a whole scene.
+    tl.addLabel('conversation', 0)
+      .fromTo('#feed-world', { scale: 1.65, x: 0, y: 115, rotationX: 0, rotationY: 0 }, { scale: 0.76, x: -45, y: -80, rotationX: 16, rotationY: -8, duration: 1.15, ease: 'power4.inOut' }, 0)
+      .fromTo('.matrix-card', { y: 180, opacity: 0 }, { y: 0, opacity: 1, duration: 0.55, stagger: { each: 0.035, from: 'center' } }, 0)
+      .to('#feed-world', { x: 70, y: -150, rotationY: 7, duration: 2.2, ease: 'none' }, 1.15)
+      .fromTo('#opening-label', { opacity: 0 }, { opacity: 1, duration: 0.25 }, 0.6)
+      .fromTo('#opening-title span', { y: 80, opacity: 0 }, { y: 0, opacity: 1, stagger: 0.25, duration: 0.4 }, 1.45)
+      .to('#opening-title, #opening-label', { y: -65, opacity: 0, duration: 0.3 }, 3.25)
+      .to('#feed-world', { scale: 1.2, x: -780, y: -100, rotationX: 0, rotationY: 0, duration: 0.85, ease: 'power4.inOut' }, 3.5);
+
+    tl.addLabel('domain-swap', 4.5)
+      .fromTo('#convert-world', { scale: 0.86, rotationX: 12, rotationY: -8, y: 75 }, { scale: 1, rotationX: 0, rotationY: 0, y: 0, duration: 0.55 }, 4.5)
+      .fromTo('#convert-cursor', { x: 1400, y: 840, opacity: 0 }, { x: 728, y: 231, opacity: 1, duration: 0.5, ease: 'power2.inOut' }, 4.65)
+      .to('#convert-cursor', { scale: 0.8, duration: 0.09, repeat: 1, yoyo: true }, 5.2)
+      .fromTo('#convert-ring', { scale: 0, opacity: 0.8 }, { scale: 2.2, opacity: 0, duration: 0.5 }, 5.2)
+      .to('#domain-before', { y: -55, duration: 0.35, ease: 'power4.inOut' }, 5.35)
+      .fromTo('#domain-after', { y: 55 }, { y: 0, duration: 0.35, ease: 'power4.inOut' }, 5.35)
+      .to('#convert-world', { scale: 1.18, y: 100, duration: 0.5, ease: 'power2.inOut' }, 5.4)
+      .to('#convert-cursor', { x: 1380, y: 730, opacity: 0, duration: 0.45 }, 5.6)
+      .to('#browser-nav', { x: -300, rotationY: -40, opacity: 0, duration: 0.5 }, 6.15)
+      .to('#browser-trends', { x: 400, rotationY: 40, opacity: 0, duration: 0.5 }, 6.2)
+      .to('#browser .tabs, #browser .feed-tail, #browser .post-actions', { y: 80, opacity: 0, duration: 0.35 }, 6.25)
+      .to('#browser', { scale: 0.78, rotationY: -18, x: -390, opacity: 0, duration: 0.4, ease: 'power3.inOut' }, 6.65)
+      .fromTo('#conversion-output', { x: 650, rotationY: 25, scale: 0.8, opacity: 0 }, { x: 0, rotationY: 0, scale: 1, opacity: 1, duration: 0.5 }, 7)
+      .to('#convert-world', { scale: 0.95, y: -30, duration: 0.6, ease: 'power2.inOut' }, 6.8)
+      .fromTo('#conversion-caption', { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.35 }, 7.25)
+      .to('#conversion-output', { y: -20, rotationY: -4, duration: 1.05, ease: 'none' }, 7.7)
+      .to('#conversion-output', { scale: 1.6, opacity: 0, duration: 0.3, ease: 'power3.in' }, 8.7)
+      .set('#conversion-output', { opacity: 0 }, 9);
+
+    tl.addLabel('context-extraction', 9)
+      .fromTo('#extract-world', { scale: 1.18, x: -100, rotationY: -10 }, { scale: 1, x: 0, rotationY: 0, duration: 0.65 }, 9)
+      .fromTo('#source-card', { x: -250, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45 }, 9)
+      .fromTo('#code-card', { x: 300, opacity: 0 }, { x: 0, opacity: 1, duration: 0.55 }, 9.25)
+      .fromTo('#tracking-box', { y: -80, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, 9.55)
+      .to('#tracking-box', { y: 175, duration: 0.65, ease: 'power2.inOut' }, 10.3)
+      .to('#tracking-box', { y: 285, scaleY: 0.5, duration: 0.5, ease: 'power2.inOut' }, 11.25)
+      .to('#tracking-box', { opacity: 0, duration: 0.3 }, 12)
+      .fromTo('.code-lines > div', { x: 45, opacity: 0 }, { x: 0, opacity: 1, duration: 0.25, stagger: 0.19 }, 9.6)
+      .fromTo('.data-tag', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, stagger: 0.65 }, 10)
+      .to('#extract-world', { scale: 1.04, x: -30, duration: 1, ease: 'none' }, 11.7)
+      .to('#extract-world', { x: -1800, rotationY: 15, duration: 0.65, ease: 'power4.in' }, 12.85);
+
+    tl.addLabel('discovery', 13.5)
+      .fromTo('#discovery-world', { x: 1000, rotationY: -16 }, { x: 0, rotationY: 0, duration: 0.55 }, 13.5)
+      .fromTo('.thread-card', { y: 140, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, stagger: 0.13 }, 13.55)
+      .to('#thread-stack', { y: -45, duration: 1.1, ease: 'none' }, 14)
+      .to('#discovery-world', { x: -1920, rotationY: 0, duration: 0.65, ease: 'power4.inOut' }, 15.05)
+      .fromTo('.profile-banner svg path', { strokeDashoffset: 1200 }, { strokeDashoffset: 0, duration: 0.7 }, 15.5)
+      .fromTo('#profile-posts', { y: 95 }, { y: -65, duration: 1.3, ease: 'power2.inOut' }, 15.6)
+      .to('#discovery-world', { x: -3840, duration: 0.65, ease: 'power4.inOut' }, 17.05)
+      .fromTo('#search-query', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'steps(8)' }, 17.6)
+      .fromTo('#search-results .post', { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3, stagger: 0.12 }, 17.85)
+      .fromTo('.search-scan', { y: 0, opacity: 0.8 }, { y: 490, opacity: 0, duration: 0.75, ease: 'none' }, 17.85)
+      .to('#search-station', { scale: 0.96, y: -10, duration: 0.8, ease: 'power2.inOut' }, 18.5);
+
+    tl.addLabel('agent-workflow', 19.5)
+      .fromTo('#agent-world', { scale: 1.5, rotationX: 25, rotationY: -15 }, { scale: 1, rotationX: 0, rotationY: 0, duration: 0.7 }, 19.5)
+      .fromTo('.network-node', { scale: 0.65, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, stagger: 0.1 }, 19.5)
+      .fromTo('#agent-hub', { scale: 0.6 }, { scale: 1, duration: 0.5 }, 19.5)
+      .to('#network-orbits', { rotation: 12, svgOrigin: '960 540', duration: 2.4, ease: 'none' }, 19.5)
+      .to('#node-post', { x: 480, y: 200, scale: 0.1, opacity: 0, duration: 0.55, ease: 'power3.in' }, 21)
+      .to('#node-thread', { x: 480, y: -200, scale: 0.1, opacity: 0, duration: 0.55, ease: 'power3.in' }, 21.1)
+      .to('#node-media', { x: -480, y: 200, scale: 0.1, opacity: 0, duration: 0.55, ease: 'power3.in' }, 21.05)
+      .to('#node-search', { x: -480, y: -200, scale: 0.1, opacity: 0, duration: 0.55, ease: 'power3.in' }, 21.15)
+      .to('#network', { scale: 0.4, opacity: 0, duration: 0.6 }, 21.1)
+      .to('#agent-hub', { scale: 2.3, opacity: 0, duration: 0.55, ease: 'power3.inOut' }, 21.4)
+      .fromTo('#agent-terminal', { scale: 0.4, rotationX: -15, opacity: 0 }, { scale: 1, rotationX: 0, opacity: 1, duration: 0.65 }, 21.55)
+      .fromTo('.agent-prompt', { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.3 }, 21.85)
+      .fromTo('.command', { x: 25, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3 }, 22.15)
+      .fromTo('.agent-stream > div', { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.25, stagger: 0.15 }, 22.55)
+      .fromTo('.answer', { y: 45, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, 23.3)
+      .fromTo('#agent-benefit', { y: 45, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, 23.7)
+      .to('#agent-terminal', { scale: 1.045, y: -12, duration: 1.4, ease: 'none' }, 24)
+      .to('#agent-world', { scale: 0.8, rotationY: 14, opacity: 0, duration: 0.45, ease: 'power3.in' }, 25.55)
+      .set('#agent-world', { opacity: 0 }, 26);
+
+    tl.addLabel('end-card', 26)
+      .fromTo('#outro-grid', { scale: 1.4, rotation: -12 }, { scale: 1, rotation: 0, duration: 1.1 }, 26)
+      .fromTo('#wordmark', { scale: 2.2, y: 70, opacity: 0 }, { scale: 1, y: 0, opacity: 1, duration: 0.65, ease: 'expo.out' }, 26)
+      .fromTo('#outro-lockup h2', { y: 55, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4 }, 26.55)
+      .fromTo('#outro-link', { y: 45, scale: 0.9, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.4 }, 27)
+      .fromTo('.outro-footer', { opacity: 0 }, { opacity: 1, duration: 0.35 }, 27.35)
+      .to('#outro-lockup', { scale: 1.025, duration: 2.2, ease: 'none' }, 27.7);
+
+    // Draw real measured SVG geometry; all sampling remains seek-safe.
+    for (const [selector, at, duration, stagger] of [['#extract-wires path', 9.8, 0.5, 0.55], ['#network-paths path', 19.75, 0.65, 0.12]]) {
+      document.querySelectorAll(selector).forEach((path, i) => {
+        const length = path.getTotalLength();
+        path.style.strokeDasharray = String(length);
+        tl.fromTo(path, { strokeDashoffset: length }, { strokeDashoffset: 0, duration, ease: 'power2.out' }, at + i * stagger);
+      });
+    }
+    window.__timelines = window.__timelines || {};
+    window.__timelines.xmd = tl;
+  </script>
+</body>
+</html>

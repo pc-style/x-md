@@ -38,7 +38,8 @@ x.md.ignore*
 .firecrawl/
 .env*
 demo/
-video/
+video/*
+!video/markdown-now/
 press-kit/
 accounts.local.json
 

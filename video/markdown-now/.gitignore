@@ -1,0 +1,8 @@
+node_modules/
+renders/
+snapshots/
+.hyperframes/
+assets/brand.css
+assets/gsap.min.js
+assets/meaningful-love.wav
+decisions.tsv
