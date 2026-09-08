@@ -8,10 +8,20 @@ import { kvDurable } from './kv.js'
 import { resetPool, setPoolSettings } from './pool.js'
 import { defaultKeyLimitPer15m, searchPoolSnapshot, searchRateModel } from './xsearch.js'
 
+/** A failed operation, for the transport to send as problem details. `code` names an ERROR_CATALOG entry. */
+export interface AdminFailure {
+  code: string
+  detail: string
+}
+
 export interface AdminResponse {
   status: number
-  body: unknown
+  body?: unknown
+  /** Set instead of `body` when the operation failed. */
+  failure?: AdminFailure
 }
+
+const failed = (status: number, code: string, detail: string): AdminResponse => ({ status, failure: { code, detail } })
 
 function positiveLimit(value: unknown): number | undefined {
   const n = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
@@ -30,7 +40,7 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
       let limit = defaultKeyLimitPer15m()
       if (input.limitPer15m !== undefined && input.limitPer15m !== null && input.limitPer15m !== '') {
         const given = positiveLimit(input.limitPer15m)
-        if (given === undefined) return { status: 400, body: { error: 'limitPer15m must be a positive integer' } }
+        if (given === undefined) return failed(400, 'invalid_body', 'limitPer15m must be a positive integer.')
         limit = given
       }
       const { record, secret } = await createApiKey(label, limit)
@@ -38,28 +48,28 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
     }
     case 'PATCH': {
       const id = typeof input.id === 'string' ? input.id : ''
-      if (!id) return { status: 400, body: { error: 'id is required' } }
+      if (!id) return failed(400, 'invalid_body', 'id is required.')
       const patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'disabled'>> = {}
       if (typeof input.label === 'string') patch.label = input.label.trim().slice(0, 80)
       if (input.limitPer15m !== undefined) {
         const limit = positiveLimit(input.limitPer15m)
-        if (limit === undefined) return { status: 400, body: { error: 'limitPer15m must be a positive integer' } }
+        if (limit === undefined) return failed(400, 'invalid_body', 'limitPer15m must be a positive integer.')
         patch.limitPer15m = limit
       }
       if (typeof input.disabled === 'boolean') patch.disabled = input.disabled
       const updated = await updateApiKey(id, patch)
       resetPool()
-      return updated ? { status: 200, body: { key: toView(updated) } } : { status: 404, body: { error: 'not found' } }
+      return updated ? { status: 200, body: { key: toView(updated) } } : failed(404, 'not_found', 'No API key with that id.')
     }
     case 'DELETE': {
       const id = typeof input.id === 'string' ? input.id : ''
-      if (!id) return { status: 400, body: { error: 'id is required' } }
+      if (!id) return failed(400, 'invalid_body', 'id is required.')
       const ok = await deleteApiKey(id)
       resetPool()
-      return ok ? { status: 200, body: { deleted: id } } : { status: 404, body: { error: 'not found' } }
+      return ok ? { status: 200, body: { deleted: id } } : failed(404, 'not_found', 'No API key with that id.')
     }
     default:
-      return { status: 405, body: { error: 'method not allowed' } }
+      return failed(405, 'method_not_allowed', `${method} is not supported on this route.`)
   }
 }
 
@@ -67,10 +77,10 @@ export async function handlePoolApi(method = 'GET', body: unknown = {}): Promise
   if (method === 'PATCH') {
     const input = (body ?? {}) as Record<string, unknown>
     const minutes = positiveLimit(input.idleReleaseMinutes)
-    if (minutes === undefined) return { status: 400, body: { error: 'idleReleaseMinutes must be a positive number' } }
+    if (minutes === undefined) return failed(400, 'invalid_body', 'idleReleaseMinutes must be a positive number.')
     await setPoolSettings({ idleReleaseMinutes: minutes })
   } else if (method !== 'GET') {
-    return { status: 405, body: { error: 'method not allowed' } }
+    return failed(405, 'method_not_allowed', `${method} is not supported on this route.`)
   }
   resetPool() // admin wants a live view, not the few-second cache
   const model = searchRateModel()

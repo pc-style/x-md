@@ -44,9 +44,39 @@ Replace `x.com` with `x.pcstyle.dev` in a post URL. Keep the handle and status I
   </Step>
 </Steps>
 
-:::note
-x.md reads public content. Private posts and X Lists are unavailable.
-:::
+## When to use x.md
+
+Reach for x.md when the job is reading one piece of public X content right now:
+
+- An agent needs the text of a public X post, thread, or X Article and cannot run a browser or log into X.
+- You are resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log.
+- You want a public profile's bio and latest original posts without holding X credentials.
+- You are checking who a public account follows, or who follows it.
+- You need X search results as structured data rather than a rendered timeline.
+- You are saving a post into notes or a vault — `?format=obsidian` emits YAML frontmatter.
+
+One plain `GET`, no key, no OAuth. Send `Accept: text/markdown` for Markdown or `Accept: application/json` for JSON.
+
+## When not to use it
+
+- **Anything that writes.** x.md never posts, replies, follows, likes, bookmarks, or sends direct messages, and it accepts no X credentials.
+- **Private, protected, suspended, or deleted content.** Never available; no parameter unlocks it.
+- **X Lists, direct messages, notifications, the home timeline, analytics.** Not supported.
+- **Bulk or firehose collection.** The service is rate limited and cached for interactive use; a page walk stops at ten pages of twenty.
+- **Guaranteed completeness.** Results come from public upstream providers and can be delayed or truncated. Check `warnings` rather than inferring.
+- **Anything needing an SLA.** x.md is a free, best-effort, MIT-licensed project.
+
+## For agents
+
+| Surface | Where |
+| --- | --- |
+| OpenAPI 3.1 description | [`/openapi.json`](https://x.pcstyle.dev/openapi.json) |
+| MCP server | `https://x.pcstyle.dev/mcp` — see [the MCP page](/mcp) |
+| Documentation index for LLMs | [`/llms.txt`](https://x.pcstyle.dev/llms.txt) |
+| Versioned machine routes | [`/api/v1/*`](/versioning) |
+| Error codes | [Catalogue](/errors) |
+
+Any documentation page can be fetched as Markdown: append `.md` to its URL, or send `Accept: text/markdown`.
 
 ## Next steps
 
@@ -60,11 +90,17 @@ x.md reads public content. Private posts and X Lists are unavailable.
   <Card title="Profiles" href="/profiles" icon="user">
     Read an account and its followers or following.
   </Card>
-  <Card title="Agent skill" href="/agents" icon="bot">
-    Give your coding agent a small, read-only tool for X.
+  <Card title="For agents" href="/agents" icon="bot">
+    The MCP server, the skill, and what an unattended client should handle.
   </Card>
   <Card title="Pagination" href="/pagination" icon="chevrons-right">
     Fetch the next page with a cursor.
+  </Card>
+  <Card title="Error catalogue" href="/errors" icon="octagon-alert">
+    Every machine code, what it means, and how to recover.
+  </Card>
+  <Card title="Versioning" href="/versioning" icon="git-branch">
+    What `/api/v1` promises and how a deprecation is announced.
   </Card>
   <Card title="Self-hosting" href="/self-hosting" icon="server">
     Run the service from your own Vercel project.

@@ -1,6 +1,6 @@
 ---
 title: Errors, limits, and caching
-description: Handle temporary failures and understand where results can be incomplete.
+description: What a failure looks like, how much room a caller has left, and when a response came from cache.
 sidebar:
   order: 7
   icon: shield-alert
@@ -8,31 +8,101 @@ sidebar:
 
 ## Errors
 
-Errors return JSON with an `error` message and a machine-readable `code` for known failures.
+Every failure answers with an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem document, served as `application/problem+json`. It carries a stable machine `code`, a human `detail`, and a one-sentence `resolution`.
+
+```json
+{
+  "type": "https://x.pcstyle.dev/docs/reliability#invalid-handle",
+  "title": "Invalid X handle",
+  "status": 400,
+  "detail": "Invalid X handle",
+  "instance": "https://x.pcstyle.dev/api/v1/profiles/not%20a%20handle",
+  "code": "invalid_handle",
+  "resolution": "Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+  "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+  "error": "Invalid X handle"
+}
+```
+
+Branch on `status` for the class of failure and on `code` for the specific one. `error` is an alias of `detail`, kept for clients written against the older `{ error, code }` shape. Each problem's `type` is a stable URI that points back into this documentation.
 
 | Status | Typical cause | What to do |
 | --- | --- | --- |
-| `400` | Missing query, invalid handle, unsupported format | Fix the request. |
-| `404` | Post missing, deleted, or unavailable | Check the public source URL. |
-| `429` | IP search allowance exhausted | Wait for `Retry-After` seconds. |
-| `503` | Live search temporarily unavailable | Wait for `Retry-After`, then retry. |
-| `5xx` | Provider or service failure | Retry with backoff; avoid tight loops. |
+| `400` | Missing query, invalid handle, unsupported parameter value | Fix the request. Retrying it unchanged fails identically. |
+| `401` | An API key was offered and rejected | Drop the header to call anonymously. The public API needs no credentials. |
+| `404` | Post or profile missing, deleted, protected, or an unknown path | Follow the `links` in the body. Check the public source URL on x.com. |
+| `405` | A write method on a read-only route | Use `GET`, `HEAD`, or `OPTIONS`; read `Allow`. |
+| `406` | An `Accept` header that excludes every representation | Ask for `text/markdown`, `application/json`, or `text/html`. |
+| `429` | A quota is exhausted | Sleep for `Retry-After` seconds, then retry once. |
+| `502`, `503` | Provider failure, or live search has no healthy session | Retry with backoff and jitter, not in a loop. |
+| `500` | A bug in x.md | Retry with backoff; if it persists, open an issue. |
 
-For search, common codes include `missing_query`, `rate_limited`, and `search_unavailable`.
+**[The full error catalogue](/errors)** lists every machine `code` with its meaning and its recovery step.
 
-## Search allowance
+## Rate limits
 
-Each IP can make **5 uncached search requests per minute**. Cached responses are free. This applies across search feeds.
+Limits exist so the service stays responsive, not to meter usage: it is free and there is nothing to buy. Every response says how much room is left, so a client can pace itself instead of discovering the limit by hitting it.
 
-`limit` defaults to 20 and is capped at 20. Smaller limits reduce response size but still count as one uncached request.
+| Policy | Quota | Window | Keyed by | Applies to |
+| --- | --- | --- | --- | --- |
+| `api-ip` | 600 | 60s | client IP | Every public API route. |
+| `search-ip` | 5 | 60s | client IP | Live search lookups by anonymous callers. Charged only when a search misses the cache and reaches a provider. |
+| `search-key` | 30 | 60s | API key | The same burst gate for a key holder. |
+| `account-ip` | 10 | 900s | client IP | Account-backed feeds (Photos, Videos, Users, and the Latest/Top live fallback), drawn from a shared public pool. |
+| `account-key` | the key's own | 900s | API key | A key holder's account-backed allowance, instead of the public one. |
 
-Requests served by the live search provider (Photos, Videos, Users, and the Latest/Top fallback) have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds share it, and each page of a page walk counts as one request; upstream retries inside a single request are not charged again. Cache hits are free. When your allowance or the shared pool is exhausted, the response is `429` with `Retry-After` set to the seconds until the window resets; an upstream outage is `503` with `Retry-After: 30`. Agents should wait that long before retrying rather than polling.
+Cache hits are free: a response served from the application cache never reaches a counter. Only the policies that apply to the route you called are advertised, so a profile read reports `api-ip` alone and a search reports three.
+
+### Response headers
+
+Two forms go out together on every measured response — success, error, and cache miss alike.
+
+`RateLimit-Policy` and `RateLimit` are the [IETF structured fields](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/): a comma-separated list of named policies, `q` = quota, `w` = window seconds, `r` = units remaining, `t` = seconds until that policy's window resets.
+
+`RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset` are the older single-value form that most clients already read. They describe **the tightest policy** — the one closest to exhaustion — because they can only describe one.
+
+A search from an anonymous caller with a full allowance:
+
+```http
+RateLimit-Policy: "api-ip";q=600;w=60, "search-ip";q=5;w=60, "account-ip";q=10;w=900
+RateLimit: "api-ip";r=599;t=60, "search-ip";r=5;t=60, "account-ip";r=10;t=900
+RateLimit-Limit: 5
+RateLimit-Remaining: 5
+RateLimit-Reset: 60
+```
+
+Read that as: 599 requests left this minute overall, but only 5 uncached searches, and 10 account-backed lookups left in the current 15-minute window. Pace against `search-ip`, the one the compatibility triple picked out.
+
+The same caller after spending the search burst:
+
+```http
+RateLimit: "api-ip";r=594;t=43, "search-ip";r=0;t=17, "account-ip";r=10;t=900
+RateLimit-Limit: 5
+RateLimit-Remaining: 0
+RateLimit-Reset: 17
+Retry-After: 17
+Cache-Control: no-store
+```
+
+The response is `429` with a `rate_limited` problem document. `Retry-After` and the exhausted policy's `t` are the same number of seconds; if they ever disagree, `Retry-After` wins. Sleep for it — do not poll, and do not retry on a shorter interval hoping for a different answer. A `503` from live search carries `Retry-After` the same way.
+
+The `/api/*` routes list all five, plus `Retry-After`, in `Access-Control-Expose-Headers`, so a browser client can read them cross-origin.
+
+### Cached responses lie about quota
+
+x.md's successful responses are cacheable, and a CDN replays the origin's headers verbatim. On a cache hit those `RateLimit` values were computed for whoever caused the cache to fill, minutes ago, possibly from another IP.
+
+**Ignore `RateLimit` on any response with a positive `Age` header**, which is what the specification tells clients to do. `X-Cache` and `x-vercel-cache` say the same thing in x.md's own terms. Rejections are never cached — a `429` carries `Cache-Control: no-store` — so a `429` you receive is always about you.
+
+If the shared counter store is unreachable, the front door fails open and reports a full quota — honest about the throttling actually in effect, which in that window is none. Account-backed search is the exception: it fails closed and answers `429` rather than risk overspending the shared pool.
 
 ## Caching
 
 Successful responses cache for about one hour by default. Degraded search results are rechecked after about one minute.
 
-`nocache=true` skips x.md's application cache. It cannot bypass a provider's own cache. Use it when freshness matters, rather than on every request.
+`nocache=true` skips x.md's application cache. It cannot bypass a provider's own cache. Use it when freshness matters, rather than on every request — a cached read is faster and costs you no search allowance.
+
+`X-Cache` reports the application cache status and `X-Source` the provider that served the result.
 
 ## Incomplete results
 
@@ -45,3 +115,5 @@ Latest and Top search can fall back to web-indexed snippets. Check `degraded` or
 ## Public data and privacy
 
 x.md is read-only. It does not post, follow, or like on your behalf. Public X Lists and private posts are not supported. Successful responses may be cached and served to other callers requesting the same resource.
+
+Related: [error catalogue](/errors) · [versioning and deprecation](/versioning) · [response formats](/responses).

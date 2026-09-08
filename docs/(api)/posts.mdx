@@ -8,13 +8,27 @@ sidebar:
 
 ## Read a post
 
-`GET /{handle}/status/{id}`
+`GET /{handle}/status/{id}` — the permalink form. Swap `x.com` for `x.pcstyle.dev` and keep the path.
 
 ```bash
 curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?thread=off'
 ```
 
-Without `thread=off`, the default response includes available parents, the author's thread, and top replies. Each returned post links to its X source.
+`GET /api/v1/posts` — the same reader on the [versioned surface](/versioning), for a client that holds a URL rather than a path. Identify the post either with `url`, or with the `handle` and `id` pair.
+
+```bash
+# By URL
+curl -sS -G 'https://x.pcstyle.dev/api/v1/posts' \
+  --data-urlencode 'url=https://x.com/trq212/status/2052809885763747935' \
+  --data-urlencode 'thread=off'
+
+# Or by handle and id
+curl -sS 'https://x.pcstyle.dev/api/v1/posts?handle=trq212&id=2052809885763747935'
+```
+
+Both forms take the same options and return the same body. Without `thread=off`, the default response includes available parents, the author's thread, and top replies. Each returned post links to its X source.
+
+Media permalinks resolve to the same post: `/{handle}/status/{id}/photo/1` and `/video/1` read the post they belong to.
 
 ## Control the conversation
 
@@ -28,6 +42,8 @@ curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?full=true&repl
 
 | Parameter | Default | Values |
 | --- | --- | --- |
+| `url` | — | A public `x.com` or `twitter.com` status permalink. `/api/v1/posts` only |
+| `handle`, `id` | — | Alternative to `url`: a handle of 1–15 word characters and a numeric status id. `/api/v1/posts` only |
 | `thread` | `full` | `off`, `full`, `conversation`, or a count from `2` to `100` |
 | `context` | `full` | `full` for surrounding context; `thread` for the direct author chain |
 | `replies` | `top` | `top`, `recent`, `off` |
@@ -38,15 +54,9 @@ curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?full=true&repl
 
 Post boolean parameters accept `true`, `1`, or `yes`. The thread count is separate from the 20-result limit on search and profile routes.
 
-## Pass the original URL
-
-If your app already holds an X URL, use the query endpoint:
-
-```bash
-curl -sS -G 'https://x.pcstyle.dev/api/convert' \
-  --data-urlencode 'url=https://x.com/trq212/status/2052809885763747935' \
-  --data-urlencode 'thread=off'
-```
+:::note
+`GET /api/convert` is the older name for `/api/v1/posts`. It still works and takes the same parameters, but it is deprecated: its responses carry `Deprecation` and `Sunset` headers and it stops answering on 2027-09-15. See [versioning](/versioning).
+:::
 
 ## Media and articles
 
@@ -68,4 +78,4 @@ Obsidian output includes frontmatter and expanded details regardless of `full`.
 
 Paste an x.md status URL into Discord, Telegram, or Slack for a rich preview. Preview bots receive Open Graph HTML. Ordinary requests receive Markdown; explicit `format` or `Accept` takes precedence.
 
-`GET /oembed?url={original X URL}` returns the oEmbed metadata.
+`GET /oembed?url={original X URL}` returns the oEmbed metadata; `GET /api/v1/oembed` is the same document on the versioned surface.

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="How to reach the x.md project: GitHub issues for bugs and feature requests, GitHub Discussions for questions, private security reports through the repository Security tab, and @pcstyle53 on X."
+    />
+    <meta name="author" content="x.md contributors" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#f7f6f2" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (() => {
+        let saved = null
+        try { saved = localStorage.getItem('x-md-theme') } catch {}
+        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#11120f' : '#f7f6f2')
+      })()
+    </script>
+    <title>Contact x.md</title>
+    <link rel="canonical" href="https://x.pcstyle.dev/contact" />
+    <link rel="alternate" type="text/markdown" href="/contact.md" title="Contact as Markdown" />
+    <link rel="alternate" hreflang="en" href="https://x.pcstyle.dev/contact" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="x.md" />
+    <meta property="og:title" content="Contact x.md" />
+    <meta property="og:description" content="Bugs and feature requests through GitHub issues, questions through Discussions, and vulnerabilities as a private report through the repository Security tab, never a public issue." />
+    <meta property="og:url" content="https://x.pcstyle.dev/contact" />
+    <meta property="og:image" content="https://x.pcstyle.dev/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="x.md: convert public X posts to Markdown" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Contact x.md" />
+    <meta name="twitter:description" content="Bugs and feature requests through GitHub issues, questions through Discussions, and vulnerabilities as a private report through the repository Security tab, never a public issue." />
+    <meta name="twitter:image" content="https://x.pcstyle.dev/og.png" />
+    <meta name="twitter:image:alt" content="x.md: convert public X posts to Markdown" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "ContactPage",
+            "@id": "https://x.pcstyle.dev/contact#webpage",
+            "url": "https://x.pcstyle.dev/contact",
+            "name": "Contact x.md",
+            "description": "How to reach the x.md project: GitHub issues for bugs and feature requests, GitHub Discussions for questions, private security reports through the repository Security tab, and @pcstyle53 on X.",
+            "inLanguage": "en-US",
+            "isPartOf": {
+              "@id": "https://x.pcstyle.dev/#website"
+            },
+            "about": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
+            "publisher": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
+            "breadcrumb": {
+              "@id": "https://x.pcstyle.dev/contact#breadcrumb"
+            },
+            "encoding": {
+              "@type": "MediaObject",
+              "contentUrl": "https://x.pcstyle.dev/contact.md",
+              "encodingFormat": "text/markdown"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://x.pcstyle.dev/contact#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://x.pcstyle.dev/"
+              },
+              {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Contact",
+                "item": "https://x.pcstyle.dev/contact"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <div id="app" data-page="contact"></div>
+    <script type="module" src="/src/page.ts"></script>
+  </body>
+</html>

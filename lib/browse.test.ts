@@ -221,9 +221,20 @@ describe('search per-IP limit', () => {
     await browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' })
     expect(rateLimit).toHaveBeenCalledWith('search:ip:1.2.3.4', 5, 60)
     vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: false, limit: 30, remaining: 0, retryAfter: 17 })
+    // The policy name travels on the error: it is what the response layer reports as exhausted.
     await expect(browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4' }))
-      .rejects.toMatchObject({ status: 429, code: 'rate_limited', retryAfter: 17 })
+      .rejects.toMatchObject({ status: 429, code: 'rate_limited', retryAfter: 17, policy: 'search-ip' })
     expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  test('a keyed caller is gated by the looser per-key burst and names that policy', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    const caller = { kind: 'key' as const, id: 'k1', limit: 40 }
+    await browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4', caller })
+    expect(rateLimit).toHaveBeenCalledWith('search:key:k1', 30, 60)
+    vi.mocked(rateLimit).mockResolvedValueOnce({ allowed: false, limit: 30, remaining: 0, retryAfter: 9 })
+    await expect(browse({ resource: 'search', q: 'hello', nocache: true, ip: '1.2.3.4', caller }))
+      .rejects.toMatchObject({ status: 429, retryAfter: 9, policy: 'search-key' })
   })
 
   test('skips the limiter without an IP and never counts a cache hit', async () => {

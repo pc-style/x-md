@@ -8,13 +8,21 @@ sidebar:
 
 ## Search for posts
 
-`GET /search?q={query}`
+`GET /search?q={query}` — the permalink form, mirroring `x.com/search`.
 
 ```bash
 curl -sS -G 'https://x.pcstyle.dev/search' \
   --data-urlencode 'q=from:vercel release' \
   --data-urlencode 'feed=latest' \
   --data-urlencode 'limit=20'
+```
+
+`GET /api/v1/search?q={query}` — the same search on the [versioned surface](/versioning). Same parameters, same body.
+
+```bash
+curl -sS -G 'https://x.pcstyle.dev/api/v1/search' \
+  --data-urlencode 'q=from:vercel release' \
+  --data-urlencode 'format=json'
 ```
 
 Use `--data-urlencode` for spaces, hashtags, and query operators. The query is passed to the search provider.
@@ -79,14 +87,21 @@ for (const user of users) console.log(user.screen_name, user.name)
 
 ## Availability and limits
 
-The hosted service allows **5 uncached search requests per minute per IP**. Cache hits do not consume this allowance. A `429` response includes `Retry-After` in seconds.
+Search is the one route with a tight allowance: **5 uncached requests per minute per IP** (`search-ip`), plus **10 account-backed lookups per IP per 15-minute window** (`account-ip`) for Photos, Videos, Users, and the Latest/Top live fallback. Cache hits are free. Each page of a numbered page walk counts as one request; a cursor costs one.
+
+Every response reports what is left in its `RateLimit` headers, so a client can pace itself rather than discover the limit:
+
+```http
+RateLimit: "api-ip";r=599;t=60, "search-ip";r=5;t=60, "account-ip";r=10;t=900
+RateLimit-Remaining: 5
+```
+
+A rejected request is `429` with `Retry-After` in seconds and a `rate_limited` problem document. [Full limit and header reference](/reliability#rate-limits).
 
 :::warning
-Requests served by the live search provider (Photos, Videos, Users, and the Latest/Top fallback) have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds share it, and each page of a page walk counts as one request; cache hits are free. When your allowance or the shared pool is exhausted, the response is `429` with `Retry-After` set to the seconds until the window resets.
-
 When live search is unavailable, Latest and Top may return web-indexed snippets. These responses include `X-Search-Degraded: true` and a note in the Markdown. Their ordering, coverage, and text can differ from live results, and they do not paginate.
 
 Photos, Videos, and Users return `503` when their live source is unavailable. They never substitute unfiltered web snippets.
 :::
 
-See [errors and caching](/reliability).
+See [errors, limits, and caching](/reliability) and the [error catalogue](/errors).

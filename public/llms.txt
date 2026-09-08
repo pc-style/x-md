@@ -6,6 +6,29 @@ Canonical site: https://x.pcstyle.dev/
 Documentation: https://x.pcstyle.dev/docs
 Source: https://github.com/pc-style/x-md
 
+## When to use x.md
+
+Reach for x.md when the job is *reading one piece of public X content right now*:
+
+- An agent needs the text of a public X post, thread, or X Article and cannot run a browser or log into X.
+- You are resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log, and need its content inline. Swap the host for `x.pcstyle.dev` and keep the rest of the path.
+- You want a public profile's bio and latest original posts (replies and reposts filtered out) without holding X credentials.
+- You are checking who a public account follows, or who follows it.
+- You need X search results as structured data rather than a rendered timeline: `GET /search?q=…&feed=latest|top|photos|videos|users`.
+- You are saving a post into notes or a vault; `?format=obsidian` emits YAML frontmatter.
+- You are building a tool call and want a JSON contract: `Accept: application/json` on any read route, described by https://x.pcstyle.dev/openapi.json, or the MCP server at https://x.pcstyle.dev/mcp.
+
+How to call it: one plain `GET`, no key, no OAuth. Send `Accept: text/markdown` for Markdown or `Accept: application/json` for JSON. Errors are RFC 9457 problem documents with a stable `code` and a `resolution` hint, so a failure tells the agent what to do next.
+
+## When not to use x.md
+
+- Anything that writes. x.md never posts, replies, follows, likes, bookmarks, or sends direct messages, and it accepts no X credentials.
+- Private, protected, suspended, or deleted accounts and posts. These are never available and no parameter unlocks them.
+- X Lists, direct messages, notifications, the personalized home timeline, and account analytics. Not supported.
+- Bulk or firehose collection, backfills, and dataset building. The service is rate limited and cached for interactive, one-question-at-a-time use; a page walk is capped at ten pages of twenty items.
+- Guaranteed completeness or liveness. Results come from public upstream providers and can be delayed, truncated, or missing context; check `warnings` rather than inferring.
+- Anything needing an SLA, a contract, or support commitments. x.md is a free, best-effort, MIT-licensed project.
+
 ## Read routes
 
 - Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
@@ -14,28 +37,49 @@ Source: https://github.com/pc-style/x-md
 - Followers: `https://x.pcstyle.dev/{handle}/followers`
 - Following: `https://x.pcstyle.dev/{handle}/following`
 
-Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default and maximum limit: 20. Live search allows 5 uncached requests per minute per IP; configured X accounts have a 50-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
+The versioned machine surface mirrors these at `https://x.pcstyle.dev/api/v1/*` and is described by https://x.pcstyle.dev/openapi.json.
+
+Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default and maximum limit: 20. Live search allows 5 uncached requests per minute per IP, or 30 with an API key; configured X accounts have a 40-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
 
 Browse routes accept `cursor`, `page`, `limit`, `full=true`, and `format=json`. Post routes also support thread, conversation context, reply ordering, and Obsidian output; see the documentation for exact query parameters.
 
 Discord, Telegram, Slack, and other preview bots receive Open Graph embed HTML on status URLs instead of Markdown. `GET /oembed` is the advertised oEmbed document. Explicit `?format=` or `Accept` still wins.
 
+Every route also passes a front door of 600 requests per minute per IP. Account-backed searches share a further allowance of 10 attempts per IP per 15-minute window, covering all feeds, page walks, and candidate retries; cached responses are free. A rejected request returns `429` with `Retry-After`. Every response advertises its position with the IETF `RateLimit` and `RateLimit-Policy` structured fields plus the `RateLimit-Limit`/`-Remaining`/`-Reset` compatibility trio. Account-backed calls stop if the shared counter store is unavailable.
+
 ## Scope
 
-x.md only reads public content and does not post, follow, or like on your behalf. X Lists are not supported.
+x.md only reads public content and does not post, follow, or like on your behalf. X Lists are not supported. Not affiliated with X Corp.
 
 ## Documentation
 
 - [Agent skill](https://x.pcstyle.dev/docs/agents)
 - [Start reading X](https://x.pcstyle.dev/docs)
+- [MCP server](https://x.pcstyle.dev/docs/mcp)
 - [Pagination](https://x.pcstyle.dev/docs/pagination)
 - [Posts and threads](https://x.pcstyle.dev/docs/posts)
 - [Profiles and connections](https://x.pcstyle.dev/docs/profiles)
 - [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
+- [Error catalogue](https://x.pcstyle.dev/docs/errors)
 - [Response formats](https://x.pcstyle.dev/docs/responses)
 - [Search X](https://x.pcstyle.dev/docs/search)
+- [Versioning and deprecation](https://x.pcstyle.dev/docs/versioning)
 - [Self-hosting](https://x.pcstyle.dev/docs/self-hosting)
+- [Optional data archive](https://x.pcstyle.dev/docs/archive)
 
 Full documentation: https://x.pcstyle.dev/llms-full.txt
+Docs-only index: https://x.pcstyle.dev/docs/llms.txt
 
-Account-backed searches also share a per-IP allowance per 15-minute window: 10% of healthy account capacity, capped at 20 attempts (5 with one healthy account, 10 with two, 20 with four or more). This allowance covers all feeds, page walks, and candidate retries; cached responses are free. A reduced healthy pool can lower the allowance during the window. A rejected request returns `429` with `Retry-After`. Account-backed calls stop if the shared counter store is unavailable.
+## Agent resources
+
+- [OpenAPI 3.1 description](https://x.pcstyle.dev/openapi.json) — every read route, parameter, and response schema
+- [MCP server](https://x.pcstyle.dev/mcp) — the same reads as MCP tools, over Streamable HTTP
+- [MCP server card](https://x.pcstyle.dev/.well-known/mcp/server-card.json) — also at https://x.pcstyle.dev/mcp/server-card
+- [MCP registry manifest](https://x.pcstyle.dev/server.json) — name, version, and remotes
+- [Resource catalog](https://x.pcstyle.dev/.well-known/ard.json) — ARD catalog of every machine surface here
+- [API catalog](https://x.pcstyle.dev/.well-known/api-catalog) — RFC 9727 linkset
+- [Agent skill index](https://x.pcstyle.dev/.well-known/agent-skills/index.json) — the installable `browse-x` skill
+- [Agent landing document](https://x.pcstyle.dev/agents.md) — what to call, in order
+- [Authentication](https://x.pcstyle.dev/auth.md) — none required; what the optional bearer key does
+- [Pricing](https://x.pcstyle.dev/pricing.md) — free, with the rate limits that stand in for cost
+- [Full documentation](https://x.pcstyle.dev/llms-full.txt)

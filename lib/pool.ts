@@ -20,10 +20,8 @@
  */
 import { listApiKeys, type ApiKeyRecord } from './apikeys.js'
 import { kv } from './kv.js'
+import { ACCOUNT_PUBLIC_COUNTER, accountKeyKey } from './quotas.js'
 import { peekRateLimit, windowClock } from './ratelimit.js'
-
-export const KEY_COUNTER = (id: string) => `xsearch:key:${id}`
-export const PUBLIC_COUNTER = 'xsearch:public'
 
 export interface PoolSettings {
   /** Minutes without any request before a key's reservation is released to the public. */
@@ -160,7 +158,7 @@ export async function poolSnapshot(capacity: number, windowSec: number): Promise
 async function computeSnapshot(capacity: number, windowSec: number, now: number): Promise<PoolSnapshot> {
   const [settings, records] = await Promise.all([getPoolSettings(), listApiKeys()])
   const clock = windowClock(windowSec, now)
-  const counts = await peekRateLimit([PUBLIC_COUNTER, ...records.map((r) => KEY_COUNTER(r.id))], windowSec)
+  const counts = await peekRateLimit([ACCOUNT_PUBLIC_COUNTER, ...records.map((r) => accountKeyKey(r.id))], windowSec)
   const publicUsed = counts.current[0] ?? 0
   const idleReleaseMs = settings.idleReleaseMinutes * 60_000
 

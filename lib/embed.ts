@@ -346,18 +346,37 @@ export function embedResponse(
   return { status: 200, headers, body: buildEmbedHtml(tweet, options) }
 }
 
+/**
+ * Bound a caller-supplied string before it is echoed back.
+ *
+ * `/oembed` reflects its query into the response, so without a clamp anyone
+ * could make x.pcstyle.dev serve arbitrary text under our own domain. Control
+ * characters and angle brackets are dropped outright — an unfurl label never
+ * needs either — and the rest is capped at a length a preview card can show.
+ */
+function echoable(value: string | null | undefined, max = 200): string | undefined {
+  if (!value) return undefined
+  const cleaned = value.replace(/[\u0000-\u001f\u007f-\u009f<>]/g, '').trim()
+  return cleaned ? cleaned.slice(0, max) : undefined
+}
+
 export function oembedPayload(query: OEmbedQuery, origin: string): Record<string, string> {
   const fromUrl = query.url ? parseStatusUrlSafe(query.url) : undefined
-  const author = fromUrl?.handle || query.author || 'i'
-  const status = fromUrl?.id || query.status || '0'
+  // Validated at full length, not truncated into validity: capping first would
+  // let a 30-character author pass as its own first 15 characters, so the card
+  // would name an account the caller never asked for.
+  const handle = echoable(query.author)
+  const author = fromUrl?.handle || (handle && /^[A-Za-z0-9_]{1,15}$/.test(handle) ? handle : undefined) || 'i'
+  const status = fromUrl?.id || (/^\d{1,25}$/.test(query.status ?? '') ? query.status : undefined) || '0'
+  const provider = echoable(query.provider, 60)
   const statusUrl = fromUrl?.canonicalUrl ?? `https://x.com/${encodeURIComponent(author)}/status/${status}`
   return {
-    author_name: query.text || 'Embed',
+    author_name: echoable(query.text) || 'Embed',
     author_url: statusUrl,
-    provider_name: query.provider || SITE_NAME,
-    provider_url: query.provider ? statusUrl : origin,
+    provider_name: provider || SITE_NAME,
+    provider_url: provider ? statusUrl : origin,
     title: 'Embed',
-    type: query.provider ? 'rich' : 'link',
+    type: provider ? 'rich' : 'link',
     version: '1.0',
   }
 }

@@ -8,6 +8,15 @@ import { callerHeaders, resolveCaller } from '../lib/apiauth'
 import { ConvertError as BrowseError } from '../lib/errors'
 import { parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
 import {
+  applyExhaustedQuota,
+  applyQuotaPolicyOnly,
+  applyRequestQuota,
+  chargeRequestQuota,
+  type QuotaCaller,
+  type QuotaScope,
+} from '../lib/ratelimit-headers'
+import { clientIp } from '../lib/ratelimit'
+import {
   acceptPrefersHtml,
   ConvertError,
   convertTweet,
@@ -15,6 +24,20 @@ import {
   STATUS_PATH,
 } from '../lib/converter'
 import { embedResponse, isEmbedUserAgent, oembedResponse } from '../lib/embed'
+import {
+  appendLink,
+  problemDetails,
+  problemFrom,
+  problemResponse,
+  requestInstance,
+  setDeprecationHeaders,
+  type ProblemDetails,
+} from '../lib/apierror'
+import { browseNotFoundDetail, notFoundResponse, safePath } from '../lib/notfound'
+import { browseSuccessor } from '../api/browse'
+import { apiIndexDocument, apiIndexMarkdown } from '../api/index'
+import { CONTENT_TYPE, selectRepresentation } from '../lib/negotiate'
+import mcpHandler from '../api/mcp'
 
 const HANDLE = '[A-Za-z0-9_]{1,15}'
 
@@ -24,19 +47,67 @@ function respondJson(res: ServerResponse, status: number, payload: unknown): voi
   res.end(JSON.stringify(payload))
 }
 
-/** Handles OPTIONS preflight and rejects non-GET/HEAD methods. Returns true if the request was fully handled. */
-function guardMethod(req: IncomingMessage, res: ServerResponse): boolean {
-  if (req.method === 'OPTIONS') {
-    res.statusCode = 204
-    res.end()
-    return true
+/** The production problem+json writer, so dev and deployed errors agree byte for byte. */
+function respondProblem(req: IncomingMessage, res: ServerResponse, problem: ProblemDetails): void {
+  const { status, headers, body } = problemResponse(problem, String(req.headers.accept ?? ''))
+  res.statusCode = status
+  for (const [key, value] of Object.entries(headers)) {
+    if (key === 'Link') appendLink(res, value)
+    else res.setHeader(key, value)
   }
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.setHeader('Allow', 'GET, HEAD, OPTIONS')
-    respondJson(res, 405, { error: 'Method not allowed' })
-    return true
-  }
-  return false
+  res.end(req.method === 'HEAD' ? undefined : body)
+}
+
+function problemInstance(req: IncomingMessage): string {
+  return requestInstance(req, requestOrigin(req))
+}
+
+function fail(req: IncomingMessage, res: ServerResponse, code: string, detail?: string): void {
+  respondProblem(req, res, problemDetails(code, { instance: problemInstance(req), detail }))
+}
+
+/**
+ * Advertises the route's policies, which is all an uncharged response — a
+ * preflight or a 405 — can claim, then answers OPTIONS. A charged request
+ * overwrites the header with its own state, as the deployed handlers do.
+ */
+function preflight(req: IncomingMessage, res: ServerResponse, scope: QuotaScope, caller: QuotaCaller): boolean {
+  applyQuotaPolicyOnly(res, scope, caller)
+  if (req.method !== 'OPTIONS') return false
+  res.statusCode = 204
+  res.end()
+  return true
+}
+
+/** Rejects non-GET/HEAD methods. Returns true if the request was answered. Call after `preflight`. */
+function rejectMethod(req: IncomingMessage, res: ServerResponse): boolean {
+  if (req.method === 'GET' || req.method === 'HEAD') return false
+  res.setHeader('Allow', 'GET, HEAD, OPTIONS')
+  fail(req, res, 'method_not_allowed', `${req.method} is not supported on this route. x.md only reads public X content.`)
+  return true
+}
+
+/** Charges the request against its quota and answers 429 once the front door is spent. */
+async function enforceQuota(
+  req: IncomingMessage,
+  res: ServerResponse,
+  scope: QuotaScope,
+  caller: QuotaCaller,
+): Promise<boolean> {
+  const quota = await chargeRequestQuota(scope, caller)
+  applyRequestQuota(res, quota)
+  if (quota.allowed) return false
+  applyExhaustedQuota(res, quota, 'api-ip', quota.retryAfter)
+  respondProblem(
+    req,
+    res,
+    problemDetails('rate_limited', {
+      instance: problemInstance(req),
+      detail: 'Too many requests from this address. Cached responses do not count against the allowance.',
+      retryAfter: quota.retryAfter,
+    }),
+  )
+  return true
 }
 
 async function handleConvert(
@@ -52,7 +123,18 @@ async function handleConvert(
   if (!isApi && !statusMatch) return false
 
   setCorsHeaders(res)
-  if (guardMethod(req, res)) return true
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
+  // Mirrors production: the unversioned alias is deprecated, the permalink and
+  // versioned routes (which carry via=route) are not. Set before the guards so
+  // a 429 and a 405 carry the signal too.
+  if (isApi && url.searchParams.get('via') !== 'route' && !(url.searchParams.get('handle') && url.searchParams.get('id'))) {
+    setDeprecationHeaders(res, '/api/v1/posts')
+  }
+  // Charged ahead of the method guard, as api/convert.ts does, so a 405 reports
+  // the remaining allowance too.
+  if (await enforceQuota(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
 
   const accept = String(req.headers.accept ?? '')
   const userAgent = String(req.headers['user-agent'] ?? '')
@@ -89,21 +171,21 @@ async function handleConvert(
       res.end(body)
     }
   } catch (error) {
-    if (error instanceof ConvertError) {
-      respondJson(res, error.status, { error: error.message, code: error.code })
-    } else {
-      console.error(error)
-      respondJson(res, 500, { error: 'Internal converter error' })
-    }
+    if (!(error instanceof ConvertError)) console.error(error)
+    respondProblem(req, res, problemFrom(error, problemInstance(req)))
   }
 
   return true
 }
 
 async function handleOembed(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
-  if (url.pathname.replace(/\/$/, '') !== '/oembed') return false
+  const path = url.pathname.replace(/\/$/, '')
+  if (path !== '/oembed' && path !== '/api/oembed') return false
   setCorsHeaders(res)
-  if (guardMethod(req, res)) return true
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
+  if (await enforceQuota(req, res, 'read', caller)) return true
   const { status, headers, body } = oembedResponse(
     {
       url: url.searchParams.get('url'),
@@ -126,7 +208,10 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   const path = url.pathname.replace(/\/$/, '') || '/'
   let resource: BrowseResource | undefined
   let handle: string | undefined
-  if (path === '/api/browse') resource = (url.searchParams.get('resource') ?? undefined) as BrowseResource | undefined
+  // /api/browse is claimed even without a resource, so a missing one is the
+  // handler's own 400 here as it is in production, not an unrouted path.
+  const isBrowseApi = path === '/api/browse'
+  if (isBrowseApi) resource = (url.searchParams.get('resource') ?? undefined) as BrowseResource | undefined
   else if (path === '/search') resource = 'search'
   else {
     const match = path.match(new RegExp(`^\/(${HANDLE})(?:\/(followers|following))?$`))
@@ -134,15 +219,28 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
     handle = match[1]
     resource = (match[2] as BrowseResource | undefined) ?? 'profile'
   }
-  if (!resource) return false
+  if (!resource && !isBrowseApi) return false
   setCorsHeaders(res)
-  if (guardMethod(req, res)) return true
+  const scope: QuotaScope = resource === 'search' ? 'search' : 'read'
+  if (preflight(req, res, scope, { ip: clientIp(req.headers) })) return true
+  // Mirrors production: only a direct /api/browse call is the deprecated alias.
+  if (isBrowseApi && url.searchParams.get('via') !== 'route') {
+    setDeprecationHeaders(res, browseSuccessor(resource, url.searchParams.get('handle') ?? undefined))
+  }
+  if (rejectMethod(req, res)) return true
   const resolved = await resolveCaller(req.headers)
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   if (resolved.status === 'invalid') {
-    respondJson(res, 401, { error: 'Invalid or disabled API key.', code: 'invalid_key' })
+    fail(req, res, 'invalid_key', 'Invalid or disabled API key.')
     return true
   }
+  // Charged after the caller is known, so a verified key's own policy is part of
+  // the quota it is measured against.
+  const quotaCaller: QuotaCaller =
+    resolved.caller.kind === 'key'
+      ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
+      : { ip: resolved.ip }
+  if (await enforceQuota(req, res, scope, quotaCaller)) return true
   try {
     const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
@@ -151,13 +249,21 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
     for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
     res.end(req.method === 'HEAD' ? undefined : response.body)
   } catch (error) {
-    if (error instanceof BrowseError) {
-      if (error.status === 429 && error.retryAfter) res.setHeader('Retry-After', String(error.retryAfter))
-      respondJson(res, error.status, { error: error.message, code: error.code })
-    } else {
-      console.error(error)
-      respondJson(res, 500, { error: 'Internal browse error' })
+    if (error instanceof BrowseError && error.status === 404) {
+      const notFound = notFoundResponse({
+        instance: problemInstance(req),
+        accept: url.searchParams.get('format') === 'json' ? 'application/json' : String(req.headers.accept ?? ''),
+        detail: browseNotFoundDetail(resource, handle ?? url.searchParams.get('handle') ?? undefined, error.message),
+        code: 'not_found',
+        fallback: 'markdown',
+      })
+      res.statusCode = notFound.status
+      for (const [key, value] of Object.entries(notFound.headers)) res.setHeader(key, value)
+      res.end(req.method === 'HEAD' ? undefined : notFound.body)
+      return true
     }
+    if (!(error instanceof BrowseError)) console.error(error)
+    respondProblem(req, res, problemFrom(error, problemInstance(req)))
   }
   return true
 }
@@ -182,23 +288,144 @@ async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse):
     return true
   }
   if (!adminConfigured()) {
-    respondJson(res, 503, { error: 'Admin is not configured (set X_MD_ADMIN_TOKEN).' })
+    fail(req, res, 'admin_unconfigured')
     return true
   }
   if (!adminAuthorized(req.headers)) {
-    respondJson(res, 401, { error: 'Unauthorized' })
+    fail(req, res, 'unauthorized', 'Admin routes require a valid X-Md-Admin-Token.')
     return true
   }
   const parsed = req.method === 'GET' ? { ok: true as const, value: {} } : await readBody(req)
   if (!parsed.ok) {
-    respondJson(res, 400, { error: 'Invalid JSON body' })
+    fail(req, res, 'invalid_body')
     return true
   }
-  const { status, body: payload } = path === '/api/admin/pool'
+  const { status, body: payload, failure } = path === '/api/admin/pool'
     ? await handlePoolApi(req.method ?? 'GET', parsed.value)
     : await handleKeysApi(req.method ?? 'GET', parsed.value)
-  if (status === 405) res.setHeader('Allow', methods)
+  if (failure) {
+    if (status === 405) res.setHeader('Allow', methods)
+    fail(req, res, failure.code, failure.detail)
+    return true
+  }
   respondJson(res, status, payload)
+  return true
+}
+
+/**
+ * The /api/v1 rewrites from vercel.json, applied in dev so both surfaces route
+ * the same way. `via=route` marks the request as rewritten, which is what keeps
+ * the versioned paths out of the deprecated-alias handling.
+ */
+function applyVersionedRoutes(url: URL): URL {
+  const path = url.pathname.replace(/\/$/, '') || '/'
+  if (!path.startsWith('/api/v1/')) return url
+  const routed = (destination: string, params: Record<string, string> = {}): URL => {
+    const next = new URL(url.href)
+    next.pathname = destination
+    for (const [key, value] of Object.entries(params)) next.searchParams.set(key, value)
+    next.searchParams.set('via', 'route')
+    return next
+  }
+  if (path === '/api/v1/posts') return routed('/api/convert')
+  if (path === '/api/v1/search') return routed('/api/browse', { resource: 'search' })
+  if (path === '/api/v1/oembed') return routed('/api/oembed')
+  const profile = path.match(new RegExp(`^/api/v1/profiles/(${HANDLE})(?:/(followers|following))?$`))
+  if (profile) return routed('/api/browse', { resource: profile[2] ?? 'profile', handle: profile[1] ?? '' })
+  return url
+}
+
+function readRawBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = []
+    req.on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    req.on('error', () => resolve(''))
+  })
+}
+
+/**
+ * Drive a Vercel function from the dev server by lending the Node request and
+ * response the few members the runtime adds. /mcp is a real function, so dev
+ * runs its production code instead of a second implementation of the protocol.
+ */
+async function handleMcp(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const path = url.pathname.replace(/\/$/, '')
+  if (path !== '/mcp' && path !== '/mcp/server-card' && path !== '/api/mcp') return false
+  if (path === '/mcp/server-card') url.searchParams.set('doc', 'server-card')
+
+  const request = req as IncomingMessage & { query: Record<string, string>; body?: unknown }
+  request.query = Object.fromEntries(url.searchParams)
+  if (req.method !== 'GET' && req.method !== 'HEAD') request.body = await readRawBody(req)
+
+  const response = res as ServerResponse & {
+    status(code: number): unknown
+    send(body: unknown): unknown
+    json(payload: unknown): unknown
+  }
+  response.status = (code: number) => { res.statusCode = code; return response }
+  response.send = (body: unknown) => { res.end(typeof body === 'string' ? body : JSON.stringify(body)); return response }
+  response.json = (payload: unknown) => {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.end(JSON.stringify(payload))
+    return response
+  }
+
+  await mcpHandler(
+    request as unknown as Parameters<typeof mcpHandler>[0],
+    response as unknown as Parameters<typeof mcpHandler>[1],
+  )
+  return true
+}
+
+async function handleApiIndex(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const path = url.pathname.replace(/\/$/, '') || '/'
+  if (path !== '/api' && path !== '/api/index') return false
+  setCorsHeaders(res)
+  const caller = { ip: clientIp(req.headers) }
+  if (preflight(req, res, 'read', caller)) return true
+  if (rejectMethod(req, res)) return true
+  // The index is an API response like any other, so it charges the same
+  // allowance the operations it describes will charge.
+  if (await enforceQuota(req, res, 'read', caller)) return true
+  const origin = requestOrigin(req)
+  const accept = String(req.headers.accept ?? '')
+  const chosen = selectRepresentation(accept, ['json', 'markdown'], 'json') ?? 'json'
+  res.statusCode = 200
+  res.setHeader('Content-Type', CONTENT_TYPE[chosen])
+  res.setHeader('Vary', 'Accept')
+  res.end(
+    req.method === 'HEAD'
+      ? undefined
+      : chosen === 'markdown'
+        ? apiIndexMarkdown(origin)
+        : `${JSON.stringify(apiIndexDocument(origin), null, 2)}\n`,
+  )
+  return true
+}
+
+/**
+ * The catch-all 404, scoped to /api in dev: Vite owns every other path, and
+ * intercepting those would break the static file server.
+ */
+function handleApiNotFound(url: URL, req: IncomingMessage, res: ServerResponse): boolean {
+  if (!url.pathname.startsWith('/api/')) return false
+  setCorsHeaders(res, 'GET, HEAD, POST, PATCH, DELETE, OPTIONS')
+  applyQuotaPolicyOnly(res, 'read', { ip: clientIp(req.headers) })
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204
+    res.end()
+    return true
+  }
+  const path = safePath(url.pathname)
+  const { status, headers, body } = notFoundResponse({
+    instance: problemInstance(req),
+    accept: req.headers.accept,
+    path,
+  })
+  res.statusCode = status
+  for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
+  res.end(req.method === 'HEAD' ? undefined : body)
   return true
 }
 
@@ -210,12 +437,15 @@ function installConvertMiddleware(middlewares: Connect.Server) {
           next()
           return
         }
-        const url = new URL(req.url, 'http://localhost')
+        const url = applyVersionedRoutes(new URL(req.url, 'http://localhost'))
         const handled =
           (await handleAdmin(url, req, res)) ||
+          (await handleApiIndex(url, req, res)) ||
+          (await handleMcp(url, req, res)) ||
           (await handleOembed(url, req, res)) ||
           (await handleConvert(url, req, res)) ||
-          (await handleBrowse(url, req, res))
+          (await handleBrowse(url, req, res)) ||
+          handleApiNotFound(url, req, res)
         if (!handled) next()
       } catch (error) {
         next(error as Error)

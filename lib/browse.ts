@@ -7,17 +7,9 @@ import {
 } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { SEARCH_IP, SEARCH_KEY, searchIpKey, searchKeyKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
-
-/**
- * Per-IP ceiling on live /search lookups. Counted only when a request misses the
- * cache and is about to reach an upstream provider; cached hits are free.
- */
-const SEARCH_IP_LIMIT = 5
-const SEARCH_IP_WINDOW_SEC = 60
-/** Per-key burst gate per minute; the real per-key allowance is enforced per 15 minutes in xsearch. */
-const SEARCH_KEY_BURST_LIMIT = 30
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -207,14 +199,14 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
     const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
     if (caller.kind === 'key') {
-      const verdict = await rateLimit(`search:key:${caller.id}`, SEARCH_KEY_BURST_LIMIT, SEARCH_IP_WINDOW_SEC)
+      const verdict = await rateLimit(searchKeyKey(caller.id), SEARCH_KEY.quota, SEARCH_KEY.windowSec)
       if (!verdict.allowed) {
-        throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
+        throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_KEY.name)
       }
     } else if (caller.ip) {
-      const verdict = await rateLimit(`search:ip:${caller.ip}`, SEARCH_IP_LIMIT, SEARCH_IP_WINDOW_SEC)
+      const verdict = await rateLimit(searchIpKey(caller.ip), SEARCH_IP.quota, SEARCH_IP.windowSec)
       if (!verdict.allowed) {
-        throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter)
+        throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
     const tagged = splitCursor(input.cursor ?? undefined)

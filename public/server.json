@@ -1,0 +1,27 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.pc-style/x-md",
+  "title": "x.md",
+  "description": "Read public X posts, threads, profiles, and search results as Markdown or JSON.",
+  "version": "1.0.0",
+  "websiteUrl": "https://x.pcstyle.dev/",
+  "icons": [
+    {
+      "src": "https://x.pcstyle.dev/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
+  "repository": {
+    "source": "github",
+    "url": "https://github.com/pc-style/x-md"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://x.pcstyle.dev/mcp"
+    }
+  ]
+}

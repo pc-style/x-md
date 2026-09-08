@@ -1,5 +1,8 @@
 type NavItem = { label: string; href: string }
 
+/** Which root page the chrome is rendered into; drives in-page vs. absolute links. */
+export type PageKind = 'landing' | 'docs' | 'about' | 'contact' | 'privacy' | 'terms'
+
 const NAV_ITEMS: NavItem[] = [
   { label: 'Convert', href: '/#convert' },
   { label: 'Agents', href: '/#agents' },
@@ -7,7 +10,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'API', href: '/docs/posts' },
 ]
 
-export function headerHtml(options: { page: 'landing' | 'docs' }) {
+export function headerHtml(options: { page: PageKind }) {
   const items = NAV_ITEMS.map((item) => {
     const current = options.page === 'docs' && item.href === '/docs'
     return `<a href="${item.href}" class="nav-link h-9 px-3"${current ? ' aria-current="page"' : ''}>${item.label}</a>`
@@ -18,9 +21,9 @@ export function headerHtml(options: { page: 'landing' | 'docs' }) {
     .join('\n      ')
 
   const cta =
-    options.page === 'docs'
-      ? `<a href="/#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
-      : `<a href="#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
+    options.page === 'landing'
+      ? `<a href="#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
+      : `<a href="/#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
 
   return `
   <header class="site-header">
@@ -54,19 +57,73 @@ export function headerHtml(options: { page: 'landing' | 'docs' }) {
   </header>`
 }
 
-export function footerHtml() {
+type FooterGroup = { heading: string; links: { label: string; href: string; external?: boolean }[] }
+
+/**
+ * Descriptive, crawlable links to everything an agent needs: the docs, the
+ * machine-readable descriptions of the API, and the about/contact/privacy/terms
+ * pages that verify who runs the service. Rendered into every root page.
+ */
+const FOOTER_GROUPS: FooterGroup[] = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Convert a post', href: '/#convert' },
+      { label: 'Point an agent at x.md', href: '/#agents' },
+      { label: 'Source code on GitHub', href: 'https://github.com/pc-style/x-md', external: true },
+    ],
+  },
+  {
+    heading: 'Developers',
+    links: [
+      { label: 'API documentation', href: '/docs' },
+      { label: 'API reference: posts', href: '/docs/posts' },
+      { label: 'OpenAPI description', href: '/openapi.json' },
+      { label: 'llms.txt', href: '/llms.txt' },
+      { label: 'MCP server', href: '/mcp' },
+    ],
+  },
+  {
+    heading: 'Project',
+    links: [
+      { label: 'About x.md', href: '/about' },
+      { label: 'Contact', href: '/contact' },
+      { label: 'Privacy', href: '/privacy' },
+      { label: 'Terms', href: '/terms' },
+    ],
+  },
+]
+
+export function footerHtml(page?: PageKind) {
+  const groups = FOOTER_GROUPS.map(
+    (group) => `<div>
+            <h2 class="footer-heading">${group.heading}</h2>
+            <ul class="footer-list">
+              ${group.links
+                .map((link) => {
+                  const current = page !== undefined && link.href === `/${page}`
+                  const attrs = `${link.external ? ' target="_blank" rel="noreferrer"' : ''}${current ? ' aria-current="page"' : ''}`
+                  return `<li><a href="${link.href}" class="footer-link"${attrs}>${link.label}</a></li>`
+                })
+                .join('\n              ')}
+            </ul>
+          </div>`,
+  ).join('\n          ')
+
   return `
   <footer class="site-footer">
-    <div class="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-14 sm:px-8">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <a href="/" class="text-[17px] font-black tracking-tight text-ink">x.md</a>
-        <div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">
-          <a href="/#convert" class="footer-link">Convert</a>
-          <a href="/#agents" class="footer-link">Agents</a>
-          <a href="/docs" class="footer-link">Docs</a>
-          <a href="/docs/posts" class="footer-link">API</a>
-          <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="footer-link">GitHub</a>
+    <div class="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-14 sm:px-8">
+      <div class="flex flex-col gap-10 lg:flex-row lg:justify-between">
+        <div class="max-w-[34ch]">
+          <a href="/" class="text-[17px] font-black tracking-tight text-ink">x.md</a>
+          <p class="mt-3 text-[13.5px] leading-relaxed text-ink-3">
+            Read public X posts, threads, profiles, and search results as Markdown or JSON.
+            Read-only, open source, no account required.
+          </p>
         </div>
+        <nav aria-label="Footer" class="grid gap-8 sm:grid-cols-3 lg:gap-16">
+          ${groups}
+        </nav>
       </div>
       <div class="flex flex-col-reverse items-start gap-5 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-[13.5px] text-ink-4">Open source, MIT. Not affiliated with X Corp.</p>

@@ -1,0 +1,79 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://x.pcstyle.dev/.well-known/api-catalog",
+      "item": [
+        {
+          "href": "https://x.pcstyle.dev/api",
+          "type": "application/json",
+          "title": "x.md read API"
+        },
+        {
+          "href": "https://x.pcstyle.dev/mcp",
+          "type": "application/json",
+          "title": "x.md MCP server"
+        },
+        {
+          "href": "https://x.pcstyle.dev/api/v1/oembed",
+          "type": "application/json+oembed",
+          "title": "x.md oEmbed provider"
+        }
+      ]
+    },
+    {
+      "anchor": "https://x.pcstyle.dev/api",
+      "service-desc": [
+        {
+          "href": "https://x.pcstyle.dev/openapi.json",
+          "type": "application/vnd.oai.openapi+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://x.pcstyle.dev/docs",
+          "type": "text/html"
+        },
+        {
+          "href": "https://x.pcstyle.dev/llms.txt",
+          "type": "text/plain"
+        }
+      ],
+      "describedby": [
+        {
+          "href": "https://x.pcstyle.dev/.well-known/ard.json",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "anchor": "https://x.pcstyle.dev/mcp",
+      "service-desc": [
+        {
+          "href": "https://x.pcstyle.dev/.well-known/mcp/server-card.json",
+          "type": "application/mcp-server-card+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://x.pcstyle.dev/docs/agents",
+          "type": "text/html"
+        }
+      ]
+    },
+    {
+      "anchor": "https://x.pcstyle.dev/api/v1/oembed",
+      "service-desc": [
+        {
+          "href": "https://x.pcstyle.dev/openapi.json",
+          "type": "application/vnd.oai.openapi+json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://x.pcstyle.dev/docs/responses",
+          "type": "text/html"
+        }
+      ]
+    }
+  ]
+}

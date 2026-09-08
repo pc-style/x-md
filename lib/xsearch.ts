@@ -19,7 +19,8 @@ import {
 } from '@the-convocation/twitter-scraper'
 import { ConvertError } from './errors.js'
 import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
-import { KEY_COUNTER, PUBLIC_COUNTER, poolSnapshot, resetPool, type PoolSnapshot } from './pool.js'
+import { poolSnapshot, resetPool, type PoolSnapshot } from './pool.js'
+import { ACCOUNT_IP, ACCOUNT_KEY_NAME, ACCOUNT_PUBLIC_COUNTER, ACCOUNT_WINDOW_SEC, accountIpKey, accountKeyKey } from './quotas.js'
 import { rateLimit, refundRateLimit } from './ratelimit.js'
 
 export interface XSession {
@@ -48,13 +49,6 @@ const X_SEARCH_CAP_PER_WINDOW = 50
 /** Fraction of X's cap we keep in reserve (0.2 = 20% headroom → 40 usable). */
 const SEARCH_HEADROOM = 0.2
 const BUDGET_PER_SESSION = Math.floor(X_SEARCH_CAP_PER_WINDOW * (1 - SEARCH_HEADROOM))
-const BUDGET_WINDOW_SEC = 15 * 60
-/**
- * Fixed per-IP allowance for anonymous callers, deliberately pinned to the value
- * the two-account pool produced (floor(2 * 50 * 0.1) = 10) so public limits do
- * not change as we add accounts. New capacity is reserved for API-key callers.
- */
-const PUBLIC_IP_BUDGET = 10
 
 /** Who is making a search, for quota accounting. */
 export type SearchCaller =
@@ -232,7 +226,7 @@ export function defaultKeyLimitPer15m(): number {
 
 /** Live split of the pool between key reservations and the public (see `pool.ts`). */
 export function searchPoolSnapshot(): Promise<PoolSnapshot> {
-  return poolSnapshot(poolCapacityPer15m(), BUDGET_WINDOW_SEC)
+  return poolSnapshot(poolCapacityPer15m(), ACCOUNT_WINDOW_SEC)
 }
 
 /**
@@ -265,8 +259,8 @@ export function searchRateModel(): {
     xCapPerAccount: X_SEARCH_CAP_PER_WINDOW,
     headroom: SEARCH_HEADROOM,
     perAccountBudget: BUDGET_PER_SESSION,
-    windowSec: BUDGET_WINDOW_SEC,
-    publicIpBudget: PUBLIC_IP_BUDGET,
+    windowSec: ACCOUNT_WINDOW_SEC,
+    publicIpBudget: ACCOUNT_IP.quota,
     activeAccounts: activeAccountCount(),
     healthyAccounts: healthyAccountCount(),
     poolPer15m: poolCapacityPer15m(),
@@ -287,31 +281,32 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
   // Checked before any account budget so rejected callers cannot consume account quota.
   if (caller?.kind === 'public') {
     // An unknown IP is still metered (as one shared "unknown" bucket) rather than left unaccounted.
-    const ipKey = `xsearch:ip:${caller.ip || 'unknown'}`
-    const fair = await rateLimit(ipKey, PUBLIC_IP_BUDGET, BUDGET_WINDOW_SEC, true)
+    const ipKey = accountIpKey(caller.ip ?? '')
+    const fair = await rateLimit(ipKey, ACCOUNT_IP.quota, ACCOUNT_IP.windowSec, true)
     if (!fair.allowed) {
-      throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter)
+      throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_IP.name)
     }
     // Shared public cap: whatever the pool has left after key usage and reservations.
     // Refund both counters on reject so retries do not burn capacity that keys release later in the window.
-    const shared = await rateLimit(PUBLIC_COUNTER, await publicCapNow(), BUDGET_WINDOW_SEC, true, true)
+    const shared = await rateLimit(ACCOUNT_PUBLIC_COUNTER, await publicCapNow(), ACCOUNT_WINDOW_SEC, true, true)
     if (!shared.allowed) {
-      await refundRateLimit(ipKey, BUDGET_WINDOW_SEC, fair.bucket)
-      throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets.', 'rate_limited', shared.retryAfter)
+      await refundRateLimit(ipKey, ACCOUNT_WINDOW_SEC, fair.bucket)
+      // Reported against the caller's own per-IP policy: the shared pool's level is fleet health, not a personal quota.
+      throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets.', 'rate_limited', shared.retryAfter, ACCOUNT_IP.name)
     }
   } else if (caller?.kind === 'key') {
     // Refund rejected attempts: they must not count as pool usage in the snapshot.
-    const fair = await rateLimit(KEY_COUNTER(caller.id), caller.limit, BUDGET_WINDOW_SEC, true, true)
+    const fair = await rateLimit(accountKeyKey(caller.id), caller.limit, ACCOUNT_WINDOW_SEC, true, true)
     if (!fair.allowed) {
-      throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter)
+      throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_KEY_NAME)
     }
   }
 
   let last: Failure | undefined
   for (const state of candidates) {
-    const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, BUDGET_WINDOW_SEC, true)
+    const budget = await rateLimit(`xsearch:session:${state.session.id}`, BUDGET_PER_SESSION, ACCOUNT_WINDOW_SEC, true)
     if (!budget.allowed) {
-      console.warn(`[xsearch] session ${state.session.id} budget spent (${BUDGET_PER_SESSION}/${BUDGET_WINDOW_SEC}s), resets in ${budget.retryAfter}s`)
+      console.warn(`[xsearch] session ${state.session.id} budget spent (${BUDGET_PER_SESSION}/${ACCOUNT_WINDOW_SEC}s), resets in ${budget.retryAfter}s`)
       continue
     }
     try {

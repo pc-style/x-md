@@ -54,6 +54,13 @@ describe('status permalink routing', () => {
     const url = new URL(canonicalUrl + suffix)
     expect(STATUS_PATH.test(url.pathname)).toBe(false)
     expect(() => parseStatusUrl(url.href)).toThrow()
-    expect(routes.some((route) => 'src' in route && new RegExp(route.src).test(url.pathname))).toBe(false)
+    // The trailing catch-all sends every unmatched path to the negotiated 404,
+    // so these must miss every converter route rather than every route.
+    const matched = routes.filter((route) => 'src' in route && new RegExp(route.src).test(url.pathname))
+    // Without this the two assertions below pass vacuously if the catch-all
+    // ever stops matching, and the 404 would go unnoticed.
+    expect(matched.length).toBeGreaterThan(0)
+    expect(matched.some((route) => route.dest?.startsWith('/api/convert'))).toBe(false)
+    expect(matched.every((route) => route.dest?.startsWith('/api/notfound'))).toBe(true)
   })
 })

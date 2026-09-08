@@ -1,29 +1,75 @@
 ---
-title: Agent skill
-description: Give your coding agent a small, read-only tool for X.
+title: x.md for agents
+description: When to reach for x.md, the three ways to call it, and the machine-readable descriptions of all of them.
 sidebar:
+  label: Agents
   order: 6
   icon: bot
 ---
 
-## Install browse-x
+## When to use x.md
 
-```bash
-bunx skills add pc-style/x-md -g -y --skill browse-x
-```
+Reach for x.md when the job is reading one piece of public X content right now:
 
-The skill calls the hosted service. It does not need a local x.md checkout, X login, or provider key.
+- The text of a public X post, thread, or X Article, without a browser or an X login.
+- Resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log. Swap the host for `x.pcstyle.dev` and keep the path.
+- A public profile's bio and latest original posts, without holding X credentials.
+- Who a public account follows, or who follows it.
+- X search results as structured data rather than a rendered timeline.
+- Saving a post into notes or a vault — `?format=obsidian` emits YAML frontmatter.
 
-## Use the CLI
+## When not to use it
+
+- **Anything that writes.** x.md never posts, replies, follows, likes, bookmarks, or sends direct messages, and it accepts no X credentials. A write attempt is `405`.
+- **Private, protected, suspended, or deleted content.** Never available; no parameter unlocks it.
+- **X Lists, direct messages, notifications, the home timeline, analytics.** Not supported.
+- **Bulk or firehose collection.** Rate limited and cached for interactive use; a page walk stops at ten pages of twenty items.
+- **Guaranteed completeness or liveness.** Upstream providers can be delayed or partial. Check `warnings` rather than inferring.
+- **Anything needing an SLA or support commitments.** Free, best effort, MIT-licensed.
+
+## Three ways to call it
+
+<Tabs>
+  <Tab title="Plain HTTP">
+    No key, no OAuth, no SDK. One `GET`.
+
+    ```bash
+    curl -sS -H 'Accept: text/markdown' \
+      'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+    ```
+
+    Ask for `Accept: application/json` (or `?format=json`) when you need fields. Every route, parameter, and response schema is in [`/openapi.json`](https://x.pcstyle.dev/openapi.json); the stable machine paths are [`/api/v1/*`](/versioning).
+  </Tab>
+  <Tab title="MCP">
+    The same reads as Model Context Protocol tools, over Streamable HTTP, no key required.
+
+    ```text
+    https://x.pcstyle.dev/mcp
+    ```
+
+    [Connect an agent to the MCP server](/mcp).
+  </Tab>
+  <Tab title="Agent skill">
+    A small, read-only skill for coding agents.
+
+    ```bash
+    bunx skills add pc-style/x-md -g -y --skill browse-x
+    ```
+
+    The skill calls the hosted service. It does not need a local x.md checkout, X login, or provider key.
+  </Tab>
+</Tabs>
+
+## Use the browse-x CLI
 
 From a checkout, run the included script:
 
 ```bash
-skills/browse-x/scripts/browse-x.sh search 'typescript' --feed latest
-skills/browse-x/scripts/browse-x.sh search 'design' --feed photos --limit 10
-skills/browse-x/scripts/browse-x.sh search 'vercel' --feed users --json
-skills/browse-x/scripts/browse-x.sh profile vercel --full
-skills/browse-x/scripts/browse-x.sh status 'https://x.com/trq212/status/2052809885763747935' --thread off
+bun skills/browse-x/scripts/browse-x.ts search 'typescript' --feed latest
+bun skills/browse-x/scripts/browse-x.ts search 'design' --feed photos --limit 10
+bun skills/browse-x/scripts/browse-x.ts search 'vercel' --feed users --json
+bun skills/browse-x/scripts/browse-x.ts profile vercel --full
+bun skills/browse-x/scripts/browse-x.ts status 'https://x.com/trq212/status/2052809885763747935' --thread off
 ```
 
 | Option | Effect |
@@ -36,11 +82,33 @@ skills/browse-x/scripts/browse-x.sh status 'https://x.com/trq212/status/20528098
 | `--headers` | Print response headers |
 | `--nocache` | Bypass application caching |
 
-The script exits with `2` for invalid arguments and `1` for network or API errors.
+The script exits with `2` for invalid arguments and `1` for network or API errors, and with `3` after printing `Retry-After` when a rate limit rejects the call.
+
+## What an unattended client should handle
+
+| Signal | Action |
+| --- | --- |
+| `RateLimit` / `RateLimit-Remaining` | Pace against the tightest policy. [Limits](/reliability#rate-limits). |
+| `429` + `Retry-After` | Sleep that many seconds, then retry once. Do not poll. |
+| `Deprecation` / `Sunset` | Follow `Link; rel="successor-version"`. [Versioning](/versioning). |
+| `code` in a problem body | Branch on it, never on `detail`. [Error catalogue](/errors). |
+| `nextCursor` | Continue; stop only when it is absent. [Pagination](/pagination). |
+| `degraded` / `X-Search-Degraded` | Results are web-indexed snippets, not a live timeline. |
+
+## Machine-readable entry points
+
+| Document | Purpose |
+| --- | --- |
+| [`/llms.txt`](https://x.pcstyle.dev/llms.txt) | What x.md is for, when to use it, and every route, in one text file |
+| [`/openapi.json`](https://x.pcstyle.dev/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
+| [`/api`](https://x.pcstyle.dev/api) | A small JSON index for an agent that has only the domain |
+| `https://x.pcstyle.dev/mcp` | MCP server over Streamable HTTP — see [the MCP page](/mcp) |
+| [`/.well-known/api-catalog`](https://x.pcstyle.dev/.well-known/api-catalog) | RFC 9727 linkset |
+| [`/.well-known/ard.json`](https://x.pcstyle.dev/.well-known/ard.json) | Agentic Resource Discovery catalog |
 
 ## Read docs as Markdown
 
-Each documentation page has a **Copy as Markdown** action. Append `.md` to any docs URL, or fetch the [documentation manifest](https://x.pcstyle.dev/llms.txt).
+Each documentation page has a **Copy as Markdown** action. Append `.md` to any docs URL, send `Accept: text/markdown`, or add `?mode=agent`. The [documentation manifest](https://x.pcstyle.dev/llms.txt) lists every page.
 
 :::warning
 Requested URLs and queries are sent to the hosted service and its data providers. Keep secrets out of queries and URLs.

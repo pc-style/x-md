@@ -8,30 +8,50 @@ sidebar:
 
 ## Read a profile
 
+`GET /{handle}` — the permalink form. It returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
+
 ```bash
 curl -sS 'https://x.pcstyle.dev/vercel?full=true'
 ```
 
-`GET /{handle}` returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
+`GET /api/v1/profiles/{handle}` — the same read on the [versioned surface](/versioning).
+
+```bash
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
+```
 
 ## Read connections
 
+`GET /{handle}/followers` and `GET /{handle}/following` list who follows an account and who it follows.
+
 ```bash
 curl -sS 'https://x.pcstyle.dev/vercel/followers'
-curl -sS 'https://x.pcstyle.dev/vercel/following?format=json'
 ```
 
-| Route | JSON fields |
-| --- | --- |
-| `/{handle}` | `profile` and `posts` |
-| `/{handle}/followers` | `users` |
-| `/{handle}/following` | `users` |
+The same two lists sit under `/api/v1/profiles/{handle}`:
 
-Use a handle without `@` in the URL. Connection data depends on upstream availability.
+```bash
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel/following?format=json'
+```
+
+| Permalink route | Versioned route | JSON fields |
+| --- | --- | --- |
+| `/{handle}` | `/api/v1/profiles/{handle}` | `profile` and `posts` |
+| `/{handle}/followers` | `/api/v1/profiles/{handle}/followers` | `users` |
+| `/{handle}/following` | `/api/v1/profiles/{handle}/following` | `users` |
+
+Both forms take the same options and return the same body; the versioned ones are the [stable machine surface](/versioning). Use a handle without `@` in the URL. Connection data depends on upstream availability.
 
 ## Options
 
-All three routes accept `limit` (default and maximum 20), `cursor`, `page` (1–10), `full=true`, `format=json`, and `nocache=true`.
+| Parameter | Default | Behavior |
+| --- | --- | --- |
+| `limit` | `20` | Items per response, maximum **20**. Larger values are clamped. |
+| `cursor` | — | Opaque `nextCursor` from the previous response. |
+| `page` | `1` | Page 1–10; prefer cursors. Ignored when `cursor` is present. |
+| `full` | `false` | `true` or `1` adds dates, metrics, and expanded profile details. |
+| `format` | `markdown` | `markdown` or `json`. Browse routes do not accept `obsidian`. |
+| `nocache` | `false` | `true` or `1` bypasses the application cache. |
 
 Follow `nextCursor` to continue. [See pagination](/pagination).
 

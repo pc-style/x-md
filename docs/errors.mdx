@@ -1,0 +1,149 @@
+---
+title: Error catalogue
+description: Every machine-readable error code x.md can return, what it means, and how to recover from it.
+sidebar:
+  order: 11
+  icon: octagon-alert
+---
+
+Every failure answers with a structured document, never a stack trace or a generic HTML error page. It carries a stable machine `code`, a human `detail`, and a `resolution` telling the caller what to do next.
+
+## The shape
+
+Errors follow [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457), served as `application/problem+json`:
+
+```json
+{
+  "type": "https://x.pcstyle.dev/docs/reliability#rate-limited",
+  "title": "Rate limit exceeded",
+  "status": 429,
+  "detail": "Too many live search lookups from this IP. Slow down and retry shortly.",
+  "instance": "https://x.pcstyle.dev/api/v1/search?q=vercel",
+  "code": "rate_limited",
+  "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+  "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+  "error": "Too many live search lookups from this IP. Slow down and retry shortly.",
+  "retry_after": 43
+}
+```
+
+| Field | Always present | Meaning |
+| --- | --- | --- |
+| `type` | yes | Stable URI identifying the problem type. It dereferences to documentation; it is not a lookup key. |
+| `title` | yes | Short, stable summary of the problem type. Does not change between occurrences. |
+| `status` | yes | The HTTP status code, repeated in the body so a logged payload is self-contained. |
+| `detail` | yes | What went wrong with *this* request. Written for a human; can change between occurrences. |
+| `instance` | yes | Absolute URL of the request that failed. |
+| `code` | yes | The machine identifier. **Switch on this.** |
+| `resolution` | yes | What the caller should do next, in one sentence. |
+| `documentation_url` | yes | Where the codes are documented. |
+| `error` | yes | Alias of `detail`, kept for clients written against the older `{ error, code }` shape. |
+| `retry_after` | on `429` and `503` | Seconds to wait, mirroring the `Retry-After` header. |
+| `links` | sometimes | Related routes, each `{ label, href }`. A `404` on an unknown path uses this to suggest where to go instead. |
+
+Branch on `status` for the class of failure and on `code` for the specific one. Do not parse `detail`, and do not compare `title` strings.
+
+### Media type
+
+The body is `application/problem+json; charset=utf-8`. A caller whose `Accept` header names `application/json` — and not `application/problem+json` — gets the same bytes labelled `application/json; charset=utf-8` instead, so a strict client-side content-type check still passes.
+
+### Headers on an error
+
+| Header | On | Meaning |
+| --- | --- | --- |
+| `Cache-Control: no-store` | every problem response | Errors are never stored, by us or by a CDN. The recoverable `404` document sends `public, max-age=0, must-revalidate` instead, so a cache must revalidate it before reusing it. |
+| `Link: …; rel="help"` | every problem response | This documentation. |
+| `Link: …; rel="service-desc"` | every error | [`/openapi.json`](https://x.pcstyle.dev/openapi.json). |
+| `Retry-After` | `429`, `503` | Seconds to wait. Takes precedence over the `RateLimit` reset if the two disagree. |
+| `Allow` | `405` | The methods this route accepts. |
+| `Deprecation`, `Sunset` | errors from a deprecated route | See [versioning](/versioning). |
+
+The negotiated `404` is the exception: instead of `rel="help"` it carries the site discovery links — `alternate`, `sitemap`, `describedby`, `service-desc`, and `api-catalog` — and puts the recovery routes in the body's `links` array.
+
+## Request errors — `400`
+
+The request never reached a provider. Fix the request; retrying it unchanged will fail identically.
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `missing_url` | Missing url parameter | A post read arrived with no post to read. | Add `?url=<public X status URL>`, or call `/{handle}/status/{id}` directly. |
+| `invalid_url` | Invalid X status URL | `url` was not parseable as a URL. | Pass a public x.com or twitter.com status URL in `url`, for example `?url=https://x.com/jack/status/20`. |
+| `unsupported_host` | Unsupported host | The URL parsed, but points somewhere other than X. | Only x.com and twitter.com status URLs are supported. Rewrite the host and retry. |
+| `invalid_path` | Not a status permalink | An X URL that is not a status permalink, such as a profile or a search page. | Use a permalink shaped like `https://x.com/{handle}/status/{id}`. |
+| `invalid_params` | Invalid handle or status id | The `handle`/`id` pair was missing or malformed. | Provide `handle` (1-15 word characters) and a numeric `id`. |
+| `invalid_handle` | Invalid X handle | The handle is not a possible X handle. | Handles are 1-15 characters of letters, digits, or underscores, with no leading `@`. |
+| `invalid_resource` | Unsupported browse resource | `resource` on the legacy `/api/browse` alias was not one of the four. | Use `resource=profile`, `search`, `followers`, or `following`. |
+| `invalid_format` | Unsupported format | `format` was not a format this route can render. | Use `format=markdown`, `format=obsidian`, or `format=json`. Browse accepts markdown or json. |
+| `invalid_thread` | Invalid thread parameter | `thread` was neither a keyword nor a count in range. | Use `thread=off`, `full`, `conversation`, or a number from 2 to 100. |
+| `invalid_userinfo` | Invalid userinfo parameter | `userinfo` was not a known level. | Use `userinfo=off`, `author`, or `all`. |
+| `invalid_context` | Invalid context parameter | `context` was not a known mode. | Use `context=full` or `context=thread`. |
+| `invalid_replies` | Invalid replies parameter | `replies` was not a known ordering. | Use `replies=top`, `recent`, or `off`. |
+| `invalid_mode` | Invalid mode parameter | A view mode this route does not offer. | See the parameter tables at [/docs/responses](/responses). |
+| `missing_query` | Missing search query | A search arrived with no query, or an empty one. | Add `?q=<search terms>`, for example `/search?q=vercel`. |
+| `invalid_body` | Invalid JSON body | A request body was sent that is not well-formed JSON. The public read routes take no body. | Send a well-formed JSON object, or omit the body entirely. |
+
+## Authentication — `401`
+
+The public read API needs no credentials. These appear only when a credential was offered and rejected, or a private route was reached.
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `invalid_key` | Invalid or disabled API key | An `Authorization: Bearer` key was present but unknown or revoked. | Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`. |
+| `unauthorized` | Unauthorized | A non-public route, such as the admin API. | This route is private. The public read-only API needs no credentials; see [/openapi.json](https://x.pcstyle.dev/openapi.json). |
+
+## Not found — `404`
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `not_found` | Not found | The post or profile does not exist, is deleted, protected, or suspended. | Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available. |
+| `route_not_found` | API route not found | The path is not a route on this service. | Discover the public API through [/api](https://x.pcstyle.dev/api), [/openapi.json](https://x.pcstyle.dev/openapi.json), or [/.well-known/api-catalog](https://x.pcstyle.dev/.well-known/api-catalog). |
+
+A `404` is a routing dead end for an agent, so both forms carry `links` pointing at the routes that do exist. Follow them rather than guessing at another path.
+
+The `404` document is the one error with more than one representation: it is negotiated from `Accept`, so a browser gets HTML, an agent asking for `text/markdown` gets the same recovery links as prose, and `application/json` (or `?format=json`) gets the problem document above.
+
+## Method and negotiation — `405`, `406`
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `method_not_allowed` | Method not allowed | Anything other than `GET`, `HEAD`, or `OPTIONS` on a read route. x.md never writes to X. | Use GET, HEAD, or OPTIONS; the `Allow` response header lists what this route accepts. |
+| `not_acceptable` | No acceptable representation | The `Accept` header excluded every representation this route can produce. On the site pages a `406` answers as `text/plain` listing what is on offer, since there is by definition no acceptable JSON to send. | Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header. |
+
+## Limits — `429`
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `rate_limited` | Rate limit exceeded | A quota is exhausted. The response says which one in its `RateLimit` header, at `r=0`. | Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. |
+
+`Retry-After` and `retry_after` are the same number of seconds. Sleep for it; do not poll. The quotas themselves are in [rate limits](/reliability#rate-limits).
+
+## Service and upstream — `5xx`
+
+x.md reads third-party providers that fail independently of it, so these are usually transient. Retry with exponential backoff and jitter; do not retry in a tight loop.
+
+| Code | Title | Meaning | What to do |
+| --- | --- | --- | --- |
+| `internal_error` | Unexpected error | A bug or an unhandled condition in x.md itself. | Retry with exponential backoff. If it persists, open an issue at [github.com/pc-style/x-md/issues](https://github.com/pc-style/x-md/issues). |
+| `upstream_error` | Upstream provider error | A data provider failed or answered with something unusable. | Retry with backoff. x.md reads a third-party provider that can fail independently. |
+| `search_unavailable` | Search temporarily unavailable | Live search has no healthy session. Photos, Videos, and Users have no fallback. | Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions. |
+| `admin_unconfigured` | Admin is not configured | The deployment's private admin route has no token set. Not part of the public API. | Set `X_MD_ADMIN_TOKEN` on the deployment. This route is not part of the public API. |
+
+## Retry policy in one table
+
+| Status | Retry? | How |
+| --- | --- | --- |
+| `400`, `405`, `406` | No | Fix the request first. The same request always fails the same way. |
+| `401` | No | Fix or drop the credential. |
+| `404` | No | Follow `links`, or confirm the content is public. A retry does not undelete a post. |
+| `429` | Yes | After `Retry-After` seconds, exactly once per window. |
+| `500`, `502` | Yes | Exponential backoff with jitter, a few attempts, then give up and report. |
+| `503` | Yes | After `Retry-After` seconds. `search_unavailable` on Photos, Videos, or Users may stay down for a while. |
+
+## The same catalogue, machine-readable
+
+Anything on this page can be read by a program instead:
+
+- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — `x-error-catalog` lists every code with its status, title, and resolution, and each operation lists the codes it can actually emit, with example bodies.
+- [`/api`](https://x.pcstyle.dev/api) — the `errors.codes` array, in a much smaller document.
+
+Related: [errors, limits, and caching](/reliability) · [versioning and deprecation](/versioning).

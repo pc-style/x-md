@@ -1,6 +1,6 @@
 {
   "name": "x-md",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Agent-friendly, read-only X browser with compact Markdown and JSON output",
   "license": "MIT",
   "type": "module",
@@ -26,12 +26,14 @@
   ],
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun --bun tsc && bun run docs:build && bun --bun vite build",
+    "build": "bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run",
     "docs:dev": "bun --bun blume dev",
-    "docs:build": "bun --bun blume build"
+    "docs:build": "bun --bun blume build",
+    "openapi:build": "bun scripts/build-openapi.ts",
+    "openapi:check": "bun scripts/build-openapi.ts --check"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

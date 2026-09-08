@@ -1,0 +1,108 @@
+---
+title: Versioning and deprecation
+description: What /api/v1 promises, how a change is announced, and how long a route keeps working after it is deprecated.
+sidebar:
+  order: 10
+  icon: git-branch
+---
+
+x.md is meant to be integrated once and then left running. This page is the promise about when that integration can break, and how much warning it gets.
+
+## Two surfaces
+
+| Surface | Example | Contract |
+| --- | --- | --- |
+| Versioned machine surface | `GET /api/v1/search?q=vercel` | `v1` is the current major version. Breaking changes ship as `/api/v2/*`, never inside `v1`. |
+| Permalink product surface | `GET /search?q=vercel` | Mirrors the shape of an `x.com` URL. Unversioned, stable, not deprecated. |
+
+The two surfaces run the same code and return the same bodies. Pick the versioned paths when you are writing a client that has to keep working unattended; pick the permalink paths when you are rewriting an `x.com` URL you already hold.
+
+The versioned surface is:
+
+```text
+GET /api/v1/posts                              # ?url= or ?handle= + ?id=
+GET /api/v1/profiles/{handle}
+GET /api/v1/profiles/{handle}/followers
+GET /api/v1/profiles/{handle}/following
+GET /api/v1/search                             # ?q=
+GET /api/v1/oembed                             # ?url=
+```
+
+## What can change inside v1
+
+These are additive and ship without a version bump:
+
+- New optional query parameters.
+- New fields in a JSON response body, and new keys inside existing objects.
+- New response headers.
+- New values in an open-ended field such as `source`.
+- Changes to the rendered Markdown: wording, ordering, and layout are presentation, not contract.
+
+Ignore JSON fields you do not recognise, and do not parse the Markdown as if it were a data format. If you need fields, ask for `format=json` or send `Accept: application/json`.
+
+These are breaking, and ship only under a new path prefix:
+
+- Removing or renaming a query parameter, a JSON field, or a route.
+- Changing the type of an existing field, or narrowing what an existing parameter accepts.
+- Changing the meaning of an existing status code or error `code`.
+
+`/api/v1/*` keeps working for **at least 12 months** after its successor is published.
+
+## How a deprecation is announced
+
+A deprecated route keeps answering exactly as before and adds three signals to **every** response it produces, success and error alike:
+
+```http
+Deprecation: @1789430400
+Sunset: Wed, 15 Sep 2027 00:00:00 GMT
+Link: <https://x.pcstyle.dev/api/v1/posts>; rel="successor-version", <https://x.pcstyle.dev/docs/versioning>; rel="deprecation"; type="text/html", <https://x.pcstyle.dev/docs/versioning>; rel="sunset"; type="text/html"
+```
+
+| Header | Specification | How to read it |
+| --- | --- | --- |
+| `Deprecation` | [RFC 9745](https://www.rfc-editor.org/rfc/rfc9745) | A structured-field Date: `@` followed by Unix seconds. `@1789430400` is `2026-09-15T00:00:00Z`. A date in the future means the route *becomes* deprecated then. |
+| `Sunset` | [RFC 8594](https://www.rfc-editor.org/rfc/rfc8594) | An HTTP-date after which the route may stop answering. Never earlier than the `Deprecation` date. |
+| `Link; rel="successor-version"` | [RFC 8288](https://www.rfc-editor.org/rfc/rfc8288) | The route to move to. Safe to follow automatically. |
+| `Link; rel="deprecation"` | RFC 9745 | This page. |
+| `Link; rel="sunset"` | RFC 8594 | This page. |
+
+The `/api/*` routes list `Deprecation`, `Sunset`, and `Link` in `Access-Control-Expose-Headers`, so a browser client can read them cross-origin.
+
+## Scheduled for deprecation
+
+| Route | Successor | Deprecation date | Sunset |
+| --- | --- | --- | --- |
+| `GET /api/convert` | `GET /api/v1/posts` | 2026-09-15 | 2027-09-15 |
+| `GET /api/browse` | `GET /api/v1/profiles/{handle}`, `/followers`, `/following`, `GET /api/v1/search` | 2026-09-15 | 2027-09-15 |
+
+Both aliases send `Deprecation` and `Sunset` on every response *now*, before the date the `Deprecation` field names. That is the point of a future date: it is notice that the route becomes deprecated on 2026-09-15, not a claim that it already is.
+
+`/api/browse` selects its successor by `resource`: `profile`, `followers`, and `following` map to the matching `/api/v1/profiles/{handle}` route, and `search` maps to `/api/v1/search`. A call that names no resolvable resource still carries `Deprecation` and `Sunset`, but no `successor-version` link.
+
+Both aliases keep working unchanged until the sunset date. Nothing else is deprecated. The permalink routes are not aliases and are not going away.
+
+:::note
+Nothing has been removed yet. This table is what the sunset window looks like when it is used, not a backlog of pending breakage.
+:::
+
+## Check it from code
+
+Deprecation is visible on a `HEAD`, so a client can check without spending a read:
+
+```bash
+curl -sSI 'https://x.pcstyle.dev/api/convert?url=https://x.com/jack/status/20' \
+  | grep -iE '^(deprecation|sunset|link):'
+```
+
+A reasonable client policy: log a warning when `Deprecation` is present, follow `rel="successor-version"` on the next deploy, and fail loudly if `Sunset` is less than 30 days away.
+
+The same policy is machine-readable in two places:
+
+- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — the `x-api-lifecycle` object carries `current_major_version`, `supported_versions`, `minimum_support_window_months`, `deprecation_signals`, and every deprecated operation with its dates and its replacement: `successor` when one route replaces the alias, `successor_parameter` plus `successors` for `/api/browse`, which picks its replacement from `resource`. The operations themselves carry `x-successor-version` (`/api/convert`) or `x-successor-version-map` (`/api/browse`), alongside OpenAPI's own `deprecated: true`.
+- [`/api`](https://x.pcstyle.dev/api) — the `versioning` object repeats the same dates in a smaller document, for an agent that has only the domain. Its `/api/browse` entry carries `successor_parameter` and `successors` rather than a single `successor` string, so parse both shapes.
+
+## Release notes
+
+Changes are tagged on `main` and listed in [CHANGELOG.md](https://github.com/pc-style/x-md/blob/main/CHANGELOG.md). The hosted API at `x.pcstyle.dev` runs the latest tag.
+
+x.md is a free, MIT-licensed, best-effort project. This policy describes how change is *signalled*; it is not an SLA. If a route is broken by an upstream provider rather than by a release, the failure shows up as a [`502` or `503` problem document](/errors), not as a version bump.

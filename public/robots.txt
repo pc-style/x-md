@@ -1,9 +1,71 @@
+# x.md — read-only Markdown mirror of public X content.
+# Product and route reference for agents: https://x.pcstyle.dev/llms.txt
+# Resource catalog: https://x.pcstyle.dev/.well-known/ard.json
+
+# As a condition of accessing this website, you agree to abide by the
+# following content signals:
+# (a)  If a content-signal = yes, you may collect content for the
+#      corresponding use.
+# (b)  If a content-signal = no, you may not collect content for the
+#      corresponding use.
+# (c)  If the website operator does not include a content signal for a
+#      corresponding use, the website operator neither grants nor restricts
+#      permission via content signal with respect to the corresponding use.
+#
+# search: building a search index and providing search results.
+# ai-input: inputting content into one or more AI models (retrieval augmented
+#           generation, grounding, or other real-time taking of content).
+# ai-train: training or fine-tuning AI models.
+#
+# x.md renders third-party X content that x.md does not own and cannot license
+# for model training, so ai-train is withheld while search and live grounding
+# — the uses that cite and link back to the source post — are granted.
+#
+# ANY RESTRICTIONS EXPRESSED VIA CONTENT SIGNALS ARE EXPRESS RESERVATIONS OF
+# RIGHTS UNDER ARTICLE 4 OF THE EUROPEAN UNION DIRECTIVE 2019/790 ON COPYRIGHT
+# AND RELATED RIGHTS IN THE DIGITAL SINGLE MARKET.
+
 User-agent: *
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 Allow: /
+Allow: /api
+Allow: /api/v1/
+Allow: /api/convert
+Allow: /api/browse
+Allow: /api/oembed
+Allow: /mcp
 Allow: /oembed
-Disallow: /api/
+Disallow: /api/admin
+Disallow: /admin
+
+# Answer and search crawlers. These cite the page they read, so the whole
+# surface — pages, docs, and the JSON API described in /openapi.json — is open.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: Claude-SearchBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bingbot
+User-agent: Googlebot
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+Allow: /
+Disallow: /api/admin
+Disallow: /admin
+
+# Training-corpus crawlers. The service exists to answer one live question at a
+# time; bulk collection of the X content it renders is not a use it can grant.
+User-agent: CCBot
+Content-Signal: search=no, ai-input=no, ai-train=no
+Disallow: /
+
+User-agent: Bytespider
+Content-Signal: search=no, ai-input=no, ai-train=no
+Disallow: /
 
 Sitemap: https://x.pcstyle.dev/sitemap.xml
-
-# Agent-readable product and route reference
-# https://x.pcstyle.dev/llms.txt
+schemamap: https://x.pcstyle.dev/schemamap.xml
