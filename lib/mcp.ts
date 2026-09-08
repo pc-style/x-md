@@ -99,6 +99,8 @@ export interface McpResource {
 export interface McpContext {
   ip?: string
   caller?: SearchCaller
+  /** Which revision the request declared; decides which methods exist. */
+  era?: 'modern' | 'legacy'
 }
 
 export type DispatchOutcome = { result: unknown } | { error: JsonRpcError } | null
@@ -517,6 +519,68 @@ export function finalizeResult(outcome: DispatchOutcome, method: string, modern:
   return { result: stamped }
 }
 
+/**
+ * Decode the Base64 sentinel the modern transport allows on `Mcp-Name`.
+ *
+ * A tool name or resource URI that is not plain visible ASCII travels as
+ * `=?base64?<utf-8 base64>?=`, and a plain value that happens to look like the
+ * sentinel is encoded too. Servers MUST decode before comparing to the body.
+ */
+export function decodeHeaderValue(raw: string): string {
+  const sentinel = /^=\?base64\?(.*)\?=$/.exec(raw)
+  if (!sentinel) return raw
+  try {
+    return Buffer.from(sentinel[1] ?? '', 'base64').toString('utf8')
+  } catch {
+    return raw
+  }
+}
+
+/** The methods whose `Mcp-Name` mirrors a body field, and which field that is. */
+const NAMED_METHODS: Readonly<Record<string, 'name' | 'uri'>> = {
+  'tools/call': 'name',
+  'resources/read': 'uri',
+  'prompts/get': 'name',
+}
+
+export interface ModernHeaders {
+  protocolVersion?: string
+  method?: string
+  name?: string
+}
+
+/**
+ * The header/body checks 2026-07-28 requires, as a pure function.
+ *
+ * `Mcp-Method` and `Mcp-Name` exist so a gateway can route and filter without
+ * parsing the JSON-RPC body. That only holds if the server refuses to act on a
+ * request where the two disagree — otherwise a proxy allows one method while
+ * the server executes another. Returns the `-32020` error, or null when valid.
+ */
+export function validateModernHeaders(headers: ModernHeaders, message: JsonRpcMessage): JsonRpcError | null {
+  const mismatch = (detail: string): JsonRpcError => ({ code: MCP_HEADER_MISMATCH, message: `Header mismatch: ${detail}` })
+  const method = typeof message.method === 'string' ? message.method : ''
+
+  if (!headers.protocolVersion) return mismatch('the MCP-Protocol-Version header is required.')
+  if (!headers.method) return mismatch('the Mcp-Method header is required on every request.')
+  if (headers.method !== method) {
+    return mismatch(`Mcp-Method header value '${headers.method}' does not match body value '${method}'.`)
+  }
+
+  const source = NAMED_METHODS[method]
+  if (!source) return null
+
+  const params = typeof message.params === 'object' && message.params !== null ? (message.params as Record<string, unknown>) : {}
+  const bodyValue = params[source]
+  if (typeof bodyValue !== 'string') return null // The method's own params validation reports this.
+  if (!headers.name) return mismatch(`the Mcp-Name header is required on ${method} requests.`)
+  const headerValue = decodeHeaderValue(headers.name)
+  if (headerValue !== bodyValue) {
+    return mismatch(`Mcp-Name header value '${headerValue}' does not match body value '${bodyValue}'.`)
+  }
+  return null
+}
+
 /** The `server/discover` payload: what we speak, what we can do, and who we are. */
 export function serverDiscover(): Record<string, unknown> {
   return {
@@ -770,11 +834,42 @@ async function readResource(params: unknown): Promise<DispatchOutcome> {
   }
 }
 
+/**
+ * Methods that exist in only one era. 2026-07-28 removed the `initialize`
+ * handshake and `ping`; `server/discover` replaced them and does not exist
+ * before it. Answering a method from the wrong era would tell a client the
+ * server speaks a revision it does not.
+ */
+const ERA_ONLY: Readonly<Record<string, 'modern' | 'legacy'>> = {
+  'server/discover': 'modern',
+  initialize: 'legacy',
+  ping: 'legacy',
+}
+
 export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): Promise<DispatchOutcome> {
   const method = typeof message.method === 'string' ? message.method : ''
 
   // Notifications carry no id and are answered with 202 and an empty body.
   if (method.startsWith('notifications/')) return null
+
+  // Default to legacy so a direct dispatch() call keeps the handshake surface.
+  const era = ctx.era ?? 'legacy'
+  const only = ERA_ONLY[method]
+  if (only && only !== era) {
+    return {
+      error: {
+        code: JSONRPC_METHOD_NOT_FOUND,
+        message: 'Method not found',
+        data: {
+          method,
+          reason: only === 'modern'
+            ? `${method} exists only in protocol revision ${MCP_MODERN_PROTOCOL} and later.`
+            : `${method} was removed in protocol revision ${MCP_MODERN_PROTOCOL}.`,
+          era,
+        },
+      },
+    }
+  }
 
   switch (method) {
     case 'initialize': {

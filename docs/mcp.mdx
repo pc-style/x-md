@@ -88,12 +88,18 @@ curl -sS -X POST https://x.pcstyle.dev/mcp \
 
 Revision `2026-07-28` made the protocol stateless. There is no `initialize` handshake: a
 client declares its version on every request, in the `MCP-Protocol-Version` header and in
-`params._meta` under `io.modelcontextprotocol/protocolVersion`. Those two **must** agree —
+`params._meta` under `io.modelcontextprotocol/protocolVersion`. Two more headers mirror the
+body so a gateway can route and filter without parsing JSON-RPC: `Mcp-Method` on every
+request, and `Mcp-Name` on `tools/call` and `resources/read`, carrying `params.name` or
+`params.uri`. A name that is not plain ASCII travels as `=?base64?<utf-8 base64>?=` and is
+decoded before comparison. Every mirrored header **must** agree with the body —
 a mismatch is `400` with `-32020`, because a proxy routing on one while the server executes
 the other is the split-brain that code exists to stop. An unsupported version is `400` with
 `-32022` and the list we do speak; an unimplemented method is `404` with `-32601`, so a
 client can tell this endpoint from one that never hosted MCP. `server/discover` returns the
-supported versions, capabilities, and identity in a single call.
+supported versions, capabilities, and identity in a single call; it exists only in this
+revision, just as `initialize` and `ping` exist only before it, and asking for either from
+the wrong era is `-32601`.
 
 Results in that revision carry `resultType: "complete"`, the server identity under
 `io.modelcontextprotocol/serverInfo`, and — on `server/discover`, `tools/list`,

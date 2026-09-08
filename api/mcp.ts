@@ -11,6 +11,7 @@ import {
   JSONRPC_INVALID_REQUEST,
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_METHOD_NOT_FOUND,
+  validateModernHeaders,
   JSONRPC_PARSE_ERROR,
   MCP_DOCS_URL,
   MCP_ENDPOINT,
@@ -43,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // /api/*, so this route sets its own.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS, DELETE')
-  res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, Mcp-Session-Id')
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id')
   res.setHeader('Access-Control-Expose-Headers', 'MCP-Protocol-Version, Mcp-Session-Id, Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link')
   res.setHeader('Access-Control-Max-Age', '86400')
 
@@ -151,6 +152,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const modern = isModernProtocol(protocol)
   res.setHeader('MCP-Protocol-Version', protocol)
 
+  if (modern) {
+    const header = (name: string): string | undefined => {
+      const value = req.headers[name]
+      return Array.isArray(value) ? value[0] : value
+    }
+    const invalid = validateModernHeaders(
+      { protocolVersion: headerProtocol, method: header('mcp-method'), name: header('mcp-name') },
+      message,
+    )
+    if (invalid) return transportError(res, 400, invalid.code, invalid.message, invalid.data)
+  }
+
   const resolved = await resolveCaller(req.headers)
   if (resolved.status === 'valid' && resolved.caller.kind === 'key') identity.keyId = resolved.caller.id
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
@@ -160,7 +173,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let outcome
   try {
-    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller }), message.method, modern)
+    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy' }), message.method, modern)
   } catch (error) {
     console.error(error)
     outcome = { error: { code: JSONRPC_INTERNAL_ERROR, message: 'Internal error' } }
