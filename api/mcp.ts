@@ -10,11 +10,18 @@ import {
   serverCard,
   JSONRPC_INVALID_REQUEST,
   JSONRPC_INTERNAL_ERROR,
+  JSONRPC_METHOD_NOT_FOUND,
+  validateModernHeaders,
   JSONRPC_PARSE_ERROR,
   MCP_DOCS_URL,
   MCP_ENDPOINT,
-  MCP_LATEST_PROTOCOL,
+  MCP_HEADER_MISMATCH,
+  MCP_LATEST_LEGACY_PROTOCOL,
   MCP_SUPPORTED_PROTOCOLS,
+  MCP_UNSUPPORTED_PROTOCOL_VERSION,
+  finalizeResult,
+  isModernProtocol,
+  requestedProtocol,
   type JsonRpcMessage,
 } from '../lib/mcp.js'
 
@@ -37,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // /api/*, so this route sets its own.
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS, DELETE')
-  res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, Mcp-Session-Id')
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id')
   res.setHeader('Access-Control-Expose-Headers', 'MCP-Protocol-Version, Mcp-Session-Id, Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link')
   res.setHeader('Access-Control-Max-Age', '86400')
 
@@ -105,11 +112,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const requested = req.headers['mcp-protocol-version']
-  const protocol = Array.isArray(requested) ? requested[0] : requested
-  if (protocol && !MCP_SUPPORTED_PROTOCOLS.includes(protocol)) {
-    return transportError(res, 400, JSONRPC_INVALID_REQUEST, `Unsupported MCP-Protocol-Version ${protocol}.`, { supported: MCP_SUPPORTED_PROTOCOLS })
+  const headerProtocol = Array.isArray(requested) ? requested[0] : requested
+  if (headerProtocol && !MCP_SUPPORTED_PROTOCOLS.includes(headerProtocol)) {
+    return transportError(res, 400, MCP_UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version', {
+      supported: MCP_SUPPORTED_PROTOCOLS,
+      requested: headerProtocol,
+    })
   }
-  res.setHeader('MCP-Protocol-Version', protocol ?? MCP_LATEST_PROTOCOL)
 
   const parsed = parseJsonBody(req.body)
   if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON')
@@ -121,6 +130,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: expected a JSON-RPC 2.0 object with a string `method`.')
   }
 
+  // 2026-07-28 carries the version in `_meta` as well as the header, and requires
+  // the two to agree: a proxy routing on the header while the server executes the
+  // body is exactly the split-brain the HeaderMismatch code exists to stop.
+  const bodyProtocol = requestedProtocol(message.params)
+  if (bodyProtocol && !MCP_SUPPORTED_PROTOCOLS.includes(bodyProtocol)) {
+    return transportError(res, 400, MCP_UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version', {
+      supported: MCP_SUPPORTED_PROTOCOLS,
+      requested: bodyProtocol,
+    })
+  }
+  if (bodyProtocol && headerProtocol && bodyProtocol !== headerProtocol) {
+    return transportError(res, 400, MCP_HEADER_MISMATCH, 'The MCP-Protocol-Version header does not match the protocol version in the request body.', {
+      header: headerProtocol,
+      body: bodyProtocol,
+    })
+  }
+
+  // A modern request announces itself; anything else is the legacy handshake era.
+  const protocol = bodyProtocol ?? headerProtocol ?? MCP_LATEST_LEGACY_PROTOCOL
+  const modern = isModernProtocol(protocol)
+  res.setHeader('MCP-Protocol-Version', protocol)
+
+  if (modern) {
+    const header = (name: string): string | undefined => {
+      const value = req.headers[name]
+      return Array.isArray(value) ? value[0] : value
+    }
+    const invalid = validateModernHeaders(
+      { protocolVersion: headerProtocol, method: header('mcp-method'), name: header('mcp-name') },
+      message,
+    )
+    if (invalid) return transportError(res, 400, invalid.code, invalid.message, invalid.data)
+  }
+
   const resolved = await resolveCaller(req.headers)
   if (resolved.status === 'valid' && resolved.caller.kind === 'key') identity.keyId = resolved.caller.id
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
@@ -130,10 +173,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let outcome
   try {
-    outcome = await dispatch(message, { ip: resolved.ip, caller: resolved.caller })
+    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy' }), message.method, modern)
   } catch (error) {
     console.error(error)
     outcome = { error: { code: JSONRPC_INTERNAL_ERROR, message: 'Internal error' } }
+  }
+
+  // The modern transport answers an unimplemented RPC with 404, so a client can
+  // tell it apart from a legacy endpoint that never hosted this path at all.
+  if (modern && outcome && 'error' in outcome && outcome.error.code === JSONRPC_METHOD_NOT_FOUND) {
+    return transportError(res, 404, JSONRPC_METHOD_NOT_FOUND, outcome.error.message, outcome.error.data)
   }
 
   // Never let one caller's MCP response reach another through the CDN.

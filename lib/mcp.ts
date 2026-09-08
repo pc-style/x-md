@@ -12,22 +12,40 @@ export const MCP_DOCS_URL = `${MCP_SITE}/docs/mcp`
 export const MCP_SERVER_DESCRIPTION = 'Read public X posts, threads, profiles, and search results as Markdown or JSON.'
 
 /**
- * 2025-11-25 is the last revision that negotiates through an `initialize`
- * handshake; 2026-07-28 replaced the handshake with per-request protocol
- * metadata. Clients asking for anything outside this set are answered with the
- * newest revision we actually speak, which is what every reference Streamable
- * HTTP server does.
+ * Two protocol eras, both live.
+ *
+ * "Modern" (2026-07-28 and later) is stateless: there is no `initialize`
+ * handshake, every request carries its own version in `_meta`, and results
+ * carry `resultType` plus caching hints. "Legacy" (2025-11-25 and earlier)
+ * negotiates once through `initialize`. This server mints no session either
+ * way, which is exactly the stateless core the modern era standardised, so
+ * both eras run through the same dispatch.
  */
-export const MCP_LATEST_PROTOCOL = '2025-11-25'
-export const MCP_SUPPORTED_PROTOCOLS: readonly string[] = ['2025-11-25', '2025-06-18', '2025-03-26']
+export const MCP_MODERN_PROTOCOL = '2026-07-28'
+/** The newest revision answered to a legacy `initialize` that asks for something we do not speak. */
+export const MCP_LATEST_LEGACY_PROTOCOL = '2025-11-25'
+/** The handshake era, newest first. Only these can come back from `initialize`. */
+export const MCP_LEGACY_PROTOCOLS: readonly string[] = ['2025-11-25', '2025-06-18', '2025-03-26']
+export const MCP_SUPPORTED_PROTOCOLS: readonly string[] = [MCP_MODERN_PROTOCOL, ...MCP_LEGACY_PROTOCOLS]
 
 export const JSONRPC_PARSE_ERROR = -32700
 export const JSONRPC_INVALID_REQUEST = -32600
 export const JSONRPC_METHOD_NOT_FOUND = -32601
 export const JSONRPC_INVALID_PARAMS = -32602
 export const JSONRPC_INTERNAL_ERROR = -32603
-/** MCP reserves -32002 for a resource URI the server does not serve. */
-export const MCP_RESOURCE_NOT_FOUND = -32002
+/**
+ * -32020..-32099 is the range 2026-07-28 reserves for the specification itself;
+ * the three below are the ones a stateless HTTP server can raise.
+ */
+export const MCP_HEADER_MISMATCH = -32020
+export const MCP_MISSING_CAPABILITY = -32021
+export const MCP_UNSUPPORTED_PROTOCOL_VERSION = -32022
+/**
+ * 2026-07-28 moved "resource not found" from -32002 onto plain Invalid Params
+ * to line up with JSON-RPC. Legacy clients accepted -32002, but -32602 is a
+ * standard code they already understand, so both eras get the same one.
+ */
+export const MCP_RESOURCE_NOT_FOUND = JSONRPC_INVALID_PARAMS
 
 export const MCP_INSTRUCTIONS = [
   'x.md reads PUBLIC X (formerly Twitter) content without an X account, an X API key, or a login.',
@@ -81,6 +99,8 @@ export interface McpResource {
 export interface McpContext {
   ip?: string
   caller?: SearchCaller
+  /** Which revision the request declared; decides which methods exist. */
+  era?: 'modern' | 'legacy'
 }
 
 export type DispatchOutcome = { result: unknown } | { error: JsonRpcError } | null
@@ -426,10 +446,148 @@ export const MCP_RESOURCES: McpResource[] = [
   },
 ]
 
+/**
+ * Pick the revision a legacy `initialize` gets back. Only handshake-era versions
+ * are eligible: a client that asks for 2026-07-28 here is confused, because that
+ * revision removed `initialize` entirely, so it is answered with the newest
+ * revision that actually has one.
+ */
 export function negotiateProtocol(requested: unknown): string {
-  return typeof requested === 'string' && MCP_SUPPORTED_PROTOCOLS.includes(requested)
+  return typeof requested === 'string' && MCP_LEGACY_PROTOCOLS.includes(requested)
     ? requested
-    : MCP_LATEST_PROTOCOL
+    : MCP_LATEST_LEGACY_PROTOCOL
+}
+
+/** The `_meta` key namespace the modern era reserves for protocol fields. */
+const META = 'io.modelcontextprotocol/'
+
+/** The protocol version a modern request declares in `params._meta`, if any. */
+export function requestedProtocol(params: unknown): string | undefined {
+  if (typeof params !== 'object' || params === null) return undefined
+  const meta = (params as { _meta?: unknown })._meta
+  if (typeof meta !== 'object' || meta === null) return undefined
+  const version = (meta as Record<string, unknown>)[`${META}protocolVersion`]
+  return typeof version === 'string' ? version : undefined
+}
+
+/** True for 2026-07-28 and later: stateless, per-request metadata, typed results. */
+export function isModernProtocol(version: string | undefined): boolean {
+  return version === MCP_MODERN_PROTOCOL
+}
+
+/**
+ * How long a client may treat each cacheable result as fresh. The tool and
+ * resource lists are compiled into the bundle and only change on deploy; a
+ * resource body is fetched live, so it gets a short window instead.
+ */
+const CACHE_TTL_MS: Readonly<Record<string, number>> = {
+  'server/discover': 3_600_000,
+  'tools/list': 3_600_000,
+  'resources/list': 3_600_000,
+  'resources/templates/list': 3_600_000,
+  'resources/read': 300_000,
+}
+
+/**
+ * Stamp the fields 2026-07-28 requires on a result: `resultType` on every one,
+ * the server's identity in `_meta`, and caching hints on the operations the
+ * caching section lists. Legacy results are returned untouched so each era sees
+ * exactly the shape its own revision defines.
+ */
+export function finalizeResult(outcome: DispatchOutcome, method: string, modern: boolean): DispatchOutcome {
+  if (!modern || !outcome || !('result' in outcome)) return outcome
+  const result = outcome.result
+  if (typeof result !== 'object' || result === null) return outcome
+
+  const existingMeta = (result as { _meta?: unknown })._meta
+  const meta = typeof existingMeta === 'object' && existingMeta !== null ? { ...(existingMeta as object) } : {}
+  const stamped: Record<string, unknown> = {
+    ...(result as object),
+    resultType: 'complete',
+    _meta: {
+      ...meta,
+      [`${META}serverInfo`]: { name: MCP_SERVER_NAME, title: MCP_SERVER_TITLE, version: MCP_SERVER_VERSION },
+    },
+  }
+
+  const ttlMs = CACHE_TTL_MS[method]
+  if (ttlMs !== undefined) {
+    stamped.ttlMs = ttlMs
+    // Nothing here varies by caller or credential, so a shared cache may hold it.
+    stamped.cacheScope = 'public'
+  }
+  return { result: stamped }
+}
+
+/**
+ * Decode the Base64 sentinel the modern transport allows on `Mcp-Name`.
+ *
+ * A tool name or resource URI that is not plain visible ASCII travels as
+ * `=?base64?<utf-8 base64>?=`, and a plain value that happens to look like the
+ * sentinel is encoded too. Servers MUST decode before comparing to the body.
+ */
+export function decodeHeaderValue(raw: string): string {
+  const sentinel = /^=\?base64\?(.*)\?=$/.exec(raw)
+  if (!sentinel) return raw
+  try {
+    return Buffer.from(sentinel[1] ?? '', 'base64').toString('utf8')
+  } catch {
+    return raw
+  }
+}
+
+/** The methods whose `Mcp-Name` mirrors a body field, and which field that is. */
+const NAMED_METHODS: Readonly<Record<string, 'name' | 'uri'>> = {
+  'tools/call': 'name',
+  'resources/read': 'uri',
+  'prompts/get': 'name',
+}
+
+export interface ModernHeaders {
+  protocolVersion?: string
+  method?: string
+  name?: string
+}
+
+/**
+ * The header/body checks 2026-07-28 requires, as a pure function.
+ *
+ * `Mcp-Method` and `Mcp-Name` exist so a gateway can route and filter without
+ * parsing the JSON-RPC body. That only holds if the server refuses to act on a
+ * request where the two disagree — otherwise a proxy allows one method while
+ * the server executes another. Returns the `-32020` error, or null when valid.
+ */
+export function validateModernHeaders(headers: ModernHeaders, message: JsonRpcMessage): JsonRpcError | null {
+  const mismatch = (detail: string): JsonRpcError => ({ code: MCP_HEADER_MISMATCH, message: `Header mismatch: ${detail}` })
+  const method = typeof message.method === 'string' ? message.method : ''
+
+  if (!headers.protocolVersion) return mismatch('the MCP-Protocol-Version header is required.')
+  if (!headers.method) return mismatch('the Mcp-Method header is required on every request.')
+  if (headers.method !== method) {
+    return mismatch(`Mcp-Method header value '${headers.method}' does not match body value '${method}'.`)
+  }
+
+  const source = NAMED_METHODS[method]
+  if (!source) return null
+
+  const params = typeof message.params === 'object' && message.params !== null ? (message.params as Record<string, unknown>) : {}
+  const bodyValue = params[source]
+  if (typeof bodyValue !== 'string') return null // The method's own params validation reports this.
+  if (!headers.name) return mismatch(`the Mcp-Name header is required on ${method} requests.`)
+  const headerValue = decodeHeaderValue(headers.name)
+  if (headerValue !== bodyValue) {
+    return mismatch(`Mcp-Name header value '${headerValue}' does not match body value '${bodyValue}'.`)
+  }
+  return null
+}
+
+/** The `server/discover` payload: what we speak, what we can do, and who we are. */
+export function serverDiscover(): Record<string, unknown> {
+  return {
+    supportedVersions: [...MCP_SUPPORTED_PROTOCOLS],
+    capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
+    instructions: MCP_INSTRUCTIONS,
+  }
 }
 
 /** The only branded mark served from the public origin; SVG so it scales in any registry UI. */
@@ -676,11 +834,42 @@ async function readResource(params: unknown): Promise<DispatchOutcome> {
   }
 }
 
+/**
+ * Methods that exist in only one era. 2026-07-28 removed the `initialize`
+ * handshake and `ping`; `server/discover` replaced them and does not exist
+ * before it. Answering a method from the wrong era would tell a client the
+ * server speaks a revision it does not.
+ */
+const ERA_ONLY: Readonly<Record<string, 'modern' | 'legacy'>> = {
+  'server/discover': 'modern',
+  initialize: 'legacy',
+  ping: 'legacy',
+}
+
 export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): Promise<DispatchOutcome> {
   const method = typeof message.method === 'string' ? message.method : ''
 
   // Notifications carry no id and are answered with 202 and an empty body.
   if (method.startsWith('notifications/')) return null
+
+  // Default to legacy so a direct dispatch() call keeps the handshake surface.
+  const era = ctx.era ?? 'legacy'
+  const only = ERA_ONLY[method]
+  if (only && only !== era) {
+    return {
+      error: {
+        code: JSONRPC_METHOD_NOT_FOUND,
+        message: 'Method not found',
+        data: {
+          method,
+          reason: only === 'modern'
+            ? `${method} exists only in protocol revision ${MCP_MODERN_PROTOCOL} and later.`
+            : `${method} was removed in protocol revision ${MCP_MODERN_PROTOCOL}.`,
+          era,
+        },
+      },
+    }
+  }
 
   switch (method) {
     case 'initialize': {
@@ -699,6 +888,8 @@ export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): P
         },
       }
     }
+    case 'server/discover':
+      return { result: serverDiscover() }
     case 'ping':
       return { result: {} }
     case 'tools/list':
@@ -712,6 +903,6 @@ export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): P
     case 'resources/read':
       return readResource(message.params)
     default:
-      return { error: { code: JSONRPC_METHOD_NOT_FOUND, message: 'Method not found', data: { method, supported: ['initialize', 'ping', 'tools/list', 'tools/call', 'resources/list', 'resources/read'] } } }
+      return { error: { code: JSONRPC_METHOD_NOT_FOUND, message: 'Method not found', data: { method, supported: ['server/discover', 'initialize', 'ping', 'tools/list', 'tools/call', 'resources/list', 'resources/templates/list', 'resources/read'] } } }
   }
 }

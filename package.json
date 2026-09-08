@@ -26,14 +26,15 @@
   ],
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build",
+    "build": "bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build && bun run skills:publish",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run",
     "docs:dev": "bun --bun blume dev",
     "docs:build": "bun --bun blume build",
     "openapi:build": "bun scripts/build-openapi.ts",
-    "openapi:check": "bun scripts/build-openapi.ts --check"
+    "openapi:check": "bun scripts/build-openapi.ts --check",
+    "skills:publish": "bun scripts/patch-agent-skills.ts"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

@@ -78,7 +78,8 @@ Docs-only index: https://x.pcstyle.dev/docs/llms.txt
 - [MCP registry manifest](https://x.pcstyle.dev/server.json) — name, version, and remotes
 - [Resource catalog](https://x.pcstyle.dev/.well-known/ard.json) — ARD catalog of every machine surface here
 - [API catalog](https://x.pcstyle.dev/.well-known/api-catalog) — RFC 9727 linkset
-- [Agent skill index](https://x.pcstyle.dev/.well-known/agent-skills/index.json) — the installable `browse-x` skill
+- [Agent skill](https://x.pcstyle.dev/.well-known/agent-skills/browse-x.md) — `browse-x`, readable as Markdown: what it does, when to use it, and when not to
+- [Agent skill index](https://x.pcstyle.dev/.well-known/agent-skills/index.json) — the catalog, with the installable archive and its digest
 - [Agent landing document](https://x.pcstyle.dev/agents.md) — what to call, in order
 - [Authentication](https://x.pcstyle.dev/auth.md) — none required; what the optional bearer key does
 - [Pricing](https://x.pcstyle.dev/pricing.md) — free, with the rate limits that stand in for cost
