@@ -2,6 +2,7 @@ import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { apiDevPlugin } from './src/vite-api-plugin'
+import { prerenderLandingPlugin } from './src/vite-prerender-plugin'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -10,7 +11,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [tailwindcss(), apiDevPlugin()],
+    plugins: [tailwindcss(), apiDevPlugin(), prerenderLandingPlugin()],
     define: {
       'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
     },
