@@ -272,7 +272,7 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Accept, Content-Type, Authorization, Mcp-Session-Id, MCP-Protocol-Version"
+          "value": "Accept, Content-Type, Authorization, Mcp-Session-Id, Mcp-Method, Mcp-Name, MCP-Protocol-Version"
         },
         {
           "key": "Access-Control-Expose-Headers",

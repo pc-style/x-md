@@ -15,7 +15,7 @@ sidebar:
 | Endpoint | `https://x.pcstyle.dev/mcp` |
 | Transport | Streamable HTTP |
 | Authentication | None. `Authorization: Bearer <api key>` is optional and raises your search allowance |
-| Protocol revisions | `2025-11-25`, `2025-06-18`, `2025-03-26` |
+| Protocol revisions | `2026-07-28`, `2025-11-25`, `2025-06-18`, `2025-03-26` |
 | Sessions | None. The server is stateless and never issues an `Mcp-Session-Id` |
 | Server name | `io.github.pc-style/x-md` |
 
@@ -86,7 +86,34 @@ curl -sS -X POST https://x.pcstyle.dev/mcp \
 
 ## Errors
 
-Protocol mistakes come back as JSON-RPC errors: `-32700` for an unparseable body, `-32600` for a message that is not a JSON-RPC 2.0 request, `-32601` for an unknown method, `-32602` for an unknown tool or arguments that miss the schema, `-32002` for an unknown resource URI, and `-32603` for anything unexpected. An invalid-arguments error carries the tool's `inputSchema` in `error.data` so a client can correct itself in one turn.
+Revision `2026-07-28` made the protocol stateless. There is no `initialize` handshake: a
+client declares its version on every request, in the `MCP-Protocol-Version` header and in
+`params._meta` under `io.modelcontextprotocol/protocolVersion`. Two more headers mirror the
+body so a gateway can route and filter without parsing JSON-RPC: `Mcp-Method` on every
+request, and `Mcp-Name` on `tools/call` and `resources/read`, carrying `params.name` or
+`params.uri`. A name that is not plain ASCII travels as `=?base64?<utf-8 base64>?=` and is
+decoded before comparison. Every mirrored header **must** agree with the body —
+a mismatch is `400` with `-32020`, because a proxy routing on one while the server executes
+the other is the split-brain that code exists to stop. An unsupported version is `400` with
+`-32022` and the list we do speak; an unimplemented method is `404` with `-32601`, so a
+client can tell this endpoint from one that never hosted MCP. `server/discover` returns the
+supported versions, capabilities, and identity in a single call; it exists only in this
+revision, just as `initialize` and `ping` exist only before it, and asking for either from
+the wrong era is `-32601`.
+
+Results in that revision carry `resultType: "complete"`, the server identity under
+`io.modelcontextprotocol/serverInfo`, and — on `server/discover`, `tools/list`,
+`resources/list`, `resources/templates/list` and `resources/read` — the `ttlMs` and
+`cacheScope` freshness hints. The lists are compiled into the deployment and change only on
+deploy, so they advertise an hour; a resource body is fetched live and advertises five
+minutes. Nothing varies per caller, so every hint is `cacheScope: "public"`.
+
+Handshake-era clients are unaffected. `initialize` still negotiates `2025-11-25` and earlier
+and gets exactly the result shape its own revision defines, with no `resultType` and no cache
+hints. This server has always been session-less, which is the stateless core `2026-07-28`
+standardised, so both eras run through one dispatch.
+
+Protocol mistakes come back as JSON-RPC errors: `-32700` for an unparseable body, `-32600` for a message that is not a JSON-RPC 2.0 request, `-32601` for an unknown method, `-32602` for an unknown tool, an unknown resource URI, or arguments that miss the schema, and `-32603` for anything unexpected. An invalid-arguments error carries the tool's `inputSchema` in `error.data` so a client can correct itself in one turn.
 
 Upstream failures are different: a rate limit, a protected account, or a missing post comes back as a successful `tools/call` result with `isError: true` and a message naming the HTTP status, the machine code, and the seconds to wait. That keeps a recoverable X-side problem out of the transport layer.
 
