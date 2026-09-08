@@ -15,7 +15,12 @@ import {
   negotiateProtocol,
   registryManifest,
   serverCard,
-  MCP_LATEST_PROTOCOL,
+  MCP_LATEST_LEGACY_PROTOCOL,
+  MCP_RESOURCE_NOT_FOUND,
+  finalizeResult,
+  isModernProtocol,
+  requestedProtocol,
+  MCP_MODERN_PROTOCOL,
   MCP_RESOURCES,
   MCP_SERVER_NAME,
   MCP_SERVER_VERSION,
@@ -56,9 +61,10 @@ describe('protocol negotiation', () => {
   test('echoes a revision we speak and downgrades everything else', () => {
     expect(negotiateProtocol('2025-06-18')).toBe('2025-06-18')
     expect(negotiateProtocol('2025-03-26')).toBe('2025-03-26')
-    expect(negotiateProtocol('2026-07-28')).toBe(MCP_LATEST_PROTOCOL)
-    expect(negotiateProtocol(undefined)).toBe(MCP_LATEST_PROTOCOL)
-    expect(negotiateProtocol(42)).toBe(MCP_LATEST_PROTOCOL)
+    // 2026-07-28 removed initialize, so the handshake never answers with it.
+    expect(negotiateProtocol('2026-07-28')).toBe(MCP_LATEST_LEGACY_PROTOCOL)
+    expect(negotiateProtocol(undefined)).toBe(MCP_LATEST_LEGACY_PROTOCOL)
+    expect(negotiateProtocol(42)).toBe(MCP_LATEST_LEGACY_PROTOCOL)
   })
 
   test('initialize identifies the server and echoes the requested revision', async () => {
@@ -71,7 +77,7 @@ describe('protocol negotiation', () => {
 
   test('initialize without params still answers with the newest revision', async () => {
     const result = ok(await dispatch({ jsonrpc: '2.0', id: 1, method: 'initialize' }))
-    expect(result.protocolVersion).toBe(MCP_LATEST_PROTOCOL)
+    expect(result.protocolVersion).toBe(MCP_LATEST_LEGACY_PROTOCOL)
   })
 
   test('notifications get no reply and ping gets an empty one', async () => {
@@ -82,7 +88,6 @@ describe('protocol negotiation', () => {
 
   test('an unknown method is a method-not-found error', async () => {
     expect(failure(await dispatch({ jsonrpc: '2.0', id: 3, method: 'prompts/list' })).code).toBe(-32601)
-    expect(failure(await dispatch({ jsonrpc: '2.0', id: 3, method: 'server/discover' })).code).toBe(-32601)
     expect(failure(await dispatch({ jsonrpc: '2.0', id: 3, method: '' })).code).toBe(-32601)
   })
 })
@@ -270,8 +275,13 @@ describe('resources', () => {
   })
 
   test('an unknown or missing uri is a structured error', async () => {
-    expect(failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: {} })).code).toBe(-32602)
-    expect(failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/nope.txt' } })).code).toBe(-32002)
+    // 2026-07-28 folded resource-not-found into Invalid Params, so both are
+    // -32602 and the `data` is what tells a client which one it hit.
+    const missing = failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: {} }))
+    expect(missing.code).toBe(-32602)
+    const unknown = failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/nope.txt' } }))
+    expect(unknown.code).toBe(MCP_RESOURCE_NOT_FOUND)
+    expect((unknown.data as { available?: unknown }).available).toBeDefined()
   })
 
   test('an unreachable document fails loudly instead of returning empty content', async () => {
@@ -348,7 +358,7 @@ describe('the HTTP transport', () => {
     expect(held.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
     const manifest = JSON.parse(held.body())
     expect(manifest).toMatchObject({ name: MCP_SERVER_NAME, serverUrl: 'https://x.pcstyle.dev/mcp', transport: 'streamable-http' })
-    expect(manifest.protocolVersions).toContain(MCP_LATEST_PROTOCOL)
+    expect(manifest.protocolVersions).toContain(MCP_MODERN_PROTOCOL)
     expect(manifest.tools).toHaveLength(MCP_TOOLS.length)
   })
 
@@ -439,7 +449,7 @@ describe('the HTTP transport', () => {
   test('the protocol version header is validated and echoed', async () => {
     const rejected = await call('POST', { accept: 'application/json', headers: { 'mcp-protocol-version': '1999-01-01' }, body: { jsonrpc: '2.0', id: 1, method: 'ping' } })
     expect(rejected.res.statusCode).toBe(400)
-    expect(JSON.parse(rejected.body()).error.data.supported).toContain(MCP_LATEST_PROTOCOL)
+    expect(JSON.parse(rejected.body()).error.data.supported).toContain(MCP_MODERN_PROTOCOL)
 
     const accepted = await call('POST', { accept: 'application/json', headers: { 'mcp-protocol-version': '2025-06-18' }, body: { jsonrpc: '2.0', id: 1, method: 'ping' } })
     expect(accepted.res.statusCode).toBe(200)
@@ -450,5 +460,67 @@ describe('the HTTP transport', () => {
     const held = await call('POST', { accept: 'application/json', headers: { 'mcp-session-id': 'junk' }, body: { jsonrpc: '2.0', id: 1, method: 'ping' } })
     expect(held.res.statusCode).toBe(200)
     expect(held.res.getHeader('Mcp-Session-Id')).toBeUndefined()
+  })
+})
+
+describe('the 2026-07-28 stateless era', () => {
+  const META = 'io.modelcontextprotocol/'
+  const modernParams = { _meta: { [`${META}protocolVersion`]: MCP_MODERN_PROTOCOL } }
+
+  test('server/discover is implemented, as the revision requires', async () => {
+    const result = ok(await dispatch({ jsonrpc: '2.0', id: 1, method: 'server/discover', params: modernParams }))
+    expect(result.supportedVersions).toContain(MCP_MODERN_PROTOCOL)
+    expect(result.supportedVersions).toContain(MCP_LATEST_LEGACY_PROTOCOL)
+    expect(result.capabilities).toEqual({ tools: { listChanged: false }, resources: { listChanged: false } })
+    expect(typeof result.instructions).toBe('string')
+  })
+
+  test('the protocol version is read from per-request _meta', () => {
+    expect(requestedProtocol(modernParams)).toBe(MCP_MODERN_PROTOCOL)
+    expect(requestedProtocol({ _meta: {} })).toBeUndefined()
+    expect(requestedProtocol({})).toBeUndefined()
+    expect(requestedProtocol(undefined)).toBeUndefined()
+    expect(isModernProtocol(MCP_MODERN_PROTOCOL)).toBe(true)
+    expect(isModernProtocol(MCP_LATEST_LEGACY_PROTOCOL)).toBe(false)
+    expect(isModernProtocol(undefined)).toBe(false)
+  })
+
+  test('a modern result carries resultType and the server identity', async () => {
+    const raw = await dispatch({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: modernParams })
+    const result = ok(finalizeResult(raw, 'tools/list', true))
+    expect(result.resultType).toBe('complete')
+    expect((result._meta as Record<string, unknown>)[`${META}serverInfo`]).toMatchObject({ name: MCP_SERVER_NAME })
+    expect(Array.isArray(result.tools)).toBe(true)
+  })
+
+  test('every cacheable operation carries a non-negative ttl and a scope', async () => {
+    for (const method of ['server/discover', 'tools/list', 'resources/list', 'resources/templates/list']) {
+      const result = ok(finalizeResult(await dispatch({ jsonrpc: '2.0', id: 3, method, params: modernParams }), method, true))
+      expect(typeof result.ttlMs).toBe('number')
+      expect(result.ttlMs as number).toBeGreaterThanOrEqual(0)
+      expect(result.cacheScope).toBe('public')
+    }
+  })
+
+  test('tools/call is not cacheable, so it gets no freshness hint', async () => {
+    const result = { result: { content: [] } }
+    const stamped = ok(finalizeResult(result, 'tools/call', true))
+    expect(stamped.resultType).toBe('complete')
+    expect(stamped.ttlMs).toBeUndefined()
+    expect(stamped.cacheScope).toBeUndefined()
+  })
+
+  test('a legacy result is left exactly as its own revision defines it', async () => {
+    const raw = await dispatch({ jsonrpc: '2.0', id: 4, method: 'tools/list' })
+    const result = ok(finalizeResult(raw, 'tools/list', false))
+    expect(result.resultType).toBeUndefined()
+    expect(result.ttlMs).toBeUndefined()
+    expect(result._meta).toBeUndefined()
+  })
+
+  test('an error is never stamped as a complete result', async () => {
+    const failed = await dispatch({ jsonrpc: '2.0', id: 5, method: 'nope', params: modernParams })
+    expect(finalizeResult(failed, 'nope', true)).toEqual(failed)
+    expect(finalizeResult(null, 'notifications/x', true)).toBeNull()
   })
 })
