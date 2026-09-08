@@ -87,7 +87,7 @@ describe('RFC 9727 API catalog', () => {
   test('anchors the catalog at its own well-known URI with item entries', () => {
     expect(linkset[0]?.anchor).toBe(`${SITE}/.well-known/api-catalog`)
     expect(linkset[0]?.item?.length).toBeGreaterThan(0)
-    for (const item of linkset[0]?.item ?? []) expect(item.href.startsWith(SITE)).toBe(true)
+    for (const item of linkset[0]?.item ?? []) expect(new URL(item.href).origin).toBe(new URL(SITE).origin)
   })
 
   test('every item has its own anchored entry with a service description', () => {
@@ -179,7 +179,7 @@ describe('NLWeb schema feeds', () => {
       const node = JSON.parse(line) as { '@context': string; '@type': string; '@id': string }
       expect(node['@context']).toBe('https://schema.org')
       expect(node['@type'].length).toBeGreaterThan(0)
-      expect(node['@id'].startsWith(SITE)).toBe(true)
+      expect(new URL(node['@id']).origin).toBe(new URL(SITE).origin)
     }
   })
 

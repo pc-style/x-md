@@ -665,7 +665,9 @@ async function readResource(params: unknown): Promise<DispatchOutcome> {
     return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: JSON.stringify(serverCard(), null, 2) }] } }
   }
   try {
-    const response = await fetch(uri, { headers: { Accept: resource.mimeType }, signal: AbortSignal.timeout(8000) })
+    // `resource.uri`, not `uri`: the caller's string only selected the entry,
+    // so the URL fetched is always one of the constants in MCP_RESOURCES.
+    const response = await fetch(resource.uri, { headers: { Accept: resource.mimeType }, signal: AbortSignal.timeout(8000) })
     if (!response.ok) throw new Error(`upstream ${response.status}`)
     const body = await response.text()
     return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: body }] } }

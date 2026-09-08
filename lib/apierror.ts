@@ -211,11 +211,24 @@ export interface ProblemInit {
   links?: ProblemLink[]
 }
 
+/**
+ * Bound the human `detail` before it goes out.
+ *
+ * It can carry an upstream exception message, so it is caller-influenced text
+ * echoed back under our own domain. Control characters and angle brackets are
+ * dropped — an error sentence needs neither — and the length is capped so a
+ * failing provider cannot turn a 502 into a content host.
+ */
+function safeDetail(value: string, max = 400): string {
+  const cleaned = value.replace(/[\u0000-\u001f\u007f-\u009f<>]/g, ' ').replace(/\s+/g, ' ').trim()
+  return cleaned.length > max ? `${cleaned.slice(0, max - 1)}\u2026` : cleaned
+}
+
 export function problemDetails(code: string, init: ProblemInit): ProblemDetails {
   // `code` is reported as raised so a caller can log the provider that failed;
   // everything an agent acts on comes from the documented type it maps to.
   const { code: documented, entry } = catalogEntry(code, init.status)
-  const detail = init.detail ?? entry.title
+  const detail = safeDetail(init.detail ?? entry.title) || entry.title
   const problem: ProblemDetails = {
     type: `${SITE}/docs/reliability#${documented.replace(/_/g, '-')}`,
     title: entry.title,
