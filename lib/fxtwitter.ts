@@ -1,3 +1,4 @@
+import { captureUpstreamError, isTimeoutError } from './analytics.js'
 import { ConvertError } from './errors.js'
 
 const FX_BASE = 'https://api.fxtwitter.com'
@@ -207,16 +208,34 @@ function pickTweet(data: FxApiResponse): FxTweet | undefined {
 }
 
 async function fxFetchJson<T>(path: string): Promise<T> {
+  const started = performance.now()
   let response: Response
   try {
     response = await fetch(`${FX_BASE}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
     })
-  } catch {
+  } catch (error) {
+    captureUpstreamError({
+      provider: 'fxtwitter',
+      errorType: isTimeoutError(error) ? 'timeout' : 'http_error',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
   }
 
-  const data = (await response.json()) as FxApiResponse
+  let data: FxApiResponse
+  try {
+    data = (await response.json()) as FxApiResponse
+  } catch {
+    captureUpstreamError({
+      provider: 'fxtwitter',
+      errorType: 'parse_failure',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
+    throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
+  }
 
   if (data.code === 404 || data.message === 'NOT_FOUND') {
     throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
@@ -227,6 +246,12 @@ async function fxFetchJson<T>(path: string): Promise<T> {
   }
 
   if (!response.ok || (data.code && data.code >= 400)) {
+    captureUpstreamError({
+      provider: 'fxtwitter',
+      errorType: 'http_error',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(
       502,
       `FxTwitter API error: ${data.message ?? response.status}.`,
@@ -282,6 +307,7 @@ export async function searchFxStatuses(
     // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
     // an outage, not a missing post, so surface it as retryable.
     if (error instanceof ConvertError && error.code === 'not_found') {
+      captureUpstreamError({ provider: 'fxtwitter', errorType: 'empty_response', upstreamStatus: 404, durationMs: 0 })
       throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
     }
     throw error

@@ -16,6 +16,7 @@
  * `rateLimit()` call against the shared counter. A stale or absent header can
  * mislead a client's self-pacing, never x.md's own throttling.
  */
+import { captureRateLimit } from './analytics.js'
 import type { HeaderWriter } from './http.js'
 import {
   ACCOUNT_IP,
@@ -185,6 +186,7 @@ export async function chargeRequestQuota(scope: QuotaScope, caller: QuotaCaller)
     states.push({ ...policy, remaining: Math.max(0, policy.quota - used), resetSec: windowClock(policy.windowSec).remainingSec })
   }
 
+  if (!verdict.allowed) captureRateLimit('ip')
   return { allowed: verdict.allowed, retryAfter: verdict.retryAfter, states, degraded: verdict.degraded || counts === undefined }
 }
 

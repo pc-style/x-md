@@ -1,3 +1,4 @@
+import { captureUpstreamError, isTimeoutError } from './analytics.js'
 import { ConvertError } from './errors.js'
 import type { FxTweet } from './fxtwitter.js'
 import { extractStatusTextFromMarkdown } from './scrape-text.js'
@@ -25,6 +26,7 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
   url.searchParams.set('includeLinks', 'true')
   url.searchParams.set('includeImages', 'false')
 
+  const started = performance.now()
   let response: Response
   try {
     response = await fetch(url, {
@@ -34,7 +36,13 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
         'User-Agent': UA,
       },
     })
-  } catch {
+  } catch (error) {
+    captureUpstreamError({
+      provider: 'contextdev',
+      errorType: isTimeoutError(error) ? 'timeout' : 'http_error',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Failed to reach Context.dev API.', 'contextdev_network')
   }
 
@@ -42,10 +50,22 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
   try {
     payload = (await response.json()) as ContextDevMarkdownResponse
   } catch {
+    captureUpstreamError({
+      provider: 'contextdev',
+      errorType: 'parse_failure',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Context.dev returned an invalid response.', 'contextdev_invalid')
   }
 
   if (!response.ok || payload.success === false) {
+    captureUpstreamError({
+      provider: 'contextdev',
+      errorType: 'http_error',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(
       502,
       payload.error ?? payload.message ?? `Context.dev returned ${response.status}.`,
@@ -55,6 +75,12 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
 
   const markdown = payload.markdown?.trim()
   if (!markdown) {
+    captureUpstreamError({
+      provider: 'contextdev',
+      errorType: 'empty_response',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Context.dev returned empty content.', 'contextdev_empty')
   }
 

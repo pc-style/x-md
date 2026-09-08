@@ -1,3 +1,4 @@
+import { captureUpstreamError, isTimeoutError } from './analytics.js'
 import { ConvertError } from './errors.js'
 import type { FxArticle, FxArticleBlock, FxMedia, FxMediaItem, FxTweet } from './fxtwitter.js'
 
@@ -155,15 +156,30 @@ function mapSyndicationTweet(raw: SyndicationTweet, handle?: string, id?: string
 }
 
 export async function fetchSyndicationStatus(handle: string, id: string): Promise<FxTweet> {
+  const started = performance.now()
   let response: Response
   try {
     const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=0`
     response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } })
-  } catch {
+  } catch (error) {
+    captureUpstreamError({
+      provider: 'syndication',
+      errorType: isTimeoutError(error) ? 'timeout' : 'http_error',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Failed to reach X syndication API.', 'syndication_network')
   }
 
   if (!response.ok) {
+    if (response.status !== 404) {
+      captureUpstreamError({
+        provider: 'syndication',
+        errorType: 'http_error',
+        upstreamStatus: response.status,
+        durationMs: performance.now() - started,
+      })
+    }
     throw new ConvertError(
       response.status === 404 ? 404 : 502,
       'Post not found via syndication API.',
@@ -171,8 +187,25 @@ export async function fetchSyndicationStatus(handle: string, id: string): Promis
     )
   }
 
-  const data = (await response.json()) as SyndicationTweet
+  let data: SyndicationTweet
+  try {
+    data = (await response.json()) as SyndicationTweet
+  } catch {
+    captureUpstreamError({
+      provider: 'syndication',
+      errorType: 'parse_failure',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
+    throw new ConvertError(502, 'Post not found via syndication API.', 'syndication_error')
+  }
   if (!data?.text && !data?.article) {
+    captureUpstreamError({
+      provider: 'syndication',
+      errorType: 'empty_response',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(404, 'Post not found via syndication API.', 'syndication_empty')
   }
 

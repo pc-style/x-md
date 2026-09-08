@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { trackRequest } from '../lib/analytics.js'
+import { captureOEmbedRequested, trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
 import { oembedResponse } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
@@ -32,6 +32,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
+  const param = (key: string): string | undefined => (typeof req.query[key] === 'string' ? req.query[key] : undefined)
+  captureOEmbedRequested(String(req.headers['user-agent'] ?? ''), param('format'))
+
   // Charged before anything can return, so every response carries the caller's
   // remaining allowance, not just a 429.
   const quota = await chargeRequestQuota('read', caller)
@@ -50,7 +53,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
-  const param = (key: string): string | undefined => (typeof req.query[key] === 'string' ? req.query[key] : undefined)
   try {
     const { status, headers, body } = oembedResponse(
       {

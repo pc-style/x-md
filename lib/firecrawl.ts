@@ -1,3 +1,4 @@
+import { captureUpstreamError, isTimeoutError } from './analytics.js'
 import { ConvertError } from './errors.js'
 import type { FxTweet } from './fxtwitter.js'
 import { extractStatusTextFromMarkdown } from './scrape-text.js'
@@ -69,6 +70,7 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
     throw new ConvertError(503, 'Firecrawl search fallback not configured.', 'firecrawl_disabled')
   }
 
+  const started = performance.now()
   let response: Response
   try {
     response = await fetch(FIRECRAWL_SEARCH_API, {
@@ -85,7 +87,13 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
       }),
       signal: AbortSignal.timeout(15_000),
     })
-  } catch {
+  } catch (error) {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: isTimeoutError(error) ? 'timeout' : 'http_error',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(503, 'Failed to reach Firecrawl search.', 'firecrawl_network')
   }
 
@@ -93,9 +101,21 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
   try {
     payload = (await response.json()) as FirecrawlSearchResponse
   } catch {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: 'parse_failure',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(503, 'Firecrawl search returned an invalid response.', 'firecrawl_invalid')
   }
   if (!response.ok || payload.success === false) {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: 'http_error',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(503, payload.error ?? `Firecrawl search returned ${response.status}.`, 'firecrawl_error')
   }
 
@@ -126,6 +146,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
 
   const canonicalUrl = `https://x.com/${handle}/status/${id}`
 
+  const started = performance.now()
   let response: Response
   try {
     response = await fetch(FIRECRAWL_API, {
@@ -142,13 +163,36 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
         waitFor: 2000,
       }),
     })
-  } catch {
+  } catch (error) {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: isTimeoutError(error) ? 'timeout' : 'http_error',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Failed to reach Firecrawl API.', 'firecrawl_network')
   }
 
-  const payload = (await response.json()) as FirecrawlResponse
+  let payload: FirecrawlResponse
+  try {
+    payload = (await response.json()) as FirecrawlResponse
+  } catch {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: 'parse_failure',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
+    throw new ConvertError(502, 'Firecrawl returned an invalid response.', 'firecrawl_invalid')
+  }
 
   if (!response.ok || !payload.success) {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: 'http_error',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(
       502,
       payload.error ?? `Firecrawl returned ${response.status}.`,
@@ -158,6 +202,12 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
 
   const markdown = payload.data?.markdown?.trim()
   if (!markdown) {
+    captureUpstreamError({
+      provider: 'firecrawl',
+      errorType: 'empty_response',
+      upstreamStatus: response.status,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(502, 'Firecrawl returned empty content.', 'firecrawl_empty')
   }
 

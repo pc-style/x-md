@@ -17,6 +17,7 @@ import {
   type Tweet,
   type Profile,
 } from '@the-convocation/twitter-scraper'
+import { captureRateLimit, captureUpstreamError } from './analytics.js'
 import { ConvertError } from './errors.js'
 import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
 import { poolSnapshot, resetPool, type PoolSnapshot } from './pool.js'
@@ -269,11 +270,18 @@ export function searchRateModel(): {
 }
 
 async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, caller?: SearchCaller): Promise<T> {
+  const started = performance.now()
   const now = Date.now()
   const candidates = sessionStates()
     .filter((state) => !state.disabled && state.coolUntil <= now)
     .sort((a, b) => a.coolUntil - b.coolUntil)
   if (candidates.length === 0) {
+    captureUpstreamError({
+      provider: 'xsearch',
+      errorType: 'empty_response',
+      upstreamStatus: null,
+      durationMs: performance.now() - started,
+    })
     throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
@@ -284,6 +292,7 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
     const ipKey = accountIpKey(caller.ip ?? '')
     const fair = await rateLimit(ipKey, ACCOUNT_IP.quota, ACCOUNT_IP.windowSec, true)
     if (!fair.allowed) {
+      captureRateLimit('ip')
       throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_IP.name)
     }
     // Shared public cap: whatever the pool has left after key usage and reservations.
@@ -291,6 +300,7 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
     const shared = await rateLimit(ACCOUNT_PUBLIC_COUNTER, await publicCapNow(), ACCOUNT_WINDOW_SEC, true, true)
     if (!shared.allowed) {
       await refundRateLimit(ipKey, ACCOUNT_WINDOW_SEC, fair.bucket)
+      captureRateLimit('global')
       // Reported against the caller's own per-IP policy: the shared pool's level is fleet health, not a personal quota.
       throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets.', 'rate_limited', shared.retryAfter, ACCOUNT_IP.name)
     }
@@ -298,6 +308,7 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
     // Refund rejected attempts: they must not count as pool usage in the snapshot.
     const fair = await rateLimit(accountKeyKey(caller.id), caller.limit, ACCOUNT_WINDOW_SEC, true, true)
     if (!fair.allowed) {
+      captureRateLimit('key')
       throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_KEY_NAME)
     }
   }
@@ -319,5 +330,11 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
       console.warn(`[xsearch] session ${state.session.id} ${last.kind}: ${last.detail}`)
     }
   }
+  captureUpstreamError({
+    provider: 'xsearch',
+    errorType: last?.detail?.toLowerCase().includes('timeout') ? 'timeout' : 'http_error',
+    upstreamStatus: last?.kind === 'rate_limit' ? 429 : null,
+    durationMs: performance.now() - started,
+  })
   throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
 }

@@ -1,3 +1,4 @@
+import { captureCacheLookup, captureMediaResolved } from './analytics.js'
 import {
   buildCacheKey,
   cacheControlHeader,
@@ -268,6 +269,8 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   const { value, status } = await withCache(cacheKey, nocache, async () =>
     convertTweetUncached(format, thread, userinfo, canonicalUrl, handle, id, compact, context, replies),
   )
+  captureCacheLookup(status, 'status')
+  captureMediaResolved(value.posts)
 
   return { ...value, cache: status }
 }

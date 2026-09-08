@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { trackRequest } from '../lib/analytics.js'
+import { captureBatchBrowse, trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
 import { captureArchive } from '../lib/archive.js'
 import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
@@ -94,6 +94,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
     // Keyed responses stay private even if the browse layer marked them cacheable.
     for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+    if ((req.url ?? '').split('?')[0] === '/api/browse' && param('via') !== 'route') {
+      captureBatchBrowse({
+        resource: result.resource,
+        format: wantsJson(param('format'), accept) ? 'json' : 'markdown',
+        resultCount: result.posts?.length ?? result.users?.length ?? 0,
+        hasCursor: Boolean(param('cursor')),
+      })
+    }
     if (response.status === 200) captureArchive(req, res, result, identity)
     return req.method === 'HEAD' ? res.status(response.status).end() : res.status(response.status).send(response.body)
   } catch (error) {

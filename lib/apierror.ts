@@ -7,6 +7,7 @@
  * `error` field is kept as an alias so existing callers keep working.
  */
 
+import { noteRequestError } from './analytics.js'
 import { ConvertError } from './errors.js'
 import { mediaQuality } from './negotiate.js'
 
@@ -332,6 +333,7 @@ export function sendProblem(
   accept: string,
   method = 'GET',
 ): unknown {
+  noteRequestError(res, problem.code, problem.title)
   const response = problemResponse(problem, accept)
   for (const [key, value] of Object.entries(response.headers)) {
     if (key === 'Link') appendLink(res, value)

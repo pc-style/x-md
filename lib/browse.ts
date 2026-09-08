@@ -1,3 +1,4 @@
+import { captureCacheLookup, captureFallback, captureRateLimit, captureSearchExecuted } from './analytics.js'
 import {
   buildCacheKey,
   cacheControlHeader,
@@ -192,20 +193,25 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
   const full = truthy(input.full)
   if (resource === 'search') {
     const query = input.q?.trim()
-    if (!query) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
     const requestedFeed = input.feed?.toLowerCase() ?? 'latest'
     const feed = requestedFeed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requestedFeed) ? requestedFeed : 'latest'
+    if (!query) {
+      captureSearchExecuted({ feedType: feed, hasQuery: false, resultCount: 0 })
+      throw new ConvertError(400, 'Search query q is required.', 'missing_query')
+    }
     // Front-door burst gate for every live search provider (FxTwitter, own accounts,
     // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
     const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
     if (caller.kind === 'key') {
       const verdict = await rateLimit(searchKeyKey(caller.id), SEARCH_KEY.quota, SEARCH_KEY.windowSec)
       if (!verdict.allowed) {
+        captureRateLimit('key')
         throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_KEY.name)
       }
     } else if (caller.ip) {
       const verdict = await rateLimit(searchIpKey(caller.ip), SEARCH_IP.quota, SEARCH_IP.windowSec)
       if (!verdict.allowed) {
+        captureRateLimit('ip')
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
@@ -230,6 +236,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     for (const provider of providers) {
       try {
         const list = await walkPages(page, tagged?.raw, provider.search)
+        if (!tagged && ['latest', 'top'].includes(feed) && provider.source !== 'fxtwitter') {
+          captureFallback({
+            primaryProvider: 'fxtwitter',
+            fallbackProvider: provider.source,
+            reason: 'primary_error',
+          })
+        }
         return render({ resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor(provider.source, list.cursor?.bottom), source: provider.source })
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
@@ -241,6 +254,11 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
     if (['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
       const posts = await searchFirecrawlStatuses(query, feed, limit)
+      captureFallback({
+        primaryProvider: 'fxtwitter',
+        fallbackProvider: 'firecrawl',
+        reason: 'primary_error',
+      })
       return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
     }
     throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
@@ -283,6 +301,14 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
     () => browseUncached(input, resource, page, limit),
     (value) => (value.degraded ? DEGRADED_TTL_MS : undefined),
   )
+  captureCacheLookup(cached.status, resource)
+  if (resource === 'search') {
+    captureSearchExecuted({
+      feedType: cached.value.feed ?? 'latest',
+      hasQuery: Boolean(input.q?.trim()),
+      resultCount: cached.value.posts?.length ?? cached.value.users?.length ?? 0,
+    })
+  }
   return { ...cached.value, cache: cached.status }
 }
 

@@ -1,3 +1,4 @@
+import { captureFallback, fallbackReasonFor } from './analytics.js'
 import { ConvertError } from './errors.js'
 import { fetchContextDevStatus } from './contextdev.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
@@ -76,10 +77,19 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
   }
 
   let lastError: unknown
+  const primary = 'fxtwitter'
 
-  for (const attempt of attempts) {
+  for (const [index, attempt] of attempts.entries()) {
     try {
-      return await attempt()
+      const result = await attempt()
+      if (index > 0) {
+        captureFallback({
+          primaryProvider: primary,
+          fallbackProvider: result.source,
+          reason: fallbackReasonFor(lastError),
+        })
+      }
+      return result
     } catch (error) {
       lastError = error
       if (isHardNotFound(error)) throw error
