@@ -73,7 +73,9 @@ Docs-only index: https://x.pcstyle.dev/docs/llms.txt
 ## Agent resources
 
 - [OpenAPI 3.1 description](https://x.pcstyle.dev/openapi.json) — every read route, parameter, and response schema
-- [MCP server](https://x.pcstyle.dev/mcp) — the same reads as MCP tools
+- [MCP server](https://x.pcstyle.dev/mcp) — the same reads as MCP tools, over Streamable HTTP
+- [MCP server card](https://x.pcstyle.dev/.well-known/mcp/server-card.json) — also at https://x.pcstyle.dev/mcp/server-card
+- [MCP registry manifest](https://x.pcstyle.dev/server.json) — name, version, and remotes
 - [Resource catalog](https://x.pcstyle.dev/.well-known/ard.json) — ARD catalog of every machine surface here
 - [API catalog](https://x.pcstyle.dev/.well-known/api-catalog) — RFC 9727 linkset
 - [Agent skill index](https://x.pcstyle.dev/.well-known/agent-skills/index.json) — the installable `browse-x` skill
