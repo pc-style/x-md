@@ -12,6 +12,18 @@
       "destination": "/api/convert?handle=:handle&id=:id"
     },
     {
+      "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/",
+      "destination": "/api/convert?handle=:handle&id=:id"
+    },
+    {
+      "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/:media(video|photo)/:index([1-9]\\d*)",
+      "destination": "/api/convert?handle=:handle&id=:id"
+    },
+    {
+      "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/:media(video|photo)/:index([1-9]\\d*)/",
+      "destination": "/api/convert?handle=:handle&id=:id"
+    },
+    {
       "source": "/oembed",
       "destination": "/api/oembed"
     },

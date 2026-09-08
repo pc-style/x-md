@@ -12,6 +12,7 @@ import {
   ConvertError,
   convertTweet,
   markdownResponse,
+  STATUS_PATH,
 } from '../lib/converter'
 import { embedResponse, isEmbedUserAgent, oembedResponse } from '../lib/embed'
 
@@ -45,7 +46,7 @@ async function handleConvert(
 ): Promise<boolean> {
   const pathname = url.pathname
 
-  const statusMatch = pathname.match(new RegExp(`^\/(${HANDLE})\/status\/(\\d+)\/?$`))
+  const statusMatch = pathname.match(STATUS_PATH)
   const isApi = pathname === '/api/convert'
 
   if (!isApi && !statusMatch) return false

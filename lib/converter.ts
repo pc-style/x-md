@@ -48,7 +48,7 @@ const ALLOWED_HOSTS = new Set([
   'x.pcstyle.dev',
 ])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
-const STATUS_PATH = /^\/([^/?#]+)\/status\/(\d+)\/?$/
+export const STATUS_PATH = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d+)(?:\/(?:video|photo)\/[1-9]\d*)?\/?$/
 
 export function parseStatusUrl(raw: string): { handle: string; id: string; canonicalUrl: string } {
   let parsed: URL
