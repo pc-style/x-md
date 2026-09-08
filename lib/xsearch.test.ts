@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+const scraperOptions = vi.fn()
 const fetchSearchTweets = vi.fn()
 const fetchSearchProfiles = vi.fn()
 vi.mock('@the-convocation/twitter-scraper', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@the-convocation/twitter-scraper')>()
   return {
     ...actual,
-    Scraper: class { setCookies = vi.fn(async () => {}); fetchSearchTweets = fetchSearchTweets; fetchSearchProfiles = fetchSearchProfiles },
+    Scraper: class { constructor(options: unknown) { scraperOptions(options) }; setCookies = vi.fn(async () => {}); fetchSearchTweets = fetchSearchTweets; fetchSearchProfiles = fetchSearchProfiles },
   }
 })
 
@@ -218,4 +219,26 @@ describe('dynamic public pool', () => {
     await publicBurst(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']) // full 80
     expect(fetchSearchTweets).toHaveBeenCalledTimes(80)
   })
+})
+
+
+test.each(['caller', 'timeout'])('scraper transport preserves %s cancellation', async source => {
+  fetchSearchTweets.mockResolvedValue({ tweets: [] })
+  await searchXStatuses('q', 'latest')
+  const callback = scraperOptions.mock.calls[0][0].fetch
+  const caller = new AbortController()
+  const timeout = new AbortController()
+  const timer = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal)
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}'))
+  try {
+    await callback('https://x.com/test', { signal: caller.signal })
+    const signal = fetcher.mock.calls[0][1]!.signal!
+    expect(signal.aborted).toBe(false)
+    const reason = new Error('cancelled')
+    ;(source === 'caller' ? caller : timeout).abort(reason)
+    expect(signal.aborted).toBe(true)
+    expect(signal.reason).toBe(reason)
+  } finally {
+    timer.mockRestore(); fetcher.mockRestore()
+  }
 })

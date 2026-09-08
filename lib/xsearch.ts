@@ -112,7 +112,11 @@ async function scraperFor(state: SessionState): Promise<Scraper> {
   if (state.scraper) return state.scraper
   const scraper = new Scraper({
     rateLimitStrategy: new ErrorRateLimitStrategy(),
-    fetch: (input, init) => providerFetch('xsearch', input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+    fetch: (input, init) => {
+      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout
+      return providerFetch('xsearch', input, { ...init, signal })
+    },
   })
   await scraper.setCookies([
     `auth_token=${state.session.authToken}; Domain=.x.com; Path=/; Secure; HttpOnly`,
