@@ -1,0 +1,98 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json",
+  "name": "io.github.pc-style/x-md",
+  "title": "x.md",
+  "description": "Read public X posts, threads, profiles, and search results as Markdown or JSON.",
+  "version": "1.0.0",
+  "websiteUrl": "https://x.pcstyle.dev/",
+  "documentationUrl": "https://x.pcstyle.dev/docs/mcp",
+  "icons": [
+    {
+      "src": "https://x.pcstyle.dev/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": [
+        "any"
+      ]
+    }
+  ],
+  "repository": {
+    "source": "github",
+    "url": "https://github.com/pc-style/x-md"
+  },
+  "serverUrl": "https://x.pcstyle.dev/mcp",
+  "transport": "streamable-http",
+  "authentication": "none",
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://x.pcstyle.dev/mcp",
+      "supportedProtocolVersions": [
+        "2025-11-25",
+        "2025-06-18",
+        "2025-03-26"
+      ]
+    }
+  ],
+  "capabilities": {
+    "tools": {
+      "listChanged": false
+    },
+    "resources": {
+      "listChanged": false
+    }
+  },
+  "tools": [
+    {
+      "name": "x_md_get_post",
+      "title": "Read an X post or thread",
+      "description": "Read one public X (formerly Twitter) post together with its thread and conversation context, as Markdown plus structured post objects. Accepts a full status permalink, or a handle plus a numeric status id. Use it whenever you are handed an x.com or twitter.com status link and need the text, author, media, engagement metrics, quoted post, or replies. Read-only and unauthenticated: it never posts, replies, likes, follows, or reads protected accounts."
+    },
+    {
+      "name": "x_md_get_profile",
+      "title": "Read an X profile and its latest posts",
+      "description": "Read a public X profile — display name, bio, location, follower and following counts, join date, verification — together with that account’s latest original posts, with reposts and replies filtered out. Use it to find out who an account is, what it posts about, or what it has said recently. Read-only and unauthenticated; protected accounts return an error instead of partial data."
+    },
+    {
+      "name": "x_md_search_posts",
+      "title": "Search public X posts and accounts",
+      "description": "Search public X posts or accounts by keyword, phrase, hashtag, or X advanced-search operator such as from:, to:, since:, until:, and filter:. Use it to find current public discussion on a topic, or to locate an account by name. Returns Markdown plus structured results. Read-only and unauthenticated; live search is rate limited per caller, and the photos, videos, and users feeds need the deployment to have X sessions configured."
+    },
+    {
+      "name": "x_md_get_followers",
+      "title": "List an X account’s followers",
+      "description": "Page through the public followers of an X account, returning each follower’s handle, display name, bio, and counts. Use it to size or sample an audience. Read-only and unauthenticated; protected accounts return an error instead of partial data."
+    },
+    {
+      "name": "x_md_get_following",
+      "title": "List the accounts an X account follows",
+      "description": "Page through the accounts a public X account follows, returning each one’s handle, display name, bio, and counts. Use it to map who an account pays attention to. Read-only and unauthenticated; protected accounts return an error instead of partial data."
+    }
+  ],
+  "resources": [
+    {
+      "uri": "https://x.pcstyle.dev/llms.txt",
+      "name": "x-md-llms-txt",
+      "mimeType": "text/plain"
+    },
+    {
+      "uri": "https://x.pcstyle.dev/llms-full.txt",
+      "name": "x-md-llms-full-txt",
+      "mimeType": "text/plain"
+    },
+    {
+      "uri": "https://x.pcstyle.dev/openapi.json",
+      "name": "x-md-openapi",
+      "mimeType": "application/json"
+    },
+    {
+      "uri": "https://x.pcstyle.dev/index.md",
+      "name": "x-md-overview",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "https://x.pcstyle.dev/mcp/server-card",
+      "name": "x-md-server-card",
+      "mimeType": "application/mcp-server-card+json"
+    }
+  ]
+}

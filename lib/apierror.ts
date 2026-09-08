@@ -178,7 +178,27 @@ export const ERROR_CATALOG = {
 
 export type ErrorCode = keyof typeof ERROR_CATALOG
 
-const FALLBACK: CatalogEntry = ERROR_CATALOG.internal_error
+/**
+ * The provider layer raises codes the published catalogue does not name
+ * (`private_tweet`, `fxtwitter_error`, `all_providers_failed`, ...). openapi.json
+ * tells clients to treat an unlisted code as its status class, so that is what
+ * decides its title, type, and resolution: a 404 must never read "Unexpected
+ * error, open an issue".
+ */
+export function codeForStatus(status: number): ErrorCode {
+  if (status === 404) return 'not_found'
+  if (status === 429) return 'rate_limited'
+  if (status === 503) return 'search_unavailable'
+  if (status === 500 || status < 500) return 'internal_error'
+  return 'upstream_error'
+}
+
+function catalogEntry(code: string, status?: number): { code: ErrorCode; entry: CatalogEntry } {
+  const listed = (ERROR_CATALOG as Record<string, CatalogEntry>)[code]
+  if (listed) return { code: code as ErrorCode, entry: listed }
+  const klass = codeForStatus(status ?? 500)
+  return { code: klass, entry: ERROR_CATALOG[klass] }
+}
 
 export interface ProblemInit {
   /** Absolute URL of the request that failed. */
@@ -192,10 +212,12 @@ export interface ProblemInit {
 }
 
 export function problemDetails(code: string, init: ProblemInit): ProblemDetails {
-  const entry: CatalogEntry = (ERROR_CATALOG as Record<string, CatalogEntry>)[code] ?? FALLBACK
+  // `code` is reported as raised so a caller can log the provider that failed;
+  // everything an agent acts on comes from the documented type it maps to.
+  const { code: documented, entry } = catalogEntry(code, init.status)
   const detail = init.detail ?? entry.title
   const problem: ProblemDetails = {
-    type: `${SITE}/docs/reliability#${code.replace(/_/g, '-')}`,
+    type: `${SITE}/docs/reliability#${documented.replace(/_/g, '-')}`,
     title: entry.title,
     status: init.status ?? entry.status,
     detail,
@@ -242,11 +264,11 @@ export function problemResponse(problem: ProblemDetails, accept: string): Proble
 /** Map anything the lib layer throws onto a problem document. */
 export function problemFrom(error: unknown, instance: string): ProblemDetails {
   if (error instanceof ConvertError) {
-    return problemDetails(error.code ?? 'upstream_error', {
+    return problemDetails(error.code ?? codeForStatus(error.status), {
       instance,
       detail: error.message,
       status: error.status,
-      retryAfter: error.retryAfter ?? (error.status === 503 ? 30 : undefined),
+      retryAfter: error.retryAfter ?? (error.status === 429 ? 60 : error.status === 503 ? 30 : undefined),
     })
   }
   return problemDetails('internal_error', { instance })
@@ -261,10 +283,26 @@ export function requestInstance(req: { url?: string }, origin: string): string {
   }
 }
 
+/** A response object that can report the headers already written to it. */
+export interface HeaderSink {
+  setHeader(name: string, value: string): void
+  getHeader?(name: string): number | string | string[] | undefined
+}
+
+/**
+ * Add to `Link` rather than replace it: deprecation, help and service-description
+ * links are set by different layers of the same response.
+ */
+export function appendLink(res: HeaderSink, ...links: string[]): void {
+  const current = res.getHeader?.('Link')
+  const existing = Array.isArray(current) ? current.map(String) : current ? [String(current)] : []
+  const merged = [...existing, ...links].filter((link, index, all) => all.indexOf(link) === index)
+  res.setHeader('Link', merged.join(', '))
+}
+
 /** Write a problem response onto a Vercel/Node response object. */
 export function sendProblem(
-  res: {
-    setHeader(name: string, value: string): void
+  res: HeaderSink & {
     status(code: number): { send(body: string): unknown; end(): unknown }
   },
   problem: ProblemDetails,
@@ -272,7 +310,40 @@ export function sendProblem(
   method = 'GET',
 ): unknown {
   const response = problemResponse(problem, accept)
-  for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)
+  for (const [key, value] of Object.entries(response.headers)) {
+    if (key === 'Link') appendLink(res, value)
+    else res.setHeader(key, value)
+  }
   const out = res.status(response.status)
   return method === 'HEAD' ? out.end() : out.send(response.body)
+}
+
+/**
+ * RFC 9745 `Deprecation`: an Item Structured Field of type Date, `@` plus Unix
+ * seconds. 2026-09-15T00:00:00Z, when the unversioned aliases were superseded.
+ */
+export const LEGACY_DEPRECATION = '@1789430400'
+/** RFC 8594 `Sunset`: an HTTP-date. Never earlier than the Deprecation date. */
+export const LEGACY_SUNSET = 'Wed, 15 Sep 2027 00:00:00 GMT'
+/** ISO form of `LEGACY_SUNSET`, for JSON documents. */
+export const LEGACY_SUNSET_ISO = '2027-09-15T00:00:00Z'
+/** Where the versioning and deprecation policy is written down. */
+export const VERSIONING_DOC = `${SITE}/docs/versioning`
+
+/**
+ * Mark a response as coming from a deprecated route. RFC 9745 expects these on
+ * every response the deprecated resource produces, errors included, so callers
+ * set them before anything else can return.
+ */
+export function setDeprecationHeaders(res: HeaderSink, successorPath?: string): void {
+  res.setHeader('Deprecation', LEGACY_DEPRECATION)
+  res.setHeader('Sunset', LEGACY_SUNSET)
+  appendLink(
+    res,
+    // A Link target is a URI, never a URI Template, so a successor is advertised
+    // only when this request names a concrete one.
+    ...(successorPath ? [`<${SITE}${successorPath}>; rel="successor-version"`] : []),
+    `<${VERSIONING_DOC}>; rel="deprecation"; type="text/html"`,
+    `<${VERSIONING_DOC}>; rel="sunset"; type="text/html"`,
+  )
 }

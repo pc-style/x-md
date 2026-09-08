@@ -9,23 +9,23 @@
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)",
-      "destination": "/api/convert?handle=:handle&id=:id"
+      "destination": "/api/convert?handle=:handle&id=:id&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/",
-      "destination": "/api/convert?handle=:handle&id=:id"
+      "destination": "/api/convert?handle=:handle&id=:id&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/:media(video|photo)/:index([1-9]\\d*)",
-      "destination": "/api/convert?handle=:handle&id=:id"
+      "destination": "/api/convert?handle=:handle&id=:id&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/:media(video|photo)/:index([1-9]\\d*)/",
-      "destination": "/api/convert?handle=:handle&id=:id"
+      "destination": "/api/convert?handle=:handle&id=:id&via=route"
     },
     {
       "source": "/oembed",
-      "destination": "/api/oembed"
+      "destination": "/api/oembed?via=route"
     },
     {
       "source": "/admin",
@@ -33,30 +33,114 @@
     },
     {
       "source": "/search",
-      "destination": "/api/browse?resource=search"
+      "destination": "/api/browse?resource=search&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/followers",
-      "destination": "/api/browse?resource=followers&handle=:handle"
+      "destination": "/api/browse?resource=followers&handle=:handle&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/following",
-      "destination": "/api/browse?resource=following&handle=:handle"
+      "destination": "/api/browse?resource=following&handle=:handle&via=route"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/api/mcp"
+    },
+    {
+      "source": "/mcp/",
+      "destination": "/api/mcp"
+    },
+    {
+      "source": "/mcp/server-card",
+      "destination": "/api/mcp?doc=server-card"
+    },
+    {
+      "source": "/mcp/server-card/",
+      "destination": "/api/mcp?doc=server-card"
+    },
+    {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/api/v1/posts",
+      "destination": "/api/convert?via=route"
+    },
+    {
+      "source": "/api/v1/search",
+      "destination": "/api/browse?resource=search&via=route"
+    },
+    {
+      "source": "/api/v1/profiles/:handle([A-Za-z0-9_]{1,15})/followers",
+      "destination": "/api/browse?resource=followers&handle=:handle&via=route"
+    },
+    {
+      "source": "/api/v1/profiles/:handle([A-Za-z0-9_]{1,15})/following",
+      "destination": "/api/browse?resource=following&handle=:handle&via=route"
+    },
+    {
+      "source": "/api/v1/profiles/:handle([A-Za-z0-9_]{1,15})",
+      "destination": "/api/browse?resource=profile&handle=:handle&via=route"
+    },
+    {
+      "source": "/api/v1/oembed",
+      "destination": "/api/oembed?via=route"
     },
     {
       "source": "/api",
-      "destination": "/404"
+      "destination": "/api/index"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})",
-      "destination": "/api/browse?resource=profile&handle=:handle"
+      "destination": "/api/browse?resource=profile&handle=:handle&via=route"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/notfound?path=/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/api/notfound?path=/:path*"
     }
   ],
   "redirects": [
-    { "source": "/docs.html", "destination": "/docs", "permanent": true },
+    {
+      "source": "/docs.html",
+      "destination": "/docs",
+      "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "x-md.vercel.app"
+        }
+      ],
+      "destination": "https://x.pcstyle.dev/",
+      "permanent": true
+    },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "x-md.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "x-md.vercel.app"
+        }
+      ],
       "destination": "https://x.pcstyle.dev/:path*",
       "permanent": true
     }
@@ -64,39 +148,136 @@
   "headers": [
     {
       "source": "/_astro/(.*)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/(favicon.svg|logo.svg|site.webmanifest|og.png|og/.*\\.png)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/api-catalog",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/linkset+json; profile=\"https://www.rfc-editor.org/info/rfc9727\"; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/ard.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/(server.json|.well-known/mcp/server-card.json|.well-known/ai-catalog.json)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, OPTIONS"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300, stale-while-revalidate=86400"
+        }
+      ]
+    },
+    {
+      "source": "/openapi.json",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.oai.openapi+json;version=3.1; charset=utf-8"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
+    },
+    {
+      "source": "/feeds/(.*).jsonl",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/jsonl; charset=utf-8"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "X-Frame-Options", "value": "DENY" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
         {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept"
         }
       ]
     },
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, HEAD, POST, PATCH, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Accept, Content-Type, Authorization" },
-        { "key": "Access-Control-Expose-Headers", "value": "Retry-After, X-Api-Key-Status" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, HEAD, POST, PATCH, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Accept, Content-Type, Authorization, Mcp-Session-Id, MCP-Protocol-Version"
+        },
+        {
+          "key": "Access-Control-Expose-Headers",
+          "value": "Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link, Mcp-Session-Id"
+        }
       ]
     }
   ]

@@ -1,0 +1,105 @@
+---
+title: MCP server
+description: Connect an agent to x.md over the Model Context Protocol, Streamable HTTP transport, no key required.
+sidebar:
+  order: 7
+  icon: plug
+---
+
+## The x.md MCP server
+
+`https://x.pcstyle.dev/mcp` is a Model Context Protocol server that exposes the same read-only X routes this documentation covers, as tools an agent can call directly.
+
+| | |
+| --- | --- |
+| Endpoint | `https://x.pcstyle.dev/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | None. `Authorization: Bearer <api key>` is optional and raises your search allowance |
+| Protocol revisions | `2025-11-25`, `2025-06-18`, `2025-03-26` |
+| Sessions | None. The server is stateless and never issues an `Mcp-Session-Id` |
+| Server name | `io.github.pc-style/x-md` |
+
+## Connect
+
+<Tabs>
+  <Tab title="Claude Code">
+    ```bash
+    claude mcp add --transport http x-md https://x.pcstyle.dev/mcp
+    ```
+  </Tab>
+  <Tab title="mcp.json">
+    ```json
+    {
+      "mcpServers": {
+        "x-md": {
+          "type": "http",
+          "url": "https://x.pcstyle.dev/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="curl">
+    ```bash
+    curl -sS -X POST https://x.pcstyle.dev/mcp \
+      -H 'Content-Type: application/json' \
+      -H 'Accept: application/json, text/event-stream' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+    ```
+  </Tab>
+</Tabs>
+
+A client that sends `Accept: text/event-stream` gets the reply as a single SSE frame; anything else gets `application/json`. Both carry the same JSON-RPC envelope.
+
+## Tools
+
+Every tool is read-only and annotated `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`. None of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.
+
+| Tool | Use it when | Arguments |
+| --- | --- | --- |
+| `x_md_get_post` | You have an x.com or twitter.com status link and need its text, author, media, metrics, quoted post, or replies | `url`, or `handle` + `id`; `format`, `thread`, `max_posts`, `context`, `replies`, `userinfo`, `full` |
+| `x_md_get_profile` | You need to know who an account is or what it has posted recently | `handle`; `page`, `limit`, `cursor`, `full` |
+| `x_md_search_posts` | You need current public discussion on a topic, or to locate an account by name | `q`; `feed`, `page`, `limit`, `cursor`, `full` |
+| `x_md_get_followers` | You need to sample or size an account's audience | `handle`; `page`, `limit`, `cursor`, `full` |
+| `x_md_get_following` | You need to map who an account pays attention to | `handle`; `page`, `limit`, `cursor`, `full` |
+
+Each result carries the rendered Markdown as text content plus `structuredContent` matching the tool's `outputSchema`. Paging works exactly as it does over HTTP: `limit` caps at 20, `page` caps at 10, and deep walks follow `next_cursor`.
+
+```bash
+curl -sS -X POST https://x.pcstyle.dev/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"x_md_get_profile","arguments":{"handle":"pcstyle53","limit":3}}}'
+```
+
+## Resources
+
+`resources/list` returns the static agent documents, so a client can read the service contract without an extra HTTP round trip of its own.
+
+| URI | Type |
+| --- | --- |
+| `https://x.pcstyle.dev/llms.txt` | `text/plain` |
+| `https://x.pcstyle.dev/llms-full.txt` | `text/plain` |
+| `https://x.pcstyle.dev/openapi.json` | `application/json` |
+| `https://x.pcstyle.dev/index.md` | `text/markdown` |
+| `https://x.pcstyle.dev/mcp/server-card` | `application/mcp-server-card+json` |
+
+## Errors
+
+Protocol mistakes come back as JSON-RPC errors: `-32700` for an unparseable body, `-32600` for a message that is not a JSON-RPC 2.0 request, `-32601` for an unknown method, `-32602` for an unknown tool or arguments that miss the schema, `-32002` for an unknown resource URI, and `-32603` for anything unexpected. An invalid-arguments error carries the tool's `inputSchema` in `error.data` so a client can correct itself in one turn.
+
+Upstream failures are different: a rate limit, a protected account, or a missing post comes back as a successful `tools/call` result with `isError: true` and a message naming the HTTP status, the machine code, and the seconds to wait. That keeps a recoverable X-side problem out of the transport layer.
+
+## Discovery
+
+| Document | What it is |
+| --- | --- |
+| [`/server.json`](https://x.pcstyle.dev/server.json) | MCP registry manifest |
+| [`/mcp/server-card`](https://x.pcstyle.dev/mcp/server-card) | Server card, served as `application/mcp-server-card+json` |
+| [`/.well-known/mcp/server-card.json`](https://x.pcstyle.dev/.well-known/mcp/server-card.json) | The same card at the well-known path |
+
+A plain `GET https://x.pcstyle.dev/mcp` returns that card plus the supported protocol revisions and a worked example, so the endpoint is legible before a client speaks JSON-RPC.
+
+## Deviations worth knowing
+
+`GET` with `Accept: text/event-stream` answers `405`: this server sends no unsolicited messages, so there is no standalone stream to open. The official SDK treats that as expected. `DELETE` answers `405` for the same reason sessions do not exist. JSON-RPC batching is rejected with `-32600`, having been removed from the protocol in revision `2025-06-18`. Origin headers are not validated, because the endpoint is public, unauthenticated, and read-only, so there is nothing a rebound DNS name could reach.

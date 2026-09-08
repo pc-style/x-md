@@ -30,6 +30,12 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
+
+  // The matcher also catches files under /docs (llms.txt, the .md twins
+  // themselves). Those are already the representation they are; negotiating
+  // them would rewrite /docs/llms.txt to /docs/llms.txt.md and 404.
+  if (/\.[a-z0-9]+$/i.test(url.pathname)) return next()
+
   const md = markdownSibling(url.pathname)
   const alternate = `<${md}>; rel="alternate"; type="text/markdown"`
   const link = [alternate, ...DISCOVERY_LINKS].join(', ')

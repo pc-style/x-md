@@ -17,6 +17,8 @@ export interface RateLimitResult {
   retryAfter: number
   /** Window bucket that was charged; pass to `refundRateLimit` to undo exactly that charge. */
   bucket: number
+  /** The store could not be reached, so `remaining` is the fail-open assumption rather than a count. */
+  degraded: boolean
 }
 
 interface Store {
@@ -112,11 +114,11 @@ export async function rateLimit(key: string, limit: number, windowSec: number, f
     count = await store().incr(storeKey, 2 * windowSec + 1)
   } catch (error) {
     console.warn(`[ratelimit] store failure, ${failClosed ? 'blocking' : 'allowing'} request: ${String(error).slice(0, 120)}`)
-    return { allowed: !failClosed, limit, remaining: failClosed ? 0 : limit, retryAfter, bucket }
+    return { allowed: !failClosed, limit, remaining: failClosed ? 0 : limit, retryAfter, bucket, degraded: true }
   }
   const allowed = count <= limit
   if (!allowed && refundOnReject) await store().decr(storeKey).catch(() => undefined)
-  return { allowed, limit, remaining: Math.max(0, limit - count), retryAfter, bucket }
+  return { allowed, limit, remaining: Math.max(0, limit - count), retryAfter, bucket, degraded: false }
 }
 
 /**
@@ -133,6 +135,17 @@ export async function peekRateLimit(keys: string[], windowSec: number): Promise<
   const { bucket } = windowClock(windowSec)
   const counts = await store().mget([...keys.map((k) => bucketKey(k, bucket)), ...keys.map((k) => bucketKey(k, bucket - 1))])
   return { current: counts.slice(0, keys.length), previous: counts.slice(keys.length) }
+}
+
+/**
+ * Current-window counts for keys whose windows differ, in one round-trip.
+ * `peekRateLimit` cannot do this: it applies one window to every key, and the
+ * response headers have to report a 60-second gate and a 15-minute budget together.
+ */
+export async function peekRateLimits(entries: readonly { key: string; windowSec: number }[]): Promise<number[]> {
+  if (entries.length === 0) return []
+  const counts = await store().mget(entries.map((entry) => bucketKey(entry.key, windowClock(entry.windowSec).bucket)))
+  return entries.map((_, index) => counts[index] ?? 0)
 }
 
 /** Best-effort client IP from Vercel/proxy headers. */

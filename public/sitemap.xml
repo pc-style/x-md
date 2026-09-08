@@ -2,20 +2,102 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://x.pcstyle.dev/</loc>
+    <lastmod>2026-09-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://x.pcstyle.dev/docs</loc>
+    <lastmod>2026-09-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
-  <url><loc>https://x.pcstyle.dev/docs/agents</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/pagination</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/posts</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/profiles</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/reliability</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/responses</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/search</loc></url>
-  <url><loc>https://x.pcstyle.dev/docs/self-hosting</loc></url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/agents</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/archive</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/errors</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/mcp</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/pagination</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/posts</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/profiles</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/reliability</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/responses</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/search</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/self-hosting</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/docs/versioning</loc>
+    <lastmod>2026-09-08</lastmod>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/about</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/contact</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/privacy</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/terms</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/pricing.md</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/auth.md</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/agents.md</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://x.pcstyle.dev/mcp</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.6</priority>
+  </url>
 </urlset>

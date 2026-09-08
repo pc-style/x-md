@@ -563,6 +563,71 @@
     @apply border-t-0 pt-0;
   }
 
+  /* ---------- Resource cards ---------- */
+
+  .res-card {
+    @apply flex flex-col rounded-2xl bg-raised p-6;
+    box-shadow: inset 0 0 0 1px var(--color-line);
+    transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .res-card:hover {
+    box-shadow: inset 0 0 0 1px var(--color-hair-strong);
+    transform: translateY(-2px);
+  }
+
+  .res-card-hint {
+    @apply mt-5 font-mono text-[12px] text-accent;
+  }
+
+  /* ---------- Content pages (about, contact, privacy, terms) ---------- */
+
+  .page-lede {
+    @apply mt-6 max-w-[62ch] text-[17.5px] leading-[1.7] text-ink-2;
+  }
+
+  .page-prose {
+    @apply text-[16px] leading-[1.75] text-ink-2;
+  }
+
+  .page-prose h2 {
+    @apply mt-14 mb-4 text-[clamp(1.35rem,2.4vw,1.8rem)] leading-[1.2] font-black tracking-tight text-ink;
+  }
+
+  .page-prose h3 {
+    @apply mt-9 mb-3 text-[17px] font-bold text-ink;
+  }
+
+  .page-prose p {
+    @apply my-4 max-w-[68ch];
+  }
+
+  .page-prose ul {
+    @apply my-4 flex max-w-[68ch] list-none flex-col gap-2.5 p-0;
+  }
+
+  .page-prose li {
+    @apply relative pl-5;
+  }
+
+  /* A drawn marker keeps the list readable without a browser bullet glyph. */
+  .page-prose li::before {
+    content: "";
+    @apply absolute top-[0.68em] left-0 h-1.5 w-1.5 rounded-full bg-accent;
+  }
+
+  .page-prose a {
+    @apply font-medium text-accent underline decoration-accent/40 underline-offset-[3px];
+  }
+
+  .page-prose a:hover {
+    @apply text-accent-deep decoration-accent;
+  }
+
+  .page-prose strong {
+    @apply font-bold text-ink;
+  }
+
   /* ---------- Footer ---------- */
 
   .site-footer {
@@ -575,6 +640,14 @@
 
   .footer-link:hover {
     @apply text-ink;
+  }
+
+  .footer-heading {
+    @apply text-[12px] font-bold tracking-[0.12em] text-ink-4 uppercase;
+  }
+
+  .footer-list {
+    @apply mt-4 flex list-none flex-col gap-2.5 p-0 text-[14px];
   }
 
   .ph-badge {

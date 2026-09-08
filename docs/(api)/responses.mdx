@@ -24,6 +24,8 @@ sidebar:
   </Tab>
 </Tabs>
 
+Every route answers in both forms, on both surfaces: the permalink routes (`/{handle}`, `/search`, `/{handle}/status/{id}`) and the versioned routes (`/api/v1/*`) return identical bodies. Only post routes accept `format=obsidian`; browse routes take `markdown` or `json`.
+
 ## Browse responses
 
 | Field | Meaning |
@@ -46,6 +48,10 @@ Not every field is present on every route. Profile and post metadata can also be
 
 Conversion JSON includes `markdown`, `posts`, the URL, compact flag, warnings, count, provider source, format, and cache status. It is a different shape from browse JSON.
 
+## Error responses
+
+Failures are [RFC 9457 problem documents](/errors), not HTML: `application/problem+json` with a stable `code`, a human `detail`, and a `resolution`. A caller that asks for `application/json` gets the same body under that content type.
+
 ## Useful headers
 
 | Header | Meaning |
@@ -54,6 +60,12 @@ Conversion JSON includes `markdown`, `posts`, the URL, compact flag, warnings, c
 | `X-Cache` | Application cache status |
 | `X-Result-Count` | Number of items in a browse response |
 | `X-Search-Degraded` | `true` for web-indexed search fallback |
+| `RateLimit-Policy` | The quotas that apply to this route, as `"name";q=<quota>;w=<window>` |
+| `RateLimit` | What is left of each, as `"name";r=<remaining>;t=<reset>` |
+| `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` | The same state for the tightest policy, in the older single-value form |
 | `Retry-After` | Seconds to wait after a rate limit or temporary search outage |
+| `Deprecation`, `Sunset` | Present only on a [deprecated route](/versioning) |
+| `Link` | Discovery: `service-desc`, `help`, `successor-version` |
+| `Vary: Accept` | The response was negotiated from your `Accept` header |
 
-Inspect headers with `curl -i`. [Handle failures](/reliability).
+The `/api/*` routes list the rate-limit, `Retry-After`, `Deprecation`, `Sunset`, and `Link` headers in `Access-Control-Expose-Headers`, so a browser client can read them cross-origin. Inspect headers with `curl -i`. [Handle failures](/reliability).

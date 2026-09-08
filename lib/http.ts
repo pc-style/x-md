@@ -47,7 +47,9 @@ export function setCorsHeaders(res: HeaderWriter, methods = 'GET, HEAD, OPTIONS'
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', methods)
   res.setHeader('Access-Control-Allow-Headers', 'Accept, Content-Type, Authorization')
-  res.setHeader('Access-Control-Expose-Headers', 'Retry-After, X-Api-Key-Status')
+  // vercel.json publishes the same list, but its `source` matches the INCOMING
+  // path, so the permalink routes (/{handle}, /{handle}/status/{id}) miss it.
+  res.setHeader('Access-Control-Expose-Headers', 'Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link')
 }
 
 type HeaderBag = Record<string, string | string[] | undefined>

@@ -21,6 +21,10 @@ export default defineConfig(({ mode }) => {
         input: {
           main: resolve(import.meta.dirname, 'index.html'),
           admin: resolve(import.meta.dirname, 'admin.html'),
+          about: resolve(import.meta.dirname, 'about.html'),
+          contact: resolve(import.meta.dirname, 'contact.html'),
+          privacy: resolve(import.meta.dirname, 'privacy.html'),
+          terms: resolve(import.meta.dirname, 'terms.html'),
         },
       },
     },

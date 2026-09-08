@@ -1,0 +1,36 @@
+# x.md documentation
+
+> Scoped index for https://x.pcstyle.dev/docs — the reference for calling x.md's read routes. For the product overview and the full machine surface, see https://x.pcstyle.dev/llms.txt.
+
+Every page here is available as Markdown: append `.md` to the URL, or send `Accept: text/markdown`.
+
+## Start here
+
+- [Start reading X](https://x.pcstyle.dev/docs.md): the one-request quick start and the route table.
+- [Agent skill](https://x.pcstyle.dev/docs/agents.md): install `browse-x`, the CLI options, and the exit codes an agent should branch on.
+- [MCP server](https://x.pcstyle.dev/docs/mcp.md): the Streamable HTTP endpoint, the tools it exposes, and how to connect without a key.
+
+## Read routes
+
+- [Posts and threads](https://x.pcstyle.dev/docs/posts.md): `GET /{handle}/status/{id}`, plus `thread`, `context`, `replies`, `userinfo`, and `nocache`.
+- [Profiles and connections](https://x.pcstyle.dev/docs/profiles.md): `GET /{handle}`, `/followers`, `/following`, and what is filtered out.
+- [Search X](https://x.pcstyle.dev/docs/search.md): `GET /search?q=…`, the `latest`, `top`, `photos`, `videos`, and `users` feeds, and which need configured sessions.
+- [Pagination](https://x.pcstyle.dev/docs/pagination.md): `cursor` versus `page`, the limit of 20, and the ten-page ceiling.
+
+## Contracts
+
+- [Response formats](https://x.pcstyle.dev/docs/responses.md): Markdown, `?full=true`, `?format=obsidian`, and the JSON body fields.
+- [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability.md): status codes, `Retry-After`, `X-Source`, `X-Cache`, and the one-hour cache.
+- [Error catalogue](https://x.pcstyle.dev/docs/errors.md): every machine `code` an RFC 9457 problem document can carry, and the recovery for each.
+- [Versioning and deprecation](https://x.pcstyle.dev/docs/versioning.md): what `/api/v1` promises, and the `Deprecation` and `Sunset` headers that announce a change.
+
+## Operating x.md
+
+- [Self-hosting](https://x.pcstyle.dev/docs/self-hosting.md): environment variables, providers, and deploying your own instance.
+- [Optional data archive](https://x.pcstyle.dev/docs/archive.md): the disabled-by-default PostHog capture, its allowlists, and the opt-out controls.
+
+## Elsewhere
+
+- OpenAPI 3.1 description: https://x.pcstyle.dev/openapi.json
+- MCP server: https://x.pcstyle.dev/mcp
+- Everything above concatenated: https://x.pcstyle.dev/llms-full.txt

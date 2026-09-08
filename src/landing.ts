@@ -65,6 +65,106 @@ const marqueeTrack = MARQUEE_ITEMS.map(
   (item) => `<span class="flex items-center gap-10"><span>${item}</span><span aria-hidden="true" class="text-accent">·</span></span>`,
 ).join('')
 
+type Resource = { href: string; title: string; blurb: string; hint: string; external?: boolean }
+
+/** Documentation and the machine-readable descriptions of the same API surface. */
+const RESOURCES: Resource[] = [
+  {
+    href: '/docs',
+    title: 'API documentation',
+    blurb: 'Every route, query parameter, output format, pagination rule, error code, and rate limit.',
+    hint: '/docs',
+  },
+  {
+    href: '/docs/posts',
+    title: 'API reference: posts and threads',
+    blurb: 'Conversion parameters for a single post, a thread, a conversation, or an X Article.',
+    hint: '/docs/posts',
+  },
+  {
+    href: '/openapi.json',
+    title: 'OpenAPI 3.1 description',
+    blurb: 'The whole read-only API as a machine-readable contract you can generate a client from.',
+    hint: '/openapi.json',
+  },
+  {
+    href: '/mcp',
+    title: 'MCP server',
+    blurb: 'Model Context Protocol endpoint, so an MCP client can read X without a browser.',
+    hint: '/mcp',
+  },
+  {
+    href: '/llms.txt',
+    title: 'llms.txt',
+    blurb: 'A short, plain-text briefing on the routes and limits, written for language models.',
+    hint: '/llms.txt',
+  },
+  {
+    href: 'https://github.com/pc-style/x-md',
+    title: 'Source on GitHub',
+    blurb: 'MIT-licensed. Read exactly what the service does, file an issue, or self-host it.',
+    hint: 'github.com/pc-style/x-md',
+    external: true,
+  },
+]
+
+const RESOURCE_CARDS = RESOURCES.map(
+  (item) => `<a href="${item.href}" class="res-card"${item.external ? ' target="_blank" rel="noreferrer"' : ''}>
+            <h3 class="text-[17px] font-bold text-ink">${item.title}</h3>
+            <p class="mt-2.5 text-[14.5px] leading-relaxed text-ink-2">${item.blurb}</p>
+            <span class="res-card-hint">${item.hint}</span>
+          </a>`,
+).join('\n          ')
+
+/**
+ * Shared with the FAQPage JSON-LD in `index.html`, which must repeat these
+ * strings verbatim: structured data may only describe content the page shows.
+ */
+export const FAQ: { question: string; answer: string }[] = [
+  {
+    question: 'Do I need an X or Twitter API key to use x.md?',
+    answer:
+      'No. The hosted service reads public X content through public upstream providers, so there is no X API key, no developer account, and no sign-in of any kind. Rate limits take the place of authentication.',
+  },
+  {
+    question: 'Does it return whole threads, or only a single post?',
+    answer:
+      'Whole threads by default. A status URL returns the conversation: parent posts, the author thread numbered in order, and top replies. Add ?thread=off for only the requested post, or ?context=thread to leave out unrelated replies.',
+  },
+  {
+    question: 'Can x.md read private, protected, or deleted posts?',
+    answer:
+      'No. x.md only returns what X already serves publicly. Protected and private accounts, suspended accounts, and deleted posts are never available, and X Lists and direct messages are not supported.',
+  },
+  {
+    question: 'Is there a rate limit?',
+    answer:
+      'Yes. Live search is the scarce path: public callers get 5 uncached searches per minute per IP address, plus a further per-IP budget over a fifteen-minute window. Post and profile reads are cached for an hour by default, so repeat reads of the same URL usually never reach upstream.',
+  },
+  {
+    question: 'Can x.md post, reply, follow, or like on my behalf?',
+    answer:
+      'No. x.md is strictly read-only. It has no write path to X, never holds your credentials, and cannot act on any account.',
+  },
+  {
+    question: 'What output formats are available?',
+    answer:
+      'Compact Markdown by default. Add ?full=true for dates and metrics, ?format=obsidian for YAML frontmatter, or ?format=json (or an Accept: application/json header) for structured JSON carrying both the rendered Markdown and the raw post data.',
+  },
+  {
+    question: 'How do I point an agent at it?',
+    answer:
+      'Three ways: tell the agent in its prompt to swap x.com for x.pcstyle.dev, install the browse-x skill, or call the documented HTTP API described at /docs, /openapi.json, and /mcp.',
+  },
+]
+
+const FAQ_ITEMS = FAQ.map(
+  (item) => `<div>
+            <h3 class="text-[18px] leading-snug font-bold text-ink">${item.question}</h3>
+            <p class="mt-3 max-w-[52ch] text-[15.5px] leading-relaxed text-ink-2">${item.answer}</p>
+          </div>`,
+).join('\n          ')
+
 export function landingHtml(): string {
   return `
 <div class="x-root w-full max-w-full overflow-x-hidden">
@@ -276,10 +376,41 @@ export function landingHtml(): string {
             <div id="agent-panel-api" class="acc-body">
               <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
                 <code class="code-chip">GET /api/convert?url=…</code> returns the same Markdown
-                with JSON and raw variants. <a href="/docs/posts" class="font-bold text-accent hover:text-accent-deep">API reference →</a>
+                with JSON and raw variants. Every route, parameter, and limit is written down in the
+                <a href="/docs" class="font-bold text-accent hover:text-accent-deep">API documentation</a>
+                and described again in
+                <a href="/openapi.json" class="font-bold text-accent hover:text-accent-deep">OpenAPI</a>.
               </p>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- documentation: crawlable links to every published surface -->
+    <section id="resources" class="deferred-section scroll-mt-28 border-t border-line">
+      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+        <h2 class="max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
+          The documentation, and a machine-readable copy of it.
+        </h2>
+        <p class="mt-6 max-w-[54ch] text-[16px] leading-[1.75] text-ink-2">
+          Every route, query parameter, response format, error code, and rate limit is documented.
+          Read it yourself, or hand one of the machine-readable descriptions to your tooling.
+        </p>
+        <div class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          ${RESOURCE_CARDS}
+        </div>
+      </div>
+    </section>
+
+    <!-- faq: the questions agents and readers actually ask -->
+    <section id="faq" class="deferred-section scroll-mt-28 border-t border-line">
+      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+        <h2 class="max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
+          Common questions.
+        </h2>
+        <div class="mt-14 grid gap-x-16 gap-y-10 md:grid-cols-2">
+          ${FAQ_ITEMS}
         </div>
       </div>
     </section>

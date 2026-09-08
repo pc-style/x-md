@@ -1,0 +1,417 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "x.md",
+    "identifier": "https://x.pcstyle.dev",
+    "documentationUrl": "https://x.pcstyle.dev/docs",
+    "logoUrl": "https://x.pcstyle.dev/logo.svg",
+    "trustManifest": {
+      "identity": "https://x.pcstyle.dev",
+      "identityType": "https",
+      "trustSchema": {
+        "identifier": "urn:xmd:trust:open-source-domain-control:1",
+        "version": "1.0",
+        "governanceUri": "https://x.pcstyle.dev/terms",
+        "verificationMethods": [
+          "https"
+        ]
+      },
+      "attestations": [
+        {
+          "type": "MIT-License",
+          "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+          "mediaType": "text/plain"
+        },
+        {
+          "type": "Security-Policy-RFC9116",
+          "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+          "mediaType": "text/plain"
+        },
+        {
+          "type": "Privacy-Notice",
+          "uri": "https://x.pcstyle.dev/privacy",
+          "mediaType": "text/html"
+        },
+        {
+          "type": "Terms-Of-Use",
+          "uri": "https://x.pcstyle.dev/terms",
+          "mediaType": "text/html"
+        }
+      ],
+      "provenance": [
+        {
+          "relation": "publishedFrom",
+          "sourceId": "https://github.com/pc-style/x-md"
+        }
+      ]
+    }
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:x.pcstyle.dev:mcp:x-md",
+      "displayName": "x.md MCP server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://x.pcstyle.dev/.well-known/mcp/server-card.json",
+      "description": "Streamable-HTTP MCP server for public X content. Reads one post with its thread, a profile with its latest original posts, a public post search, or an account's followers and following. Read-only and unauthenticated.",
+      "tags": [
+        "mcp",
+        "x",
+        "twitter",
+        "markdown",
+        "read-only"
+      ],
+      "capabilities": [
+        "x_md_get_post",
+        "x_md_get_profile",
+        "x_md_search_posts",
+        "x_md_get_followers",
+        "x_md_get_following"
+      ],
+      "representativeQueries": [
+        "read this X post and its replies",
+        "what has this X account posted recently",
+        "search X for posts about a topic"
+      ],
+      "version": "1.0.0",
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "urn:air:x.pcstyle.dev:api:rest",
+      "displayName": "x.md REST API",
+      "type": "application/vnd.oai.openapi+json",
+      "url": "https://x.pcstyle.dev/openapi.json",
+      "description": "OpenAPI 3.1 description of the versioned read API at /api/v1: posts, search, profiles, followers, following, and oEmbed. GET only, no authentication, Markdown or JSON by content negotiation.",
+      "tags": [
+        "rest",
+        "openapi",
+        "x",
+        "twitter",
+        "json"
+      ],
+      "capabilities": [
+        "getPost",
+        "searchPosts",
+        "getProfile",
+        "listFollowers",
+        "listFollowing",
+        "getOEmbed"
+      ],
+      "representativeQueries": [
+        "convert an x.com link to markdown over HTTP",
+        "get a public X profile as JSON",
+        "list the accounts an X handle follows"
+      ],
+      "version": "1.0.0",
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "urn:air:x.pcstyle.dev:skill:browse-x",
+      "displayName": "browse-x agent skill",
+      "type": "application/json",
+      "url": "https://x.pcstyle.dev/.well-known/agent-skills/index.json",
+      "description": "Agent Skills discovery index for browse-x, an installable read-only skill that wraps the hosted x.md service in a CLI. Needs no local checkout and no X login.",
+      "tags": [
+        "agent-skill",
+        "cli",
+        "x",
+        "twitter"
+      ],
+      "representativeQueries": [
+        "install a skill that reads X posts",
+        "give my coding agent a tool for twitter links"
+      ],
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "urn:air:x.pcstyle.dev:catalog:api",
+      "displayName": "x.md API catalog",
+      "type": "application/linkset+json",
+      "url": "https://x.pcstyle.dev/.well-known/api-catalog",
+      "description": "RFC 9727 API catalog: the linkset that anchors every published x.md API and points at its OpenAPI description and human documentation.",
+      "tags": [
+        "api-catalog",
+        "rfc9727",
+        "linkset"
+      ],
+      "representativeQueries": [
+        "list every API this site publishes",
+        "find the openapi description for x.md"
+      ],
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "urn:air:x.pcstyle.dev:doc:llms-txt",
+      "displayName": "x.md llms.txt",
+      "type": "text/plain",
+      "url": "https://x.pcstyle.dev/llms.txt",
+      "description": "Agent-facing product and route reference: when to use x.md, when not to, every read route, the response formats, and the rate limits.",
+      "tags": [
+        "llms-txt",
+        "documentation",
+        "when-to-use"
+      ],
+      "representativeQueries": [
+        "when should an agent use x.md",
+        "what routes does x.md expose"
+      ],
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "urn:air:x.pcstyle.dev:doc:llms-full-txt",
+      "displayName": "x.md llms-full.txt",
+      "type": "text/plain",
+      "url": "https://x.pcstyle.dev/llms-full.txt",
+      "description": "The complete x.md documentation concatenated into one plain-text document: parameters, pagination, response fields, errors, limits, caching, and self-hosting.",
+      "tags": [
+        "llms-txt",
+        "documentation",
+        "reference"
+      ],
+      "representativeQueries": [
+        "read the full x.md documentation in one fetch",
+        "what parameters does the x.md post route accept"
+      ],
+      "updatedAt": "2026-09-08T00:00:00Z",
+      "trustManifest": {
+        "identity": "https://x.pcstyle.dev",
+        "identityType": "https",
+        "trustSchema": {
+          "identifier": "urn:xmd:trust:open-source-domain-control:1",
+          "version": "1.0",
+          "governanceUri": "https://x.pcstyle.dev/terms",
+          "verificationMethods": [
+            "https"
+          ]
+        },
+        "attestations": [
+          {
+            "type": "MIT-License",
+            "uri": "https://raw.githubusercontent.com/pc-style/x-md/main/LICENSE",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Security-Policy-RFC9116",
+            "uri": "https://x.pcstyle.dev/.well-known/security.txt",
+            "mediaType": "text/plain"
+          },
+          {
+            "type": "Privacy-Notice",
+            "uri": "https://x.pcstyle.dev/privacy",
+            "mediaType": "text/html"
+          },
+          {
+            "type": "Terms-Of-Use",
+            "uri": "https://x.pcstyle.dev/terms",
+            "mediaType": "text/html"
+          }
+        ],
+        "provenance": [
+          {
+            "relation": "publishedFrom",
+            "sourceId": "https://github.com/pc-style/x-md"
+          }
+        ]
+      }
+    }
+  ]
+}

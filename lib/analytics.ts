@@ -2,7 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
 
-type Endpoint = 'convert' | 'browse' | 'oembed'
+type Endpoint = 'convert' | 'browse' | 'oembed' | 'mcp' | 'index' | 'notfound'
 
 /** Only a verified, internal key ID may be assigned here. Never a bearer token. */
 interface RequestIdentity {

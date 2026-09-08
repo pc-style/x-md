@@ -30,15 +30,45 @@ https://x.pcstyle.dev/handle/status/1234567890
 curl -sS -H 'Accept: text/markdown' \
   'https://x.pcstyle.dev/handle/status/1234567890'
 
-curl -sS -G 'https://x.pcstyle.dev/api/convert' \
+curl -sS -G 'https://x.pcstyle.dev/api/v1/posts' \
   --data-urlencode 'url=https://x.com/handle/status/1234567890'
 ```
 
 Browsers that request HTML get a readable page containing the Markdown. Agents can explicitly request `text/markdown`. Discord, Telegram, Slack, and other preview bots receive Open Graph embed HTML for the same status URL, including multiple images on Discord, video streams where supported, video thumbnails on Slack, quote/poll text, and an oEmbed engagement line.
 
+## For agents
+
+Everything here is public, needs no key, and is meant to be read by a program:
+
+| Surface | Where | What it is |
+| --- | --- | --- |
+| Markdown negotiation | any read route, or `/`, `/docs`, `/about` | `Accept: text/markdown` returns Markdown; docs pages also answer to a `.md` suffix or `?mode=agent`. Responses carry `Vary: Accept` and a `Link: …; rel="alternate"` to the Markdown twin |
+| `/llms.txt` | [x.pcstyle.dev/llms.txt](https://x.pcstyle.dev/llms.txt) | What x.md is for, when *not* to use it, and every route, in one text file |
+| `/openapi.json` | [x.pcstyle.dev/openapi.json](https://x.pcstyle.dev/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
+| `/api` | [x.pcstyle.dev/api](https://x.pcstyle.dev/api) | A small JSON index for an agent that has only the domain |
+| `/mcp` | [x.pcstyle.dev/mcp](https://x.pcstyle.dev/mcp) | MCP server over Streamable HTTP, exposing the same reads as tools |
+| Agent skill | `bunx skills add pc-style/x-md -g -y --skill browse-x` | The `browse-x` skill for coding agents |
+| `/.well-known/ard.json` | [x.pcstyle.dev/.well-known/ard.json](https://x.pcstyle.dev/.well-known/ard.json) | Agentic Resource Discovery catalog of every machine surface above |
+
+Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents (`application/problem+json`) with a stable machine `code`, a human `detail`, and a `resolution` hint — see the [error catalogue](https://x.pcstyle.dev/docs/errors). Rate limits are advertised on every response with the IETF `RateLimit-Policy` and `RateLimit` structured fields plus the `RateLimit-Limit`/`-Remaining`/`-Reset` compatibility triple, and `Retry-After` on a `429`.
+
+### Versioning
+
+`/api/v1/*` is the stable machine surface: `/api/v1/posts`, `/api/v1/profiles/{handle}` (`/followers`, `/following`), `/api/v1/search`, `/api/v1/oembed`. Additive changes ship inside `v1`; breaking ones ship as a new path prefix, and `v1` keeps working for at least 12 months after a successor appears. The permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/search`, `/oembed`) are the unversioned product surface and are not deprecated.
+
+`GET /api/convert` and `GET /api/browse` are deprecated aliases with a **2027-09-15** sunset. They still work unchanged and announce themselves on every response:
+
+```http
+Deprecation: @1789430400
+Sunset: Wed, 15 Sep 2027 00:00:00 GMT
+Link: <https://x.pcstyle.dev/api/v1/posts>; rel="successor-version"
+```
+
+Full policy: [x.pcstyle.dev/docs/versioning](https://x.pcstyle.dev/docs/versioning).
+
 ## Post conversion
 
-Both `GET /:handle/status/:id` and `GET /api/convert?url=…` support:
+Both `GET /:handle/status/:id` and `GET /api/v1/posts?url=…` support:
 
 | Parameter | Default | Supported values |
 | --- | --- | --- |
@@ -90,21 +120,18 @@ curl -sS -H 'Accept: application/json' \
   'https://x.pcstyle.dev/elonmusk/following?limit=20'
 ```
 
-### Direct `/api/browse` usage
-
-Use `resource=profile|search|followers|following`, plus the corresponding `handle` or `q`:
+### Versioned browse routes
 
 ```bash
-curl -sS -G 'https://x.pcstyle.dev/api/browse' \
-  --data-urlencode 'resource=profile' \
-  --data-urlencode 'handle=elonmusk'
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/elonmusk'
 
-curl -sS -G 'https://x.pcstyle.dev/api/browse' \
-  --data-urlencode 'resource=search' \
+curl -sS -G 'https://x.pcstyle.dev/api/v1/search' \
   --data-urlencode 'q=typescript' \
   --data-urlencode 'feed=top' \
   --data-urlencode 'format=json'
 ```
+
+The older `GET /api/browse?resource=profile|search|followers|following` alias takes the same options and still works, but it is deprecated and sunsets on 2027-09-15.
 
 Search feeds are case-insensitive. `users` returns account profiles in `users`; other feeds return `posts`. Latest and Top try FxTwitter first, then a custom-built live search provider, and can fall back to web-indexed snippets. Photos, Videos, and Users use the live provider directly.
 
@@ -113,6 +140,18 @@ Search feeds are case-insensitive. `users` returns account profiles in `users`; 
 - Live search allows **5 uncached requests per minute per IP**. Cache hits are free.
 - Requests served by the live provider have an additional allowance of **10 per IP per 15-minute window**, drawn from a shared public pool. All feeds share it, and each page of a page walk counts as one request.
 - A rejected request returns `429` with `Retry-After` in seconds until the window resets. An upstream outage returns `503` with `Retry-After: 30`.
+
+Every response advertises what is left, so a client can pace itself instead of discovering the limit by hitting it:
+
+```http
+RateLimit-Policy: "api-ip";q=600;w=60, "search-ip";q=5;w=60, "account-ip";q=10;w=900
+RateLimit: "api-ip";r=599;t=60, "search-ip";r=5;t=60, "account-ip";r=10;t=900
+RateLimit-Limit: 5
+RateLimit-Remaining: 5
+RateLimit-Reset: 60
+```
+
+`q` is the quota, `w` the window in seconds, `r` what is left, `t` the seconds until that window resets. The unprefixed `RateLimit-Limit`/`-Remaining`/`-Reset` triple describes the tightest policy. Ignore these values on a response with a positive `Age`: a CDN hit replays the state of whoever filled the cache.
 
 Counters are per instance unless a shared KV store is configured.
 

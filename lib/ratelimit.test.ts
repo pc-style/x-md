@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { clientIp, peekRateLimit, rateLimit, resetRateLimits } from './ratelimit.js'
+import { clientIp, peekRateLimit, peekRateLimits, rateLimit, resetRateLimits } from './ratelimit.js'
 
 beforeEach(() => {
   resetRateLimits()
@@ -71,8 +71,28 @@ describe('rateLimit (redis store)', () => {
     vi.stubEnv('KV_REST_API_TOKEN', 'tok')
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')))
-    expect((await rateLimit('k', 1, 60)).allowed).toBe(true)
+    // Degraded verdicts report the full quota: with no counter to read, nothing is being throttled.
+    expect(await rateLimit('k', 1, 60)).toMatchObject({ allowed: true, remaining: 1, degraded: true })
     expect((await rateLimit('k', 1, 60, true)).allowed).toBe(false)
+  })
+})
+
+describe('peekRateLimits', () => {
+  test('reads keys whose windows differ in one round-trip, missing keys as 0', async () => {
+    await rateLimit('minute', 10, 60)
+    for (let i = 0; i < 3; i += 1) await rateLimit('quarter-hour', 10, 900)
+    expect(await peekRateLimits([
+      { key: 'minute', windowSec: 60 },
+      { key: 'quarter-hour', windowSec: 900 },
+      { key: 'never-charged', windowSec: 60 },
+    ])).toEqual([1, 3, 0])
+    expect(await peekRateLimits([])).toEqual([])
+  })
+
+  test('does not charge the counters it reads', async () => {
+    await rateLimit('k', 10, 60)
+    await peekRateLimits([{ key: 'k', windowSec: 60 }])
+    expect((await rateLimit('k', 10, 60)).remaining).toBe(8)
   })
 })
 

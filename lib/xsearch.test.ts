@@ -136,7 +136,7 @@ describe('per-IP account fairness', () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
     for (const ip of ['a', 'b', 'c', 'd']) {
       for (let n = 0; n < 10; n++) await searchXStatuses('q', 'latest', undefined, 20, ip)
-      await expect(searchXStatuses('q', 'latest', undefined, 20, ip)).rejects.toMatchObject({ status: 429 })
+      await expect(searchXStatuses('q', 'latest', undefined, 20, ip)).rejects.toMatchObject({ status: 429, policy: 'account-ip' })
     }
     expect(fetchSearchTweets).toHaveBeenCalledTimes(40)
     await searchXStatuses('q', 'latest', undefined, 20, 'e')
@@ -166,7 +166,7 @@ describe('API-key allowance', () => {
     fetchSearchTweets.mockResolvedValue({ tweets: [] })
     const caller = { kind: 'key' as const, id: 'k1', limit: 3 }
     for (let n = 0; n < 3; n++) await searchXStatuses('q', 'latest', undefined, 20, caller)
-    await expect(searchXStatuses('q', 'latest', undefined, 20, caller)).rejects.toMatchObject({ status: 429 })
+    await expect(searchXStatuses('q', 'latest', undefined, 20, caller)).rejects.toMatchObject({ status: 429, policy: 'account-key' })
     // A public caller is unaffected by the key's exhausted quota.
     await searchXStatuses('q', 'latest', undefined, 20, 'fresh-ip')
     expect(fetchSearchTweets).toHaveBeenCalledTimes(4)
@@ -190,7 +190,8 @@ describe('dynamic public pool', () => {
     await touchApiKey(record)
     resetPool()
     await publicBurst(['a']) // public cap = 80 − 70 = 10
-    await expect(searchXStatuses('q', 'latest', undefined, 20, 'b')).rejects.toMatchObject({ status: 429, message: expect.stringMatching(/Public search capacity/) })
+    // Reported against the caller's own per-IP policy: the shared pool is never advertised.
+    await expect(searchXStatuses('q', 'latest', undefined, 20, 'b')).rejects.toMatchObject({ status: 429, policy: 'account-ip', message: expect.stringMatching(/Public search capacity/) })
     expect(fetchSearchTweets).toHaveBeenCalledTimes(10)
     // The friend is untouched by the public exhaustion.
     await searchXStatuses('q', 'latest', undefined, 20, { kind: 'key', id: record.id, limit: 70 })

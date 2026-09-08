@@ -26,6 +26,7 @@
     </script>
     <title>x.md: tweets are just markdown now</title>
     <link rel="canonical" href="https://x.pcstyle.dev/" />
+    <link rel="alternate" type="text/markdown" href="/index.md" title="x.md homepage as Markdown" />
     <link rel="alternate" hreflang="en" href="https://x.pcstyle.dev/" />
     <link rel="alternate" hreflang="x-default" href="https://x.pcstyle.dev/" />
     <meta property="og:locale" content="en_US" />
@@ -61,27 +62,133 @@
             "@id": "https://x.pcstyle.dev/#website",
             "url": "https://x.pcstyle.dev/",
             "name": "x.md",
+            "alternateName": [
+              "x.pcstyle.dev",
+              "x-md"
+            ],
             "description": "Agent-friendly, read-only browsing of public X posts, videos, profiles, search results, conversations, followers, and following as Markdown or JSON.",
             "inLanguage": "en-US",
-            "publisher": { "@id": "https://x.pcstyle.dev/#organization" }
+            "publisher": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://x.pcstyle.dev/search?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://x.pcstyle.dev/#webpage",
+            "url": "https://x.pcstyle.dev/",
+            "name": "x.md: tweets are just markdown now",
+            "description": "Agent-friendly, read-only browsing of public X posts, videos, profiles, search results, conversations, followers, and following as Markdown or JSON.",
+            "inLanguage": "en-US",
+            "isPartOf": {
+              "@id": "https://x.pcstyle.dev/#website"
+            },
+            "about": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
+            "primaryImageOfPage": {
+              "@type": "ImageObject",
+              "url": "https://x.pcstyle.dev/og.png"
+            },
+            "breadcrumb": {
+              "@id": "https://x.pcstyle.dev/#breadcrumb"
+            },
+            "encoding": {
+              "@type": "MediaObject",
+              "contentUrl": "https://x.pcstyle.dev/index.md",
+              "encodingFormat": "text/markdown"
+            }
+          },
+          {
+            "@type": "BreadcrumbList",
+            "@id": "https://x.pcstyle.dev/#breadcrumb",
+            "itemListElement": [
+              {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": "https://x.pcstyle.dev/"
+              }
+            ]
           },
           {
             "@type": "Organization",
             "@id": "https://x.pcstyle.dev/#organization",
             "name": "x.md",
+            "alternateName": [
+              "x.pcstyle.dev",
+              "x-md"
+            ],
             "url": "https://x.pcstyle.dev/",
+            "description": "Open-source project that makes public X content readable to software agents as Markdown or JSON. Independent, read-only, and not affiliated with X Corp.",
             "logo": {
               "@type": "ImageObject",
               "url": "https://x.pcstyle.dev/logo.svg"
-            }
+            },
+            "image": "https://x.pcstyle.dev/og.png",
+            "foundingDate": "2026-05-26",
+            "founder": {
+              "@id": "https://x.pcstyle.dev/#maintainer"
+            },
+            "address": {
+              "@type": "PostalAddress",
+              "addressCountry": "PL"
+            },
+            "contactPoint": [
+              {
+                "@type": "ContactPoint",
+                "name": "Bug reports and feature requests",
+                "contactType": "technical support",
+                "url": "https://github.com/pc-style/x-md/issues",
+                "availableLanguage": [
+                  "English"
+                ],
+                "areaServed": "Worldwide"
+              },
+              {
+                "@type": "ContactPoint",
+                "name": "Private vulnerability reports",
+                "contactType": "security",
+                "url": "https://github.com/pc-style/x-md/security/advisories",
+                "availableLanguage": [
+                  "English"
+                ],
+                "areaServed": "Worldwide"
+              }
+            ],
+            "sameAs": [
+              "https://github.com/pc-style/x-md",
+              "https://github.com/pc-style",
+              "https://x.com/pcstyle53",
+              "https://www.producthunt.com/products/x-md"
+            ]
+          },
+          {
+            "@type": "Person",
+            "@id": "https://x.pcstyle.dev/#maintainer",
+            "name": "pcstyle",
+            "url": "https://pcstyle.dev",
+            "sameAs": [
+              "https://github.com/pc-style",
+              "https://x.com/pcstyle53"
+            ]
           },
           {
             "@type": "SoftwareApplication",
             "@id": "https://x.pcstyle.dev/#app",
             "name": "x.md",
+            "alternateName": "x-md",
             "url": "https://x.pcstyle.dev/",
             "image": "https://x.pcstyle.dev/og.png",
             "applicationCategory": "DeveloperApplication",
+            "applicationSubCategory": "API",
             "operatingSystem": "Any",
             "description": "Agent-friendly, read-only browsing of public X posts, videos, profiles, search results, conversations, followers, and following as Markdown or JSON.",
             "offers": {
@@ -91,7 +198,19 @@
             },
             "license": "https://opensource.org/licenses/MIT",
             "codeRepository": "https://github.com/pc-style/x-md",
+            "discussionUrl": "https://github.com/pc-style/x-md/discussions",
+            "author": {
+              "@id": "https://x.pcstyle.dev/#maintainer"
+            },
+            "publisher": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
             "isAccessibleForFree": true,
+            "sameAs": [
+              "https://github.com/pc-style/x-md",
+              "https://www.producthunt.com/products/x-md",
+              "https://www.skills.sh/pc-style/x-md"
+            ],
             "featureList": [
               "Compact and full Markdown output",
               "Structured JSON and Obsidian output",
@@ -99,6 +218,108 @@
               "Public profiles and post search",
               "Followers and following browsing",
               "Read-only HTTP routes for agents"
+            ]
+          },
+          {
+            "@type": [
+              "WebAPI",
+              "Service"
+            ],
+            "@id": "https://x.pcstyle.dev/#api",
+            "name": "x.md read-only API",
+            "url": "https://x.pcstyle.dev/docs",
+            "description": "Read-only HTTP API that returns public X posts, threads, profiles, search results, followers, and following as Markdown or JSON. No X API key required.",
+            "serviceType": "Read-only web API",
+            "provider": {
+              "@id": "https://x.pcstyle.dev/#organization"
+            },
+            "areaServed": "Worldwide",
+            "termsOfService": "https://x.pcstyle.dev/terms",
+            "isRelatedTo": {
+              "@id": "https://x.pcstyle.dev/#app"
+            },
+            "documentation": [
+              "https://x.pcstyle.dev/docs",
+              "https://x.pcstyle.dev/openapi.json",
+              "https://x.pcstyle.dev/llms.txt"
+            ],
+            "availableChannel": {
+              "@type": "ServiceChannel",
+              "name": "HTTPS",
+              "serviceUrl": "https://x.pcstyle.dev/api/v1/posts"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://x.pcstyle.dev/#faq",
+            "url": "https://x.pcstyle.dev/#faq",
+            "name": "x.md: common questions",
+            "inLanguage": "en-US",
+            "isPartOf": {
+              "@id": "https://x.pcstyle.dev/#website"
+            },
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Do I need an X or Twitter API key to use x.md?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. The hosted service reads public X content through public upstream providers, so there is no X API key, no developer account, and no sign-in of any kind. Rate limits take the place of authentication."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Does it return whole threads, or only a single post?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Whole threads by default. A status URL returns the conversation: parent posts, the author thread numbered in order, and top replies. Add ?thread=off for only the requested post, or ?context=thread to leave out unrelated replies."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can x.md read private, protected, or deleted posts?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. x.md only returns what X already serves publicly. Protected and private accounts, suspended accounts, and deleted posts are never available, and X Lists and direct messages are not supported."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Is there a rate limit?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Live search is the scarce path: public callers get 5 uncached searches per minute per IP address, plus a further per-IP budget over a fifteen-minute window. Post and profile reads are cached for an hour by default, so repeat reads of the same URL usually never reach upstream."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can x.md post, reply, follow, or like on my behalf?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "No. x.md is strictly read-only. It has no write path to X, never holds your credentials, and cannot act on any account."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What output formats are available?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Compact Markdown by default. Add ?full=true for dates and metrics, ?format=obsidian for YAML frontmatter, or ?format=json (or an Accept: application/json header) for structured JSON carrying both the rendered Markdown and the raw post data."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How do I point an agent at it?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Three ways: tell the agent in its prompt to swap x.com for x.pcstyle.dev, install the browse-x skill, or call the documented HTTP API described at /docs, /openapi.json, and /mcp."
+                }
+              }
             ]
           }
         ]
