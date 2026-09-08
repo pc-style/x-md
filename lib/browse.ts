@@ -1,3 +1,4 @@
+import { trackRateLimit, trackFallback } from './server-events.js'
 import {
   buildCacheKey,
   cacheControlHeader,
@@ -201,11 +202,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (caller.kind === 'key') {
       const verdict = await rateLimit(searchKeyKey(caller.id), SEARCH_KEY.quota, SEARCH_KEY.windowSec)
       if (!verdict.allowed) {
+        trackRateLimit('key')
         throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_KEY.name)
       }
     } else if (caller.ip) {
       const verdict = await rateLimit(searchIpKey(caller.ip), SEARCH_IP.quota, SEARCH_IP.windowSec)
       if (!verdict.allowed) {
+        trackRateLimit('ip')
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
@@ -228,6 +231,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
     let outage: ConvertError | undefined
     for (const provider of providers) {
+      if (outage || (provider.source === 'xsearch' && ['latest', 'top'].includes(feed) && !tagged && Date.now() < fxSearchDownUntil)) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
       try {
         const list = await walkPages(page, tagged?.raw, provider.search)
         return render({ resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor(provider.source, list.cursor?.bottom), source: provider.source })
@@ -240,6 +244,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
     if (['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
+      trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
       const posts = await searchFirecrawlStatuses(query, feed, limit)
       return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
     }

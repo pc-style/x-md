@@ -1,3 +1,4 @@
+import { providerFetch, reportProviderResponse } from './server-events.js'
 import { ConvertError } from './errors.js'
 import type { FxArticle, FxArticleBlock, FxMedia, FxMediaItem, FxTweet } from './fxtwitter.js'
 
@@ -158,7 +159,7 @@ export async function fetchSyndicationStatus(handle: string, id: string): Promis
   let response: Response
   try {
     const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=0`
-    response = await fetch(url, { headers: { 'User-Agent': UA, Accept: 'application/json' } })
+    response = await providerFetch('syndication', url, { headers: { 'User-Agent': UA, Accept: 'application/json' } })
   } catch {
     throw new ConvertError(502, 'Failed to reach X syndication API.', 'syndication_network')
   }
@@ -173,6 +174,7 @@ export async function fetchSyndicationStatus(handle: string, id: string): Promis
 
   const data = (await response.json()) as SyndicationTweet
   if (!data?.text && !data?.article) {
+    reportProviderResponse(response, 'empty_response')
     throw new ConvertError(404, 'Post not found via syndication API.', 'syndication_empty')
   }
 

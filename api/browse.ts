@@ -1,3 +1,4 @@
+import { withServerEvents, trackResult } from '../lib/server-events.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
@@ -19,7 +20,7 @@ export function browseSuccessor(resource?: string, handle?: string): string | un
   return undefined
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'browse', req.query.resource)
   setCorsHeaders(res)
   // Preflight, 405 and a rejected key are never charged, so they advertise the
@@ -90,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: resolved.ip, caller: resolved.caller })
+    trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
     // Keyed responses stay private even if the browse layer marked them cacheable.
@@ -117,3 +119,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendProblem(res, problemFrom(error, instance), accept, req.method)
   }
 }
+
+export default withServerEvents('browse', handler)

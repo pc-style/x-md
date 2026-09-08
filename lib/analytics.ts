@@ -1,3 +1,4 @@
+import { captureServerEvent } from './server-events.js'
 import { createHmac, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
@@ -76,7 +77,16 @@ export function trackRequest(
   // A disconnected request without a completed response isn't counted.
   waitUntil(new Promise<void>((resolve) => {
     const onClose = () => { res.off('finish', onFinish); resolve() }
-    const onFinish = () => { res.off('close', onClose); void send().finally(resolve) }
+    const onFinish = () => {
+      res.off('close', onClose)
+      const status = res.statusCode
+      const failed = status >= 400 ? captureServerEvent('request_failed', {
+        route, status,
+        error_type: status === 429 ? 'rate_limited' : status === 404 ? 'not_found' : status >= 502 ? 'upstream_error' : status >= 500 ? 'internal_error' : 'validation_error',
+        duration_ms: Math.max(0, Math.round(performance.now() - started)),
+      }) : Promise.resolve()
+      void Promise.all([failed, send()]).finally(resolve)
+    }
     res.once('finish', onFinish)
     res.once('close', onClose)
   }))

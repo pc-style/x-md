@@ -49,7 +49,7 @@ describe('production request analytics', () => {
     res.setHeader('X-Search-Degraded', 'true')
     const event = await finish(res)
     res.emit('finish')
-    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(fetchMock.mock.calls[0][0]).toBe('https://eu.i.posthog.com/i/v0/e/')
     expect(timeout).toHaveBeenCalledWith(3000)
     expect(event.event).toBe('request_completed')

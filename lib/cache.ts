@@ -1,3 +1,4 @@
+import { trackCache } from './server-events.js'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -131,6 +132,7 @@ export async function withCache<T>(
   }
 
   const hit = await getCached<T>(key)
+  trackCache(Boolean(hit))
   if (hit) return hit
 
   const value = await fn()

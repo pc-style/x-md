@@ -1,3 +1,4 @@
+import { providerFetch, reportProviderResponse } from './server-events.js'
 import { ConvertError } from './errors.js'
 import type { FxTweet } from './fxtwitter.js'
 import { extractStatusTextFromMarkdown } from './scrape-text.js'
@@ -27,7 +28,7 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
 
   let response: Response
   try {
-    response = await fetch(url, {
+    response = await providerFetch('contextdev', url, {
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${apiKey}`,
@@ -55,6 +56,7 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
 
   const markdown = payload.markdown?.trim()
   if (!markdown) {
+    reportProviderResponse(response, 'empty_response')
     throw new ConvertError(502, 'Context.dev returned empty content.', 'contextdev_empty')
   }
 

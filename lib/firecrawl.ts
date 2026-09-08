@@ -1,3 +1,4 @@
+import { providerFetch, reportProviderResponse } from './server-events.js'
 import { ConvertError } from './errors.js'
 import type { FxTweet } from './fxtwitter.js'
 import { extractStatusTextFromMarkdown } from './scrape-text.js'
@@ -71,7 +72,7 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
 
   let response: Response
   try {
-    response = await fetch(FIRECRAWL_SEARCH_API, {
+    response = await providerFetch('firecrawl', FIRECRAWL_SEARCH_API, {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'User-Agent': UA },
       body: JSON.stringify({
@@ -128,7 +129,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
 
   let response: Response
   try {
-    response = await fetch(FIRECRAWL_API, {
+    response = await providerFetch('firecrawl', FIRECRAWL_API, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -158,6 +159,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
 
   const markdown = payload.data?.markdown?.trim()
   if (!markdown) {
+    reportProviderResponse(response, 'empty_response')
     throw new ConvertError(502, 'Firecrawl returned empty content.', 'firecrawl_empty')
   }
 

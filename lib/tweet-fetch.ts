@@ -1,3 +1,4 @@
+import { trackFallback } from './server-events.js'
 import { ConvertError } from './errors.js'
 import { fetchContextDevStatus } from './contextdev.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
@@ -77,7 +78,9 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
 
   let lastError: unknown
 
-  for (const attempt of attempts) {
+  const sources: FetchSource[] = ['fxtwitter', 'syndication', ...(process.env.CONTEXT_DEV_API_KEY ? ['contextdev' as const] : []), ...(process.env.FIRECRAWL_API_KEY ? ['firecrawl' as const] : [])]
+  for (const [index, attempt] of attempts.entries()) {
+    if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
     try {
       return await attempt()
     } catch (error) {

@@ -1,3 +1,4 @@
+import { withServerEvents, trackResult } from '../lib/server-events.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
@@ -8,7 +9,7 @@ import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'convert')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
@@ -87,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       replies: param('replies'),
     })
 
+    trackResult(result)
     const { status, headers, body } = asEmbed
       ? embedResponse(result, { origin: requestOrigin(req), userAgent })
       : markdownResponse(result, asJson, asHtml)
@@ -106,3 +108,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendProblem(res, problemFrom(error, instance), accept, req.method)
   }
 }
+
+export default withServerEvents('convert', handler)
