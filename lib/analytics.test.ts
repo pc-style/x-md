@@ -175,6 +175,16 @@ describe('named server events', () => {
     expect(JSON.stringify(events)).not.toContain('alice')
   })
 
+  test('endpoint_called does not copy unbounded numeric thread values', async () => {
+    const { req, res } = request('GET', '/api/convert?handle=alice&id=20&thread=1848330199730315645')
+    trackRequest(req, res, 'convert')
+    res.emit('finish'); res.emit('close')
+    const event = (await sent()).find(item => item.event === 'endpoint_called')
+    expect(event.properties.thread).toBe('full')
+    expect(JSON.stringify(event)).not.toContain('1848330199730315645')
+    expect(JSON.stringify(event)).not.toContain('alice')
+  })
+
   test('endpoint_called names browse resources and the aggregate alias', async () => {
     const search = request('GET', '/search?q=hello')
     trackRequest(search.req, search.res, 'browse', 'search')
@@ -191,10 +201,13 @@ describe('named server events', () => {
 
   test('request_failed maps catalog codes onto coarse error types', () => {
     expect(errorTypeFor('not_found', 404)).toBe('not_found')
+    expect(errorTypeFor('syndication_empty', 404)).toBe('not_found')
     expect(errorTypeFor('invalid_url', 400)).toBe('validation_error')
     expect(errorTypeFor('invalid_body', 400)).toBe('parse_error')
     expect(errorTypeFor('rate_limited', 429)).toBe('rate_limited')
     expect(errorTypeFor('fxtwitter_error', 502)).toBe('upstream_error')
+    expect(errorTypeFor('firecrawl_invalid', 502)).toBe('upstream_error')
+    expect(errorTypeFor('internal_error', 500)).toBe('upstream_error')
     expect(errorTypeFor(undefined, 500)).toBe('upstream_error')
   })
 

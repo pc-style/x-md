@@ -197,7 +197,7 @@ export async function fetchSyndicationStatus(handle: string, id: string): Promis
       upstreamStatus: response.status,
       durationMs: performance.now() - started,
     })
-    throw new ConvertError(502, 'Post not found via syndication API.', 'syndication_error')
+    throw new ConvertError(502, 'Syndication API returned an invalid response.', 'syndication_invalid')
   }
   if (!data?.text && !data?.article) {
     captureUpstreamError({

@@ -234,7 +234,7 @@ async function fxFetchJson<T>(path: string): Promise<T> {
       upstreamStatus: response.status,
       durationMs: performance.now() - started,
     })
-    throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
+    throw new ConvertError(502, 'FxTwitter API returned an invalid response.', 'fxtwitter_invalid')
   }
 
   if (data.code === 404 || data.message === 'NOT_FOUND') {

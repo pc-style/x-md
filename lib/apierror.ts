@@ -333,7 +333,7 @@ export function sendProblem(
   accept: string,
   method = 'GET',
 ): unknown {
-  noteRequestError(res, problem.code, problem.title)
+  noteRequestError(res, problem.code, problem.title, problem.status)
   const response = problemResponse(problem, accept)
   for (const [key, value] of Object.entries(response.headers)) {
     if (key === 'Link') appendLink(res, value)

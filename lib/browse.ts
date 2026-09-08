@@ -1,4 +1,4 @@
-import { captureCacheLookup, captureFallback, captureRateLimit, captureSearchExecuted } from './analytics.js'
+import { captureCacheLookup, captureFallback, captureRateLimit, captureSearchExecuted, fallbackReasonFor } from './analytics.js'
 import {
   buildCacheKey,
   cacheControlHeader,
@@ -240,7 +240,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
           captureFallback({
             primaryProvider: 'fxtwitter',
             fallbackProvider: provider.source,
-            reason: 'primary_error',
+            reason: fallbackReasonFor(outage),
           })
         }
         return render({ resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor(provider.source, list.cursor?.bottom), source: provider.source })
@@ -257,7 +257,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       captureFallback({
         primaryProvider: 'fxtwitter',
         fallbackProvider: 'firecrawl',
-        reason: 'primary_error',
+        reason: fallbackReasonFor(outage),
       })
       return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
     }

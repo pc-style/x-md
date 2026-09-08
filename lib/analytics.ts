@@ -108,7 +108,10 @@ function truthy(value: string | undefined): boolean {
 function threadValue(raw: string | undefined): string {
   if (!raw) return 'full'
   if (raw === 'off' || raw === 'full' || raw === 'conversation') return raw
-  if (/^\d+$/.test(raw)) return raw
+  if (/^\d+$/.test(raw)) {
+    const n = Number.parseInt(raw, 10)
+    if (n >= 2 && n <= 100) return raw
+  }
   return 'full'
 }
 
@@ -149,17 +152,18 @@ function requesterBot(ua: string): string | null {
 
 export function errorTypeFor(code: string | undefined, status: number): string {
   if (code === 'rate_limited' || status === 429) return 'rate_limited'
-  if (code === 'not_found' || code === 'route_not_found' || code === 'private_tweet' || status === 404) return 'not_found'
-  if (code === 'invalid_body' || code?.endsWith('_invalid')) return 'parse_error'
+  if (status === 404 || code === 'not_found' || code === 'route_not_found' || code === 'private_tweet') return 'not_found'
+  if (code === 'invalid_body') return 'parse_error'
   if (
-    code === 'upstream_error'
+    status >= 500
+    || code === 'upstream_error'
     || code === 'search_unavailable'
     || code === 'all_providers_failed'
+    || code === 'internal_error'
     || code?.includes('fxtwitter')
     || code?.includes('syndication')
     || code?.includes('firecrawl')
     || code?.includes('contextdev')
-    || status >= 500
   ) return 'upstream_error'
   return 'validation_error'
 }
@@ -177,8 +181,9 @@ function safeMessage(value: string | undefined): string | undefined {
 }
 
 function distinctId(token: string, ctx: AnalyticsContext | undefined, keyStatus?: unknown): string {
-  if (keyStatus === 'valid' && ctx?.identity.keyId) {
-    return `key:${createHmac('sha256', token).update(ctx.identity.keyId).digest('hex')}`
+  const keyId = ctx?.identity.keyId
+  if (keyId && (keyStatus === 'valid' || keyStatus === undefined)) {
+    return `key:${createHmac('sha256', token).update(keyId).digest('hex')}`
   }
   return `anonymous:${ctx?.requestId ?? randomUUID()}`
 }
@@ -256,10 +261,10 @@ export function fallbackReasonFor(error: unknown): FallbackReason {
   return 'primary_error'
 }
 
-export function noteRequestError(res: object, code: string, message?: string): void {
+export function noteRequestError(res: object, code: string, message?: string, status?: number): void {
   const ctx = byResponse.get(res) ?? context.getStore()
   if (!ctx) return
-  ctx.error = { type: errorTypeFor(code, 0), message: safeMessage(message) }
+  ctx.error = { type: errorTypeFor(code, status ?? 0), message: safeMessage(message) }
 }
 
 export function captureCacheLookup(status: 'hit' | 'miss' | 'bypass', cacheKeyType: string): void {
@@ -392,8 +397,8 @@ function endpointProperties(req: IncomingMessage, endpoint: AnalyticsEndpoint): 
 }
 
 /**
- * One personless event per completed production function response. Explicit
- * fields only: never serialize the request, URL, headers, body, or errors.
+ * Production-only personless events for API traffic. Explicit fields only:
+ * never serialize the request, URL, headers, body, or provider payloads.
  * CDN hits don't invoke the function and are intentionally not counted.
  */
 export function trackRequest(
