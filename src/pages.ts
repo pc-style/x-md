@@ -169,13 +169,21 @@ export function contactHtml(): string {
           <a href="/privacy">privacy page</a> explains what the service retains.
         </p>
 
+        <h2>Email</h2>
+        <p>
+          When GitHub does not fit &mdash; a private question, a removal request you would rather not file
+          in public, or a report you cannot put in an issue &mdash; write to
+          <a href="mailto:me@pcstyle.dev">me@pcstyle.dev</a>. It reaches the maintainer directly. GitHub is still
+          faster for anything reproducible, because the answer stays searchable for the next person. No
+          phone number or postal address is published for the project, and anything else claiming to be an
+          official x.md support address is not.
+        </p>
+
         <h2>What to expect</h2>
         <p>
           x.md is a free, beta, single-maintainer project. There is no service level agreement and no
           guaranteed response time; issues are answered on a best-effort basis, usually fastest for
-          reproducible bugs and security reports. No email address, phone number, or postal contact is
-          published for the project &mdash; the GitHub channels above are the complete list, and anything
-          claiming to be an official x.md support address is not.
+          reproducible bugs and security reports.
         </p>`,
   })
 }

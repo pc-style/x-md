@@ -1,6 +1,6 @@
 ---
 title: "Contact x.md"
-description: "How to reach x.md: bug reports and feature requests through GitHub issues, questions through Discussions, security reports through the repository's private advisory form. No email, phone, or postal address exists for this project."
+description: "How to reach x.md: bug reports and feature requests through GitHub issues, questions through Discussions, security reports through the repository's private advisory form, and me@pcstyle.dev for anything that does not fit in public."
 canonical: https://x.pcstyle.dev/contact
 last-updated: 2026-09-08
 ---
@@ -50,11 +50,17 @@ should not have, open an issue describing the route — without pasting private
 data into it — and it will be looked at. The
 [privacy page](https://x.pcstyle.dev/privacy) explains what the service retains.
 
+## Email
+
+When GitHub does not fit — a private question, a removal request you would
+rather not file in public, or a report you cannot put in an issue — write to
+[me@pcstyle.dev](mailto:me@pcstyle.dev). It reaches the maintainer directly. GitHub is
+still faster for anything reproducible, because the answer stays searchable for
+the next person. No phone number or postal address is published for the project,
+and anything else claiming to be an official x.md support address is not.
+
 ## What to expect
 
 x.md is a free, beta, single-maintainer project. There is no service level
 agreement and no guaranteed response time; issues are answered on a best-effort
-basis, usually fastest for reproducible bugs and security reports. No email
-address, phone number, or postal contact is published for the project — the
-GitHub channels above are the complete list, and anything claiming to be an
-official x.md support address is not.
+basis, usually fastest for reproducible bugs and security reports.

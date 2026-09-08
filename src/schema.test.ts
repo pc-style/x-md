@@ -234,8 +234,9 @@ describe('page content is specific, not filler', () => {
     expect(html).toContain('https://github.com/pc-style/x-md/issues')
     expect(html).toContain('https://github.com/pc-style/x-md/security/advisories')
     expect(html).toContain('https://x.com/pcstyle53')
-    // No invented support address: nothing in the repository publishes one.
-    expect(html).not.toMatch(/mailto:|@x\.md|support@/)
+    // One real address, published deliberately. Anything else would be invented.
+    expect(html).toContain('mailto:me@pcstyle.dev')
+    expect(html).not.toMatch(/@x\.md|support@|hello@|contact@/)
   })
 
   test('privacy names the actual data paths', () => {
