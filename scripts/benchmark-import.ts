@@ -114,7 +114,7 @@ function sequential(retries: number): Strategy {
   }
 }
 
-function parallel(name: string, concurrency: number, windowTargetPosts = 60, pageRetries = 2): Strategy {
+function parallel(name: string, concurrency: number, windowTargetPosts = 30, pageRetries = 4): Strategy {
   return {
     name,
     async run(handle, since, until, withReplies) {
@@ -132,10 +132,11 @@ const STRATEGIES: Array<{ strategy: Strategy; withReplies: boolean; group: strin
   { strategy: parallel('parallel c=16 (default)', 16), withReplies: true, group: 'concurrency' },
   { strategy: parallel('parallel c=24', 24), withReplies: true, group: 'concurrency' },
   { strategy: parallel('parallel c=32', 32), withReplies: true, group: 'concurrency' },
-  { strategy: parallel('parallel c=16 window=30', 16, 30), withReplies: true, group: 'window' },
+  { strategy: parallel('parallel c=16 window=60', 16, 60), withReplies: true, group: 'window' },
   { strategy: parallel('parallel c=16 window=120', 16, 120), withReplies: true, group: 'window' },
   { strategy: parallel('parallel c=16 window=240', 16, 240), withReplies: true, group: 'window' },
-  { strategy: parallel('parallel c=16 no retry', 16, 60, 0), withReplies: true, group: 'retry' },
+  { strategy: parallel('parallel c=16 no retry', 16, 30, 0), withReplies: true, group: 'retry' },
+  { strategy: parallel('parallel c=16 retries=2', 16, 30, 2), withReplies: true, group: 'retry' },
   { strategy: parallel('parallel c=16 originals only', 16), withReplies: false, group: 'replies' },
 ]
 
@@ -153,7 +154,10 @@ const TARGET = Number(opt('target', '600'))
 const REPS = Number(opt('reps', '1'))
 const QUICK = args.includes('--quick')
 
-const strategies = QUICK ? STRATEGIES.filter((s) => ['baseline', 'concurrency'].includes(s.group)) : STRATEGIES
+const SCALE = args.includes('--scale')
+const strategies = SCALE
+  ? STRATEGIES.filter((s) => ['sequential + short-page retry', 'parallel c=16 (default)', 'parallel c=32'].includes(s.strategy.name))
+  : QUICK ? STRATEGIES.filter((s) => ['baseline', 'concurrency'].includes(s.group)) : STRATEGIES
 
 function summarize(handle: string, posts: FxTweet[]) {
   const own = posts.filter((p) => ownPost(p, handle))
@@ -261,7 +265,7 @@ async function main() {
 
   const stamp = startedAt.toISOString().replace(/[:.]/g, '-')
   await writeFile(`bench/results-${stamp}.json`, JSON.stringify({ ...report, runs: report.runs.map(({ ids, ...rest }) => rest) }, null, 2))
-  await writeFile('bench/RESULTS.md', lines.join('\n') + '\n')
+  await writeFile(SCALE ? 'bench/RESULTS-scale.md' : 'bench/RESULTS.md', lines.join('\n') + '\n')
   console.log(`\nwrote bench/RESULTS.md and bench/results-${stamp}.json`)
 }
 

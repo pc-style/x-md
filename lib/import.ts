@@ -32,8 +32,8 @@ export const IMPORT_MAX_POSTS = 5000
 export const IMPORT_DEFAULT_CONCURRENCY = 16
 export const IMPORT_MAX_CONCURRENCY = 32
 
-/** Posts a window should hold: about two upstream pages, so fan-out beats chain length. */
-const WINDOW_TARGET_POSTS = 60
+/** Posts a window should hold: about one upstream page. Benchmarked (bench/RESULTS.md): 30 beat 60/120/240 on throughput at equal completeness, for ~30% more upstream requests. */
+const WINDOW_TARGET_POSTS = 30
 const WINDOW_MIN_HOURS = 1
 const WINDOW_MAX_HOURS = 24 * 30
 /** A window longer than this is split at its oldest seen post and the rest re-queued. */
@@ -44,7 +44,8 @@ const FLOOR_EMPTY_WINDOWS = 3
 const CROSSING_TAIL = 3
 /** Hard cap on windows per import; at the 30-day maximum width this is decades. */
 const MAX_WINDOWS = 1000
-const PAGE_RETRIES = 2
+/** Short pages are bimodal (~30 or 0–1 items) with p≈0.2–0.3 per fetch; four retries puts a lost page below 0.3%. */
+const PAGE_RETRIES = 4
 
 export interface ImportInput {
   handle: string
@@ -62,9 +63,9 @@ export interface ImportInput {
   signal?: AbortSignal
   /** Engine knobs for benchmarks; not exposed on the API. */
   tuning?: {
-    /** Posts a window should hold (default 60). */
+    /** Posts a window should hold (default 30). */
     windowTargetPosts?: number
-    /** Short-page retries per upstream page (default 2; 0 disables). */
+    /** Short-page retries per upstream page (default 4; 0 disables). */
     pageRetries?: number
   }
 }
