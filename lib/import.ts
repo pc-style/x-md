@@ -25,12 +25,14 @@
  */
 import { ConvertError } from './errors.js'
 import { cursorAt, snowflakeTime } from './fx-cursor.js'
-import { fetchFxProfile, fetchFxProfileStatuses, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
+import { FX_BASES, fetchFxProfile, fetchFxProfileStatuses, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
 
 export const IMPORT_DEFAULT_MAX_POSTS = 500
 export const IMPORT_MAX_POSTS = 5000
 export const IMPORT_DEFAULT_CONCURRENCY = 16
-export const IMPORT_MAX_CONCURRENCY = 32
+/** Per upstream base; a pool of N bases allows N times as many chains in flight. */
+export const IMPORT_MAX_CONCURRENCY_PER_BASE = 32
+export const IMPORT_MAX_CONCURRENCY = IMPORT_MAX_CONCURRENCY_PER_BASE * FX_BASES.length
 
 /** Posts a window should hold: about one upstream page. Benchmarked (bench/RESULTS.md): 30 beat 60/120/240 on throughput at equal completeness, for ~30% more upstream requests. */
 const WINDOW_TARGET_POSTS = 30

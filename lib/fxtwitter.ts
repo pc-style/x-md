@@ -1,8 +1,36 @@
 import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
 import { ConvertError } from './errors.js'
 
-/** Self-hosters point this at their own FxTwitter/FxEmbed deployment. */
-const FX_BASE = (process.env.FXTWITTER_BASE_URL ?? 'https://api.fxtwitter.com').replace(/\/+$/, '')
+/**
+ * Upstream pool. `FXTWITTER_BASE_URL` is one base URL or a comma-separated
+ * list (own FxEmbed deployments, the public instance last). Requests rotate
+ * across the pool; a base that answers 429 sits out for its `Retry-After`,
+ * so a walk keeps going on the others. Each base is capped independently by
+ * FX_PER_BASE_INFLIGHT (lib/import.ts reads the pool size for its own cap).
+ */
+export const FX_BASES: readonly string[] = (process.env.FXTWITTER_BASE_URL ?? 'https://api.fxtwitter.com')
+  .split(',').map((base) => base.trim().replace(/\/+$/, '')).filter(Boolean)
+const coolUntil = new Map<string, number>()
+let rotation = 0
+
+/** The next base that is not cooling down; the least-recently-cooled one when all are. */
+export function pickFxBase(): string {
+  const now = Date.now()
+  for (let i = 0; i < FX_BASES.length; i += 1) {
+    const base = FX_BASES[(rotation + i) % FX_BASES.length]
+    if ((coolUntil.get(base) ?? 0) <= now) {
+      rotation = (rotation + i + 1) % FX_BASES.length
+      return base
+    }
+  }
+  return [...FX_BASES].sort((a, b) => (coolUntil.get(a) ?? 0) - (coolUntil.get(b) ?? 0))[0]
+}
+
+/** Test hook. */
+export function resetFxPool(): void {
+  coolUntil.clear()
+  rotation = 0
+}
 const UA = 'x-md/1.0'
 
 export interface FxAuthor {
@@ -222,8 +250,9 @@ export function retryAfterSeconds(header: string | null): number | undefined {
 
 async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response
+  const base = pickFxBase()
   try {
-    response = await providerFetch('fxtwitter', `${FX_BASE}/${path}`, {
+    response = await providerFetch('fxtwitter', `${base}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
       signal,
     })
@@ -233,7 +262,10 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   }
 
   if (response.status === 429) {
-    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', retryAfterSeconds(response.headers.get('retry-after')) ?? 5)
+    const retryAfter = retryAfterSeconds(response.headers.get('retry-after')) ?? 5
+    coolUntil.set(base, Date.now() + retryAfter * 1000)
+    // With more than one base the caller can retry at once on another one.
+    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', FX_BASES.length > 1 ? 0 : retryAfter)
   }
 
   const data = (await response.json()) as FxApiResponse
@@ -329,7 +361,7 @@ export async function fetchFxProfileStatuses(
       if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
         throttled += 1
         attempt -= 1
-        await abortableDelay(Math.min(error.retryAfter ?? 1, 10) * 1000, options.signal)
+        if (error.retryAfter) await abortableDelay(Math.min(error.retryAfter, 10) * 1000, options.signal)
         continue
       }
       throw error

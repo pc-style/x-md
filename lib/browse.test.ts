@@ -23,6 +23,7 @@ vi.mock('./xsearch.js', () => ({
 }))
 
 vi.mock('./fxtwitter.js', () => ({
+  FX_BASES: ['https://api.fxtwitter.com'],
   fetchFxProfile: vi.fn(),
   fetchFxProfileStatuses: vi.fn(),
   fetchFxConnections: vi.fn(),
