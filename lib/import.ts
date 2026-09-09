@@ -40,6 +40,8 @@ const WINDOW_MAX_HOURS = 24 * 30
 const WINDOW_MAX_PAGES = 12
 /** Empty windows past the newest non-empty one before we call it the timeline floor. */
 const FLOOR_EMPTY_WINDOWS = 3
+/** Own non-repost entries at the end of a page whose newest time decides whether the page crossed the window. */
+const CROSSING_TAIL = 3
 /** Hard cap on windows per import; at the 30-day maximum width this is decades. */
 const MAX_WINDOWS = 1000
 const PAGE_RETRIES = 2
@@ -58,6 +60,13 @@ export interface ImportInput {
   /** Called once per post as it arrives, before the final sort. */
   onPost?: (post: FxTweet) => void
   signal?: AbortSignal
+  /** Engine knobs for benchmarks; not exposed on the API. */
+  tuning?: {
+    /** Posts a window should hold (default 60). */
+    windowTargetPosts?: number
+    /** Short-page retries per upstream page (default 2; 0 disables). */
+    pageRetries?: number
+  }
 }
 
 export interface ImportMeta {
@@ -145,12 +154,17 @@ function clampInt(value: number | undefined, fallback: number, max: number): num
   return Math.min(Math.floor(value as number), max)
 }
 
-/** Posts per hour from one page of own, non-repost posts. */
+/**
+ * Timeline entries per hour from one page: every own entry counts (a repost
+ * occupies a slot too), over the span of the own non-repost posts, which are the
+ * ones whose time we know.
+ */
 export function estimateRate(page: FxTweet[], handle: string): number {
-  const times = page.filter((post) => ownPost(post, handle) && !isRepost(post)).map(postTime).filter(Boolean).sort((a, b) => a - b)
+  const own = page.filter((post) => ownPost(post, handle))
+  const times = own.filter((post) => !isRepost(post)).map(postTime).filter(Boolean).sort((a, b) => a - b)
   if (times.length < 2) return 1
   const hours = Math.max((times[times.length - 1] - times[0]) / 3_600_000, 0.25)
-  return times.length / hours
+  return own.length / hours
 }
 
 export async function importProfilePosts(input: ImportInput): Promise<ImportResult> {
@@ -165,7 +179,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   const since = input.since?.getTime()
   if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
 
-  const timeline: FxProfileStatusesOptions = { withReplies: withReplies || onlyReplies, retries: PAGE_RETRIES, signal: input.signal }
+  const timeline: FxProfileStatusesOptions = { withReplies: withReplies || onlyReplies, retries: input.tuning?.pageRetries ?? PAGE_RETRIES, signal: input.signal }
   const stats = { pages: 0, retried: 0, windows: 0 }
   const seen = new Map<string, FxTweet>()
 
@@ -178,6 +192,12 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   }
   const keep = (post: FxTweet): void => {
     if (!post.id || seen.has(post.id) || !wanted(post)) return
+    // Pages overlap the range edges; a post's own time decides membership,
+    // except for reposts, which only carry the original's time.
+    if (!isRepost(post)) {
+      const at = postTime(post)
+      if (at > until || (since !== undefined && at < since)) return
+    }
     seen.set(post.id, post)
     // A stream gets the first `maxPosts` to arrive; the sorted JSON body gets the newest.
     if (seen.size <= maxPosts) input.onPost?.(post)
@@ -197,7 +217,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     fetchPage(cursorAt(until + 1)),
   ])
   const rate = estimateRate(first.results, handle)
-  const windowMs = Math.min(Math.max(WINDOW_TARGET_POSTS / rate, WINDOW_MIN_HOURS), WINDOW_MAX_HOURS) * 3_600_000
+  const windowMs = Math.min(Math.max((input.tuning?.windowTargetPosts ?? WINDOW_TARGET_POSTS) / rate, WINDOW_MIN_HOURS), WINDOW_MAX_HOURS) * 3_600_000
 
   // Lazy window generator plus a stack of subdivisions from over-long windows.
   let nextIndex = 0
@@ -245,26 +265,24 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
         barren = pages === 0
         break
       }
-      let crossed = false
+      // Pages are ordered by timeline position, not by `created_at`: X groups a
+      // conversation so an older parent sits right above the newer reply that
+      // put it there. So keep every own entry a page returns (windows overlap
+      // slightly and `keep` dedupes) and decide that the chain has crossed the
+      // window's older bound only from the page's tail, where position and time
+      // agree again.
+      const tail: number[] = []
       for (const post of page.results) {
         if (!ownPost(post, handle)) continue
-        if (isRepost(post)) {
-          own += 1
-          keep(post)
-          continue
-        }
-        const at = postTime(post)
-        if (at < window.end) {
-          // Pages are ordered by timeline position, so everything after this
-          // item, reposts included, belongs to an older window.
-          crossed = true
-          break
-        }
-        if (at > window.start) continue
         own += 1
-        oldestSeen = Math.min(oldestSeen, at)
         keep(post)
+        if (isRepost(post)) continue
+        tail.push(postTime(post))
+        if (tail.length > CROSSING_TAIL) tail.shift()
       }
+      const position = tail.length > 0 ? Math.max(...tail) : undefined
+      if (position !== undefined) oldestSeen = Math.min(oldestSeen, position)
+      const crossed = position !== undefined && position < window.end
       if (crossed || !page.cursor?.bottom) break
       if (pages + 1 >= WINDOW_MAX_PAGES) {
         // Rate was underestimated for this stretch; hand the rest to another chain,
@@ -313,7 +331,6 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
 
   // Newest first. Reposts sort by the original post's id, which is all upstream gives.
   let posts = [...seen.values()].sort((a, b) => (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
-  if (since !== undefined) posts = posts.filter((post) => isRepost(post) || postTime(post) >= since)
   const truncated = posts.length > maxPosts || cappedOut
   if (posts.length > maxPosts) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))

@@ -7,7 +7,7 @@ vi.mock('./fxtwitter.js', async () => {
 
 import { decodeTimelineCursor, encodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
 import { fetchFxProfile, fetchFxProfileStatuses, type FxListResponse, type FxTweet } from './fxtwitter.js'
-import { estimateRate, importProfilePosts, isReply, ownPost } from './import.js'
+import { estimateRate, importProfilePosts, isReply, ownPost, postTime } from './import.js'
 
 const HOUR = 3_600_000
 const NOW = Date.UTC(2026, 8, 9, 12)
@@ -92,7 +92,10 @@ describe('importProfilePosts', () => {
     const since = new Date(NOW - 600 * HOUR)
     const result = await importProfilePosts({ handle: 'ada', since, until: new Date(NOW), maxPosts: 5000, concurrency: 8 })
     const expected = own('ada', entries).filter((entry) => snowflakeTime(entry.sort) >= since.getTime())
-    expect(result.posts.map((post) => post.id).sort()).toEqual(expected.map((entry) => entry.post.id).sort())
+    // Reposts sitting just past the range edge may ride along: only their original's time is known.
+    const nonRepost = (posts: { id?: string; reposted_by?: unknown }[]) => posts.filter((post) => !post.reposted_by).map((post) => post.id).sort()
+    expect(nonRepost(result.posts)).toEqual(nonRepost(expected.map((entry) => entry.post)))
+    expect(result.posts.filter((post) => post.reposted_by).length).toBeGreaterThanOrEqual(expected.filter((entry) => entry.post.reposted_by).length)
     expect(result.posts.every((post) => ownPost(post, 'ada'))).toBe(true)
     expect(result.meta.windows).toBeGreaterThan(4)
     expect(result.meta.truncated).toBe(false)
@@ -110,8 +113,8 @@ describe('importProfilePosts', () => {
     const since = new Date(NOW - 700 * HOUR)
     const result = await importProfilePosts({ handle: 'ada', since, until: new Date(NOW), maxPosts: 5000, concurrency: 4 })
     const expected = own('ada', entries).filter((entry) => snowflakeTime(entry.sort) >= since.getTime())
-    expect(result.posts).toHaveLength(expected.length)
-    expect(result.posts.filter((post) => post.reposted_by).length).toBe(expected.filter((entry) => entry.post.reposted_by).length)
+    expect(result.posts.filter((post) => !post.reposted_by)).toHaveLength(expected.filter((entry) => !entry.post.reposted_by).length)
+    expect(result.posts.filter((post) => post.reposted_by).length).toBeGreaterThanOrEqual(expected.filter((entry) => entry.post.reposted_by).length)
     expect(result.meta.retried_pages).toBeGreaterThan(0)
   })
 
@@ -237,6 +240,23 @@ describe('importProfilePosts', () => {
     })
     await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 4 })).rejects.toThrow('upstream exploded')
     expect(upstream.calls()).toBeLessThan(12)
+  })
+
+  test('keeps posts that X positions under a newer reply (conversation modules)', async () => {
+    // Every 9th reply drags an older own post (its thread root) into the page right above it.
+    const entries = timeline('ada', 600, 1).flatMap((entry, index) => {
+      if (index % 9 !== 0 || !isReply(entry.post)) return [entry]
+      const rootAt = snowflakeTime(entry.sort) - 5 * 24 * HOUR
+      const root: Entry = { sort: entry.sort + 1n, post: { id: (snowflakeAt(rootAt) + 7n).toString(), text: `root ${index}`, created_at: xdate(rootAt), author: { screen_name: 'ada' } } }
+      return [root, entry]
+    })
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+    const since = new Date(NOW - 500 * HOUR)
+    const result = await importProfilePosts({ handle: 'ada', since, until: new Date(NOW), maxPosts: 5000, concurrency: 8 })
+    const expected = entries.filter((entry) => ownPost(entry.post, 'ada') && !entry.post.reposted_by && postTime(entry.post) >= since.getTime() && postTime(entry.post) <= NOW)
+    const got = new Set(result.posts.map((post) => post.id))
+    const missing = expected.filter((entry) => !got.has(entry.post.id!))
+    expect(missing.map((entry) => entry.post.text)).toEqual([])
   })
 
   test('rejects an inverted range', async () => {
