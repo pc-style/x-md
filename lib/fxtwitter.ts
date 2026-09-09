@@ -1,7 +1,8 @@
 import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
 import { ConvertError } from './errors.js'
 
-const FX_BASE = 'https://api.fxtwitter.com'
+/** Self-hosters point this at their own FxTwitter/FxEmbed deployment. */
+const FX_BASE = (process.env.FXTWITTER_BASE_URL ?? 'https://api.fxtwitter.com').replace(/\/+$/, '')
 const UA = 'x-md/1.0'
 
 export interface FxAuthor {
@@ -156,6 +157,8 @@ export interface FxCursor {
 export interface FxListResponse<T> {
   results: T[]
   cursor?: FxCursor
+  /** Upstream requests it took to get this page (short-page retries, see fetchFxProfileStatuses). */
+  attempts?: number
 }
 
 function normalizeMediaItem(item: FxMediaItem): FxMediaItem {
@@ -217,6 +220,11 @@ async function fxFetchJson<T>(path: string): Promise<T> {
     throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
   }
 
+  if (response.status === 429) {
+    const retryAfter = Number.parseInt(response.headers.get('retry-after') ?? '', 10)
+    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 5)
+  }
+
   const data = (await response.json()) as FxApiResponse
 
   if (data.code === 404 || data.message === 'NOT_FOUND') {
@@ -261,16 +269,53 @@ export async function fetchFxProfile(handle: string): Promise<FxAuthor> {
   return data.user
 }
 
+export interface FxProfileStatusesOptions {
+  /** Include the account's replies (X's "Tweets & replies" timeline). Default false. */
+  withReplies?: boolean
+  /**
+   * Re-request a page that came back suspiciously short. X's timeline backend is
+   * bimodal: the same cursor answers with a full page (~30) or with 0–1 items, and
+   * the short answer is a transient miss, not the end of the timeline. Default 0.
+   */
+  retries?: number
+}
+
+/** A page this short is treated as an upstream miss when retries are allowed. */
+export const FX_SHORT_PAGE = 8
+/** Upstream 429s a page may wait out before the import gives up on it. */
+const FX_THROTTLE_WAITS = 3
+
 export async function fetchFxProfileStatuses(
   handle: string,
   cursor?: string,
   count = 20,
+  options: FxProfileStatusesOptions = {},
 ): Promise<FxListResponse<FxTweet>> {
-  const query = encodeQuery({ cursor, count, with_replies: 'false' })
-  const data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(
-    `2/profile/${encodeURIComponent(handle)}/statuses?${query}`,
-  )
-  return { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor }
+  const query = encodeQuery({ cursor, count, with_replies: options.withReplies ? 'true' : 'false' })
+  const path = `2/profile/${encodeURIComponent(handle)}/statuses?${query}`
+  let best: FxListResponse<FxTweet> = { results: [] }
+  const attempts = 1 + Math.max(0, options.retries ?? 0)
+  let throttled = 0
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let data: Partial<FxListResponse<FxTweet>>
+    try {
+      data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path)
+    } catch (error) {
+      // A throttled page is worth a short wait when the caller asked for retries;
+      // the loop still ends with the error so a hard limit surfaces as 503.
+      if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
+        throttled += 1
+        attempt -= 1
+        await new Promise((resolve) => setTimeout(resolve, Math.min(error.retryAfter ?? 1, 10) * 1000))
+        continue
+      }
+      throw error
+    }
+    const page = { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor, attempts: attempt + 1 + throttled }
+    if (page.results.length >= FX_SHORT_PAGE) return page
+    if (page.results.length >= best.results.length) best = page
+  }
+  return { ...best, attempts: attempts + throttled }
 }
 
 export async function searchFxStatuses(

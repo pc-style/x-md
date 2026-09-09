@@ -166,6 +166,11 @@ export const ERROR_CATALOG = {
     title: 'Upstream provider error',
     resolution: 'Retry with backoff. x.md reads a third-party provider that can fail independently.',
   },
+  upstream_rate_limited: {
+    status: 503,
+    title: 'Upstream provider is rate limiting x.md',
+    resolution: 'Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.',
+  },
   search_unavailable: {
     status: 503,
     title: 'Search temporarily unavailable',

@@ -11,6 +11,8 @@ import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.
 import { SEARCH_IP, SEARCH_KEY, searchIpKey, searchKeyKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
+import { cursorAt, decodeTimelineCursor, encodeTimelineCursor, parseDateInput } from './fx-cursor.js'
+import { isReply, isRepost, ownPost } from './import.js'
 import {
   fetchFxConnections,
   fetchFxProfile,
@@ -23,6 +25,9 @@ import {
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 20
+/** Profile pages are assembled from as many upstream pages as needed (~30 posts each). */
+const PROFILE_MAX_LIMIT = 100
+const PROFILE_MAX_UPSTREAM_PAGES = 8
 const MAX_PAGE = 10
 /** Degraded search results are re-checked quickly so recovery of the live source shows up. */
 const DEGRADED_TTL_MS = 60_000
@@ -65,6 +70,12 @@ export interface BrowseInput {
   full?: string | boolean | null
   format?: string | null
   nocache?: string | boolean | null
+  /** Profile only: include the account's replies (default false). */
+  with_replies?: string | boolean | null
+  /** Profile only: include reposts (default false). */
+  with_reposts?: string | boolean | null
+  /** Profile only: start below this date instead of the newest post. ISO date or unix timestamp. */
+  until?: string | null
   /** Client IP for per-IP limiting of live lookups (anonymous callers). */
   ip?: string | null
   /** Resolved caller identity. Defaults to a public caller keyed by `ip`. */
@@ -82,6 +93,9 @@ export interface BrowseResult {
   page: number
   limit: number
   nextCursor?: string
+  /** Profile only: which timeline entries were kept. */
+  with_replies?: boolean
+  with_reposts?: boolean
   source: BrowseSource
   /** Set when a fallback source served the result instead of live X data. */
   degraded?: boolean
@@ -128,6 +142,66 @@ async function walkPages<T>(
   return result
 }
 
+/**
+ * One profile page of exactly `limit` kept posts, assembled from as many
+ * upstream pages as it takes. The continuation cursor is forged at the last
+ * returned original post (lib/fx-cursor.ts), so the next page starts right
+ * after it instead of at an upstream page boundary. Page mode walks `page`
+ * such blocks and returns the last one.
+ */
+async function collectProfilePosts(
+  handle: string,
+  page: number,
+  cursor: string | undefined,
+  limit: number,
+  withReplies: boolean,
+  withReposts: boolean,
+): Promise<FxListResponse<FxTweet>> {
+  const keep = (post: FxTweet): boolean => {
+    if (!ownPost(post, handle)) return false
+    if (isRepost(post)) return withReposts
+    if (isReply(post)) return withReplies
+    return true
+  }
+  const blocks = cursor ? 1 : page
+  let current = cursor
+  let block: FxTweet[] = []
+  let next: string | undefined
+  for (let index = 0; index < blocks; index += 1) {
+    block = []
+    next = undefined
+    const seen = new Set<string>()
+    for (let fetched = 0; fetched < PROFILE_MAX_UPSTREAM_PAGES && block.length < limit; fetched += 1) {
+      const upstream = await fetchFxProfileStatuses(handle, current, limit, { withReplies, retries: 2 })
+      for (const post of upstream.results) {
+        if (!post.id || seen.has(post.id) || !keep(post)) continue
+        seen.add(post.id)
+        block.push(post)
+      }
+      next = upstream.cursor?.bottom
+      if (!next || upstream.results.length === 0) break
+      current = next
+    }
+    if (block.length > limit) {
+      // Cut at the last original inside the limit: reposts carry the original's
+      // id, not their timeline position, so a block never ends on one.
+      let cut = limit
+      while (cut > 0 && isRepost(block[cut - 1])) cut -= 1
+      if (cut > 0) {
+        block = block.slice(0, cut)
+        const last = block[block.length - 1]
+        const decoded = next ? decodeTimelineCursor(next) : undefined
+        next = encodeTimelineCursor({ issuedAt: decoded?.issuedAt ?? decodeTimelineCursor(cursorAt(Date.now()))!.issuedAt, sortIndex: BigInt(last.id!), direction: 2 })
+      }
+    }
+    if (index < blocks - 1) {
+      current = next
+      if (!current) return { results: [] }
+    }
+  }
+  return { results: block, cursor: next ? { bottom: next } : undefined }
+}
+
 function postLine(post: FxTweet, full: boolean): string {
   const handle = post.author?.screen_name
   const who = handle ? `[@${handle}](https://x.com/${handle})` : post.author?.name ?? 'unknown'
@@ -150,6 +224,8 @@ function continuation(input: BrowseInput, result: Omit<BrowseResult, 'markdown' 
   if (result.limit !== DEFAULT_LIMIT) controls.set('limit', String(result.limit))
   if (truthy(input.full)) controls.set('full', 'true')
   if (input.format) controls.set('format', input.format)
+  if (result.with_replies) controls.set('with_replies', 'true')
+  if (result.with_reposts) controls.set('with_reposts', 'true')
   let path: string
   if (result.resource === 'search') {
     controls.set('q', result.query ?? '')
@@ -255,12 +331,15 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
   const handle = validHandle(input.handle)
   if (resource === 'profile') {
+    const withReplies = truthy(input.with_replies)
+    const withReposts = truthy(input.with_reposts)
+    const until = input.until ? parseDateInput(input.until) : undefined
+    if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_params')
     const [profile, list] = await Promise.all([
       fetchFxProfile(handle),
-      walkPages(page, input.cursor ?? undefined, (cursor) => fetchFxProfileStatuses(handle, cursor, limit)),
+      collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts),
     ])
-    const posts = list.results.filter(isOriginalPost).slice(0, limit)
-    const base = { resource, profile, posts, handle, page, limit, nextCursor: list.cursor?.bottom, source: 'fxtwitter' as const }
+    const base = { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
     return { ...base, markdown: renderMarkdown(input, base, full) }
   }
 
@@ -282,8 +361,8 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
     )
   }
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
-  const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), MAX_LIMIT)
-  const key = buildCacheKey({ v: 4, resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', page, limit, full: truthy(input.full) ? 1 : 0, format: input.format ?? 'markdown' })
+  const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), resource === 'profile' ? PROFILE_MAX_LIMIT : MAX_LIMIT)
+  const key = buildCacheKey({ v: 5, resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
   const cached = await withCache(
     key,
     truthy(input.nocache),
