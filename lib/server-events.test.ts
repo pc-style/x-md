@@ -1,10 +1,12 @@
 import { fetchPosts } from './tweet-fetch.js'
-import { fetchFxProfileStatuses } from './fxtwitter.js'
+import { fetchFxProfileStatuses, searchFxStatuses } from './fxtwitter.js'
 import { IncomingMessage, ServerResponse } from 'node:http'
 import { Socket } from 'node:net'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { waitUntil } from '@vercel/functions'
-import { withServerEvents, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback } from './server-events.js'
+import { withServerEvents, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback, errorTypeFor } from './server-events.js'
+import { problemDetails, sendProblem } from './apierror.js'
+import { ConvertError } from './errors.js'
 import { trackRequest } from './analytics.js'
 import { withCache } from './cache.js'
 
@@ -215,4 +217,65 @@ test('PostHog delivery failures do not fail the handler or expose error text', a
   expect(res.statusCode).toBe(200)
   expect(warn).toHaveBeenCalled()
   expect(JSON.stringify(warn.mock.calls)).not.toContain('private-message')
+})
+
+test.each([
+  ['HTTP 404 body', async () => new Response('{"code":404,"message":"NOT_FOUND"}', { status: 404 })],
+  ['200 with not-found code', async () => new Response('{"code":404,"message":"NOT_FOUND"}')],
+  ['private post', async () => new Response('{"code":401,"message":"PRIVATE_TWEET"}')],
+])('a missing post (%s) is not an upstream error', async (_label, fetcher) => {
+  // FxTwitter answers first; the syndication fallback sees a plain HTTP 404.
+  let calls = 0
+  upstream = async () => ++calls === 1 ? fetcher() : new Response('', { status: 404 })
+  const { req, res } = exchange({ handle: 'private-handle', id: 'private-id' })
+  await withServerEvents('convert', async () => {
+    await expect(fetchPosts('private-handle', '123', 'off')).rejects.toMatchObject({ status: 404 })
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(events('upstream_error')).toHaveLength(0)
+  expect(events('fallback_used')).toHaveLength(0)
+})
+
+test('an empty FxTwitter search timeline is still reported as an outage', async () => {
+  upstream = async () => new Response('{"code":404,"results":[]}')
+  const { req, res } = exchange({ resource: 'search', via: 'route' })
+  await withServerEvents('browse', async () => {
+    await expect(searchFxStatuses('private-query', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(events('upstream_error')).toEqual([expect.objectContaining({ provider: 'fxtwitter', error_type: 'empty_response', upstream_status: 404 })])
+})
+
+test('fallback_used is not emitted when every provider fails', async () => {
+  upstream = async () => new Response('{"code":500}', { status: 500 })
+  const { req, res } = exchange()
+  await withServerEvents('convert', async () => {
+    await expect(fetchPosts('private-handle', '123', 'off')).rejects.toBeInstanceOf(ConvertError)
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(events('fallback_used')).toHaveLength(0)
+  expect(events('upstream_error').length).toBeGreaterThanOrEqual(2)
+})
+
+test.each([
+  ['invalid_url', 400, 'validation_error'],
+  ['invalid_body', 400, 'parse_error'],
+  ['invalid_key', 401, 'validation_error'],
+  ['private_tweet', 404, 'not_found'],
+  ['rate_limited', 429, 'rate_limited'],
+  ['fxtwitter_error', 502, 'upstream_error'],
+  ['search_unavailable', 503, 'upstream_error'],
+  ['internal_error', 500, 'upstream_error'],
+])('request_failed classifies %s from the catalog code', async (code, status, expected) => {
+  expect(errorTypeFor(code, status)).toBe(expected)
+  const { req, res } = exchange()
+  res.status = (code: number) => { res.statusCode = code; return { send() {}, end() {} } }
+  trackRequest(req, res, 'convert')
+  sendProblem(res, problemDetails(code, { instance: '/x', status }), 'application/json')
+  res.emit('finish'); res.emit('close')
+  await flush()
+  expect(events('request_failed')).toEqual([expect.objectContaining({ status, error_type: expected })])
 })

@@ -34,6 +34,30 @@ export async function captureServerEvent(event: string, properties: Properties):
   }
 }
 
+export type RequestErrorType = 'not_found' | 'rate_limited' | 'parse_error' | 'upstream_error' | 'validation_error'
+
+const PROVIDER_CODE = /fxtwitter|syndication|firecrawl|contextdev|xsearch/
+
+/** Coarse failure class from the catalog code first, the HTTP status second. */
+export function errorTypeFor(code: string | undefined, status: number): RequestErrorType {
+  if (code === 'rate_limited' || status === 429) return 'rate_limited'
+  if (status === 404 || code === 'not_found' || code === 'route_not_found' || code === 'private_tweet') return 'not_found'
+  if (code === 'invalid_body') return 'parse_error'
+  if (status >= 500 || code === 'upstream_error' || code === 'search_unavailable' || code === 'all_providers_failed' || (code && PROVIDER_CODE.test(code))) return 'upstream_error'
+  return 'validation_error'
+}
+
+const notedErrors = new WeakMap<object, RequestErrorType>()
+
+/** Called by sendProblem so request_failed can classify by catalog code, not just status. */
+export function noteRequestError(res: object, code: string | undefined, status: number): void {
+  notedErrors.set(res, errorTypeFor(code, status))
+}
+
+export function notedErrorType(res: object, status: number): RequestErrorType {
+  return notedErrors.get(res) ?? errorTypeFor(undefined, status)
+}
+
 function capture(event: string, properties: Properties, state = context.getStore()): void {
   if (!state) return
   state.pending.push(captureServerEvent(event, properties))
@@ -89,7 +113,9 @@ export async function providerFetch(provider: Provider, input: Parameters<typeof
     reported = true
   }
   responseReports.set(response, report)
-  if (!response.ok) report('http_error')
+  // A 404 is a missing resource, not a provider failure; callers that treat a
+  // not-found as an outage (FxTwitter search) report it themselves.
+  if (!response.ok && response.status !== 404) report('http_error')
   const json = response.json.bind(response)
   response.json = async () => {
     let data: unknown
@@ -97,8 +123,9 @@ export async function providerFetch(provider: Provider, input: Parameters<typeof
     if (data == null || (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0)) report('empty_response')
     else if (typeof data !== 'object') report('parse_failure')
     else if (typeof data === 'object') {
-      const body = data as { success?: boolean; code?: number; errors?: unknown[] }
-      if (body.success === false || (body.code ?? 0) >= 400 || body.errors?.length) report('http_error')
+      const body = data as { success?: boolean; code?: number; message?: string; errors?: unknown[] }
+      const notFound = body.code === 404 || body.message === 'NOT_FOUND' || body.message === 'PRIVATE_TWEET'
+      if (!notFound && (body.success === false || (body.code ?? 0) >= 400 || body.errors?.length)) report('http_error')
     }
     return data
   }

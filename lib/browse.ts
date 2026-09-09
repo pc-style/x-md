@@ -231,9 +231,11 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
     let outage: ConvertError | undefined
     for (const provider of providers) {
-      if (outage || (provider.source === 'xsearch' && ['latest', 'top'].includes(feed) && !tagged && Date.now() < fxSearchDownUntil)) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
+      const isFallback = outage || (provider.source === 'xsearch' && ['latest', 'top'].includes(feed) && !tagged && Date.now() < fxSearchDownUntil)
       try {
         const list = await walkPages(page, tagged?.raw, provider.search)
+        // Report only once the fallback has served the request.
+        if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
         return render({ resource, posts: list.results.slice(0, limit), query, feed, page, limit, nextCursor: tagCursor(provider.source, list.cursor?.bottom), source: provider.source })
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
@@ -244,8 +246,8 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
     if (['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
-      trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
       const posts = await searchFirecrawlStatuses(query, feed, limit)
+      trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
       return render({ resource, posts, query, feed, page, limit, source: 'firecrawl', degraded: true })
     }
     throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')

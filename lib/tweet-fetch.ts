@@ -80,9 +80,11 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
 
   const sources: FetchSource[] = ['fxtwitter', 'syndication', ...(process.env.CONTEXT_DEV_API_KEY ? ['contextdev' as const] : []), ...(process.env.FIRECRAWL_API_KEY ? ['firecrawl' as const] : [])]
   for (const [index, attempt] of attempts.entries()) {
-    if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
     try {
-      return await attempt()
+      const result = await attempt()
+      // Only a fallback that actually served the request counts as used.
+      if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
+      return result
     } catch (error) {
       lastError = error
       if (isHardNotFound(error)) throw error

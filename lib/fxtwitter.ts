@@ -1,4 +1,4 @@
-import { providerFetch, reportProviderResponse } from './server-events.js'
+import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
 import { ConvertError } from './errors.js'
 
 const FX_BASE = 'https://api.fxtwitter.com'
@@ -280,6 +280,7 @@ export async function searchFxStatuses(
   count = 20,
 ): Promise<FxListResponse<FxTweet>> {
   const query = encodeQuery({ q: queryText, feed, cursor, count })
+  const started = performance.now()
   let data: Partial<FxListResponse<FxTweet>>
   try {
     data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(`2/search?${query}`)
@@ -288,6 +289,7 @@ export async function searchFxStatuses(
     // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
     // an outage, not a missing post, so surface it as retryable.
     if (error instanceof ConvertError && error.code === 'not_found') {
+      trackUpstream('fxtwitter', 'empty_response', 404, started)
       throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
     }
     throw error

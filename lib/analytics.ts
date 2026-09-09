@@ -1,4 +1,4 @@
-import { captureServerEvent } from './server-events.js'
+import { captureServerEvent, notedErrorType } from './server-events.js'
 import { createHmac, randomUUID } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
@@ -82,7 +82,7 @@ export function trackRequest(
       const status = res.statusCode
       const failed = status >= 400 ? captureServerEvent('request_failed', {
         route, status,
-        error_type: status === 429 ? 'rate_limited' : status === 404 ? 'not_found' : status >= 502 ? 'upstream_error' : status >= 500 ? 'internal_error' : 'validation_error',
+        error_type: notedErrorType(res, status),
         duration_ms: Math.max(0, Math.round(performance.now() - started)),
       }) : Promise.resolve()
       void Promise.all([failed, send()]).finally(resolve)
