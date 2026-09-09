@@ -162,6 +162,12 @@
         "resolution": "Provide `handle` (1-15 word characters) and a numeric `id`.",
         "type": "https://x.pcstyle.dev/docs/reliability#invalid-params"
       },
+      "invalid_option": {
+        "status": 400,
+        "title": "Invalid query option",
+        "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
+        "type": "https://x.pcstyle.dev/docs/reliability#invalid-option"
+      },
       "invalid_handle": {
         "status": 400,
         "title": "Invalid X handle",
@@ -1467,7 +1473,7 @@
                 "false",
                 "0"
               ],
-              "default": "false"
+              "default": "true"
             }
           },
           {
@@ -1483,7 +1489,7 @@
                 "false",
                 "0"
               ],
-              "default": "false"
+              "default": "true"
             }
           },
           {
@@ -1579,7 +1585,7 @@
             }
           },
           "400": {
-            "description": "Invalid handle or status id. Provide `handle` (1-15 word characters) and a numeric `id`.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1609,8 +1615,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_params": {
-                    "$ref": "#/components/examples/invalid_params"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -1619,8 +1625,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_params": {
-                    "$ref": "#/components/examples/invalid_params"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -4969,7 +4975,7 @@
                 "false",
                 "0"
               ],
-              "default": "false"
+              "default": "true"
             }
           },
           {
@@ -4985,7 +4991,7 @@
                 "false",
                 "0"
               ],
-              "default": "false"
+              "default": "true"
             }
           },
           {
@@ -5081,7 +5087,7 @@
             }
           },
           "400": {
-            "description": "Invalid handle or status id. Provide `handle` (1-15 word characters) and a numeric `id`.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5111,8 +5117,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_params": {
-                    "$ref": "#/components/examples/invalid_params"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -5121,8 +5127,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_params": {
-                    "$ref": "#/components/examples/invalid_params"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -9217,18 +9223,18 @@
           "error": "Invalid or disabled API key."
         }
       },
-      "invalid_params": {
-        "summary": "Invalid handle or status id",
+      "invalid_option": {
+        "summary": "Invalid query option",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-params",
-          "title": "Invalid handle or status id",
+          "type": "https://x.pcstyle.dev/docs/reliability#invalid-option",
+          "title": "Invalid query option",
           "status": 400,
-          "detail": "Invalid handle or status id",
+          "detail": "Invalid query option",
           "instance": "https://x.pcstyle.dev/api/v1/posts",
-          "code": "invalid_params",
-          "resolution": "Provide `handle` (1-15 word characters) and a numeric `id`.",
+          "code": "invalid_option",
+          "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
           "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
-          "error": "Invalid handle or status id"
+          "error": "Invalid query option"
         }
       },
       "upstream_rate_limited": {
@@ -9932,8 +9938,8 @@
           "limit": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 20,
-            "description": "Maximum results this page could contain."
+            "maximum": 100,
+            "description": "Maximum results this page could contain: up to 100 on a profile, 20 elsewhere."
           },
           "nextCursor": {
             "type": "string",
@@ -10464,6 +10470,7 @@
               "unsupported_host",
               "invalid_path",
               "invalid_params",
+              "invalid_option",
               "invalid_handle",
               "invalid_resource",
               "invalid_format",

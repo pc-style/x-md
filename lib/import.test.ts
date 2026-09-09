@@ -161,8 +161,48 @@ describe('importProfilePosts', () => {
     expect(streamed.sort()).toEqual(result.posts.map((post) => post.id).sort())
   })
 
+  test('a quiet stretch is not mistaken for the timeline floor', async () => {
+    // 60 posts per hour so windows are the 1 hour minimum, then a 6 hour gap.
+    const busy = timeline('ada', 300, 1 / 60)
+    const gap = 6 * HOUR
+    const older = timeline('ada', 300, 1 / 60).map((entry) => {
+      const sort = entry.sort - BigInt(gap + 5 * HOUR) * 4194304n
+      const at = snowflakeTime(sort)
+      return { sort, post: { ...entry.post, id: entry.post.reposted_by ? entry.post.id : sort.toString(), created_at: entry.post.reposted_by ? entry.post.created_at : xdate(at) } }
+    })
+    const entries = [...busy, ...older]
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+    const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 8 })
+    // The older half reuses the busy half's repost ids, so count unique ids.
+    expect(result.posts.length).toBe(new Set(own('ada', entries).map((entry) => entry.post.id)).size)
+    expect(result.meta.floor_reached).toBe(true)
+  })
+
+  test('a stream never emits more than max_posts', async () => {
+    const entries = timeline('ada', 900, 1)
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+    let streamed = 0
+    const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 100, concurrency: 8, onPost: () => { streamed += 1 } })
+    expect(streamed).toBe(100)
+    expect(result.posts).toHaveLength(100)
+  })
+
+  test('stops when the caller aborts', async () => {
+    const entries = timeline('ada', 900, 1)
+    const upstream = fakeUpstream(entries)
+    const controller = new AbortController()
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (handle, cursor, count, options) => {
+      options?.signal?.throwIfAborted()
+      const page = await withRetries(upstream.mock)(handle, cursor, count, options)
+      if (upstream.calls() === 3) controller.abort(new Error('client left'))
+      return page
+    })
+    await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 2, signal: controller.signal })).rejects.toThrow('client left')
+    expect(upstream.calls()).toBeLessThan(10)
+  })
+
   test('rejects an inverted range', async () => {
-    await expect(importProfilePosts({ handle: 'ada', since: new Date(NOW), until: new Date(NOW - HOUR) })).rejects.toMatchObject({ code: 'invalid_params', status: 400 })
+    await expect(importProfilePosts({ handle: 'ada', since: new Date(NOW), until: new Date(NOW - HOUR) })).rejects.toMatchObject({ code: 'invalid_option', status: 400 })
   })
 
   test('estimates the posting rate from own original posts only', () => {

@@ -349,6 +349,6 @@ describe('profile pages', () => {
     await browse({ resource: 'profile', handle: 'ada', until: '2026-03-01', nocache: true })
     const cursor = vi.mocked(fetchFxProfileStatuses).mock.calls[0][1]!
     expect(snowflakeTime(decodeTimelineCursor(cursor)!.sortIndex)).toBe(Date.UTC(2026, 2, 1))
-    await expect(browse({ resource: 'profile', handle: 'ada', until: 'soon', nocache: true })).rejects.toMatchObject({ code: 'invalid_params' })
+    await expect(browse({ resource: 'profile', handle: 'ada', until: 'soon', nocache: true })).rejects.toMatchObject({ code: 'invalid_option' })
   })
 })

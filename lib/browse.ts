@@ -167,11 +167,14 @@ async function collectProfilePosts(
   let current = cursor
   let block: FxTweet[] = []
   let next: string | undefined
+  // One upstream budget for the whole request: page mode walks earlier blocks
+  // too, and must not turn `page=10&limit=100` into dozens of sequential calls.
+  let budget = PROFILE_MAX_UPSTREAM_PAGES + (blocks - 1) * 2
   for (let index = 0; index < blocks; index += 1) {
     block = []
     next = undefined
     const seen = new Set<string>()
-    for (let fetched = 0; fetched < PROFILE_MAX_UPSTREAM_PAGES && block.length < limit; fetched += 1) {
+    for (; budget > 0 && block.length < limit; budget -= 1) {
       const upstream = await fetchFxProfileStatuses(handle, current, limit, { withReplies, retries: 2 })
       for (const post of upstream.results) {
         if (!post.id || seen.has(post.id) || !keep(post)) continue
@@ -226,6 +229,7 @@ function continuation(input: BrowseInput, result: Omit<BrowseResult, 'markdown' 
   if (input.format) controls.set('format', input.format)
   if (result.with_replies) controls.set('with_replies', 'true')
   if (result.with_reposts) controls.set('with_reposts', 'true')
+  if (result.resource === 'profile' && input.until) controls.set('until', input.until)
   let path: string
   if (result.resource === 'search') {
     controls.set('q', result.query ?? '')
@@ -334,7 +338,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const withReplies = truthy(input.with_replies)
     const withReposts = truthy(input.with_reposts)
     const until = input.until ? parseDateInput(input.until) : undefined
-    if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_params')
+    if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_option')
     const [profile, list] = await Promise.all([
       fetchFxProfile(handle),
       collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts),

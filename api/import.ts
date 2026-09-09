@@ -62,7 +62,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   const handle = (param('handle') ?? '').replace(/^@/, '')
   const format = param('format') ?? 'json'
-  const invalid = (detail: string) => sendProblem(res, problemDetails('invalid_params', { instance, detail }), accept, req.method)
+  const invalid = (detail: string) => sendProblem(res, problemDetails('invalid_option', { instance, detail }), accept, req.method)
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return sendProblem(res, problemDetails('invalid_handle', { instance, detail: 'A valid X handle is required.' }), accept, req.method)
   if (format !== 'json' && format !== 'ndjson') return invalid('`format` must be `json` or `ndjson`.')
   const since = parseDateInput(param('since'))
@@ -85,6 +85,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     onlyReplies: flag(param('only_replies'), false),
   }
 
+  // A client that leaves stops the walk instead of leaving up to 32 chains running.
+  const aborter = new AbortController()
+  res.once('close', () => aborter.abort())
   res.setHeader('Vary', 'Accept')
   res.setHeader('X-Source', 'fxtwitter')
   res.setHeader('Cache-Control', 'no-store')
@@ -98,7 +101,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Accel-Buffering', 'no')
     res.flushHeaders()
     try {
-      const result = await importProfilePosts({ ...options, onPost: (post) => { res.write(`${JSON.stringify({ post })}\n`) } })
+      const result = await importProfilePosts({ ...options, signal: aborter.signal, onPost: (post) => { res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
       if (!(error instanceof ConvertError)) console.error(error)
@@ -109,7 +112,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await importProfilePosts(options)
+    const result = await importProfilePosts({ ...options, signal: aborter.signal })
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('X-Result-Count', String(result.meta.count))
     res.setHeader('X-Import-Pages', String(result.meta.pages))

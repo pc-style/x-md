@@ -210,19 +210,30 @@ function pickTweet(data: FxApiResponse): FxTweet | undefined {
   return raw ? normalizeTweet(raw) : undefined
 }
 
-async function fxFetchJson<T>(path: string): Promise<T> {
+/** `Retry-After` is delay-seconds or an HTTP-date (RFC 9110 §10.2.3); both become whole seconds. */
+export function retryAfterSeconds(header: string | null): number | undefined {
+  const raw = header?.trim()
+  if (!raw) return undefined
+  if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10) || undefined
+  const at = Date.parse(raw)
+  if (!Number.isFinite(at)) return undefined
+  return Math.max(1, Math.ceil((at - Date.now()) / 1000))
+}
+
+async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response
   try {
     response = await providerFetch('fxtwitter', `${FX_BASE}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error
     throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
   }
 
   if (response.status === 429) {
-    const retryAfter = Number.parseInt(response.headers.get('retry-after') ?? '', 10)
-    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 5)
+    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', retryAfterSeconds(response.headers.get('retry-after')) ?? 5)
   }
 
   const data = (await response.json()) as FxApiResponse
@@ -278,12 +289,23 @@ export interface FxProfileStatusesOptions {
    * the short answer is a transient miss, not the end of the timeline. Default 0.
    */
   retries?: number
+  /** Cancels the request and any retry wait. */
+  signal?: AbortSignal
 }
 
 /** A page this short is treated as an upstream miss when retries are allowed. */
 export const FX_SHORT_PAGE = 8
 /** Upstream 429s a page may wait out before the import gives up on it. */
 const FX_THROTTLE_WAITS = 3
+
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve() }, ms)
+    const onAbort = () => { clearTimeout(timer); reject(signal?.reason) }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
 
 export async function fetchFxProfileStatuses(
   handle: string,
@@ -298,15 +320,16 @@ export async function fetchFxProfileStatuses(
   let throttled = 0
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     let data: Partial<FxListResponse<FxTweet>>
+    options.signal?.throwIfAborted()
     try {
-      data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path)
+      data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path, options.signal)
     } catch (error) {
       // A throttled page is worth a short wait when the caller asked for retries;
       // the loop still ends with the error so a hard limit surfaces as 503.
       if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
         throttled += 1
         attempt -= 1
-        await new Promise((resolve) => setTimeout(resolve, Math.min(error.retryAfter ?? 1, 10) * 1000))
+        await abortableDelay(Math.min(error.retryAfter ?? 1, 10) * 1000, options.signal)
         continue
       }
       throw error

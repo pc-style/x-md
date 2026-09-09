@@ -78,13 +78,13 @@ X hands out timeline pages one cursor at a time, about 30 posts and over a secon
 | Parameter | Default | Behavior |
 | --- | --- | --- |
 | `since` | — | Oldest post to include. Omit to go as far back as upstream allows: X serves roughly its 3200 most recent timeline entries per account, and `meta.floor_reached` says when that floor was hit. |
-| `until` | now | Newest post to include. To continue past a truncated result, send its `meta.oldest` here. |
+| `until` | now | Newest post to include, inclusive. To continue past a truncated result, send its `meta.oldest` here and drop the one boundary post you already have (dedupe by `id`). `meta.oldest` comes from original posts, so it is absent when a result holds reposts only. |
 | `max_posts` | `500` | Most posts to return, newest first, maximum **5000**. `meta.truncated` is `true` when the range held more. |
 | `with_replies` | `true` | Include the account's replies. |
 | `with_reposts` | `true` | Include reposts. |
 | `only_replies` | `false` | Return replies only. |
 | `concurrency` | `16` | Parallel upstream chains, maximum **32**. Lower it if imports answer `503 upstream_rate_limited`. |
-| `format` | `json` | `json` answers once, sorted newest first. `ndjson` streams `{"post": …}` lines as chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line. |
+| `format` | `json` | `json` answers once, sorted newest first. `ndjson` streams `{"post": …}` lines as chains deliver them (unsorted, the first `max_posts` to arrive rather than the newest), then a final `{"meta": …, "profile": …}` line. |
 
 The JSON body is `{ profile, posts, meta }`. `meta` reports `count`, `oldest`, `newest`, `truncated`, `floor_reached`, and how much upstream work the walk took (`windows`, `pages`, `duration_ms`). Dates accept `2026-01-01`, a full ISO datetime, or a unix timestamp.
 

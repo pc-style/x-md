@@ -161,9 +161,9 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   const concurrency = clampInt(input.concurrency, IMPORT_DEFAULT_CONCURRENCY, IMPORT_MAX_CONCURRENCY)
   const until = input.until?.getTime() ?? Date.now()
   const since = input.since?.getTime()
-  if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_params')
+  if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
 
-  const timeline = { withReplies: withReplies || onlyReplies, retries: PAGE_RETRIES }
+  const timeline = { withReplies: withReplies || onlyReplies, retries: PAGE_RETRIES, signal: input.signal }
   const stats = { pages: 0, retried: 0, windows: 0 }
   const seen = new Map<string, FxTweet>()
 
@@ -177,7 +177,8 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   const keep = (post: FxTweet): void => {
     if (!post.id || seen.has(post.id) || !wanted(post)) return
     seen.set(post.id, post)
-    input.onPost?.(post)
+    // A stream gets the first `maxPosts` to arrive; the sorted JSON body gets the newest.
+    if (seen.size <= maxPosts) input.onPost?.(post)
   }
 
   const fetchPage = async (cursor: string) => {
@@ -223,9 +224,15 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     let cursor = cursorAt(window.start + 1)
     let own = 0
     let oldestSeen = window.start
+    // Upstream answered with nothing at all. A seek into a quiet stretch still
+    // returns the entries below it; only a seek past the floor returns none.
+    let barren = false
     for (let pages = 0; ; pages += 1) {
       const page = await fetchPage(cursor)
-      if (page.results.length === 0) break
+      if (page.results.length === 0) {
+        barren = pages === 0
+        break
+      }
       let crossed = false
       for (const post of page.results) {
         if (!ownPost(post, handle)) continue
@@ -248,15 +255,20 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       }
       if (crossed || !page.cursor?.bottom) break
       if (pages + 1 >= WINDOW_MAX_PAGES) {
-        // Rate was underestimated for this stretch; hand the rest to another chain.
-        if (oldestSeen > window.end) extra.push({ start: oldestSeen, end: window.end, index: window.index })
+        // Rate was underestimated for this stretch; hand the rest to another chain,
+        // but only when this one moved: a window that yielded no own original post
+        // would otherwise be re-queued unchanged forever.
+        if (oldestSeen < window.start && oldestSeen > window.end) extra.push({ start: oldestSeen, end: window.end, index: window.index })
         break
       }
       cursor = page.cursor.bottom
     }
     if (own > 0) {
       newestNonEmpty = Math.max(newestNonEmpty, window.index)
-    } else if (window.index > newestNonEmpty) {
+      // Quiet stretches are normal; only an unbroken run of empty windows past
+      // every non-empty one is evidence of the floor.
+      emptyBeyond = 0
+    } else if (barren && window.index > newestNonEmpty) {
       emptyBeyond += 1
       if (emptyBeyond >= FLOOR_EMPTY_WINDOWS) floorReached = true
     }

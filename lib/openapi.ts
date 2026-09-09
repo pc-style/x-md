@@ -523,8 +523,8 @@ const IMPORT_PARAMS: readonly ParameterObject[] = [
   { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to include. Omit to go as far back as upstream allows (X serves roughly the 3200 most recent timeline entries; `meta.floor_reached` says when that floor was hit).' },
   { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here.' },
   { name: 'max_posts', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_POSTS, default: IMPORT_DEFAULT_MAX_POSTS }, description: `Most posts to return, newest first. Values above ${IMPORT_MAX_POSTS} are clamped. \`meta.truncated\` is true when the range held more.` },
-  booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE),
-  booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE),
+  { ...booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
+  { ...booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   booleanParam('only_replies', 'Return only the account\'s replies.', BROWSE_TRUE),
   { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once. Higher is faster until the upstream provider throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
   { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` streams one `{"post": …}` line per post as the parallel chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
@@ -723,7 +723,7 @@ function errorResponses(codes: readonly ErrorCode[], recoverable: boolean): Reco
  */
 const POST_ERRORS: readonly ErrorCode[] = ['missing_url', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
 const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
-const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_params', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_rate_limited']
+const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_rate_limited']
 const SEARCH_ERRORS: readonly ErrorCode[] = ['missing_query', 'invalid_key', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 const LEGACY_BROWSE_ERRORS: readonly ErrorCode[] = ['invalid_resource', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 /** oEmbed reads nothing upstream, so it can only fail on method, quota or a bug. */
@@ -1220,7 +1220,7 @@ function schemas(): Record<string, JsonSchema> {
         feed: { type: 'string', enum: ['latest', 'top', 'photos', 'videos', 'users'], description: 'The resolved feed. `media` is normalised to `photos`. Search only.' },
         handle: str('The account this page belongs to. Profile and connection reads only.'),
         page: { type: 'integer', minimum: 1, maximum: MAX_PAGE, description: 'Ordinal page that was served.' },
-        limit: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, description: 'Maximum results this page could contain.' },
+        limit: { type: 'integer', minimum: 1, maximum: PROFILE_MAX_LIMIT, description: `Maximum results this page could contain: up to ${PROFILE_MAX_LIMIT} on a profile, ${MAX_LIMIT} elsewhere.` },
         nextCursor: str('Opaque cursor for the next page. Absent when there is no continuation — including on degraded search results. Send it back as `cursor`; never decode or edit it, and never reuse it on another feed.'),
         source: { type: 'string', enum: ['fxtwitter', 'xsearch', 'firecrawl'], description: 'Upstream provider that answered.' },
         degraded: { type: 'boolean', description: 'True when live X search was unavailable and web-indexed snippets were served instead: ordering and coverage differ, text may be truncated, metrics are missing, and there is no cursor.' },

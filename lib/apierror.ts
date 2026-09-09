@@ -71,6 +71,11 @@ export const ERROR_CATALOG = {
     title: 'Invalid handle or status id',
     resolution: 'Provide `handle` (1-15 word characters) and a numeric `id`.',
   },
+  invalid_option: {
+    status: 400,
+    title: 'Invalid query option',
+    resolution: 'Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.',
+  },
   invalid_handle: {
     status: 400,
     title: 'Invalid X handle',
