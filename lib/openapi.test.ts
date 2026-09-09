@@ -224,7 +224,8 @@ describe('pagination', () => {
       for (const name of ['cursor', 'page', 'limit']) expect(names, `${path} ${name}`).toContain(name)
       const limit = operation.parameters.find((parameter) => parameter.name === 'limit')?.schema
       expect(limit?.type, path).toBe('integer')
-      expect(limit?.maximum, path).toBe(20)
+      // Profile pages are assembled from several upstream pages, so they allow 100.
+      expect(limit?.maximum, path).toBe(/\/profiles\/\{handle\}$|^\/\{handle\}$/.test(path) ? 100 : 20)
       expect(limit?.default, path).toBe(20)
       expect(operation.parameters.find((parameter) => parameter.name === 'page')?.schema.maximum, path).toBe(10)
     }

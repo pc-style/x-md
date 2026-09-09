@@ -43,7 +43,8 @@ way once expanded.
 | Job | Route |
 | --- | --- |
 | One post, its thread, and its replies | `GET /{handle}/status/{id}` |
-| A profile and its latest original posts | `GET /{handle}` |
+| A profile and its latest posts | `GET /{handle}` (add `with_replies=true`, `with_reposts=true`, `limit=100`) |
+| An account's whole post history as raw JSON | `GET /{handle}/posts?since={date}&max_posts=2000` |
 | Search public posts or accounts | `GET /search?q={query}&feed=latest\|top\|photos\|videos\|users` |
 | Who follows an account | `GET /{handle}/followers` |
 | Who an account follows | `GET /{handle}/following` |
@@ -57,6 +58,7 @@ The same reads, versioned and stable for machine callers, live under
 GET /api/v1/posts?url={status url}
 GET /api/v1/search?q={query}
 GET /api/v1/profiles/{handle}
+GET /api/v1/profiles/{handle}/posts
 GET /api/v1/profiles/{handle}/followers
 GET /api/v1/profiles/{handle}/following
 ```

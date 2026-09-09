@@ -1,6 +1,6 @@
 ---
 title: Profiles and connections
-description: Read an account's profile, recent original posts, followers, and following.
+description: Read an account's profile and posts, import its whole history in bulk, and list followers and following.
 sidebar:
   order: 3
   icon: user
@@ -8,7 +8,7 @@ sidebar:
 
 ## Read a profile
 
-`GET /{handle}` — the permalink form. It returns the profile and up to 20 recent original posts. Replies and reposts are filtered after retrieval, so a page can contain fewer than 20 posts.
+`GET /{handle}` — the permalink form. It returns the profile and its recent posts: original posts only by default, up to 100 per page with `limit`. Add `with_replies=true` and `with_reposts=true` to get the account's replies and reposts too. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`, so `limit=100` really returns 100.
 
 ```bash
 curl -sS 'https://x.pcstyle.dev/vercel?full=true'
@@ -46,14 +46,53 @@ Both forms take the same options and return the same body; the versioned ones ar
 
 | Parameter | Default | Behavior |
 | --- | --- | --- |
-| `limit` | `20` | Items per response, maximum **20**. Larger values are clamped. |
-| `cursor` | — | Opaque `nextCursor` from the previous response. |
+| `limit` | `20` | Items per response. Maximum **100** on a profile, **20** on connections. Larger values are clamped. |
+| `with_replies` | `false` | Profile only. `true` includes the account's replies. |
+| `with_reposts` | `false` | Profile only. `true` includes reposts. A repost is the original post with `reposted_by` set, so it carries the original's `id` and `created_at`. |
+| `until` | — | Profile only. ISO date, ISO datetime, or unix timestamp: the page starts just below that instant, so you can jump to a date without walking cursors. Ignored when `cursor` is present. |
+| `cursor` | — | Opaque `nextCursor` from the previous response. No page ceiling: keep following it. |
 | `page` | `1` | Page 1–10; prefer cursors. Ignored when `cursor` is present. |
 | `full` | `false` | `true` or `1` adds dates, metrics, and expanded profile details. |
 | `format` | `markdown` | `markdown` or `json`. Browse routes do not accept `obsidian`. |
 | `nocache` | `false` | `true` or `1` bypasses the application cache. |
 
 Follow `nextCursor` to continue. [See pagination](/pagination).
+
+## Import a post history
+
+`GET /{handle}/posts` and `GET /api/v1/profiles/{handle}/posts` return an account's history in bulk as raw JSON: one request, a whole date range, every upstream field preserved (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). Built for onboarding importers and memory builders that need hundreds or thousands of posts at once, replies included.
+
+```bash
+# the last year, replies and reposts included, up to 2000 posts
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000'
+
+# as far back as upstream allows, replies only
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?only_replies=true&max_posts=5000'
+
+# stream posts as they arrive
+curl -sN 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
+```
+
+X hands out timeline pages one cursor at a time, about 30 posts and over a second each, so a naive walk manages 20–30 posts a second. x.md instead cuts the range into time windows, starts an independent chain at each one, and walks them concurrently: measured throughput is a few hundred posts a second, so 2000 posts arrive in seconds.
+
+| Parameter | Default | Behavior |
+| --- | --- | --- |
+| `since` | — | Oldest post to include. Omit to go as far back as upstream allows: X serves roughly its 3200 most recent timeline entries per account, and `meta.floor_reached` says when that floor was hit. |
+| `until` | now | Newest post to include. To continue past a truncated result, send its `meta.oldest` here. |
+| `max_posts` | `500` | Most posts to return, newest first, maximum **5000**. `meta.truncated` is `true` when the range held more. |
+| `with_replies` | `true` | Include the account's replies. |
+| `with_reposts` | `true` | Include reposts. |
+| `only_replies` | `false` | Return replies only. |
+| `concurrency` | `16` | Parallel upstream chains, maximum **32**. Lower it if imports answer `503 upstream_rate_limited`. |
+| `format` | `json` | `json` answers once, sorted newest first. `ndjson` streams `{"post": …}` lines as chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line. |
+
+The JSON body is `{ profile, posts, meta }`. `meta` reports `count`, `oldest`, `newest`, `truncated`, `floor_reached`, and how much upstream work the walk took (`windows`, `pages`, `duration_ms`). Dates accept `2026-01-01`, a full ISO datetime, or a unix timestamp.
+
+Two upstream facts to know: a repost is returned as the original post with `reposted_by` set, so it sorts by the original's date; and the "with replies" timeline is what X serves, so self-threads appear as replies to the account itself.
+
+:::note
+An import counts as one request against your quota, however many posts it returns. It is not cached: every call walks upstream.
+:::
 
 :::note
 Pinned posts are not identified, and X Lists are unsupported.

@@ -53,6 +53,10 @@ The provider is configured through `X_SEARCH_SESSIONS_JSON`; the expected shape 
 
 The provider budgets its own upstream capacity per 15-minute window, shared across post and user searches. Failed attempts and page walks count. Unhealthy entries are taken out of rotation in the current process and retried later; health is per instance.
 
+## Your own FxTwitter upstream
+
+Profiles, posts, and bulk imports read `https://api.fxtwitter.com` by default. Set `FXTWITTER_BASE_URL` to point x.md at your own [FxEmbed](https://github.com/FxEmbed/FxEmbed) deployment: bulk imports then run against your capacity instead of the public instance's per-IP limit, and `concurrency` on the import route can go to its maximum of 32 without throttling. The limits in `lib/import.ts` (`IMPORT_MAX_POSTS`, `IMPORT_MAX_CONCURRENCY`) and the front-door quota in `lib/quotas.ts` are the only caps; there are no hosted-only ones.
+
 ## Shared counters
 
 Attach Upstash Redis through the Vercel marketplace or CLI. The service automatically uses either environment-variable pair:
