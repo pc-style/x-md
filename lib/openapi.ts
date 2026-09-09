@@ -42,8 +42,10 @@ const BROWSE_SUCCESSOR_PROSE = Object.entries(BROWSE_SUCCESSORS)
   .join(', ')
 
 const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 20
+const MAX_LIMIT = 100
 const PROFILE_MAX_LIMIT = 100
+/** Own-account search feeds (photos, videos, users, and any search served by own accounts) answer one upstream page. */
+const ACCOUNT_SEARCH_LIMIT = 20
 const MAX_PAGE = 10
 
 export interface JsonSchema {
@@ -411,7 +413,7 @@ const FEED_PARAM: ParameterObject = {
 const CURSOR_PARAM: ParameterObject = {
   name: 'cursor',
   in: 'query',
-  description: 'Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.',
+  description: 'Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.',
   required: false,
   schema: { type: 'string' },
 }
@@ -427,7 +429,7 @@ const PAGE_PARAM: ParameterObject = {
 const LIMIT_PARAM: ParameterObject = {
   name: 'limit',
   in: 'query',
-  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}.`,
+  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}. A page is assembled from as many upstream pages as it takes and cut exactly at \`limit\`; when the cut falls inside an upstream page the \`nextCursor\` carries an offset (\`…@15\`), so nothing is lost or repeated. Searches served by own accounts (\`photos\`, \`videos\`, \`users\`, or a fallback) answer at most ${ACCOUNT_SEARCH_LIMIT} per request and report that in \`limit\`.`,
   required: false,
   schema: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, default: DEFAULT_LIMIT },
 }
@@ -517,6 +519,8 @@ const UNTIL_PARAM: ParameterObject = {
   schema: DATE_SCHEMA,
   example: '2026-03-01',
 }
+const SEARCH_SINCE_PARAM: ParameterObject = { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to match. Applied upstream as X\'s `since_time:` operator, so it works on every provider.' }
+const SEARCH_UNTIL_PARAM: ParameterObject = { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to match. Applied upstream as X\'s `until_time:` operator.' }
 const PROFILE_PARAMS: readonly ParameterObject[] = [CURSOR_PARAM, PAGE_PARAM, PROFILE_LIMIT_PARAM, WITH_REPLIES_PARAM, WITH_REPOSTS_PARAM, UNTIL_PARAM, BROWSE_FORMAT_PARAM, BROWSE_FULL_PARAM, BROWSE_NOCACHE_PARAM]
 
 const IMPORT_PARAMS: readonly ParameterObject[] = [
@@ -902,8 +906,8 @@ function paths(): Record<string, { get: OperationObject }> {
       '/api/v1/search',
       'searchPosts',
       'Search public posts and accounts',
-      'Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`.',
-      [Q_PARAM, FEED_PARAM, ...LIST_PARAMS],
+      'Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`. `since` and `until` bound the results by date; `limit` goes up to 100 on the `latest` and `top` feeds.',
+      [Q_PARAM, FEED_PARAM, SEARCH_SINCE_PARAM, SEARCH_UNTIL_PARAM, ...LIST_PARAMS],
     ),
     oembedOperation('/api/v1/oembed', 'getOEmbed', 'Return the oEmbed metadata a social-preview client asks for after reading an x.md permalink.'),
 
@@ -942,7 +946,7 @@ function paths(): Record<string, { get: OperationObject }> {
       'searchPostsByPath',
       'Search public posts from the permalink shape',
       'The permalink surface for search: `https://x.pcstyle.dev/search?q=...` mirrors `https://x.com/search?q=...`.',
-      [Q_PARAM, FEED_PARAM, ...LIST_PARAMS],
+      [Q_PARAM, FEED_PARAM, SEARCH_SINCE_PARAM, SEARCH_UNTIL_PARAM, ...LIST_PARAMS],
     ),
     oembedOperation('/oembed', 'getOEmbedByPath', 'The permalink surface for oEmbed, and the URL x.md advertises in its own preview HTML.'),
 
@@ -1611,8 +1615,11 @@ export function openapiDocument(): OpenApiDocument {
       max_limit: MAX_LIMIT,
       max_page: MAX_PAGE,
       cursor_opacity: 'opaque',
+      exact_pages: 'Every page holds exactly `limit` items until the list ends; x.md assembles it from as many upstream pages as needed. A cursor may carry an offset (`…@15`); treat it as opaque.',
+      cursor_ceiling: 'none',
       termination: 'Stop when `nextCursor` is absent. A short or empty page is not the end of the list.',
-      notes: 'Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor.',
+      notes: 'Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor. Own-account search feeds answer at most 20 per request.',
+      bulk: 'For an account\'s whole history use `/{handle}/posts` (`since`, `until`, `max_posts`, `format=ndjson`) instead of paging.',
     },
     paths: paths(),
     components: {

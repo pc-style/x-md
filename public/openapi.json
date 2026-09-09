@@ -4,7 +4,7 @@
     "title": "x.md API",
     "version": "1.1.0",
     "summary": "Read public X posts, threads, profiles, connections and search results as Markdown or JSON.",
-    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 20.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
+    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 100.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
     "termsOfService": "https://x.pcstyle.dev/terms",
     "license": {
       "name": "MIT",
@@ -331,11 +331,14 @@
       "limit": "limit"
     },
     "default_limit": 20,
-    "max_limit": 20,
+    "max_limit": 100,
     "max_page": 10,
     "cursor_opacity": "opaque",
+    "exact_pages": "Every page holds exactly `limit` items until the list ends; x.md assembles it from as many upstream pages as needed. A cursor may carry an offset (`…@15`); treat it as opaque.",
+    "cursor_ceiling": "none",
     "termination": "Stop when `nextCursor` is absent. A short or empty page is not the end of the list.",
-    "notes": "Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor."
+    "notes": "Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor. Own-account search feeds answer at most 20 per request.",
+    "bulk": "For an account's whole history use `/{handle}/posts` (`since`, `until`, `max_posts`, `format=ndjson`) instead of paging."
   },
   "paths": {
     "/api/v1/posts": {
@@ -875,7 +878,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -2028,7 +2031,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -2049,12 +2052,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -2555,7 +2558,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -2576,12 +2579,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -3063,7 +3066,7 @@
       "get": {
         "operationId": "searchPosts",
         "summary": "Search public posts and accounts",
-        "description": "Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`.\n\nResults are paged: prefer the opaque `nextCursor` over the ordinal `page`, and send a cursor back only to the feed that issued it. When live X search is unavailable, x.md may answer with web-indexed snippets marked `degraded: true` and no cursor. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`. `since` and `until` bound the results by date; `limit` goes up to 100 on the `latest` and `top` feeds.\n\nResults are paged: prefer the opaque `nextCursor` over the ordinal `page`, and send a cursor back only to the feed that issued it. When live X search is unavailable, x.md may answer with web-indexed snippets marked `degraded: true` and no cursor. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Search"
         ],
@@ -3098,9 +3101,30 @@
             }
           },
           {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
+            },
+            "example": "2025-01-01",
+            "description": "Oldest post to match. Applied upstream as X's `since_time:` operator, so it works on every provider."
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
+            },
+            "description": "Newest post to match. Applied upstream as X's `until_time:` operator."
+          },
+          {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -3121,12 +3145,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -4377,7 +4401,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -5530,7 +5554,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -5551,12 +5575,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -6057,7 +6081,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -6078,12 +6102,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -6600,9 +6624,30 @@
             }
           },
           {
+            "name": "since",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
+            },
+            "example": "2025-01-01",
+            "description": "Oldest post to match. Applied upstream as X's `since_time:` operator, so it works on every provider."
+          },
+          {
+            "name": "until",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
+            },
+            "description": "Newest post to match. Applied upstream as X's `until_time:` operator."
+          },
+          {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -6623,12 +6668,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -8193,7 +8238,7 @@
           {
             "name": "cursor",
             "in": "query",
-            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
+            "description": "Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.",
             "required": false,
             "schema": {
               "type": "string"
@@ -8214,12 +8259,12 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 20 are clamped to 20.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 20,
+              "maximum": 100,
               "default": 20
             }
           },
@@ -9954,7 +9999,7 @@
             "type": "integer",
             "minimum": 1,
             "maximum": 100,
-            "description": "Maximum results this page could contain: up to 100 on a profile, 20 elsewhere."
+            "description": "Maximum results this page could contain: up to 100 on a profile, 100 elsewhere."
           },
           "nextCursor": {
             "type": "string",

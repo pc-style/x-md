@@ -90,7 +90,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), ip: resolved.ip, caller: resolved.caller })
+    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller })
     trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)

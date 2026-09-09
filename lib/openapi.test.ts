@@ -224,8 +224,8 @@ describe('pagination', () => {
       for (const name of ['cursor', 'page', 'limit']) expect(names, `${path} ${name}`).toContain(name)
       const limit = operation.parameters.find((parameter) => parameter.name === 'limit')?.schema
       expect(limit?.type, path).toBe('integer')
-      // Profile pages are assembled from several upstream pages, so they allow 100.
-      expect(limit?.maximum, path).toBe(/\/profiles\/\{handle\}$|^\/\{handle\}$/.test(path) ? 100 : 20)
+      // Every list is assembled from as many upstream pages as needed, so all allow 100.
+      expect(limit?.maximum, path).toBe(100)
       expect(limit?.default, path).toBe(20)
       expect(operation.parameters.find((parameter) => parameter.name === 'page')?.schema.maximum, path).toBe(10)
     }
@@ -240,7 +240,7 @@ describe('pagination', () => {
   })
 
   test('the document says cursors are preferred', () => {
-    expect(doc['x-pagination']).toMatchObject({ style: 'cursor', preferred: 'cursor', max_limit: 20, max_page: 10 })
+    expect(doc['x-pagination']).toMatchObject({ style: 'cursor', preferred: 'cursor', max_limit: 100, max_page: 10 })
     expect((doc['x-pagination'] as { response_fields: Record<string, string> }).response_fields.next_cursor).toBe('nextCursor')
   })
 })
