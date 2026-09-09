@@ -43,7 +43,7 @@ test.each([convertHandler, browseHandler])('real handler emits separate complete
   const { req, res } = exchange(); await handler(req, res)
   const sent = await events()
   expect(res.statusCode).toBe(200)
-  expect(sent.map(event => event.event).sort()).toEqual(['request_completed', 'xmd_data_captured'])
+  expect(sent.filter(event => ['request_completed', 'xmd_data_captured'].includes(event.event)).map(event => event.event).sort()).toEqual(['request_completed', 'xmd_data_captured'])
   expect(sent.find(event => event.event === 'request_completed').properties.payload).toBeUndefined()
   expect(sent.find(event => event.event === 'xmd_data_captured').properties.payload.posts).toEqual(posts)
   expect(JSON.stringify(sent)).not.toContain('private-')
@@ -52,19 +52,20 @@ test.each([convertHandler, browseHandler])('real handler emits separate complete
 
 test.each([convertHandler, browseHandler])('HEAD only emits metadata, errors never archive', async handler => {
   const { req, res } = exchange('HEAD'); await handler(req, res)
-  expect((await events()).map(event => event.event)).toEqual(['request_completed'])
+  expect((await events()).some(event => event.event === 'xmd_data_captured')).toBe(false)
   vi.mocked(convertTweet).mockRejectedValue(new ConvertError(404, 'not found', 'not_found'))
   vi.mocked(browse).mockRejectedValue(new ConvertError(404, 'not found', 'not_found'))
   const failure = exchange(); await handler(failure.req, failure.res)
   expect(failure.res.statusCode).toBe(404)
-  expect((await events()).every(event => event.event === 'request_completed')).toBe(true)
+  expect((await events()).some(event => event.event === 'xmd_data_captured')).toBe(false)
+  expect((await events()).filter(event => event.event === 'request_failed')).toHaveLength(1)
 })
 
 test('invalid API key returns 401 without browsing or archive', async () => {
   vi.mocked(resolveCaller).mockResolvedValue({ caller: { kind: 'public' }, status: 'invalid', ip: '192.0.2.1' })
   const { req, res } = exchange(); await browseHandler(req, res)
   expect(res.statusCode).toBe(401); expect(browse).not.toHaveBeenCalled()
-  expect((await events()).map(event => event.event)).toEqual(['request_completed'])
+  expect((await events()).some(event => event.event === 'xmd_data_captured')).toBe(false)
 })
 
 test('verified key actor never enters public response or payload', async () => {

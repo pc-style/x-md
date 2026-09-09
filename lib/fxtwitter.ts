@@ -1,3 +1,4 @@
+import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
 import { ConvertError } from './errors.js'
 
 const FX_BASE = 'https://api.fxtwitter.com'
@@ -209,7 +210,7 @@ function pickTweet(data: FxApiResponse): FxTweet | undefined {
 async function fxFetchJson<T>(path: string): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`${FX_BASE}/${path}`, {
+    response = await providerFetch('fxtwitter', `${FX_BASE}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
     })
   } catch {
@@ -233,6 +234,11 @@ async function fxFetchJson<T>(path: string): Promise<T> {
       'fxtwitter_error',
     )
   }
+
+  // A valid empty list is not an outage; a missing expected payload is.
+  if (path.startsWith('2/status/') && !data.status && !data.tweet) reportProviderResponse(response, 'empty_response')
+  else if (/^2\/profile\/[^/?]+$/.test(path) && !(data as { user?: unknown }).user) reportProviderResponse(response, 'empty_response')
+  else if ((path.startsWith('2/search?') || /^2\/profile\/[^/]+\/(statuses|followers|following)/.test(path)) && !Array.isArray((data as { results?: unknown }).results)) reportProviderResponse(response, 'parse_failure')
 
   return data as T
 }
@@ -274,6 +280,7 @@ export async function searchFxStatuses(
   count = 20,
 ): Promise<FxListResponse<FxTweet>> {
   const query = encodeQuery({ q: queryText, feed, cursor, count })
+  const started = performance.now()
   let data: Partial<FxListResponse<FxTweet>>
   try {
     data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(`2/search?${query}`)
@@ -282,6 +289,7 @@ export async function searchFxStatuses(
     // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
     // an outage, not a missing post, so surface it as retryable.
     if (error instanceof ConvertError && error.code === 'not_found') {
+      trackUpstream('fxtwitter', 'empty_response', 404, started)
       throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
     }
     throw error

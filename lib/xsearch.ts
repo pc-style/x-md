@@ -1,3 +1,4 @@
+import { providerFetch, trackRateLimit } from './server-events.js'
 /**
  * Own-account X search: SearchTimeline via @the-convocation/twitter-scraper
  * using our logged-in sessions. Second tier after FxTwitter, before Firecrawl.
@@ -111,7 +112,11 @@ async function scraperFor(state: SessionState): Promise<Scraper> {
   if (state.scraper) return state.scraper
   const scraper = new Scraper({
     rateLimitStrategy: new ErrorRateLimitStrategy(),
-    fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) }),
+    fetch: (input, init) => {
+      const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+      const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout
+      return providerFetch('xsearch', input, { ...init, signal })
+    },
   })
   await scraper.setCookies([
     `auth_token=${state.session.authToken}; Domain=.x.com; Path=/; Secure; HttpOnly`,
@@ -284,12 +289,14 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
     const ipKey = accountIpKey(caller.ip ?? '')
     const fair = await rateLimit(ipKey, ACCOUNT_IP.quota, ACCOUNT_IP.windowSec, true)
     if (!fair.allowed) {
+      trackRateLimit('ip')
       throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_IP.name)
     }
     // Shared public cap: whatever the pool has left after key usage and reservations.
     // Refund both counters on reject so retries do not burn capacity that keys release later in the window.
     const shared = await rateLimit(ACCOUNT_PUBLIC_COUNTER, await publicCapNow(), ACCOUNT_WINDOW_SEC, true, true)
     if (!shared.allowed) {
+      trackRateLimit('global')
       await refundRateLimit(ipKey, ACCOUNT_WINDOW_SEC, fair.bucket)
       // Reported against the caller's own per-IP policy: the shared pool's level is fleet health, not a personal quota.
       throw new ConvertError(429, 'Public search capacity is used up for this window. Retry after it resets.', 'rate_limited', shared.retryAfter, ACCOUNT_IP.name)
@@ -298,6 +305,7 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
     // Refund rejected attempts: they must not count as pool usage in the snapshot.
     const fair = await rateLimit(accountKeyKey(caller.id), caller.limit, ACCOUNT_WINDOW_SEC, true, true)
     if (!fair.allowed) {
+      trackRateLimit('key')
       throw new ConvertError(429, 'API key search allowance reached. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_KEY_NAME)
     }
   }

@@ -1,3 +1,4 @@
+import { trackRateLimit } from './server-events.js'
 /**
  * Rate-limit response headers, and the per-request bookkeeping that fills them in.
  *
@@ -201,6 +202,7 @@ export function applyRequestQuota(res: HeaderWriter, quota: RequestQuota): void 
  * is known; without it a 429 would report the quota it had one request ago.
  */
 export function applyExhaustedQuota(res: HeaderWriter, quota: RequestQuota, policy: string | undefined, retryAfter: number): void {
+  if (policy === 'api-ip') trackRateLimit('ip')
   const reset = Math.max(1, nonNegative(retryAfter))
   setRateLimitHeaders(res, policy ? quota.states.map((s) => (s.name === policy ? { ...s, remaining: 0, resetSec: reset } : s)) : quota.states)
   setRetryAfter(res, reset)

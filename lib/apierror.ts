@@ -9,6 +9,7 @@
 
 import { ConvertError } from './errors.js'
 import { mediaQuality } from './negotiate.js'
+import { noteRequestError } from './server-events.js'
 
 const SITE = 'https://x.pcstyle.dev'
 const REPO = 'https://github.com/pc-style/x-md'
@@ -332,6 +333,7 @@ export function sendProblem(
   accept: string,
   method = 'GET',
 ): unknown {
+  noteRequestError(res, problem.code, problem.status)
   const response = problemResponse(problem, accept)
   for (const [key, value] of Object.entries(response.headers)) {
     if (key === 'Link') appendLink(res, value)

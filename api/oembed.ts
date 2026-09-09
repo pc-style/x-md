@@ -1,3 +1,4 @@
+import { withServerEvents } from '../lib/server-events.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
@@ -6,7 +7,7 @@ import { requestOrigin, setCorsHeaders } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'oembed')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
@@ -71,3 +72,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendProblem(res, problemFrom(error, instance), accept, req.method)
   }
 }
+
+export default withServerEvents('oembed', handler)
