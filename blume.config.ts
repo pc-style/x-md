@@ -4,8 +4,7 @@ export default defineConfig({
   title: 'x.md docs',
   description: 'Read X posts, search, and profiles as Markdown or JSON. Start with one request.',
   basePath: '/docs',
-  // Blume prefixes root-relative links with /docs; step back to the site root.
-  logo: { text: 'x.md', href: '/../' },
+  logo: { text: 'x.md', href: '/' },
   content: { root: 'docs' },
   deployment: {
     output: 'static',
@@ -41,6 +40,7 @@ export default defineConfig({
       '/mcp',
       '/self-hosting',
     ],
+    // Blume prefixes navigation links with /docs; step back to the site root.
     actions: [{ label: 'Website', href: '/../' }],
     cta: { label: 'Convert', href: '/../#convert' },
   },
