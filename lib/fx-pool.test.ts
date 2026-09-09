@@ -20,9 +20,9 @@ describe('upstream pool', () => {
   test('a throttled base sits out and the page is retried at once on another', async () => {
     const hosts: string[] = []
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
-      const url = String(input)
-      hosts.push(new URL(url).host)
-      if (url.startsWith('https://fx-a.example')) return new Response('slow down', { status: 429, headers: { 'retry-after': '30' } })
+      const { host } = new URL(String(input))
+      hosts.push(host)
+      if (host === 'fx-a.example') return new Response('slow down', { status: 429, headers: { 'retry-after': '30' } })
       return new Response(JSON.stringify(page(30)), { status: 200, headers: { 'content-type': 'application/json' } })
     }))
     const result = await fetchFxProfileStatuses('ada', undefined, 100, { withReplies: true, retries: 2 })
