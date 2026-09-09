@@ -27,13 +27,18 @@ vi.mock('./markdown.js', () => ({
 }))
 
 // Import after mocks are declared.
-import { convertTweet, markdownResponse } from './converter.js'
+import { convertTweet, markdownResponse, parseStatusUrl } from './converter.js'
 import { ConvertError } from './errors.js'
 import { buildCacheKey } from './cache.js'
 import { renderThreadMarkdown } from './markdown.js'
 import { fetchPosts } from './tweet-fetch.js'
 
 describe('output selection', () => {
+  test.each(['x.pcstyle.dev', 'mdfromx.com'])('accepts permalinks from %s', (host) => {
+    expect(parseStatusUrl(`https://${host}/jack/status/20`)).toEqual({
+      handle: 'jack', id: '20', canonicalUrl: 'https://x.com/jack/status/20',
+    })
+  })
   const validUrl = 'https://x.com/testuser/status/1234567890'
 
   test('defaults to compact and full=true restores rich rendering', async () => {

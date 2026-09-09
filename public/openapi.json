@@ -23,6 +23,10 @@
     {
       "url": "https://x.pcstyle.dev",
       "description": "x.md production"
+    },
+    {
+      "url": "https://mdfromx.com",
+      "description": "x.md production (parallel domain)"
     }
   ],
   "security": [],

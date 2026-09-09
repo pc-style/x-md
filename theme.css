@@ -42,7 +42,7 @@ header[data-blume-header] > button[data-blume-nav-toggle] {
   order: 10;
 }
 
-header[data-blume-header] > a[href="https://x.pcstyle.dev"] {
+header[data-blume-header] > a[href="/docs/../"] {
   font-size: 17px;
   font-weight: 900;
   letter-spacing: -0.025em;
