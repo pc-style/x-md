@@ -53,9 +53,37 @@ The provider is configured through `X_SEARCH_SESSIONS_JSON`; the expected shape 
 
 The provider budgets its own upstream capacity per 15-minute window, shared across post and user searches. Failed attempts and page walks count. Unhealthy entries are taken out of rotation in the current process and retried later; health is per instance.
 
-## Your own FxTwitter upstream
+## Your own upstream, or a pool of them
 
-Profiles, posts, and bulk imports read `https://api.fxtwitter.com` by default. Set `FXTWITTER_BASE_URL` to point x.md at your own [FxEmbed](https://github.com/FxEmbed/FxEmbed) deployment: bulk imports then run against your capacity instead of the public instance's per-IP limit. How high `concurrency` on the import route can go (its maximum is 32) depends on that deployment's capacity and rate-limit configuration; x.md still backs off on any 429 it returns. The limits in `lib/import.ts` (`IMPORT_MAX_POSTS`, `IMPORT_MAX_CONCURRENCY`) and the front-door quota in `lib/quotas.ts` are the only caps; there are no hosted-only ones.
+Profiles, posts, and bulk imports read `https://api.fxtwitter.com` by default. That public instance allows about 1000 requests a minute per source IP, which caps a bulk import's sustained fan-out around 16 chains. Point x.md at your own [FxEmbed](https://github.com/FxEmbed/FxEmbed) deployment instead — FxEmbed is itself a Cloudflare Worker, and Workers is its documented self-host path:
+
+```bash
+FXTWITTER_BASE_URL=https://fx.example.workers.dev
+```
+
+Or give it a pool. Requests rotate across every base; one that answers `429` sits out for its `Retry-After` while the walk continues on the others, and the import route allows 32 chains **per base**:
+
+```bash
+FXTWITTER_BASE_URL=https://fx-a.example.workers.dev,https://fx-b.example.workers.dev,https://api.fxtwitter.com
+```
+
+How high `concurrency` can go on your own instance depends on that deployment's capacity and X's own per-token limits, which FxEmbed manages; x.md still backs off on any `429` it returns. `bench/RESULTS-scale.md` in the repository is the reference run against the public instance; `bun scripts/benchmark-import.ts --scale` reproduces it against whatever `FXTWITTER_BASE_URL` names, so you can measure your own pool.
+
+The caps in `lib/import.ts` (`IMPORT_MAX_POSTS`, `IMPORT_MAX_CONCURRENCY_PER_BASE`) and the allowances in `lib/quotas.ts` are the only limits; there are no hosted-only ones.
+
+## The post archive
+
+Bulk imports store what they walk, per account, so repeat imports only fetch the gap. With the shared Redis below configured the archive is durable across instances and deploys; without it, it lives in process memory for the life of the function. Keys are `hist:{handle}:index`, `hist:{handle}:ids` (a sorted set by post time), and `hist:{handle}:posts`. Budget roughly 2 KB per post; a 3000-post account is about 6 MB.
+
+## Deploying the fast stack
+
+The shape that removes every artificial ceiling:
+
+1. **FxEmbed on Cloudflare Workers** (one or more accounts) — your own upstream, no per-IP cap.
+2. **x.md on Vercel with Fluid Compute** — the import function is declared with a 120 s `maxDuration` in `vercel.json`; Fluid allows it and keeps streaming responses open.
+3. **Upstash Redis** via the Vercel marketplace — the archive and the rate-limit counters.
+
+Set `FXTWITTER_BASE_URL` to your pool (public instance last), deploy, and verify with one import followed by `?index=true`.
 
 ## Shared counters
 

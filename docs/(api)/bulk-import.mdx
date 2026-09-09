@@ -1,0 +1,167 @@
+---
+title: Import a post history
+description: An account's whole history in one request — replies included, raw JSON, seconds not minutes.
+sidebar:
+  order: 4
+  icon: download
+---
+
+One request, one account, as much history as you ask for. `GET /{handle}/posts` walks X's timeline **in parallel**, keeps every field upstream sends, and remembers what it collected so the next import only fetches what is new.
+
+```bash
+curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
+```
+
+Built for onboarding importers and memory builders: the kind of client that needs 500–2000 posts, replies included, before a user finishes reading the welcome screen.
+
+## Quickstart
+
+<Steps>
+  <Step title="Pick a range">
+    Three shapes cover an onboarding slider:
+
+    <Tabs>
+      <Tab title="Last 3 months">
+        ```bash
+        curl -sS "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-90 days' +%F)&max_posts=2000"
+        ```
+      </Tab>
+      <Tab title="Last year">
+        ```bash
+        curl -sS "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-1 year' +%F)&max_posts=5000"
+        ```
+      </Tab>
+      <Tab title="Everything available">
+        ```bash
+        curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?max_posts=5000'
+        ```
+        Without `since` the walk goes as far back as X serves — roughly the 3200 most recent timeline entries — and `meta.floor_reached` is `true` when it got there.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Read the body">
+    ```json
+    {
+      "profile": { "screen_name": "paulg", "name": "Paul Graham", "followers": 2081394, "…": "…" },
+      "posts": [
+        {
+          "id": "2097693527450816692",
+          "text": "…",
+          "created_at": "Wed Sep 09 14:28:04 +0000 2026",
+          "author": { "screen_name": "paulg", "…": "…" },
+          "replying_to": { "screen_name": "tlbtlbtlb", "status": "2097690000000000000" },
+          "likes": 412, "replies": 37, "retweets": 21, "quotes": 4, "views": 88120, "bookmarks": 63,
+          "url": "https://x.com/paulg/status/2097693527450816692"
+        }
+      ],
+      "meta": {
+        "count": 1379, "since": "2025-09-01T00:00:00.000Z", "until": "2026-09-09T19:30:47.788Z",
+        "oldest": "2026-06-19T08:02:11.000Z", "newest": "2026-09-09T14:28:04.000Z",
+        "truncated": false, "floor_reached": false,
+        "windows": 46, "pages": 130, "duration_ms": 7822,
+        "archive": { "count": 1379, "served": 0, "added": 1379, "walked": ["refresh"], "…": "…" }
+      }
+    }
+    ```
+
+    `posts` is newest first and raw: every field FxTwitter returns is passed through untouched — `id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `poll`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `lang`, `source`, `url`.
+  </Step>
+
+  <Step title="Stream it if you render as you go">
+    ```bash
+    curl -sN 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
+    ```
+
+    ```text
+    {"post":{"id":"2097693527450816692","text":"…"}}
+    {"post":{"id":"2097379186289607139","text":"…"}}
+    …
+    {"meta":{"count":787,"…":"…"},"profile":{"…":"…"}}
+    ```
+
+    One JSON object per line. Posts arrive in the order the parallel chains deliver them (not sorted); the trailing `meta` line means the walk finished. If it fails part-way the last line is `{"error": <problem document>}`. Archived posts stream first, instantly; fresh ones follow as they land. The first line is on the wire in well under a second.
+  </Step>
+</Steps>
+
+## Parameters
+
+| Parameter | Default | Behavior |
+| --- | --- | --- |
+| `since` | — | Oldest post to include. Omit to go as far back as upstream allows. |
+| `until` | now | Newest post to include, inclusive. |
+| `max_posts` | `500` | Most posts to return, newest first, maximum **5000**. `meta.truncated` is `true` when the range held more; continue with `until=<meta.oldest>` and drop the one boundary post you already have. |
+| `with_replies` | `true` | Include the account's replies. Replies are where tone, opinions and short-form style live; that is why they are on by default here and off on the paged profile read. |
+| `with_reposts` | `true` | Include reposts. A repost is returned as the **original** post with `reposted_by` set, so it carries the original's `id` and `created_at`. |
+| `only_replies` | `false` | Replies only. |
+| `concurrency` | `16` | Parallel upstream chains, maximum **32 per upstream** (see [self-hosting](/self-hosting)). Lower it if you see `503 upstream_rate_limited`. |
+| `format` | `json` | `json` or `ndjson`. |
+| `refresh` | `false` | Re-walk the whole range instead of serving what the archive already holds. Use it when you need current engagement counts. |
+| `index` | `false` | `true` answers with the archive index only — no walk, no import quota spent. |
+
+Dates accept `2026-01-01`, a full ISO datetime, or a unix timestamp in seconds or milliseconds. Both surfaces take the same parameters: `/{handle}/posts` and `/api/v1/profiles/{handle}/posts`.
+
+## The archive: collect once, reuse forever
+
+Every import stores what it walked, per account. The next import of that account reads the archive and only walks the gaps:
+
+- **top-up** — newer than what is covered (a user comes back a week later: one or two pages, not the whole range)
+- **backfill** — older than what is covered (the slider moves from 3 months to a year: only the extra nine months are walked)
+- nothing at all — the same request within a minute, or a range the archive already covers down to X's floor
+
+Ask what is held without spending anything:
+
+```bash
+curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true'
+```
+
+```json
+{
+  "handle": "paulg",
+  "archive": {
+    "handle": "paulg", "count": 2820,
+    "oldest": "2026-01-29T15:32:56.000Z", "newest": "2026-09-09T14:45:53.000Z",
+    "covered_since": "2026-01-01T00:00:00.000Z", "covered_until": "2026-09-09T22:48:23.000Z",
+    "updated_at": "2026-09-09T22:48:23.000Z", "floor_reached": true
+  },
+  "persistent": true
+}
+```
+
+Every import response carries the same block as `meta.archive`, plus `served` (posts that came from the archive), `added` (fetched by this request) and `walked` (which gaps were walked). On the hosted service the archive lives in a shared Redis and survives deploys; `persistent: false` means an in-memory fallback that lasts for the life of the process.
+
+:::note
+Archived posts keep the engagement counts from the walk that stored them. Text and metadata do not change; likes and views do. Pass `refresh=true` when those numbers matter.
+:::
+
+## How it is fast
+
+X hands out a timeline one cursor at a time: about 30 entries per page, a second or more per page, strictly in sequence. A client walking cursors manages 15–20 posts a second and a 2000-post history takes over a minute — when it works at all (see below).
+
+x.md does not walk one cursor. An X timeline cursor is a small binary structure whose key field is a plain timestamp, so x.md can **mint a cursor for any instant**. The requested range is cut into windows sized from the account's posting rate, an independent chain starts at each window, all chains run at once, and the results are merged and de-duplicated.
+
+Measured against the public upstream from one machine (`bench/RESULTS-scale.md` in the repository):
+
+| | 1379 posts (`paulg`) | 907 posts (`levelsio`) | completeness |
+| --- | --- | --- | --- |
+| sequential cursor walk with retries | 79 s · 17/s | 56 s · 16/s | 99.3% |
+| x.md, `concurrency=16` (default) | 11.3 s · **122/s** | 12.1 s · 75/s | 99.5% |
+| x.md, `concurrency=32` | 7.8 s · **176/s** | 8.7 s · 104/s | 99.2% |
+
+Three upstream behaviours a plain walker gets wrong, and x.md handles:
+
+1. **Short pages.** The same cursor answers with a full page or with 0–1 items, at random. A naive walk takes the short answer as the end of the timeline and stops; in the benchmark it returned as little as **13%** of a range. x.md retries a short page before believing it.
+2. **Reposts.** Upstream returns a repost as the original post, with the original's old date, positioned by repost time. A walker that stops at "the first post older than my range" stops early. Reposts never decide where x.md stops.
+3. **Conversation order.** The with-replies timeline is ordered by conversation, not by time: an older thread root sits right above the newer reply that pulled it in. x.md decides where a page ends from its tail, and keeps everything a page returns.
+
+## Limits
+
+- **Metering.** An import is one unit of its own allowance however many posts it returns: **10 per 15 minutes per IP**, **60 per API key** (`import-ip` / `import-key` in `RateLimit-Policy`). `index=true` is free.
+- **Depth.** X serves roughly its 3200 most recent timeline entries per account. Older history is not reachable through the timeline; `floor_reached` tells you when you hit it.
+- **Time.** A 5000-post walk to the floor takes 10–30 s depending on upstream headroom; the route allows 120 s.
+- **Ordering.** `posts` sort by id, newest first. A repost sorts by the original's id.
+- **Errors.** `400 invalid_option` for bad dates, ranges or counts; `404 not_found` for an unknown or protected account; `503 upstream_rate_limited` when every upstream is throttling — retry after `Retry-After`, or lower `concurrency`.
+
+## Running it against your own upstream
+
+The hosted service reads the public FxTwitter instance, which allows about 1000 requests a minute per IP. That caps sustained fan-out around 16 chains. Point x.md at your own FxEmbed deployment — or a pool of them — with `FXTWITTER_BASE_URL`, and `concurrency=32` per upstream is safe all day. [Self-hosting](/self-hosting) has the recipe.

@@ -82,12 +82,12 @@ usually an upstream gap, not evidence about the post.
 
 ## Pagination
 
-`limit` defaults to 20 and is capped at 100 on a profile read, 20 elsewhere.
-Continue with the opaque `cursor` returned as `nextCursor`; there is no cursor
-ceiling. `page=1` through `page=10` also works but walks upstream pages and is
-slower; values above 10 are clamped. A profile page is cut exactly at `limit`
-(original posts only unless `with_replies` or `with_reposts` is set); other
-lists can hold fewer items than `limit`.
+`limit` defaults to 20 and is capped at 100 (search feeds served by own
+accounts answer 20). Every page is cut exactly at `limit`; only the last page
+of a list is shorter. Continue with the opaque `cursor` returned as
+`nextCursor`; there is no cursor ceiling. `page=1` through `page=10` also works
+but walks upstream pages and is slower; values above 10 are clamped. Search
+takes `since` and `until`.
 
 ## Limits and failures
 

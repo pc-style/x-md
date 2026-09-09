@@ -33,14 +33,14 @@ How to call it: one plain `GET`, no key, no OAuth. Send `Accept: text/markdown` 
 
 - Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
 - Profile and latest posts: `https://x.pcstyle.dev/{handle}`; add `with_replies=true`, `with_reposts=true`, `limit` up to 100, or `until={date}` to jump to a date
-- Bulk post history as raw JSON: `https://x.pcstyle.dev/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams
+- Bulk post history as raw JSON: `https://x.pcstyle.dev/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams, `index=true` reports what is already archived for the account
 - Search public posts or users: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
 - Followers: `https://x.pcstyle.dev/{handle}/followers`
 - Following: `https://x.pcstyle.dev/{handle}/following`
 
 The versioned machine surface mirrors these at `https://x.pcstyle.dev/api/v1/*` and is described by https://x.pcstyle.dev/openapi.json.
 
-Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default limit 20; maximum 100 on a profile, 20 elsewhere. Live search allows 5 uncached requests per minute per IP, or 30 with an API key; configured X accounts have a 40-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
+Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default limit 20, maximum 100 (own-account search feeds answer 20); pages are cut exactly and cursors have no ceiling. Search takes `since` and `until`. Live search allows 5 uncached requests per minute per IP, or 30 with an API key; configured X accounts have a 40-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
 
 Browse routes accept `cursor`, `page`, `limit`, `full=true`, and `format=json`. Post routes also support thread, conversation context, reply ordering, and Obsidian output; see the documentation for exact query parameters.
 
@@ -60,6 +60,7 @@ x.md only reads public content and does not post, follow, or like on your behalf
 - [Pagination](https://x.pcstyle.dev/docs/pagination)
 - [Posts and threads](https://x.pcstyle.dev/docs/posts)
 - [Profiles and connections](https://x.pcstyle.dev/docs/profiles)
+- [Import a post history](https://x.pcstyle.dev/docs/bulk-import)
 - [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
 - [Error catalogue](https://x.pcstyle.dev/docs/errors)
 - [Response formats](https://x.pcstyle.dev/docs/responses)
