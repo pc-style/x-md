@@ -6,7 +6,8 @@ import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
 import { ConvertError } from '../lib/errors.js'
 import { parseDateInput } from '../lib/fx-cursor.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
-import { importProfilePosts, IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY, IMPORT_MAX_POSTS } from '../lib/import.js'
+import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY, IMPORT_MAX_POSTS } from '../lib/import.js'
+import { historyPersistent, importWithHistory, readHistoryIndex } from '../lib/history.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
 import { clientIp, rateLimit } from '../lib/ratelimit.js'
 import { IMPORT_IP, IMPORT_KEY, importIpKey, importKeyKey } from '../lib/quotas.js'
@@ -77,6 +78,15 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   if (Number.isNaN(maxPosts)) return invalid(`\`max_posts\` must be a whole number from 1 to ${IMPORT_MAX_POSTS}.`)
   if (Number.isNaN(concurrency)) return invalid(`\`concurrency\` must be a whole number from 1 to ${IMPORT_MAX_CONCURRENCY}.`)
 
+  // `index=true` answers from the archive index alone: what we already hold for this account.
+  if (flag(param('index'), false)) {
+    const archive = await readHistoryIndex(handle)
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.setHeader('Cache-Control', 'no-store')
+    res.setHeader('X-Archive-Store', historyPersistent() ? 'redis' : 'memory')
+    return res.status(200).send(JSON.stringify({ handle, archive: archive ?? null, persistent: historyPersistent() }))
+  }
+
   const options = {
     handle,
     since,
@@ -86,6 +96,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     withReplies: flag(param('with_replies'), true),
     withReposts: flag(param('with_reposts'), true),
     onlyReplies: flag(param('only_replies'), false),
+    refresh: flag(param('refresh'), false),
   }
 
   // The import allowance is the deeper policy: spend one unit per walk.
@@ -113,7 +124,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Accel-Buffering', 'no')
     res.flushHeaders()
     try {
-      const result = await importProfilePosts({ ...options, signal: aborter.signal, onPost: (post) => { res.write(`${JSON.stringify({ post })}\n`) } })
+      const result = await importWithHistory({ ...options, signal: aborter.signal, onPost: (post) => { res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
       if (!(error instanceof ConvertError)) console.error(error)
@@ -124,10 +135,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await importProfilePosts({ ...options, signal: aborter.signal })
+    const result = await importWithHistory({ ...options, signal: aborter.signal })
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('X-Result-Count', String(result.meta.count))
     res.setHeader('X-Import-Pages', String(result.meta.pages))
+    res.setHeader('X-Archive-Served', String(result.meta.archive.served))
+    res.setHeader('X-Archive-Store', historyPersistent() ? 'redis' : 'memory')
     return res.status(200).send(JSON.stringify(result))
   } catch (error) {
     if (error instanceof ConvertError && error.status === 404) {
