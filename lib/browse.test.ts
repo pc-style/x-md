@@ -343,6 +343,17 @@ describe('profile pages', () => {
     expect(decodeTimelineCursor(result.nextCursor!)!.sortIndex.toString()).toBe(result.posts![0].id)
   })
 
+  test('falls back to the previous upstream page when the overflow is all reposts', async () => {
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', name: 'Ada' })
+    const rt = (id: number) => mine(id, { author: { screen_name: 'bob' }, reposted_by: { screen_name: 'ada' } })
+    vi.mocked(fetchFxProfileStatuses)
+      .mockResolvedValueOnce({ results: [mine(9), mine(8)], cursor: { bottom: 'page-2' } })
+      .mockResolvedValueOnce({ results: [rt(7), rt(6), rt(5)], cursor: { bottom: REAL } })
+    const result = await browse({ resource: 'profile', handle: 'ada', limit: 3, with_reposts: 'true', nocache: true })
+    expect(result.posts?.map((p) => p.id?.slice(-1))).toEqual(['9', '8'])
+    expect(result.nextCursor).toBe('page-2')
+  })
+
   test('seeks to `until` with a forged cursor and rejects bad dates', async () => {
     vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', name: 'Ada' })
     vi.mocked(fetchFxProfileStatuses).mockResolvedValue({ results: [mine(1)] })

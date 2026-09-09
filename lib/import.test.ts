@@ -201,6 +201,44 @@ describe('importProfilePosts', () => {
     expect(upstream.calls()).toBeLessThan(10)
   })
 
+  test('reports truncation when the cap stops discovery at exactly max_posts', async () => {
+    const entries = timeline('ada', 900, 1)
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+    const all = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 400 * HOUR), until: new Date(NOW), maxPosts: 5000, concurrency: 4 })
+    const exact = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 400 * HOUR), until: new Date(NOW), maxPosts: all.posts.length, concurrency: 4 })
+    expect(exact.posts).toHaveLength(all.posts.length)
+    expect(exact.meta.truncated).toBe(false)
+    const capped = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 120, concurrency: 1 })
+    expect(capped.posts).toHaveLength(120)
+    expect(capped.meta.truncated).toBe(true)
+  })
+
+  test('never walks past the account join date', async () => {
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', joined: new Date(NOW - 50 * HOUR).toUTCString() })
+    const entries = timeline('ada', 40, 1)
+    const upstream = fakeUpstream(entries)
+    // Upstream keeps answering with the same oldest page forever: no empty page, no floor.
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (handle, cursor, count, options) => {
+      const page = await withRetries(upstream.mock)(handle, cursor, count, options)
+      return page.results.length ? page : { results: entries.slice(-5).map((entry) => entry.post), attempts: 1 }
+    })
+    const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 4 })
+    expect(result.posts.length).toBe(own('ada', entries).length)
+    expect(upstream.calls()).toBeLessThan(20)
+  })
+
+  test('one failing chain stops the others', async () => {
+    const entries = timeline('ada', 900, 1)
+    const upstream = fakeUpstream(entries)
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (handle, cursor, count, options) => {
+      options?.signal?.throwIfAborted()
+      if (upstream.calls() === 4) throw new Error('upstream exploded')
+      return withRetries(upstream.mock)(handle, cursor, count, options)
+    })
+    await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 4 })).rejects.toThrow('upstream exploded')
+    expect(upstream.calls()).toBeLessThan(12)
+  })
+
   test('rejects an inverted range', async () => {
     await expect(importProfilePosts({ handle: 'ada', since: new Date(NOW), until: new Date(NOW - HOUR) })).rejects.toMatchObject({ code: 'invalid_option', status: 400 })
   })

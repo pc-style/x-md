@@ -109,7 +109,8 @@ export function parseDateInput(value: string | null | undefined): Date | undefin
     const n = Number(raw)
     return new Date(raw.length <= 10 ? n * 1000 : n)
   }
-  const iso = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T00:00:00Z` : raw
+  if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(raw)) return undefined
+  const iso = raw.length === 10 ? `${raw}T00:00:00Z` : raw
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? undefined : date
 }

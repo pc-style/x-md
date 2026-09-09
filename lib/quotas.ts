@@ -38,6 +38,13 @@ export const SEARCH_IP: QuotaPolicy = { name: 'search-ip', quota: 5, windowSec: 
 /** The same gate for a keyed caller; their real allowance is the 15-minute one below. */
 export const SEARCH_KEY: QuotaPolicy = { name: 'search-key', quota: 30, windowSec: 60, partition: 'key' }
 
+/**
+ * Bulk imports (api/import.ts). One import can cost upstream a few hundred
+ * timeline pages, so it is metered on its own, not as one ordinary read.
+ */
+export const IMPORT_IP: QuotaPolicy = { name: 'import-ip', quota: 10, windowSec: 15 * 60, partition: 'ip' }
+export const IMPORT_KEY: QuotaPolicy = { name: 'import-key', quota: 60, windowSec: 15 * 60, partition: 'key' }
+
 /** Window of the account-backed search pool (lib/xsearch.ts, lib/pool.ts). */
 export const ACCOUNT_WINDOW_SEC = 15 * 60
 
@@ -67,6 +74,8 @@ export const accountKeyPolicy = (limit: number): QuotaPolicy => ({
 export const apiIpKey = (ip: string): string => `api:ip:${ip || 'unknown'}`
 export const searchIpKey = (ip: string): string => `search:ip:${ip}`
 export const searchKeyKey = (id: string): string => `search:key:${id}`
+export const importIpKey = (ip: string): string => `import:ip:${ip || 'unknown'}`
+export const importKeyKey = (id: string): string => `import:key:${id}`
 export const accountIpKey = (ip: string): string => `xsearch:ip:${ip || 'unknown'}`
 export const accountKeyKey = (id: string): string => `xsearch:key:${id}`
 

@@ -8,7 +8,8 @@ import { parseDateInput } from '../lib/fx-cursor.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
 import { importProfilePosts, IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY, IMPORT_MAX_POSTS } from '../lib/import.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
-import { clientIp } from '../lib/ratelimit.js'
+import { clientIp, rateLimit } from '../lib/ratelimit.js'
+import { IMPORT_IP, IMPORT_KEY, importIpKey, importKeyKey } from '../lib/quotas.js'
 import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 
 /**
@@ -22,16 +23,18 @@ function flag(value: string | undefined, fallback: boolean): boolean {
   return value === 'true' || value === '1'
 }
 
-function integer(value: string | undefined): number | undefined {
+/** A whole positive number no larger than `max`; anything else is `NaN` so the caller can reject it. */
+function bounded(value: string | undefined, max: number): number | undefined {
   if (value === undefined || value === '') return undefined
+  if (!/^\d{1,9}$/.test(value)) return Number.NaN
   const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : Number.NaN
+  return parsed >= 1 && parsed <= max ? parsed : Number.NaN
 }
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'import', 'posts')
   setCorsHeaders(res)
-  applyQuotaPolicyOnly(res, 'read', { ip: clientIp(req.headers) })
+  applyQuotaPolicyOnly(res, 'import', { ip: clientIp(req.headers) })
   if (req.method === 'OPTIONS') return res.status(204).end()
 
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
@@ -53,7 +56,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const quotaCaller: QuotaCaller = resolved.caller.kind === 'key'
     ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
     : { ip: resolved.ip }
-  const quota = await chargeRequestQuota('read', quotaCaller)
+  const quota = await chargeRequestQuota('import', quotaCaller)
   applyRequestQuota(res, quota)
   if (!quota.allowed) {
     applyExhaustedQuota(res, quota, 'api-ip', quota.retryAfter)
@@ -69,10 +72,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const until = parseDateInput(param('until'))
   if (param('since') && !since) return invalid('`since` must be an ISO date, ISO datetime, or unix timestamp.')
   if (param('until') && !until) return invalid('`until` must be an ISO date, ISO datetime, or unix timestamp.')
-  const maxPosts = integer(param('max_posts') ?? param('limit'))
-  const concurrency = integer(param('concurrency'))
-  if (Number.isNaN(maxPosts) || (maxPosts !== undefined && maxPosts <= 0)) return invalid(`\`max_posts\` must be a positive integer up to ${IMPORT_MAX_POSTS}.`)
-  if (Number.isNaN(concurrency) || (concurrency !== undefined && concurrency <= 0)) return invalid(`\`concurrency\` must be a positive integer up to ${IMPORT_MAX_CONCURRENCY}.`)
+  const maxPosts = bounded(param('max_posts') ?? param('limit'), IMPORT_MAX_POSTS)
+  const concurrency = bounded(param('concurrency'), IMPORT_MAX_CONCURRENCY)
+  if (Number.isNaN(maxPosts)) return invalid(`\`max_posts\` must be a whole number from 1 to ${IMPORT_MAX_POSTS}.`)
+  if (Number.isNaN(concurrency)) return invalid(`\`concurrency\` must be a whole number from 1 to ${IMPORT_MAX_CONCURRENCY}.`)
 
   const options = {
     handle,
@@ -83,6 +86,15 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     withReplies: flag(param('with_replies'), true),
     withReposts: flag(param('with_reposts'), true),
     onlyReplies: flag(param('only_replies'), false),
+  }
+
+  // The import allowance is the deeper policy: spend one unit per walk.
+  const allowance = resolved.caller.kind === 'key' ? IMPORT_KEY : IMPORT_IP
+  const counter = resolved.caller.kind === 'key' ? importKeyKey(resolved.caller.id) : importIpKey(resolved.ip)
+  const verdict = await rateLimit(counter, allowance.quota, allowance.windowSec)
+  if (!verdict.allowed) {
+    applyExhaustedQuota(res, quota, allowance.name, verdict.retryAfter)
+    return sendProblem(res, problemDetails('rate_limited', { instance, detail: `Too many bulk imports ${resolved.caller.kind === 'key' ? 'for this API key' : 'from this address'}: ${allowance.quota} per ${allowance.windowSec / 60} minutes.`, retryAfter: verdict.retryAfter }), accept, req.method)
   }
 
   // A client that leaves stops the walk instead of leaving up to 32 chains running.

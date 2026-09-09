@@ -603,7 +603,7 @@ function importOperation(path: string, operationId: string, summary: string): { 
       path,
       operationId,
       summary,
-      description: 'Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only.',
+      description: 'Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key (`import-ip` / `import-key` in `RateLimit-Policy`).',
       tags: ['Profiles'],
       parameters: [handleParam('path'), ...IMPORT_PARAMS],
       success: importSuccess(),
@@ -1594,6 +1594,8 @@ export function openapiDocument(): OpenApiDocument {
       { name: 'api-ip', quota: 600, window_seconds: 60, partition: 'client IP address', applies_to: 'every public API route' },
       { name: 'search-ip', quota: 5, window_seconds: 60, partition: 'client IP address', applies_to: 'live search lookups by anonymous callers', notes: 'Charged only when a request misses the cache and reaches an upstream provider.' },
       { name: 'search-key', quota: 30, window_seconds: 60, partition: 'API key', applies_to: 'live search lookups by key holders' },
+      { name: 'import-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'bulk profile imports by anonymous callers', notes: 'One unit per import, however many posts it returns.' },
+      { name: 'import-key', quota: 60, window_seconds: 900, partition: 'API key', applies_to: 'bulk profile imports by key holders' },
       { name: 'account-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'account-backed search feeds (photos, videos, users)', notes: 'A shared public pool; key holders draw from their own allowance instead.' },
       // `lib/ratelimit-headers.ts` advertises this one to key holders with the
       // key's own quota, so it appears in `RateLimit-Policy` without a fixed `q`.

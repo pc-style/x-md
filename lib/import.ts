@@ -25,7 +25,7 @@
  */
 import { ConvertError } from './errors.js'
 import { cursorAt, snowflakeTime } from './fx-cursor.js'
-import { fetchFxProfile, fetchFxProfileStatuses, type FxAuthor, type FxTweet } from './fxtwitter.js'
+import { fetchFxProfile, fetchFxProfileStatuses, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
 
 export const IMPORT_DEFAULT_MAX_POSTS = 500
 export const IMPORT_MAX_POSTS = 5000
@@ -40,6 +40,8 @@ const WINDOW_MAX_HOURS = 24 * 30
 const WINDOW_MAX_PAGES = 12
 /** Empty windows past the newest non-empty one before we call it the timeline floor. */
 const FLOOR_EMPTY_WINDOWS = 3
+/** Hard cap on windows per import; at the 30-day maximum width this is decades. */
+const MAX_WINDOWS = 1000
 const PAGE_RETRIES = 2
 
 export interface ImportInput {
@@ -163,7 +165,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   const since = input.since?.getTime()
   if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
 
-  const timeline = { withReplies: withReplies || onlyReplies, retries: PAGE_RETRIES, signal: input.signal }
+  const timeline: FxProfileStatusesOptions = { withReplies: withReplies || onlyReplies, retries: PAGE_RETRIES, signal: input.signal }
   const stats = { pages: 0, retried: 0, windows: 0 }
   const seen = new Map<string, FxTweet>()
 
@@ -204,17 +206,27 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   let emptyBeyond = 0
   let sinceReached = false
   let floorReached = false
+  /** Discovery stopped because `maxPosts` was already collected: older history probably exists. */
+  let cappedOut = false
+  // Nothing predates the account, and no account has more windows than this;
+  // both bound a `since`-less walk even if upstream never answers empty.
+  const joined = Date.parse(profile.joined ?? '')
+  const lowerBound = Math.max(since ?? 0, Number.isFinite(joined) ? joined : 0)
   const claim = (): Window | undefined => {
     const split = extra.pop()
     if (split) return split
-    if (sinceReached || floorReached || seen.size >= maxPosts) return undefined
+    if (sinceReached || floorReached || nextIndex >= MAX_WINDOWS) return undefined
+    if (seen.size >= maxPosts) {
+      cappedOut = true
+      return undefined
+    }
     const start = until - nextIndex * windowMs
     let end = start - windowMs
-    if (since !== undefined && end <= since) {
-      end = since
+    if (end <= lowerBound) {
+      end = lowerBound
       sinceReached = true
     }
-    if (start <= (since ?? 0)) return undefined
+    if (start <= lowerBound) return undefined
     return { start, end, index: nextIndex++ }
   }
 
@@ -278,20 +290,32 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     if (postTime(post) <= until || isRepost(post)) keep(post)
   }
 
+  // One chain failing stops the others instead of leaving them spending upstream capacity.
+  const stopAll = new AbortController()
+  const onOuterAbort = () => stopAll.abort(input.signal?.reason)
+  input.signal?.addEventListener('abort', onOuterAbort, { once: true })
+  timeline.signal = stopAll.signal
   const worker = async (): Promise<void> => {
     for (;;) {
       const window = claim()
-      if (!window) return
+      if (!window || stopAll.signal.aborted) return
       await walk(window)
     }
   }
-  await Promise.all(Array.from({ length: concurrency }, worker))
+  try {
+    await Promise.all(Array.from({ length: concurrency }, worker))
+  } catch (error) {
+    stopAll.abort(error)
+    throw error
+  } finally {
+    input.signal?.removeEventListener('abort', onOuterAbort)
+  }
 
   // Newest first. Reposts sort by the original post's id, which is all upstream gives.
   let posts = [...seen.values()].sort((a, b) => (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
   if (since !== undefined) posts = posts.filter((post) => isRepost(post) || postTime(post) >= since)
-  const truncated = posts.length > maxPosts
-  if (truncated) posts = posts.slice(0, maxPosts)
+  const truncated = posts.length > maxPosts || cappedOut
+  if (posts.length > maxPosts) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
   const iso = (ms: number) => new Date(ms).toISOString()
 

@@ -109,6 +109,21 @@
       "applies_to": "live search lookups by key holders"
     },
     {
+      "name": "import-ip",
+      "quota": 10,
+      "window_seconds": 900,
+      "partition": "client IP address",
+      "applies_to": "bulk profile imports by anonymous callers",
+      "notes": "One unit per import, however many posts it returns."
+    },
+    {
+      "name": "import-key",
+      "quota": 60,
+      "window_seconds": 900,
+      "partition": "API key",
+      "applies_to": "bulk profile imports by key holders"
+    },
+    {
       "name": "account-ip",
       "quota": 10,
       "window_seconds": 900,
@@ -1411,7 +1426,7 @@
       "get": {
         "operationId": "importProfilePosts",
         "summary": "Import a profile's post history in bulk",
-        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only.",
+        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key (`import-ip` / `import-key` in `RateLimit-Policy`).",
         "tags": [
           "Profiles"
         ],
@@ -4913,7 +4928,7 @@
       "get": {
         "operationId": "importProfilePostsByHandle",
         "summary": "Import a profile's post history from its permalink shape",
-        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only.",
+        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key (`import-ip` / `import-key` in `RateLimit-Policy`).",
         "tags": [
           "Profiles"
         ],

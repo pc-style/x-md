@@ -93,9 +93,9 @@ lists can hold fewer items than `limit`.
 
 - Live search: 5 uncached requests per minute per IP. Cache hits are free.
 - Live-provider requests: a further shared allowance per IP per 15-minute
-  window. Every feed and every page of a page walk counts as one request; a
-  bulk import through `/{handle}/posts` counts as one request however many
-  posts it returns.
+  window. Every feed and every page of a page walk counts as one request.
+- Bulk imports through `/{handle}/posts`: 10 per 15 minutes per IP, 60 per API
+  key, one unit per import however many posts it returns.
 - `429` carries `Retry-After` in seconds. Wait that long. Do not retry in a
   loop, and do not fan out across IPs.
 - `503` with `Retry-After: 30` means an upstream provider is down.

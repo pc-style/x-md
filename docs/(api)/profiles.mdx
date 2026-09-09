@@ -91,7 +91,7 @@ The JSON body is `{ profile, posts, meta }`. `meta` reports `count`, `oldest`, `
 Two upstream facts to know: a repost is returned as the original post with `reposted_by` set, so it sorts by the original's date; and the "with replies" timeline is what X serves, so self-threads appear as replies to the account itself.
 
 :::note
-An import counts as one request against your quota, however many posts it returns. It is not cached: every call walks upstream.
+Imports are metered on their own: **10 per 15 minutes per IP**, or **60 per API key**, one unit per import however many posts it returns (`import-ip` / `import-key` in `RateLimit-Policy`). Reposts are included by the time they were reposted, so a repost inside your range carries the original post's earlier `created_at`. Imports are not cached: every call walks upstream.
 :::
 
 :::note

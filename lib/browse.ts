@@ -174,6 +174,8 @@ async function collectProfilePosts(
     block = []
     next = undefined
     const seen = new Set<string>()
+    /** Where each upstream page ended in `block`, with the real cursor that follows it. */
+    const pageEnds: Array<{ count: number; cursor?: string }> = []
     for (; budget > 0 && block.length < limit; budget -= 1) {
       const upstream = await fetchFxProfileStatuses(handle, current, limit, { withReplies, retries: 2 })
       for (const post of upstream.results) {
@@ -182,19 +184,26 @@ async function collectProfilePosts(
         block.push(post)
       }
       next = upstream.cursor?.bottom
+      pageEnds.push({ count: block.length, cursor: next })
       if (!next || upstream.results.length === 0) break
       current = next
     }
     if (block.length > limit) {
-      // Cut at the last original inside the limit: reposts carry the original's
-      // id, not their timeline position, so a block never ends on one.
+      // Cut at the last original inside the limit and forge the continuation
+      // there: reposts carry the original's id, not their timeline position, so
+      // a block never ends on one. When the whole overfull stretch is reposts,
+      // fall back to the last complete upstream page and its real cursor.
       let cut = limit
       while (cut > 0 && isRepost(block[cut - 1])) cut -= 1
-      if (cut > 0) {
+      const lastPageStart = pageEnds.length > 1 ? pageEnds[pageEnds.length - 2].count : 0
+      if (cut > lastPageStart) {
         block = block.slice(0, cut)
         const last = block[block.length - 1]
         const decoded = next ? decodeTimelineCursor(next) : undefined
         next = encodeTimelineCursor({ issuedAt: decoded?.issuedAt ?? decodeTimelineCursor(cursorAt(Date.now()))!.issuedAt, sortIndex: BigInt(last.id!), direction: 2 })
+      } else if (lastPageStart > 0) {
+        block = block.slice(0, lastPageStart)
+        next = pageEnds[pageEnds.length - 2].cursor
       }
     }
     if (index < blocks - 1) {
