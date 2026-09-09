@@ -38,7 +38,6 @@ export default defineConfig({
       },
       '/agents',
       '/mcp',
-      '/archive',
       '/self-hosting',
     ],
     actions: [{ label: 'Website', href: 'https://x.pcstyle.dev' }],

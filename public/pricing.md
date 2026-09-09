@@ -66,8 +66,7 @@ you need any of those, self-host: `git clone https://github.com/pc-style/x-md`.
 
 - Security review: [SECURITY.md](https://github.com/pc-style/x-md/blob/main/SECURITY.md)
   and [/.well-known/security.txt](https://x.pcstyle.dev/.well-known/security.txt).
-- Data handling: [/privacy](https://x.pcstyle.dev/privacy) and the
-  [optional data archive](https://x.pcstyle.dev/docs/archive) policy.
+- Data handling: [/privacy](https://x.pcstyle.dev/privacy).
 - SLA, DPA, vendor forms, uptime credits: not offered. This is a free
   best-effort project, not a vendor.
 

@@ -83,8 +83,6 @@ server-only secret; it never runs in local or preview builds. Its payloads use
 strict field allowlists that exclude rendered response bodies, incoming URLs and
 search queries, request headers, IP addresses, credentials, and cursors, and
 protected authors are excluded entirely.
-[The archive documentation](https://x.pcstyle.dev/docs/archive) is the full
-contract.
 
 ## Your controls
 

@@ -21,13 +21,89 @@ sidebar:
 
 ## Connect
 
+One URL, no key, no OAuth: point your client at `https://x.pcstyle.dev/mcp` and the five tools below show up. Pick your client.
+
 <Tabs>
   <Tab title="Claude Code">
     ```bash
     claude mcp add --transport http x-md https://x.pcstyle.dev/mcp
     ```
+
+    Then ask Claude Code to read an X post. It picks `x_md_get_post` on its own.
   </Tab>
-  <Tab title="mcp.json">
+  <Tab title="Codex">
+    ```bash
+    codex mcp add x-md --url https://x.pcstyle.dev/mcp
+    ```
+
+    Codex CLI, the IDE extension, and the ChatGPT desktop app share this configuration. The equivalent entry in `~/.codex/config.toml`:
+
+    ```toml
+    [mcp_servers.x-md]
+    url = "https://x.pcstyle.dev/mcp"
+    ```
+  </Tab>
+  <Tab title="Cursor">
+    Add to `~/.cursor/mcp.json` for every project, or `.cursor/mcp.json` for one:
+
+    ```json
+    {
+      "mcpServers": {
+        "x-md": {
+          "url": "https://x.pcstyle.dev/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="OpenCode">
+    Add to `opencode.json` in the project, or `~/.config/opencode/opencode.json` globally:
+
+    ```json
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "mcp": {
+        "x-md": {
+          "type": "remote",
+          "url": "https://x.pcstyle.dev/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Antigravity">
+    Add to `~/.gemini/config/mcp_config.json`, or `.agents/mcp_config.json` in the workspace. Antigravity uses `serverUrl`, not `url`:
+
+    ```json
+    {
+      "mcpServers": {
+        "x-md": {
+          "serverUrl": "https://x.pcstyle.dev/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Amp">
+    ```bash
+    amp mcp add x-md https://x.pcstyle.dev/mcp
+    ```
+
+    Or in `~/.config/amp/settings.json`:
+
+    ```json
+    {
+      "amp.mcpServers": {
+        "x-md": {
+          "url": "https://x.pcstyle.dev/mcp"
+        }
+      }
+    }
+    ```
+  </Tab>
+  <Tab title="Other clients">
+    Most clients accept the common `mcpServers` shape with a Streamable HTTP `url`:
+
     ```json
     {
       "mcpServers": {
@@ -38,16 +114,21 @@ sidebar:
       }
     }
     ```
-  </Tab>
-  <Tab title="curl">
-    ```bash
-    curl -sS -X POST https://x.pcstyle.dev/mcp \
-      -H 'Content-Type: application/json' \
-      -H 'Accept: application/json, text/event-stream' \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
-    ```
+
+    If your client asks for a transport, choose Streamable HTTP. There is no session and no login step.
   </Tab>
 </Tabs>
+
+### Try it without a client
+
+A plain `tools/list` from the command line, to see what a connected agent sees:
+
+```bash
+curl -sS -X POST https://x.pcstyle.dev/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'Accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
 
 A client that sends `Accept: text/event-stream` gets the reply as a single SSE frame; anything else gets `application/json`. Both carry the same JSON-RPC envelope.
 

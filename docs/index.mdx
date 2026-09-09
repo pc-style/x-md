@@ -7,42 +7,53 @@ sidebar:
   icon: rocket
 ---
 
-Replace `x.com` with `x.pcstyle.dev` in a post URL. Keep the handle and status ID.
+x.md turns a public X URL into Markdown your agent can read. The rule is one sentence: replace `x.com` with `x.pcstyle.dev` and keep the rest of the URL. Nothing to install, no key, no login.
 
 <Steps>
-  <Step title="Read a post">
-    ```bash
-    curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+  <Step title="Tell your agent the rule">
+    Paste this into the chat, or into `AGENTS.md`, `CLAUDE.md`, or whatever instruction file your agent reads:
+
+    ```text
+    To read an X (Twitter) post, thread, or profile, swap x.com for
+    x.pcstyle.dev in the URL and fetch it. For search, fetch
+    https://x.pcstyle.dev/search?q=<query>. The response is Markdown.
     ```
 
-    You get readable Markdown with the post text, source links, and available thread context. Add `?thread=off` to read only the requested post.
+    Any agent that can fetch a URL now reads X. No further setup.
   </Step>
 
-  <Step title="Search instead">
-    ```bash
-    curl -sS -G 'https://x.pcstyle.dev/search' \
-      --data-urlencode 'q=typescript' \
-      --data-urlencode 'feed=latest'
+  <Step title="Ask it something">
+    ```text
+    Summarize https://x.com/trq212/status/2052809885763747935 and its replies.
     ```
 
-    Search returns up to **20 results**. Choose Latest, Top, Photos, Videos, or Users with the `feed` parameter.
+    The agent fetches `https://x.pcstyle.dev/trq212/status/2052809885763747935` and gets the post text, source links, and thread context back as Markdown. Add `?thread=off` to that URL to read only the requested post.
   </Step>
 
-  <Step title="Get structured data">
-    Use `format=json` when your code needs fields instead of prose.
+  <Step title="Give it tools instead (optional)">
+    If your agent speaks MCP, connect it once and skip the prompt entirely. Claude Code:
 
-    ```js
-    const response = await fetch(
-      'https://x.pcstyle.dev/search?q=typescript&feed=latest&format=json'
-    )
-    if (!response.ok) throw new Error(`x.md returned ${response.status}`)
-    const { posts, nextCursor } = await response.json()
-    console.log(posts, nextCursor)
+    ```bash
+    claude mcp add --transport http x-md https://x.pcstyle.dev/mcp
     ```
 
-    JSON includes the rendered `markdown` too. [See response formats](/responses).
+    Codex, Cursor, OpenCode, Antigravity, and Amp are on [the MCP page](/mcp#connect). Skills-aware agents can [install the `browse-x` skill](/agents) instead.
   </Step>
 </Steps>
+
+## Reading it yourself
+
+The same host swap works in a browser or a script. The API is documented in full under [Posts and threads](/posts), [Search](/search), and [Profiles](/profiles); the short version:
+
+```bash
+# A post, as Markdown
+curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+
+# Search, as JSON with fields instead of prose
+curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&format=json'
+```
+
+Search returns up to **20 results**; pick Latest, Top, Photos, Videos, or Users with `feed`. JSON responses include the rendered `markdown` too. [See response formats](/responses).
 
 ## When to use x.md
 

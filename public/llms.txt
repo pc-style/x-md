@@ -65,7 +65,6 @@ x.md only reads public content and does not post, follow, or like on your behalf
 - [Search X](https://x.pcstyle.dev/docs/search)
 - [Versioning and deprecation](https://x.pcstyle.dev/docs/versioning)
 - [Self-hosting](https://x.pcstyle.dev/docs/self-hosting)
-- [Optional data archive](https://x.pcstyle.dev/docs/archive)
 
 Full documentation: https://x.pcstyle.dev/llms-full.txt
 Docs-only index: https://x.pcstyle.dev/docs/llms.txt

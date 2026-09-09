@@ -1,10 +1,4 @@
----
-title: Optional data archive
-description: Public-result capture through PostHog, privacy controls, and export contract.
-sidebar:
-  order: 9
-  icon: database
----
+# Optional data archive
 
 ## Disabled by default
 

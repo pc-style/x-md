@@ -103,8 +103,10 @@
     background-color: rgb(17 18 15 / 0.84);
   }
 
+  /* Same box as the docs header (theme.css) so the wordmark does not move
+     between the landing page and /docs. Content sections stay at 1200px. */
   .site-header-inner {
-    @apply mx-auto flex h-[64px] max-w-[1200px] items-center justify-between px-6 sm:px-8;
+    @apply mx-auto flex h-[64px] max-w-chrome items-center justify-between px-chrome-inset sm:px-chrome-inset-wide;
   }
 
   .nav-link {

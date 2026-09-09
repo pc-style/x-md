@@ -16,6 +16,56 @@
   --blume-content-width: 48rem;
 }
 h1 { text-wrap: balance; }
+
+/* ---------- Chrome alignment with the landing page ----------
+   The landing header (src/style.css `.site-header-inner`) is a 90rem box with
+   a 1.5rem / 2rem inset. Blume's header is full-bleed with its own padding,
+   so the wordmark used to jump between `/` and `/docs`. Give the header the
+   same inset (computed so the blurred background still spans the viewport),
+   cap the doc grid to the same width, and line the sidebar icons up under
+   the wordmark. */
+header[data-blume-header] {
+  --chrome-inset: var(--spacing-chrome-inset);
+  padding-inline: max(
+    var(--chrome-inset),
+    calc((100% - var(--container-chrome)) / 2 + var(--chrome-inset))
+  );
+  /* Landing header is 64px of content plus a 1px rule; match it exactly. */
+  height: calc(4rem + 1px);
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* Below lg the landing puts its menu button at the far right; Blume puts the
+   drawer toggle first, which pushed the wordmark 48px to the right on phones.
+   Move the toggle to the end so the wordmark keeps its inset on every page. */
+header[data-blume-header] > button[data-blume-nav-toggle] {
+  order: 10;
+}
+
+header[data-blume-header] > a[href="https://x.pcstyle.dev"] {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+}
+
+[data-blume-doc-grid] {
+  max-width: var(--container-chrome);
+}
+
+@media (min-width: 40rem) {
+  header[data-blume-header] {
+    --chrome-inset: var(--spacing-chrome-inset-wide);
+  }
+}
+
+@media (min-width: 64rem) {
+  /* Sidebar links have 0.625rem of their own padding; the icon lands on the
+     same x as the wordmark once the rail's inset is the chrome inset minus that. */
+  aside[data-blume-nav-drawer] {
+    padding-inline-start: calc(var(--spacing-chrome-inset-wide) - 0.625rem);
+  }
+}
 /* Blume makes highlighted pre backgrounds transparent by default. Keep the
    dark syntax palette on an explicit dark surface in either page theme. */
 .prose pre.astro-code {

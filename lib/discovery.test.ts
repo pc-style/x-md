@@ -245,9 +245,15 @@ describe('sitemap.xml', () => {
   })
 
   test('lists the pages that only exist for agents and humans arriving from search', () => {
-    for (const path of ['/about', '/contact', '/privacy', '/terms', '/mcp', '/docs/archive', '/auth.md', '/pricing.md']) {
+    for (const path of ['/about', '/contact', '/privacy', '/terms', '/mcp', '/auth.md', '/pricing.md']) {
       expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`)
     }
+  })
+
+  test('does not advertise the repository-only archive guide', () => {
+    expect(sitemap).not.toContain('/docs/archive')
+    expect(read('llms.txt')).not.toContain('/docs/archive')
+    expect(read('docs/llms.txt')).not.toContain('/docs/archive')
   })
 
   test.each(DOCS_SLUGS)('/docs/%s is listed', (slug) => {

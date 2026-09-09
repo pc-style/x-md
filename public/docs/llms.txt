@@ -27,7 +27,6 @@ Every page here is available as Markdown: append `.md` to the URL, or send `Acce
 ## Operating x.md
 
 - [Self-hosting](https://x.pcstyle.dev/docs/self-hosting.md): environment variables, providers, and deploying your own instance.
-- [Optional data archive](https://x.pcstyle.dev/docs/archive.md): the disabled-by-default PostHog capture, its allowlists, and the opt-out controls.
 
 ## Elsewhere
 

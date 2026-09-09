@@ -24,6 +24,13 @@
   --color-code: #16150f;
   --color-code-ink: #e9e7de;
   --color-code-dim: #8d8a7e;
+
+  /* Shared chrome geometry: the header on the landing page and on the docs
+     (Blume) both sit inside this width with this inset, so the wordmark lands
+     on the same x across pages. Landing content stays at 1200px inside it. */
+  --container-chrome: 90rem;
+  --spacing-chrome-inset: 1.5rem;
+  --spacing-chrome-inset-wide: 2rem;
 }
 
 html[data-theme="dark"] {

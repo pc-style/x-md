@@ -272,7 +272,6 @@ export function privacyHtml(): string {
           preview builds. Its payloads use strict field allowlists that exclude rendered response bodies,
           incoming URLs and search queries, request headers, IP addresses, credentials, and cursors, and
           protected authors are excluded entirely.
-          <a href="/docs/archive">The archive documentation</a> is the full contract.
         </p>
 
         <h2>Your controls</h2>
