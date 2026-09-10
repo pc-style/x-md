@@ -1572,7 +1572,10 @@ export function openapiDocument(): OpenApiDocument {
       contact: { name: 'x.md maintainer', url: `${SITE}/contact` },
     },
     externalDocs: { description: 'x.md documentation: endpoints, pagination, response shapes, error codes and quotas', url: `${SITE}/docs` },
-    servers: [{ url: SITE, description: 'x.md production' }],
+    servers: [
+      { url: SITE, description: 'x.md production' },
+      { url: 'https://mdfromx.com', description: 'x.md production (parallel domain)' },
+    ],
     security: [],
     tags: [
       { name: 'Posts', description: 'Read a single post, its thread, and the conversation around it.' },

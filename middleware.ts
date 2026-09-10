@@ -1,5 +1,6 @@
 import { next, rewrite } from '@vercel/functions'
 import { notAcceptableBody, selectRepresentation } from './lib/negotiate.js'
+import { DOMAIN_PREFIX, PARALLEL_HOST, domainFile } from './lib/domain-pages.js'
 
 /**
  * Content negotiation for the HTML pages.
@@ -9,11 +10,11 @@ import { notAcceptableBody, selectRepresentation } from './lib/negotiate.js'
  * the filesystem and the cache, so it is the only place an agent asking for
  * `Accept: text/markdown` can be handed the Markdown twin of a page.
  *
- * Kept deliberately narrow: only pages that actually have a `.md` sibling, so
- * every other request skips the middleware entirely.
+ * Domain variants include static docs, discovery documents, and social cards.
+ * All API, permalink, and shared asset requests immediately pass through.
  */
 export const config = {
-  matcher: ['/', '/docs', '/docs/:path*', '/about', '/contact', '/privacy', '/terms'],
+  matcher: ['/:path*'],
 }
 
 const DISCOVERY_LINKS = [
@@ -30,6 +31,16 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
+  const variant = (path: string) => url.hostname === PARALLEL_HOST && domainFile(path)
+    ? `${DOMAIN_PREFIX}/${domainFile(path)}` : path
+  const file = domainFile(url.pathname)
+  const isNegotiated = ['/', '/docs', '/about', '/contact', '/privacy', '/terms'].includes(url.pathname)
+    || (url.pathname.startsWith('/docs/') && !/\.[a-z0-9]+$/i.test(url.pathname))
+
+  if (!isNegotiated) {
+    return url.hostname === PARALLEL_HOST && file
+      ? rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url)) : next()
+  }
 
   // The matcher also catches files under /docs (llms.txt, the .md twins
   // themselves). Those are already the representation they are; negotiating
@@ -43,7 +54,7 @@ export default function middleware(request: Request): Response {
   // An explicit agent view, so an agent can ask for Markdown without having to
   // set an Accept header at all.
   if (url.searchParams.get('mode') === 'agent') {
-    return rewrite(new URL(md, request.url), { headers: { Vary: 'Accept', Link: link } })
+    return rewrite(new URL(variant(md), request.url), { headers: { Vary: 'Accept', Link: link } })
   }
 
   const accept = request.headers.get('accept')
@@ -62,7 +73,13 @@ export default function middleware(request: Request): Response {
   }
 
   if (chosen === 'markdown') {
-    return rewrite(new URL(md, request.url), { headers: { Vary: 'Accept', Link: link } })
+    return rewrite(new URL(variant(md), request.url), { headers: { Vary: 'Accept', Link: link } })
+  }
+
+  if (url.hostname === PARALLEL_HOST && file) {
+    return rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url), {
+      headers: { Vary: 'Accept', Link: link },
+    })
   }
 
   return next({ headers: { Vary: 'Accept', Link: link } })
