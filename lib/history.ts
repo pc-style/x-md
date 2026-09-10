@@ -133,11 +133,12 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
       const [ids] = await run<string[]>([['ZRANGE', k.ids, to, from, 'BYSCORE', 'REV']])
       const list = ids.result ?? []
       if (!list.length) return []
+      // One pipeline round-trip for every chunk of bodies.
+      const chunks: RedisCommand[] = []
+      for (let i = 0; i < list.length; i += 500) chunks.push(['HMGET', k.posts, ...list.slice(i, i + 500)])
+      const replies = await run<(string | null)[]>(chunks, 15_000)
       const out: FxTweet[] = []
-      for (let i = 0; i < list.length; i += 500) {
-        const [reply] = await run<(string | null)[]>([['HMGET', k.posts, ...list.slice(i, i + 500)]], 10_000)
-        for (const raw of reply.result ?? []) if (raw) out.push(JSON.parse(raw) as FxTweet)
-      }
+      for (const reply of replies) for (const raw of reply.result ?? []) if (raw) out.push(JSON.parse(raw) as FxTweet)
       return out
     },
     async stats(handle) {
@@ -257,8 +258,9 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   }
 
   // Serve the archived part first; it is instant.
+  let archived: FxTweet[] | undefined
   if (index) {
-    const archived = await s.range(handle, since ?? 0, until)
+    archived = await s.range(handle, since ?? 0, until)
     for (const post of archived) emit(post)
   }
 
@@ -283,8 +285,9 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   index = await record(s, handle, fresh, covered)
   added = fresh.length
 
-  // Final body from the archive, filtered and capped, newest first.
-  let posts = (await s.range(handle, since ?? 0, until)).filter(wanted)
+  // Final body from the archive, filtered and capped, newest first. When nothing
+  // was walked the first read is still current, so do not read it again.
+  let posts = (walked.length === 0 && archived ? archived : await s.range(handle, since ?? 0, until)).filter(wanted)
   const truncated = posts.length > maxPosts
   if (truncated) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
