@@ -9,7 +9,7 @@
  * copies over blume's generated docs spec at /openapi.json.
  */
 
-import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY, IMPORT_MAX_POSTS } from './import.js'
+import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY_PER_BASE, IMPORT_MAX_POSTS } from './import.js'
 import { ERROR_CATALOG, LEGACY_DEPRECATION, LEGACY_SUNSET, LEGACY_SUNSET_ISO, problemDetails } from './apierror.js'
 import type { ErrorCode, ProblemDetails } from './apierror.js'
 
@@ -530,7 +530,7 @@ const IMPORT_PARAMS: readonly ParameterObject[] = [
   { ...booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   { ...booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   booleanParam('only_replies', 'Return only the account\'s replies.', BROWSE_TRUE),
-  { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once. Higher is faster until the upstream provider throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
+  { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY_PER_BASE, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
   { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` streams one `{"post": …}` line per post as the parallel chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
 ]
 

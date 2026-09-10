@@ -1536,7 +1536,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once. Higher is faster until the upstream provider throttles; lower it if imports answer 503 `upstream_rate_limited`."
+            "description": "Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`."
           },
           {
             "name": "format",
@@ -5059,7 +5059,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once. Higher is faster until the upstream provider throttles; lower it if imports answer 503 `upstream_rate_limited`."
+            "description": "Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`."
           },
           {
             "name": "format",

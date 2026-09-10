@@ -68,7 +68,7 @@ interface Store {
   put(handle: string, posts: FxTweet[]): Promise<void>
   /** Posts with time in [from, to], newest first. */
   range(handle: string, from: number, to: number): Promise<FxTweet[]>
-  stats(handle: string): Promise<{ count: number; oldest?: number; newest?: number }>
+  stats(handle: string): Promise<{ count: number }>
   clear(handle: string): Promise<void>
 }
 
@@ -87,10 +87,7 @@ const memoryStore: Store = {
   async range(handle, from, to) {
     return [...bucket(handle).posts.values()].filter((post) => { const at = postTime(post); return at >= from && at <= to }).sort((a, b) => postTime(b) - postTime(a) || (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
   },
-  async stats(handle) {
-    const times = [...bucket(handle).posts.values()].filter((post) => !isRepost(post)).map(postTime)
-    return { count: bucket(handle).posts.size, oldest: times.length ? Math.min(...times) : undefined, newest: times.length ? Math.max(...times) : undefined }
-  },
+  async stats(handle) { return { count: bucket(handle).posts.size } },
   async clear(handle) { memory.delete(handle.toLowerCase()) },
 }
 
@@ -142,10 +139,8 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
       return out
     },
     async stats(handle) {
-      const k = keys(handle)
-      const [count, newest, oldest] = await run<unknown>([['ZCARD', k.ids], ['ZRANGE', k.ids, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, 1, 'WITHSCORES'], ['ZRANGE', k.ids, '-inf', '+inf', 'BYSCORE', 'LIMIT', 0, 1, 'WITHSCORES']])
-      const score = (reply: { result?: unknown }) => { const r = reply.result as (string | number)[] | undefined; return r && r.length >= 2 ? Number(r[1]) : undefined }
-      return { count: Number(count.result ?? 0), newest: score(newest), oldest: score(oldest) }
+      const [count] = await run<number>([['ZCARD', keys(handle).ids]])
+      return { count: Number(count.result ?? 0) }
     },
     async clear(handle) { const k = keys(handle); await run([['DEL', k.index, k.ids, k.posts]]) },
   }
@@ -191,6 +186,11 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
   if (posts.length) await s.put(handle, posts)
   const previous = await s.readIndex(handle)
   const stats = await s.stats(handle)
+  // Oldest/newest come from the posts this request added (reposts excluded:
+  // they carry the original's date) merged with what the index already said.
+  const times = posts.filter((post) => !isRepost(post)).map(postTime).filter(Boolean)
+  const oldestMs = Math.min(...times, previous?.oldest ? Date.parse(previous.oldest) : Infinity)
+  const newestMs = Math.max(...times, previous?.newest ? Date.parse(previous.newest) : -Infinity)
   // Coverage grows monotonically: the walks in this request plus what was covered before.
   const sinceValues = covered.map((c) => c.since)
   const prevSince = previous?.covered_since ? Date.parse(previous.covered_since) : undefined
@@ -200,8 +200,8 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
   const index: HistoryIndex = {
     handle,
     count: stats.count,
-    oldest: stats.oldest !== undefined ? new Date(stats.oldest).toISOString() : previous?.oldest,
-    newest: stats.newest !== undefined ? new Date(stats.newest).toISOString() : previous?.newest,
+    oldest: Number.isFinite(oldestMs) ? new Date(oldestMs).toISOString() : undefined,
+    newest: Number.isFinite(newestMs) ? new Date(newestMs).toISOString() : undefined,
     updated_at: new Date().toISOString(),
     floor_reached: floor,
     covered_since: coveredSince === undefined ? undefined : new Date(coveredSince).toISOString(),
