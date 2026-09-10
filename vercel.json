@@ -2,6 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
+  "regions": ["fra1"],
+  "functions": {
+    "api/import.ts": {
+      "maxDuration": 120
+    }
+  },
   "rewrites": [
     {
       "source": "/docs",
@@ -34,6 +40,10 @@
     {
       "source": "/search",
       "destination": "/api/browse?resource=search&via=route"
+    },
+    {
+      "source": "/:handle([A-Za-z0-9_]{1,15})/posts",
+      "destination": "/api/import?handle=:handle&via=route"
     },
     {
       "source": "/:handle([A-Za-z0-9_]{1,15})/followers",
@@ -82,6 +92,10 @@
     {
       "source": "/api/v1/search",
       "destination": "/api/browse?resource=search&via=route"
+    },
+    {
+      "source": "/api/v1/profiles/:handle([A-Za-z0-9_]{1,15})/posts",
+      "destination": "/api/import?handle=:handle&via=route"
     },
     {
       "source": "/api/v1/profiles/:handle([A-Za-z0-9_]{1,15})/followers",

@@ -2,7 +2,7 @@
 title: Pagination
 description: One cursor shape across every list route — pass nextCursor back as cursor until it stops coming.
 sidebar:
-  order: 4
+  order: 5
   icon: chevrons-right
 ---
 
@@ -13,8 +13,8 @@ Every list route paginates the same way — search, profiles, followers, and fol
 | Request parameter | Type | Default | Bounds |
 | --- | --- | --- | --- |
 | `cursor` | opaque string | — | The `nextCursor` from the previous response, unmodified. |
-| `page` | integer | `1` | `1`–`10`. Larger values are clamped to `10`. Ignored when `cursor` is present. |
-| `limit` | integer | `20` | `1`–`20`. Larger values are clamped to `20`. |
+| `page` | integer | `1` | `1`–`10`. Larger values are clamped to `10`. Ignored when `cursor` is present. Cursors have no such ceiling. |
+| `limit` | integer | `20` | `1`–`100`. Larger values are clamped to `100`. Search feeds served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most `20` and say so in `limit`. |
 
 | Response field | Type | Meaning |
 | --- | --- | --- |
@@ -44,9 +44,15 @@ for (let page = 0; page < 3; page++) {
 }
 ```
 
-Stop when `nextCursor` is absent — not when a page comes back short. A page can be shorter than `limit`, or empty, and still have a continuation: profile results filter out replies and reposts *after* retrieval, and provider coverage varies.
+Stop when `nextCursor` is absent — not when a page comes back short. Only the last page of a list is shorter than `limit`.
 
-A cursor fetches exactly one upstream page, so it is both faster and cheaper than walking to the same offset with `page`.
+## Exact pages
+
+A page holds exactly `limit` items. x.md assembles it from as many upstream pages as it takes (X serves ~30 posts or ~70 accounts at a time) and cuts it precisely. When the cut falls inside an upstream page, the continuation carries an offset — a cursor like `fxtwitter:DAAHCg…@15` — so the next request re-reads that page and skips what you already have. Nothing is lost, nothing repeats. A profile page continues from an exact position instead: its cursor is minted at the last post returned.
+
+Cursor mode is still the cheap path: `limit=100` costs four or five upstream pages once, where `page=5` walks every earlier block again.
+
+For an account's whole history do not page at all — [import it](/bulk-import).
 
 :::warning
 Treat cursors as opaque. Do not decode them, strip their `fxtwitter:` or `xsearch:` prefix, or reuse one with a different route, query, or feed. A search cursor names the provider that issued it, and returning it elsewhere is undefined.

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import { callerHeaders, resolveCaller } from './apiauth.js'
+import { apiKeyRequired, callerHeaders, keyRequirementFailure, resolveCaller } from './apiauth.js'
 import { createApiKey, getApiKey } from './apikeys.js'
 import { resetKv } from './kv.js'
 
@@ -35,5 +35,28 @@ describe('resolveCaller', () => {
     expect(result).toMatchObject({ status: 'unverified', caller: { kind: 'public', ip: '1.1.1.1' } })
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+  })
+})
+
+describe('private mode', () => {
+  const previous = process.env.X_MD_REQUIRE_API_KEY
+  beforeEach(() => { process.env.X_MD_REQUIRE_API_KEY = previous })
+
+  test('is off unless X_MD_REQUIRE_API_KEY is set, then only a valid key passes', async () => {
+    delete process.env.X_MD_REQUIRE_API_KEY
+    expect(apiKeyRequired()).toBe(false)
+    const anon = await resolveCaller({ 'x-real-ip': '9.9.9.9' })
+    expect(keyRequirementFailure(anon)).toBeUndefined()
+
+    process.env.X_MD_REQUIRE_API_KEY = '1'
+    expect(apiKeyRequired()).toBe(true)
+    expect(keyRequirementFailure(anon)).toMatch(/requires an API key/)
+    const { secret } = await createApiKey('leo', 60)
+    const valid = await resolveCaller({ authorization: `Bearer ${secret}` })
+    expect(keyRequirementFailure(valid)).toBeUndefined()
+    const invalid = await resolveCaller({ authorization: 'Bearer nope' })
+    expect(keyRequirementFailure(invalid)).toMatch(/requires an API key/)
+    expect(keyRequirementFailure({ ...anon, status: 'unverified' })).toMatch(/store is unavailable/)
+    delete process.env.X_MD_REQUIRE_API_KEY
   })
 })

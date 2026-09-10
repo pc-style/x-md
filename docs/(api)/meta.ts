@@ -4,5 +4,5 @@ export default defineMeta({
   title: 'API',
   icon: 'code',
   order: 1,
-  pages: ['posts', 'search', 'profiles', 'pagination', 'responses', 'reliability'],
+  pages: ['posts', 'search', 'profiles', 'bulk-import', 'pagination', 'responses', 'reliability'],
 })

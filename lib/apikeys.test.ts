@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test } from 'vitest'
 import { handleKeysApi, handlePoolApi } from './adminApi.js'
+import { importAllowance, type ApiKeyView } from './apikeys.js'
+import { poolSnapshot } from './pool.js'
 import { createApiKey, deleteApiKey, getApiKey, listApiKeys, resolveApiKey, toView, touchApiKey, updateApiKey } from './apikeys.js'
 import { resetKv } from './kv.js'
 import { resetXSessions } from './xsearch.js'
@@ -79,5 +81,29 @@ describe('admin api', () => {
     expect((await handleKeysApi('PATCH', { id: created.key.id, limitPer15m: -3 })).status).toBe(400)
     expect((await handleKeysApi('PATCH', { id: created.key.id, limitPer15m: 'nope' })).status).toBe(400)
     expect((await getApiKey(created.key.id))?.limitPer15m).toBe(26)
+  })
+})
+
+describe('bulk import allowance', () => {
+  test('is per key, defaults to the policy, and shows up in the pool snapshot', async () => {
+    const plain = await handleKeysApi('POST', { label: 'plain' })
+    const heavy = await handleKeysApi('POST', { label: 'heavy', limitPer15m: 30, importPer15m: 500 })
+    expect((plain.body as { key: ApiKeyView }).key.importPer15m).toBeUndefined()
+    expect((heavy.body as { key: ApiKeyView }).key.importPer15m).toBe(500)
+    expect(importAllowance((plain.body as { key: ApiKeyView }).key, 60)).toBe(60)
+    expect(importAllowance((heavy.body as { key: ApiKeyView }).key, 60)).toBe(500)
+    expect((await handleKeysApi('POST', { label: 'bad', importPer15m: 'lots' })).status).toBe(400)
+
+    const id = (heavy.body as { key: ApiKeyView }).key.id
+    const patched = await handleKeysApi('PATCH', { id, importPer15m: 120 })
+    expect((patched.body as { key: ApiKeyView }).key.importPer15m).toBe(120)
+
+    const listed = (await handleKeysApi('GET', {})).body as { defaultImportLimit: number }
+    expect(listed.defaultImportLimit).toBe(60)
+
+    const snapshot = await poolSnapshot(100, 900)
+    const share = snapshot.keys.find((k) => k.id === id)!
+    expect(share.importLimit).toBe(120)
+    expect(share.importUsed).toBe(0)
   })
 })

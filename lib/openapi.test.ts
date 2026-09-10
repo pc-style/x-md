@@ -5,7 +5,7 @@ import { apiIndexDocument } from '../api/index.js'
 import { ERROR_CATALOG, LEGACY_SUNSET_ISO, problemDetails } from './apierror'
 import { BROWSE_SUCCESSORS, openapiDocument, openapiJson, SITE } from './openapi'
 import type { OperationObject, ResponseObject } from './openapi'
-import { ACCOUNT_IP, ACCOUNT_KEY_NAME, ACCOUNT_WINDOW_SEC, API_IP, SEARCH_IP, SEARCH_KEY } from './quotas'
+import { ACCOUNT_IP, ACCOUNT_KEY_NAME, ACCOUNT_WINDOW_SEC, API_IP, IMPORT_IP, IMPORT_KEY, SEARCH_IP, SEARCH_KEY } from './quotas'
 import { policyField, stateField } from './ratelimit-headers'
 
 const doc = openapiDocument()
@@ -224,7 +224,8 @@ describe('pagination', () => {
       for (const name of ['cursor', 'page', 'limit']) expect(names, `${path} ${name}`).toContain(name)
       const limit = operation.parameters.find((parameter) => parameter.name === 'limit')?.schema
       expect(limit?.type, path).toBe('integer')
-      expect(limit?.maximum, path).toBe(20)
+      // Every list is assembled from as many upstream pages as needed, so all allow 100.
+      expect(limit?.maximum, path).toBe(100)
       expect(limit?.default, path).toBe(20)
       expect(operation.parameters.find((parameter) => parameter.name === 'page')?.schema.maximum, path).toBe(10)
     }
@@ -239,7 +240,7 @@ describe('pagination', () => {
   })
 
   test('the document says cursors are preferred', () => {
-    expect(doc['x-pagination']).toMatchObject({ style: 'cursor', preferred: 'cursor', max_limit: 20, max_page: 10 })
+    expect(doc['x-pagination']).toMatchObject({ style: 'cursor', preferred: 'cursor', max_limit: 100, max_page: 10 })
     expect((doc['x-pagination'] as { response_fields: Record<string, string> }).response_fields.next_cursor).toBe('nextCursor')
   })
 })
@@ -364,8 +365,8 @@ describe('rate limit headers', () => {
 
   test('the declared policies match the quotas lib/quotas.ts enforces', () => {
     const declared = new Map(doc['x-rate-limit-policy'].map((policy) => [String(policy.name), policy]))
-    expect([...declared.keys()]).toEqual([API_IP.name, SEARCH_IP.name, SEARCH_KEY.name, ACCOUNT_IP.name, ACCOUNT_KEY_NAME])
-    for (const quota of [API_IP, SEARCH_IP, SEARCH_KEY, ACCOUNT_IP]) {
+    expect([...declared.keys()]).toEqual([API_IP.name, SEARCH_IP.name, SEARCH_KEY.name, IMPORT_IP.name, IMPORT_KEY.name, ACCOUNT_IP.name, ACCOUNT_KEY_NAME])
+    for (const quota of [API_IP, SEARCH_IP, SEARCH_KEY, IMPORT_IP, IMPORT_KEY, ACCOUNT_IP]) {
       expect(declared.get(quota.name)?.quota, quota.name).toBe(quota.quota)
       expect(declared.get(quota.name)?.window_seconds, quota.name).toBe(quota.windowSec)
     }

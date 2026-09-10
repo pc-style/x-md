@@ -1,7 +1,36 @@
 import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
 import { ConvertError } from './errors.js'
 
-const FX_BASE = 'https://api.fxtwitter.com'
+/**
+ * Upstream pool. `FXTWITTER_BASE_URL` is one base URL or a comma-separated
+ * list (own FxEmbed deployments, the public instance last). Requests rotate
+ * across the pool; a base that answers 429 sits out for its `Retry-After`,
+ * so a walk keeps going on the others. Each base is capped independently by
+ * FX_PER_BASE_INFLIGHT (lib/import.ts reads the pool size for its own cap).
+ */
+export const FX_BASES: readonly string[] = (process.env.FXTWITTER_BASE_URL ?? 'https://api.fxtwitter.com')
+  .split(',').map((base) => base.trim().replace(/\/+$/, '')).filter(Boolean)
+const coolUntil = new Map<string, number>()
+let rotation = 0
+
+/** The next base that is not cooling down; the least-recently-cooled one when all are. */
+export function pickFxBase(): string {
+  const now = Date.now()
+  for (let i = 0; i < FX_BASES.length; i += 1) {
+    const base = FX_BASES[(rotation + i) % FX_BASES.length]
+    if ((coolUntil.get(base) ?? 0) <= now) {
+      rotation = (rotation + i + 1) % FX_BASES.length
+      return base
+    }
+  }
+  return [...FX_BASES].sort((a, b) => (coolUntil.get(a) ?? 0) - (coolUntil.get(b) ?? 0))[0]
+}
+
+/** Test hook. */
+export function resetFxPool(): void {
+  coolUntil.clear()
+  rotation = 0
+}
 const UA = 'x-md/1.0'
 
 export interface FxAuthor {
@@ -156,6 +185,8 @@ export interface FxCursor {
 export interface FxListResponse<T> {
   results: T[]
   cursor?: FxCursor
+  /** Upstream requests it took to get this page (short-page retries, see fetchFxProfileStatuses). */
+  attempts?: number
 }
 
 function normalizeMediaItem(item: FxMediaItem): FxMediaItem {
@@ -207,14 +238,40 @@ function pickTweet(data: FxApiResponse): FxTweet | undefined {
   return raw ? normalizeTweet(raw) : undefined
 }
 
-async function fxFetchJson<T>(path: string): Promise<T> {
+/** `Retry-After` is delay-seconds or an HTTP-date (RFC 9110 §10.2.3); both become whole seconds. */
+export function retryAfterSeconds(header: string | null): number | undefined {
+  const raw = header?.trim()
+  if (!raw) return undefined
+  if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10) || undefined
+  const at = Date.parse(raw)
+  if (!Number.isFinite(at)) return undefined
+  return Math.max(1, Math.ceil((at - Date.now()) / 1000))
+}
+
+async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response
+  const base = pickFxBase()
   try {
-    response = await providerFetch('fxtwitter', `${FX_BASE}/${path}`, {
+    response = await providerFetch('fxtwitter', `${base}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error
     throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
+  }
+
+  if (response.status === 429) {
+    const retryAfter = retryAfterSeconds(response.headers.get('retry-after')) ?? 5
+    coolUntil.set(base, Date.now() + retryAfter * 1000)
+    // With more than one base the caller can retry at once on another one.
+    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', FX_BASES.length > 1 ? 0 : retryAfter)
+  }
+  // A self-hosted instance whose accounts are exhausted answers 5xx rather than
+  // 429; in a pool that base sits out briefly and the page moves to the next one.
+  if (response.status >= 500 && FX_BASES.length > 1) {
+    coolUntil.set(base, Date.now() + FX_UPSTREAM_ERROR_COOLDOWN_MS)
+    throw new ConvertError(503, `FxTwitter upstream ${new URL(base).host} answered ${response.status}.`, 'upstream_rate_limited', 0)
   }
 
   const data = (await response.json()) as FxApiResponse
@@ -261,16 +318,67 @@ export async function fetchFxProfile(handle: string): Promise<FxAuthor> {
   return data.user
 }
 
+export interface FxProfileStatusesOptions {
+  /** Include the account's replies (X's "Tweets & replies" timeline). Default false. */
+  withReplies?: boolean
+  /**
+   * Re-request a page that came back suspiciously short. X's timeline backend is
+   * bimodal: the same cursor answers with a full page (~30) or with 0–1 items, and
+   * the short answer is a transient miss, not the end of the timeline. Default 0.
+   */
+  retries?: number
+  /** Cancels the request and any retry wait. */
+  signal?: AbortSignal
+}
+
+/** A page this short is treated as an upstream miss when retries are allowed. */
+export const FX_SHORT_PAGE = 8
+/** Upstream 429s a page may wait out before the import gives up on it. */
+const FX_THROTTLE_WAITS = 3
+/** How long a pooled base sits out after answering 5xx. */
+const FX_UPSTREAM_ERROR_COOLDOWN_MS = 60_000
+
+function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', onAbort); resolve() }, ms)
+    const onAbort = () => { clearTimeout(timer); reject(signal?.reason) }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
 export async function fetchFxProfileStatuses(
   handle: string,
   cursor?: string,
   count = 20,
+  options: FxProfileStatusesOptions = {},
 ): Promise<FxListResponse<FxTweet>> {
-  const query = encodeQuery({ cursor, count, with_replies: 'false' })
-  const data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(
-    `2/profile/${encodeURIComponent(handle)}/statuses?${query}`,
-  )
-  return { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor }
+  const query = encodeQuery({ cursor, count, with_replies: options.withReplies ? 'true' : 'false' })
+  const path = `2/profile/${encodeURIComponent(handle)}/statuses?${query}`
+  let best: FxListResponse<FxTweet> = { results: [] }
+  const attempts = 1 + Math.max(0, options.retries ?? 0)
+  let throttled = 0
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let data: Partial<FxListResponse<FxTweet>>
+    options.signal?.throwIfAborted()
+    try {
+      data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path, options.signal)
+    } catch (error) {
+      // A throttled page is worth a short wait when the caller asked for retries;
+      // the loop still ends with the error so a hard limit surfaces as 503.
+      if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
+        throttled += 1
+        attempt -= 1
+        if (error.retryAfter) await abortableDelay(Math.min(error.retryAfter, 10) * 1000, options.signal)
+        continue
+      }
+      throw error
+    }
+    const page = { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor, attempts: attempt + 1 + throttled }
+    if (page.results.length >= FX_SHORT_PAGE) return page
+    if (page.results.length >= best.results.length) best = page
+  }
+  return { ...best, attempts: attempts + throttled }
 }
 
 export async function searchFxStatuses(

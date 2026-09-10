@@ -18,9 +18,9 @@
  * case a friend who goes quiet and then bursts late in a window may find part
  * of their slice already handed to the public. That is the accepted trade-off.
  */
-import { listApiKeys, type ApiKeyRecord } from './apikeys.js'
+import { importAllowance, listApiKeys, type ApiKeyRecord } from './apikeys.js'
 import { kv } from './kv.js'
-import { ACCOUNT_PUBLIC_COUNTER, accountKeyKey } from './quotas.js'
+import { ACCOUNT_PUBLIC_COUNTER, IMPORT_KEY, accountKeyKey, importKeyKey } from './quotas.js'
 import { peekRateLimit, windowClock } from './ratelimit.js'
 
 export interface PoolSettings {
@@ -115,6 +115,9 @@ export interface KeyShare {
   reserved: number
   idle: boolean
   lastUsedAt?: number
+  /** Bulk imports this window, against the key's own allowance. */
+  importLimit: number
+  importUsed: number
 }
 
 export interface PoolSnapshot {
@@ -159,6 +162,7 @@ async function computeSnapshot(capacity: number, windowSec: number, now: number)
   const [settings, records] = await Promise.all([getPoolSettings(), listApiKeys()])
   const clock = windowClock(windowSec, now)
   const counts = await peekRateLimit([ACCOUNT_PUBLIC_COUNTER, ...records.map((r) => accountKeyKey(r.id))], windowSec)
+  const imports = await peekRateLimit(records.map((r) => importKeyKey(r.id)), IMPORT_KEY.windowSec)
   const publicUsed = counts.current[0] ?? 0
   const idleReleaseMs = settings.idleReleaseMinutes * 60_000
 
@@ -169,7 +173,10 @@ async function computeSnapshot(capacity: number, windowSec: number, now: number)
       { limit: record.limitPer15m, disabled: record.disabled, used, previousUsed, lastUsedAt: record.lastUsedAt },
       clock, windowSec, idleReleaseMs, now,
     )
-    return { id: record.id, label: record.label, limit: record.limitPer15m, disabled: record.disabled, used, reserved, idle, lastUsedAt: record.lastUsedAt }
+    return {
+      id: record.id, label: record.label, limit: record.limitPer15m, disabled: record.disabled, used, reserved, idle, lastUsedAt: record.lastUsedAt,
+      importLimit: importAllowance(record, IMPORT_KEY.quota), importUsed: imports.current[index] ?? 0,
+    }
   })
 
   const keysUsed = keys.reduce((sum, k) => sum + k.used, 0)

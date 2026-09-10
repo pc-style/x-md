@@ -58,7 +58,8 @@ export function withSkillMd(
     url: skill.url,
     digest: digestOf(skill.source),
   }
-  const kept = (index.skills ?? []).filter((existing) => !(existing.type === 'skill-md' && existing.url === entry.url))
+  // Replace any readable entry for the same skill, whatever path the docs build gave it.
+  const kept = (index.skills ?? []).filter((existing) => !(existing.type === 'skill-md' && (existing.url === entry.url || existing.name === entry.name)))
   return {
     ...index,
     $schema: index.$schema ?? AGENT_SKILLS_SCHEMA,

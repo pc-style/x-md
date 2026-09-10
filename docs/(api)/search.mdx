@@ -63,7 +63,9 @@ Feed names are case-insensitive. `media` is an alias for `photos`; unknown value
 | --- | --- | --- |
 | `q` | Required | Nonempty search query. |
 | `feed` | `latest` | One of the five feeds above. |
-| `limit` | `20` | Results per response, maximum **20**. Larger values are clamped. |
+| `limit` | `20` | Results per response, maximum **100** on `latest` and `top`. Feeds served by own accounts (`photos`, `videos`, `users`, or a fallback when the primary provider is down) answer at most 20 per request and report that in `limit`. |
+| `since` | — | Oldest post to match: ISO date, ISO datetime, or unix timestamp. Applied as X's `since_time:` operator, so every provider honours it. |
+| `until` | — | Newest post to match, same formats, applied as `until_time:`. |
 | `cursor` | — | Opaque `nextCursor` from the previous response. |
 | `page` | `1` | Page 1–10; prefer cursors for continuation. |
 | `full` | `false` | `true` adds dates and metrics, or profile details for Users. |

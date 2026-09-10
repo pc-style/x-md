@@ -1,0 +1,74 @@
+{
+  "accounts": {
+    "paulg": {
+      "since": "2026-06-23T10:27:22.641Z",
+      "until": "2026-09-09T23:52:46.451Z",
+      "rate": 1.0607697596430425,
+      "reference": 983
+    }
+  },
+  "runs": [
+    {
+      "strategy": "sequential + short-page retry",
+      "handle": "paulg",
+      "ok": true,
+      "wall_ms": 8630,
+      "posts": 98,
+      "originals": 19,
+      "reposts": 32,
+      "replies": 47,
+      "posts_per_s": 11,
+      "requests": 12,
+      "requests_per_100_posts": 12,
+      "retried_pages": 6,
+      "http_429": 0,
+      "avg_latency_ms": 718,
+      "paced_ms": 0,
+      "missing": 917,
+      "extra": 0,
+      "completeness": 0.06714140386571721
+    },
+    {
+      "strategy": "parallel c=16 (default)",
+      "handle": "paulg",
+      "ok": true,
+      "wall_ms": 13898,
+      "posts": 1332,
+      "originals": 290,
+      "reposts": 349,
+      "replies": 693,
+      "posts_per_s": 96,
+      "requests": 139,
+      "requests_per_100_posts": 10,
+      "retried_pages": 27,
+      "http_429": 0,
+      "avg_latency_ms": 918,
+      "paced_ms": 0,
+      "windows": 67,
+      "missing": 0,
+      "extra": 0,
+      "completeness": 1
+    },
+    {
+      "strategy": "parallel c=32",
+      "handle": "paulg",
+      "ok": true,
+      "wall_ms": 7381,
+      "posts": 1332,
+      "originals": 290,
+      "reposts": 349,
+      "replies": 693,
+      "posts_per_s": 180,
+      "requests": 142,
+      "requests_per_100_posts": 11,
+      "retried_pages": 30,
+      "http_429": 0,
+      "avg_latency_ms": 835,
+      "paced_ms": 0,
+      "windows": 67,
+      "missing": 0,
+      "extra": 0,
+      "completeness": 1
+    }
+  ]
+}

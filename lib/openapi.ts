@@ -9,6 +9,7 @@
  * copies over blume's generated docs spec at /openapi.json.
  */
 
+import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY_PER_BASE, IMPORT_MAX_POSTS } from './import.js'
 import { ERROR_CATALOG, LEGACY_DEPRECATION, LEGACY_SUNSET, LEGACY_SUNSET_ISO, problemDetails } from './apierror.js'
 import type { ErrorCode, ProblemDetails } from './apierror.js'
 
@@ -41,7 +42,10 @@ const BROWSE_SUCCESSOR_PROSE = Object.entries(BROWSE_SUCCESSORS)
   .join(', ')
 
 const DEFAULT_LIMIT = 20
-const MAX_LIMIT = 20
+const MAX_LIMIT = 100
+const PROFILE_MAX_LIMIT = 100
+/** Own-account search feeds (photos, videos, users, and any search served by own accounts) answer one upstream page. */
+const ACCOUNT_SEARCH_LIMIT = 20
 const MAX_PAGE = 10
 
 export interface JsonSchema {
@@ -409,7 +413,7 @@ const FEED_PARAM: ParameterObject = {
 const CURSOR_PARAM: ParameterObject = {
   name: 'cursor',
   in: 'query',
-  description: 'Opaque `nextCursor` from a previous response, and the preferred way to page. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.',
+  description: 'Opaque `nextCursor` from a previous response, and the preferred way to page: there is no limit on how far a cursor chain goes. Send it back with the same query, feed and options. Never decode a cursor, edit it, or reuse it across feeds. A cursor takes precedence over `page`.',
   required: false,
   schema: { type: 'string' },
 }
@@ -425,7 +429,7 @@ const PAGE_PARAM: ParameterObject = {
 const LIMIT_PARAM: ParameterObject = {
   name: 'limit',
   in: 'query',
-  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}.`,
+  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}. A page is assembled from as many upstream pages as it takes and cut exactly at \`limit\`; when the cut falls inside an upstream page the \`nextCursor\` carries an offset (\`…@15\`), so nothing is lost or repeated. Searches served by own accounts (\`photos\`, \`videos\`, \`users\`, or a fallback) answer at most ${ACCOUNT_SEARCH_LIMIT} per request and report that in \`limit\`.`,
   required: false,
   schema: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, default: DEFAULT_LIMIT },
 }
@@ -499,6 +503,37 @@ const POST_PARAMS: readonly ParameterObject[] = [
 
 const LIST_PARAMS: readonly ParameterObject[] = [CURSOR_PARAM, PAGE_PARAM, LIMIT_PARAM, BROWSE_FORMAT_PARAM, BROWSE_FULL_PARAM, BROWSE_NOCACHE_PARAM]
 
+const PROFILE_LIMIT_PARAM: ParameterObject = {
+  ...LIMIT_PARAM,
+  description: `Maximum posts in the page. Values above ${PROFILE_MAX_LIMIT} are clamped to ${PROFILE_MAX_LIMIT}. A page is assembled from as many upstream pages as it takes and cut exactly at \`limit\`; its \`nextCursor\` continues right after the last post.`,
+  schema: { type: 'integer', minimum: 1, maximum: PROFILE_MAX_LIMIT, default: DEFAULT_LIMIT },
+}
+const WITH_REPLIES_PARAM = booleanParam('with_replies', 'Include the account\'s replies. Off by default: the page then holds original posts only.', BROWSE_TRUE)
+const WITH_REPOSTS_PARAM = booleanParam('with_reposts', 'Include the account\'s reposts. Off by default. A repost is returned as the original post with `reposted_by` set, so it carries the original\'s `id` and `created_at`.', BROWSE_TRUE)
+const DATE_SCHEMA: JsonSchema = { type: 'string', description: 'ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds.' }
+const UNTIL_PARAM: ParameterObject = {
+  name: 'until',
+  in: 'query',
+  description: 'Start the page just below this instant instead of at the newest post. Lets a client jump straight to a date without walking cursors. Ignored when `cursor` is supplied.',
+  required: false,
+  schema: DATE_SCHEMA,
+  example: '2026-03-01',
+}
+const SEARCH_SINCE_PARAM: ParameterObject = { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to match. Applied upstream as X\'s `since_time:` operator, so it works on every provider.' }
+const SEARCH_UNTIL_PARAM: ParameterObject = { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to match. Applied upstream as X\'s `until_time:` operator.' }
+const PROFILE_PARAMS: readonly ParameterObject[] = [CURSOR_PARAM, PAGE_PARAM, PROFILE_LIMIT_PARAM, WITH_REPLIES_PARAM, WITH_REPOSTS_PARAM, UNTIL_PARAM, BROWSE_FORMAT_PARAM, BROWSE_FULL_PARAM, BROWSE_NOCACHE_PARAM]
+
+const IMPORT_PARAMS: readonly ParameterObject[] = [
+  { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to include. Omit to go as far back as upstream allows (X serves roughly the 3200 most recent timeline entries; `meta.floor_reached` says when that floor was hit).' },
+  { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here.' },
+  { name: 'max_posts', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_POSTS, default: IMPORT_DEFAULT_MAX_POSTS }, description: `Most posts to return, newest first. Values above ${IMPORT_MAX_POSTS} are clamped. \`meta.truncated\` is true when the range held more.` },
+  { ...booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
+  { ...booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
+  booleanParam('only_replies', 'Return only the account\'s replies.', BROWSE_TRUE),
+  { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY_PER_BASE, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
+  { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` streams one `{"post": …}` line per post as the parallel chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
+]
+
 // ---------------------------------------------------------------------------
 // Responses
 // ---------------------------------------------------------------------------
@@ -551,6 +586,36 @@ function browseSuccess(description: string, search: boolean): ResponseObject {
       'application/json': { schema: schemaRef('BrowseResponse'), examples: search ? { search: exampleRef('searchResponse') } : { profile: exampleRef('profileResponse') } },
       'text/markdown': { schema: { type: 'string', description: 'Rendered Markdown list. The default representation. Ends with a `Continue →` link whenever `nextCursor` is set.' } },
     },
+  }
+}
+
+function importSuccess(): ResponseObject {
+  return {
+    description: 'Every matching post in the range, newest first, with the profile and a `meta` block describing the walk.',
+    headers: { ...RATE_LIMIT_HEADERS, Vary: headerRef('Vary'), 'Cache-Control': headerRef('CacheControl'), 'X-Source': headerRef('XSource'), 'X-Result-Count': headerRef('XResultCount'), 'X-Api-Key-Status': headerRef('XApiKeyStatus') },
+    content: {
+      'application/json': { schema: schemaRef('ImportResponse') },
+      'application/x-ndjson': { schema: { type: 'string', description: 'With `format=ndjson`: one JSON object per line. `{"post": Post}` lines as posts arrive, then one `{"meta": ImportMeta, "profile": Author}` line, or `{"error": Problem}` when the walk failed part-way.' } },
+    },
+  }
+}
+
+function importOperation(path: string, operationId: string, summary: string): { path: string; item: { get: OperationObject } } {
+  return {
+    path,
+    item: operation({
+      path,
+      operationId,
+      summary,
+      description: 'Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key (`import-ip` / `import-key` in `RateLimit-Policy`).',
+      tags: ['Profiles'],
+      parameters: [handleParam('path'), ...IMPORT_PARAMS],
+      success: importSuccess(),
+      errors: IMPORT_ERRORS,
+      docs: 'profiles',
+      recoverable404: false,
+      security: OPTIONAL_KEY_SECURITY,
+    }),
   }
 }
 
@@ -662,6 +727,7 @@ function errorResponses(codes: readonly ErrorCode[], recoverable: boolean): Reco
  */
 const POST_ERRORS: readonly ErrorCode[] = ['missing_url', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
 const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
+const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_rate_limited']
 const SEARCH_ERRORS: readonly ErrorCode[] = ['missing_query', 'invalid_key', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 const LEGACY_BROWSE_ERRORS: readonly ErrorCode[] = ['invalid_resource', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 /** oEmbed reads nothing upstream, so it can only fail on method, quota or a bug. */
@@ -670,7 +736,7 @@ const INDEX_ERRORS: readonly ErrorCode[] = ['method_not_allowed', 'rate_limited'
 
 /** Every code any operation documents, and therefore every example to publish. */
 const DOCUMENTED_CODES: readonly ErrorCode[] = [
-  ...new Set([...POST_ERRORS, ...PROFILE_ERRORS, ...SEARCH_ERRORS, ...LEGACY_BROWSE_ERRORS, ...OEMBED_ERRORS, ...INDEX_ERRORS]),
+  ...new Set([...POST_ERRORS, ...PROFILE_ERRORS, ...IMPORT_ERRORS, ...SEARCH_ERRORS, ...LEGACY_BROWSE_ERRORS, ...OEMBED_ERRORS, ...INDEX_ERRORS]),
 ]
 
 const OPTIONAL_KEY_SECURITY: readonly Record<string, readonly string[]>[] = [{}, { bearerApiKey: [] }]
@@ -818,9 +884,10 @@ function paths(): Record<string, { get: OperationObject }> {
       '/api/v1/profiles/{handle}',
       'getProfile',
       'Read a profile and its latest posts',
-      'Read a public X account: its bio, counts, and its most recent original posts (replies and reposts are filtered out).',
-      [handleParam('path'), ...LIST_PARAMS],
+      'Read a public X account: its bio, counts, and its most recent posts. Original posts only unless `with_replies` or `with_reposts` is set.',
+      [handleParam('path'), ...PROFILE_PARAMS],
     ),
+    importOperation('/api/v1/profiles/{handle}/posts', 'importProfilePosts', 'Import a profile\'s post history in bulk'),
     profileOperation(
       '/api/v1/profiles/{handle}/followers',
       'listFollowers',
@@ -839,8 +906,8 @@ function paths(): Record<string, { get: OperationObject }> {
       '/api/v1/search',
       'searchPosts',
       'Search public posts and accounts',
-      'Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`.',
-      [Q_PARAM, FEED_PARAM, ...LIST_PARAMS],
+      'Search public X posts across the `latest`, `top`, `photos` and `videos` feeds, or search accounts with `feed=users`. `since` and `until` bound the results by date; `limit` goes up to 100 on the `latest` and `top` feeds.',
+      [Q_PARAM, FEED_PARAM, SEARCH_SINCE_PARAM, SEARCH_UNTIL_PARAM, ...LIST_PARAMS],
     ),
     oembedOperation('/api/v1/oembed', 'getOEmbed', 'Return the oEmbed metadata a social-preview client asks for after reading an x.md permalink.'),
 
@@ -857,8 +924,9 @@ function paths(): Record<string, { get: OperationObject }> {
       'getProfileByHandle',
       'Read a profile from its x.com handle shape',
       'The permalink surface for accounts: `https://x.pcstyle.dev/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.',
-      [handleParam('path'), ...LIST_PARAMS],
+      [handleParam('path'), ...PROFILE_PARAMS],
     ),
+    importOperation('/{handle}/posts', 'importProfilePostsByHandle', 'Import a profile\'s post history from its permalink shape'),
     profileOperation(
       '/{handle}/followers',
       'listFollowersByHandle',
@@ -878,7 +946,7 @@ function paths(): Record<string, { get: OperationObject }> {
       'searchPostsByPath',
       'Search public posts from the permalink shape',
       'The permalink surface for search: `https://x.pcstyle.dev/search?q=...` mirrors `https://x.com/search?q=...`.',
-      [Q_PARAM, FEED_PARAM, ...LIST_PARAMS],
+      [Q_PARAM, FEED_PARAM, SEARCH_SINCE_PARAM, SEARCH_UNTIL_PARAM, ...LIST_PARAMS],
     ),
     oembedOperation('/oembed', 'getOEmbedByPath', 'The permalink surface for oEmbed, and the URL x.md advertises in its own preview HTML.'),
 
@@ -1156,12 +1224,51 @@ function schemas(): Record<string, JsonSchema> {
         feed: { type: 'string', enum: ['latest', 'top', 'photos', 'videos', 'users'], description: 'The resolved feed. `media` is normalised to `photos`. Search only.' },
         handle: str('The account this page belongs to. Profile and connection reads only.'),
         page: { type: 'integer', minimum: 1, maximum: MAX_PAGE, description: 'Ordinal page that was served.' },
-        limit: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, description: 'Maximum results this page could contain.' },
+        limit: { type: 'integer', minimum: 1, maximum: PROFILE_MAX_LIMIT, description: `Maximum results this page could contain: up to ${PROFILE_MAX_LIMIT} on a profile, ${MAX_LIMIT} elsewhere.` },
         nextCursor: str('Opaque cursor for the next page. Absent when there is no continuation — including on degraded search results. Send it back as `cursor`; never decode or edit it, and never reuse it on another feed.'),
         source: { type: 'string', enum: ['fxtwitter', 'xsearch', 'firecrawl'], description: 'Upstream provider that answered.' },
         degraded: { type: 'boolean', description: 'True when live X search was unavailable and web-indexed snippets were served instead: ordering and coverage differ, text may be truncated, metrics are missing, and there is no cursor.' },
         markdown: str('The rendered Markdown, identical to what `Accept: text/markdown` returns.'),
         cache: { type: 'string', enum: ['hit', 'miss', 'bypass'], description: 'Whether the application cache served this response.' },
+      },
+    },
+    ImportMeta: {
+      type: 'object',
+      title: 'ImportMeta',
+      description: 'How a bulk import went and how to continue it.',
+      additionalProperties: true,
+      required: ['handle', 'count', 'until', 'truncated', 'floor_reached', 'with_replies', 'with_reposts', 'only_replies', 'concurrency', 'windows', 'pages', 'duration_ms', 'source'],
+      properties: {
+        handle: str('The account that was imported.'),
+        count: { type: 'integer', description: 'Posts in this response.' },
+        since: str('The requested lower bound, ISO 8601. Absent when the import went as far back as it could.'),
+        until: str('The upper bound that was used, ISO 8601.'),
+        oldest: str('ISO 8601 time of the oldest original post returned. Send it as `until` to continue past a truncated result.'),
+        newest: str('ISO 8601 time of the newest original post returned.'),
+        truncated: { type: 'boolean', description: 'True when the range held more than `max_posts`; the response holds the newest `max_posts`.' },
+        floor_reached: { type: 'boolean', description: 'True when upstream stopped answering before `since`: X serves roughly the 3200 most recent timeline entries.' },
+        with_replies: { type: 'boolean' },
+        with_reposts: { type: 'boolean' },
+        only_replies: { type: 'boolean' },
+        concurrency: { type: 'integer', description: 'Parallel chains that were used.' },
+        windows: { type: 'integer', description: 'Time windows the range was cut into.' },
+        pages: { type: 'integer', description: 'Upstream timeline pages fetched, retries included.' },
+        retried_pages: { type: 'integer', description: 'How many of those were retries of a page that came back short or throttled.' },
+        duration_ms: { type: 'integer', description: 'Wall-clock time of the walk.' },
+        estimated_rate_per_hour: { type: 'number', description: 'Posting rate estimated from the first page, which sized the windows.' },
+        source: { type: 'string', enum: ['fxtwitter'] },
+      },
+    },
+    ImportResponse: {
+      type: 'object',
+      title: 'ImportResponse',
+      description: 'The JSON body of a bulk import. `posts` are sorted newest first by id; a repost sorts by the original post\'s id because that is what upstream returns for it.',
+      additionalProperties: true,
+      required: ['posts', 'meta'],
+      properties: {
+        profile: schemaRef('Author'),
+        posts: { type: 'array', items: schemaRef('Post') },
+        meta: schemaRef('ImportMeta'),
       },
     },
     OEmbedResponse: {
@@ -1491,6 +1598,8 @@ export function openapiDocument(): OpenApiDocument {
       { name: 'api-ip', quota: 600, window_seconds: 60, partition: 'client IP address', applies_to: 'every public API route' },
       { name: 'search-ip', quota: 5, window_seconds: 60, partition: 'client IP address', applies_to: 'live search lookups by anonymous callers', notes: 'Charged only when a request misses the cache and reaches an upstream provider.' },
       { name: 'search-key', quota: 30, window_seconds: 60, partition: 'API key', applies_to: 'live search lookups by key holders' },
+      { name: 'import-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'bulk profile imports by anonymous callers', notes: 'One unit per import, however many posts it returns.' },
+      { name: 'import-key', quota: 60, window_seconds: 900, partition: 'API key', applies_to: 'bulk profile imports by key holders' },
       { name: 'account-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'account-backed search feeds (photos, videos, users)', notes: 'A shared public pool; key holders draw from their own allowance instead.' },
       // `lib/ratelimit-headers.ts` advertises this one to key holders with the
       // key's own quota, so it appears in `RateLimit-Policy` without a fixed `q`.
@@ -1506,8 +1615,11 @@ export function openapiDocument(): OpenApiDocument {
       max_limit: MAX_LIMIT,
       max_page: MAX_PAGE,
       cursor_opacity: 'opaque',
+      exact_pages: 'Every page holds exactly `limit` items until the list ends; x.md assembles it from as many upstream pages as needed. A cursor may carry an offset (`…@15`); treat it as opaque.',
+      cursor_ceiling: 'none',
       termination: 'Stop when `nextCursor` is absent. A short or empty page is not the end of the list.',
-      notes: 'Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor.',
+      notes: 'Cursors are provider-tagged. Return one only to the same route, query and feed that issued it. Degraded search results carry no cursor. Own-account search feeds answer at most 20 per request.',
+      bulk: 'For an account\'s whole history use `/{handle}/posts` (`since`, `until`, `max_posts`, `format=ndjson`) instead of paging.',
     },
     paths: paths(),
     components: {

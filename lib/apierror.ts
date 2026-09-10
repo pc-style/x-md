@@ -71,6 +71,11 @@ export const ERROR_CATALOG = {
     title: 'Invalid handle or status id',
     resolution: 'Provide `handle` (1-15 word characters) and a numeric `id`.',
   },
+  invalid_option: {
+    status: 400,
+    title: 'Invalid query option',
+    resolution: 'Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.',
+  },
   invalid_handle: {
     status: 400,
     title: 'Invalid X handle',
@@ -129,7 +134,7 @@ export const ERROR_CATALOG = {
   unauthorized: {
     status: 401,
     title: 'Unauthorized',
-    resolution: `This route is private. The public read-only API needs no credentials; see ${SITE}/openapi.json.`,
+    resolution: `This route needs credentials: send \`Authorization: Bearer <key>\`. On the public x.md the read API needs none; see ${SITE}/openapi.json.`,
   },
   not_found: {
     status: 404,
@@ -165,6 +170,11 @@ export const ERROR_CATALOG = {
     status: 502,
     title: 'Upstream provider error',
     resolution: 'Retry with backoff. x.md reads a third-party provider that can fail independently.',
+  },
+  upstream_rate_limited: {
+    status: 503,
+    title: 'Upstream provider is rate limiting x.md',
+    resolution: 'Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.',
   },
   search_unavailable: {
     status: 503,
