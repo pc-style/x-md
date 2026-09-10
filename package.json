@@ -26,7 +26,7 @@
   ],
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build && bun run skills:publish",
+    "build": "bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build && bun run skills:publish && bun scripts/build-domain-pages.ts",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run",

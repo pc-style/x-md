@@ -2,6 +2,12 @@ import { describe, expect, test } from 'vitest'
 import { requestOrigin, wantsJson, wantsMarkdown } from './http.js'
 
 describe('requestOrigin', () => {
+  test('preserves the parallel domain for API discovery and embeds', () => {
+    expect(requestOrigin({ headers: { host: 'mdfromx.com', 'x-forwarded-proto': 'https' } }))
+      .toBe('https://mdfromx.com')
+    expect(requestOrigin({ headers: { host: 'mdfromx.com.evil.example' } }))
+      .toBe('https://x.pcstyle.dev')
+  })
   test('uses the request host for known public and local hosts', () => {
     expect(
       requestOrigin({
