@@ -51,9 +51,12 @@ curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935'
 
 # Search, as JSON with fields instead of prose
 curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&format=json'
+
+# An account's last year, replies included, as raw JSON in seconds
+curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
-Search returns up to **20 results**; pick Latest, Top, Photos, Videos, or Users with `feed`. JSON responses include the rendered `markdown` too. [See response formats](/responses).
+Lists go up to **100 per page**; pick Latest, Top, Photos, Videos, or Users with `feed`. JSON responses include the rendered `markdown` too. [See response formats](/responses). For a whole account history use the [bulk import](/bulk-import).
 
 ## When to use x.md
 
@@ -61,7 +64,8 @@ Reach for x.md when the job is reading one piece of public X content right now:
 
 - An agent needs the text of a public X post, thread, or X Article and cannot run a browser or log into X.
 - You are resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log.
-- You want a public profile's bio and latest original posts without holding X credentials.
+- You want a public profile's bio and latest posts without holding X credentials.
+- You are onboarding a user and need their last 500–2000 posts, replies included, before they finish reading the welcome screen.
 - You are checking who a public account follows, or who follows it.
 - You need X search results as structured data rather than a rendered timeline.
 - You are saving a post into notes or a vault — `?format=obsidian` emits YAML frontmatter.
@@ -73,7 +77,7 @@ One plain `GET`, no key, no OAuth. Send `Accept: text/markdown` for Markdown or 
 - **Anything that writes.** x.md never posts, replies, follows, likes, bookmarks, or sends direct messages, and it accepts no X credentials.
 - **Private, protected, suspended, or deleted content.** Never available; no parameter unlocks it.
 - **X Lists, direct messages, notifications, the home timeline, analytics.** Not supported.
-- **Bulk or firehose collection.** The service is rate limited and cached for interactive use; a page walk stops at ten pages of twenty.
+- **Firehose or multi-account collection.** The service is rate limited and cached for interactive use. One account's history is different: [import it](/bulk-import) instead of paging.
 - **Guaranteed completeness.** Results come from public upstream providers and can be delayed or truncated. Check `warnings` rather than inferring.
 - **Anything needing an SLA.** x.md is a free, best-effort, MIT-licensed project.
 
@@ -100,6 +104,9 @@ Any documentation page can be fetched as Markdown: append `.md` to its URL, or s
   </Card>
   <Card title="Profiles" href="/profiles" icon="user">
     Read an account and its followers or following.
+  </Card>
+  <Card title="Import a post history" href="/bulk-import" icon="download">
+    Thousands of posts in one request, replies included, walked in parallel and remembered.
   </Card>
   <Card title="For agents" href="/agents" icon="bot">
     The MCP server, the skill, and what an unattended client should handle.

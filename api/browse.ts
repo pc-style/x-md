@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
 import { captureArchive } from '../lib/archive.js'
-import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
 import { requestOrigin, setCorsHeaders, wantsJson } from '../lib/http.js'
@@ -65,6 +65,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       req.method,
     )
   }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure) return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
 
   // Search spends the deeper allowances too, so its quota report names all of
   // them; a profile or connection read only touches the front door.
@@ -90,7 +92,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), ip: resolved.ip, caller: resolved.caller })
+    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller })
     trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)

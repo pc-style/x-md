@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
-import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
-import { parseJsonBody } from '../lib/http.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
+import { parseJsonBody, requestOrigin } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
 import { applyQuotaPolicyOnly } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
@@ -13,8 +13,6 @@ import {
   JSONRPC_METHOD_NOT_FOUND,
   validateModernHeaders,
   JSONRPC_PARSE_ERROR,
-  MCP_DOCS_URL,
-  MCP_ENDPOINT,
   MCP_HEADER_MISMATCH,
   MCP_LATEST_LEGACY_PROTOCOL,
   MCP_SUPPORTED_PROTOCOLS,
@@ -39,6 +37,9 @@ function transportError(res: VercelResponse, status: number, code: number, messa
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'mcp')
+  // Self-links name the domain the client connected to, so a card fetched on
+  // mdfromx.com does not send the client back to x.pcstyle.dev.
+  const site = requestOrigin(req)
 
   // The vercel.json CORS block keys off the incoming path, which is /mcp, not
   // /api/*, so this route sets its own.
@@ -67,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'OPTIONS') return res.status(204).end()
     res.setHeader('Content-Type', 'application/mcp-server-card+json; charset=utf-8')
     res.setHeader('Cache-Control', 'public, max-age=3600')
-    const card = JSON.stringify(serverCard(), null, 2)
+    const card = JSON.stringify(serverCard(site), null, 2)
     return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(card)
   }
 
@@ -82,16 +83,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // server has no server-initiated messages to deliver, and both the
       // 2025-06-18 and 2026-07-28 revisions allow answering that GET with 405.
       res.setHeader('Allow', 'POST, OPTIONS')
-      return transportError(res, 405, JSONRPC_INVALID_REQUEST, `This MCP endpoint offers no standalone SSE stream. POST JSON-RPC messages to ${MCP_ENDPOINT} instead.`)
+      return transportError(res, 405, JSONRPC_INVALID_REQUEST, `This MCP endpoint offers no standalone SSE stream. POST JSON-RPC messages to ${site}/mcp instead.`)
     }
     // Anything else — a scanner, curl, a browser — gets a manifest rather than
     // an error, so the endpoint is legible without speaking JSON-RPC first.
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('Cache-Control', 'public, max-age=300')
     const manifest = JSON.stringify({
-      ...serverCard(),
+      ...serverCard(site),
       protocolVersions: MCP_SUPPORTED_PROTOCOLS,
-      documentation: MCP_DOCS_URL,
+      documentation: `${site}/docs/mcp`,
       usage: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
@@ -170,10 +171,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (resolved.status === 'invalid') {
     return transportError(res, 401, JSONRPC_INVALID_REQUEST, 'Invalid or disabled API key. Drop the Authorization header to call anonymously.')
   }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure) return transportError(res, 401, JSONRPC_INVALID_REQUEST, keyFailure)
 
   let outcome
   try {
-    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy' }), message.method, modern)
+    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site }), message.method, modern)
   } catch (error) {
     console.error(error)
     outcome = { error: { code: JSONRPC_INTERNAL_ERROR, message: 'Internal error' } }

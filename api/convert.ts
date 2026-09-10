@@ -8,6 +8,7 @@ import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'convert')
@@ -74,6 +75,16 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
+  // Private mode: the permalink surface is API too, so it needs a key as well.
+  // Only an actual Open Graph card is exempt: a preview bot's user agent asking
+  // for JSON or Markdown is data access and is gated like any other caller.
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure && !asEmbed) {
+    return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
+  }
+
   try {
     const result = await convertTweet({
       url: param('url'),
@@ -95,6 +106,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
     }
+    // A keyed response stays out of shared caches whatever the renderer chose.
+    for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
 
     if (status === 200) captureArchive(req, res, { ...result, resource: 'tweet', degraded: result.source !== 'fxtwitter' })
 

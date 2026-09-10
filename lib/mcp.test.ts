@@ -204,7 +204,7 @@ describe('tools/call', () => {
     expect(badEnum.message).toContain('must be one of: latest, top, photos, videos, users, media')
 
     const badRange = failure(await dispatch({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'x_md_get_followers', arguments: { handle: 'pcstyle53', limit: 500 } } }))
-    expect(badRange.message).toContain('`limit` must be <= 20')
+    expect(badRange.message).toContain('`limit` must be <= 100')
 
     const badType = failure(await dispatch({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'x_md_get_following', arguments: { handle: 'pcstyle53', page: '2' } } }))
     expect(badType.message).toContain('`page` must be an integer')
@@ -322,6 +322,27 @@ describe('discovery documents', () => {
     expect(card.transport).toBe('streamable-http')
     expect((card.tools as Array<{ name: string }>).map((tool) => tool.name)).toEqual(MCP_TOOLS.map((tool) => tool.name))
     expect(JSON.parse(JSON.stringify(card))).toEqual(card)
+  })
+
+  test('self-links follow the domain the client connected to', async () => {
+    const site = 'https://mdfromx.com'
+    const card = serverCard(site)
+    expect(card.serverUrl).toBe(`${site}/mcp`)
+    expect(card.websiteUrl).toBe(`${site}/`)
+    expect(card.documentationUrl).toBe(`${site}/docs/mcp`)
+    expect(card.icons).toEqual([{ src: `${site}/logo.svg`, mimeType: 'image/svg+xml', sizes: ['any'] }])
+    expect((card.resources as Array<{ uri: string }>).every((resource) => resource.uri.startsWith(`${site}/`))).toBe(true)
+    expect(registryManifest(site).remotes).toEqual([{ type: 'streamable-http', url: `${site}/mcp` }])
+
+    const listed = ok(await dispatch({ jsonrpc: '2.0', id: 31, method: 'resources/list' }, { site })).resources as Array<{ uri: string }>
+    expect(listed.map((resource) => resource.uri)).toContain(`${site}/llms.txt`)
+    // A URI copied from the canonical card still resolves on the parallel domain.
+    const read = ok(await dispatch({ jsonrpc: '2.0', id: 32, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/mcp/server-card' } }, { site }))
+    const contents = (read.contents as Array<{ uri: string; text: string }>)[0]
+    expect(contents.uri).toBe('https://x.pcstyle.dev/mcp/server-card')
+    expect(JSON.parse(contents.text)).toEqual(serverCard(site))
+    const init = ok(await dispatch({ jsonrpc: '2.0', id: 33, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { site }))
+    expect((init.serverInfo as { websiteUrl: string }).websiteUrl).toBe(`${site}/`)
   })
 })
 

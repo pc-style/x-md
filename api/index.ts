@@ -58,8 +58,15 @@ function operations(origin: string): Operation[] {
       operationId: 'getProfile',
       method: 'GET',
       path: '/api/v1/profiles/{handle}',
-      description: 'Read a public profile and its latest original posts.',
+      description: 'Read a public profile and its latest posts. Original posts only unless with_replies or with_reposts is set; up to 100 per page.',
       example: `${origin}/api/v1/profiles/jack?format=json`,
+    },
+    {
+      operationId: 'importProfilePosts',
+      method: 'GET',
+      path: '/api/v1/profiles/{handle}/posts',
+      description: 'Bulk-import a profile\'s post history as raw JSON: a whole date range in one request, walked upstream in parallel. Supports since, until, max_posts, with_replies, with_reposts, only_replies, and format=ndjson streaming.',
+      example: `${origin}/api/v1/profiles/jack/posts?since=2025-01-01&max_posts=2000`,
     },
     {
       operationId: 'listFollowers',

@@ -54,7 +54,7 @@ export const MCP_INSTRUCTIONS = [
   'Use x_md_search_posts to find current public discussion on a topic or to locate an account by name.',
   'Use x_md_get_followers and x_md_get_following to page through an account’s public connections.',
   'Every tool is read-only: none of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.',
-  'Paging is page- and cursor-based; limit is capped at 20 per call and page at 10, so walk deep result sets with next_cursor.',
+  'Paging is page- and cursor-based; limit is capped at 100 per call and page at 10, so walk deep result sets with next_cursor.',
   'Live search is rate limited per IP. A 429 comes back as an isError result naming the seconds to wait, not as a transport failure.',
 ].join(' ')
 
@@ -99,6 +99,8 @@ export interface McpResource {
 export interface McpContext {
   ip?: string
   caller?: SearchCaller
+  /** Origin the request arrived on (x.pcstyle.dev or a parallel domain); self-links are built from it. */
+  site?: string
   /** Which revision the request declared; decides which methods exist. */
   era?: 'modern' | 'legacy'
 }
@@ -132,9 +134,9 @@ const PAGING_PROPERTIES = {
   limit: {
     type: 'integer',
     minimum: 1,
-    maximum: 20,
+    maximum: 100,
     default: 20,
-    description: 'Results per page. The service caps this at 20.',
+    description: 'Results per page. The service caps this at 100.',
   },
   cursor: {
     type: 'string',
@@ -408,43 +410,47 @@ export const MCP_TOOLS: McpTool[] = [
   ),
 ]
 
-export const MCP_RESOURCES: McpResource[] = [
-  {
-    uri: `${MCP_SITE}/llms.txt`,
-    name: 'x-md-llms-txt',
-    title: 'x.md llms.txt',
-    description: 'Route map, limits, and scope for the x.md HTTP API, in the llms.txt format.',
-    mimeType: 'text/plain',
-  },
-  {
-    uri: `${MCP_SITE}/llms-full.txt`,
-    name: 'x-md-llms-full-txt',
-    title: 'x.md full documentation',
-    description: 'The whole x.md documentation site as one plain-text document.',
-    mimeType: 'text/plain',
-  },
-  {
-    uri: `${MCP_SITE}/openapi.json`,
-    name: 'x-md-openapi',
-    title: 'x.md OpenAPI description',
-    description: 'OpenAPI description of the x.md REST routes, for callers that prefer HTTP over MCP.',
-    mimeType: 'application/json',
-  },
-  {
-    uri: `${MCP_SITE}/index.md`,
-    name: 'x-md-overview',
-    title: 'x.md overview',
-    description: 'The x.md homepage as Markdown: what the service does, when to use it, and when not to.',
-    mimeType: 'text/markdown',
-  },
-  {
-    uri: `${MCP_SITE}/mcp/server-card`,
-    name: 'x-md-server-card',
-    title: 'x.md MCP server card',
-    description: 'Connection metadata for this MCP server: name, version, transport, and endpoint.',
-    mimeType: 'application/mcp-server-card+json',
-  },
-]
+export function mcpResources(site: string = MCP_SITE): McpResource[] {
+  return [
+    {
+      uri: `${site}/llms.txt`,
+      name: 'x-md-llms-txt',
+      title: 'x.md llms.txt',
+      description: 'Route map, limits, and scope for the x.md HTTP API, in the llms.txt format.',
+      mimeType: 'text/plain',
+    },
+    {
+      uri: `${site}/llms-full.txt`,
+      name: 'x-md-llms-full-txt',
+      title: 'x.md full documentation',
+      description: 'The whole x.md documentation site as one plain-text document.',
+      mimeType: 'text/plain',
+    },
+    {
+      uri: `${site}/openapi.json`,
+      name: 'x-md-openapi',
+      title: 'x.md OpenAPI description',
+      description: 'OpenAPI description of the x.md REST routes, for callers that prefer HTTP over MCP.',
+      mimeType: 'application/json',
+    },
+    {
+      uri: `${site}/index.md`,
+      name: 'x-md-overview',
+      title: 'x.md overview',
+      description: 'The x.md homepage as Markdown: what the service does, when to use it, and when not to.',
+      mimeType: 'text/markdown',
+    },
+    {
+      uri: `${site}/mcp/server-card`,
+      name: 'x-md-server-card',
+      title: 'x.md MCP server card',
+      description: 'Connection metadata for this MCP server: name, version, transport, and endpoint.',
+      mimeType: 'application/mcp-server-card+json',
+    },
+  ]
+}
+
+export const MCP_RESOURCES: McpResource[] = mcpResources()
 
 /**
  * Pick the revision a legacy `initialize` gets back. Only handshake-era versions
@@ -591,52 +597,52 @@ export function serverDiscover(): Record<string, unknown> {
 }
 
 /** The only branded mark served from the public origin; SVG so it scales in any registry UI. */
-const ICONS = [{ src: `${MCP_SITE}/logo.svg`, mimeType: 'image/svg+xml', sizes: ['any'] }]
+const icons = (site: string) => [{ src: `${site}/logo.svg`, mimeType: 'image/svg+xml', sizes: ['any'] }]
 
 /**
  * The well-known server card. `serverUrl` and `tools` duplicate what `remotes`
  * and tools/list already say, because agents that read the card before opening
  * a transport look for those flatter fields.
  */
-export function serverCard(): Record<string, unknown> {
+export function serverCard(site: string = MCP_SITE): Record<string, unknown> {
   return {
     $schema: 'https://static.modelcontextprotocol.io/schemas/v1/server-card.schema.json',
     name: MCP_SERVER_NAME,
     title: MCP_SERVER_TITLE,
     description: MCP_SERVER_DESCRIPTION,
     version: MCP_SERVER_VERSION,
-    websiteUrl: `${MCP_SITE}/`,
-    documentationUrl: MCP_DOCS_URL,
-    icons: ICONS,
+    websiteUrl: `${site}/`,
+    documentationUrl: `${site}/docs/mcp`,
+    icons: icons(site),
     repository: { source: 'github', url: 'https://github.com/pc-style/x-md' },
-    serverUrl: MCP_ENDPOINT,
+    serverUrl: `${site}/mcp`,
     transport: 'streamable-http',
     authentication: 'none',
     remotes: [
       {
         type: 'streamable-http',
-        url: MCP_ENDPOINT,
+        url: `${site}/mcp`,
         supportedProtocolVersions: MCP_SUPPORTED_PROTOCOLS,
       },
     ],
     capabilities: { tools: { listChanged: false }, resources: { listChanged: false } },
     tools: MCP_TOOLS.map((tool) => ({ name: tool.name, title: tool.title, description: tool.description })),
-    resources: MCP_RESOURCES.map((resource) => ({ uri: resource.uri, name: resource.name, mimeType: resource.mimeType })),
+    resources: mcpResources(site).map((resource) => ({ uri: resource.uri, name: resource.name, mimeType: resource.mimeType })),
   }
 }
 
 /** The registry document at /server.json, valid against the MCP registry ServerDetail schema. */
-export function registryManifest(): Record<string, unknown> {
+export function registryManifest(site: string = MCP_SITE): Record<string, unknown> {
   return {
     $schema: 'https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json',
     name: MCP_SERVER_NAME,
     title: MCP_SERVER_TITLE,
     description: MCP_SERVER_DESCRIPTION,
     version: MCP_SERVER_VERSION,
-    websiteUrl: `${MCP_SITE}/`,
-    icons: ICONS,
+    websiteUrl: `${site}/`,
+    icons: icons(site),
     repository: { source: 'github', url: 'https://github.com/pc-style/x-md' },
-    remotes: [{ type: 'streamable-http', url: MCP_ENDPOINT }],
+    remotes: [{ type: 'streamable-http', url: `${site}/mcp` }],
   }
 }
 
@@ -809,22 +815,24 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
   }
 }
 
-async function readResource(params: unknown): Promise<DispatchOutcome> {
+async function readResource(params: unknown, site: string = MCP_SITE): Promise<DispatchOutcome> {
   const uri = typeof params === 'object' && params !== null ? (params as { uri?: unknown }).uri : undefined
+  const resources = mcpResources(site)
   if (typeof uri !== 'string' || !uri) {
-    return { error: { code: JSONRPC_INVALID_PARAMS, message: 'Invalid params: `uri` must be the string uri of a resource.', data: { available: MCP_RESOURCES.map((resource) => resource.uri) } } }
+    return { error: { code: JSONRPC_INVALID_PARAMS, message: 'Invalid params: `uri` must be the string uri of a resource.', data: { available: resources.map((resource) => resource.uri) } } }
   }
-  const resource = MCP_RESOURCES.find((candidate) => candidate.uri === uri)
+  // A client may hold a URI from either domain's server card; both name the same documents.
+  const resource = [...resources, ...MCP_RESOURCES].find((candidate) => candidate.uri === uri)
   if (!resource) {
-    return { error: { code: MCP_RESOURCE_NOT_FOUND, message: `Resource ${uri} not found`, data: { available: MCP_RESOURCES.map((candidate) => candidate.uri) } } }
+    return { error: { code: MCP_RESOURCE_NOT_FOUND, message: `Resource ${uri} not found`, data: { available: resources.map((candidate) => candidate.uri) } } }
   }
   // The server card is generated here, so serve it without a round trip.
-  if (resource.uri === `${MCP_SITE}/mcp/server-card`) {
-    return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: JSON.stringify(serverCard(), null, 2) }] } }
+  if (resource.name === 'x-md-server-card') {
+    return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: JSON.stringify(serverCard(site), null, 2) }] } }
   }
   try {
     // `resource.uri`, not `uri`: the caller's string only selected the entry,
-    // so the URL fetched is always one of the constants in MCP_RESOURCES.
+    // so the URL fetched is always one of the documents mcpResources() names.
     const response = await fetch(resource.uri, { headers: { Accept: resource.mimeType }, signal: AbortSignal.timeout(8000) })
     if (!response.ok) throw new Error(`upstream ${response.status}`)
     const body = await response.text()
@@ -882,7 +890,7 @@ export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): P
             name: MCP_SERVER_NAME,
             title: MCP_SERVER_TITLE,
             version: MCP_SERVER_VERSION,
-            websiteUrl: `${MCP_SITE}/`,
+            websiteUrl: `${ctx.site ?? MCP_SITE}/`,
           },
           instructions: MCP_INSTRUCTIONS,
         },
@@ -897,11 +905,11 @@ export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): P
     case 'tools/call':
       return callTool(message.params, ctx)
     case 'resources/list':
-      return { result: { resources: MCP_RESOURCES } }
+      return { result: { resources: mcpResources(ctx.site) } }
     case 'resources/templates/list':
       return { result: { resourceTemplates: [] } }
     case 'resources/read':
-      return readResource(message.params)
+      return readResource(message.params, ctx.site)
     default:
       return { error: { code: JSONRPC_METHOD_NOT_FOUND, message: 'Method not found', data: { method, supported: ['server/discover', 'initialize', 'ping', 'tools/list', 'tools/call', 'resources/list', 'resources/templates/list', 'resources/read'] } } }
   }

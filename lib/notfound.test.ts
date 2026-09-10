@@ -117,6 +117,17 @@ describe('negotiated 404', () => {
     expect(response.headers['Content-Type']).toContain('application/problem+json')
     expect(JSON.parse(response.body).code).toBe('route_not_found')
   })
+
+  test('recovery links stay on the domain the request arrived on', () => {
+    const instance = 'https://mdfromx.com/nope'
+    for (const accept of ['text/markdown', 'text/html', 'application/json']) {
+      const { body } = notFoundResponse({ instance, accept, path: '/nope' })
+      expect(body).toContain('https://mdfromx.com/llms.txt')
+      // The problem `type` stays a canonical identifier; only the recovery links move.
+      if (accept !== 'application/json') expect(body).not.toContain('x.pcstyle.dev')
+    }
+    expect(notFoundProblem(instance, '/nope').links?.map((link) => link.href)).toContain('https://mdfromx.com/api')
+  })
 })
 
 describe('the catch-all handler', () => {

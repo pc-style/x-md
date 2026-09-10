@@ -12,6 +12,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [tailwindcss(), apiDevPlugin(), prerenderLandingPlugin()],
+    test: {
+      setupFiles: ['./lib/test-setup.ts'],
+    },
     define: {
       'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
     },

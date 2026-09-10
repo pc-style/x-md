@@ -438,3 +438,17 @@ describe('searchFxStatuses', () => {
     })
   })
 })
+
+describe('retryAfterSeconds', () => {
+  test('reads delay-seconds and HTTP-dates', async () => {
+    const { retryAfterSeconds } = await import('./fxtwitter.js')
+    expect(retryAfterSeconds('7')).toBe(7)
+    expect(retryAfterSeconds('0')).toBeUndefined()
+    expect(retryAfterSeconds(null)).toBeUndefined()
+    expect(retryAfterSeconds('soon')).toBeUndefined()
+    const seconds = retryAfterSeconds(new Date(Date.now() + 90_000).toUTCString())
+    expect(seconds).toBeGreaterThanOrEqual(89)
+    expect(seconds).toBeLessThanOrEqual(91)
+    expect(retryAfterSeconds(new Date(Date.now() - 90_000).toUTCString())).toBe(1)
+  })
+})

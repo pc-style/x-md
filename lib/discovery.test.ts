@@ -162,6 +162,20 @@ describe('llms.txt', () => {
   })
 })
 
+/**
+ * The inverse of the DOCS_SLUGS listings above: a page retired from `docs/`
+ * (moved to internal/, say) must also leave every hand-written index, or
+ * agents keep following a link into a 404.
+ */
+describe('retired docs pages', () => {
+  test.each(['sitemap.xml', 'llms.txt', 'docs/llms.txt', 'feeds/x-md.jsonl'])('%s only links to pages that still exist under docs/', (path) => {
+    const linked = [...read(path).matchAll(/x\.pcstyle\.dev\/docs\/([a-z0-9-]+)/g)].map((match) => match[1]).filter((slug) => slug !== 'llms')
+    for (const slug of linked) {
+      expect(DOCS_SLUGS, `${path} still links /docs/${slug}`).toContain(slug)
+    }
+  })
+})
+
 describe('NLWeb schema feeds', () => {
   const map = read('schemamap.xml')
 
@@ -248,12 +262,6 @@ describe('sitemap.xml', () => {
     for (const path of ['/about', '/contact', '/privacy', '/terms', '/mcp', '/auth.md', '/pricing.md']) {
       expect(sitemap).toContain(`<loc>${SITE}${path}</loc>`)
     }
-  })
-
-  test('does not advertise the repository-only archive guide', () => {
-    expect(sitemap).not.toContain('/docs/archive')
-    expect(read('llms.txt')).not.toContain('/docs/archive')
-    expect(read('docs/llms.txt')).not.toContain('/docs/archive')
   })
 
   test.each(DOCS_SLUGS)('/docs/%s is listed', (slug) => {

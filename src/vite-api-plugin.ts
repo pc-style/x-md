@@ -1,3 +1,4 @@
+import { upstreamHealth } from '../lib/upstream-health.js'
 import type { Connect } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Plugin } from 'vite'
@@ -279,7 +280,7 @@ function readBody(req: IncomingMessage): Promise<ReturnType<typeof parseJsonBody
 
 async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const path = url.pathname.replace(/\/$/, '')
-  if (path !== '/api/admin/keys' && path !== '/api/admin/pool') return false
+  if (path !== '/api/admin/keys' && path !== '/api/admin/pool' && path !== '/api/admin/upstream') return false
   const methods = path === '/api/admin/pool' ? 'GET, PATCH, OPTIONS' : 'GET, POST, PATCH, DELETE, OPTIONS'
   setCorsHeaders(res, methods)
   if (req.method === 'OPTIONS') {
@@ -293,6 +294,13 @@ async function handleAdmin(url: URL, req: IncomingMessage, res: ServerResponse):
   }
   if (!adminAuthorized(req.headers)) {
     fail(req, res, 'unauthorized', 'Admin routes require a valid X-Md-Admin-Token.')
+    return true
+  }
+  if (path === '/api/admin/upstream') {
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.setHeader('Cache-Control', 'no-store')
+    res.end(JSON.stringify({ upstreams: await upstreamHealth(), generatedAt: new Date().toISOString() }))
     return true
   }
   const parsed = req.method === 'GET' ? { ok: true as const, value: {} } : await readBody(req)

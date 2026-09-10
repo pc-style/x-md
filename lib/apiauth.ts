@@ -49,3 +49,19 @@ export function callerHeaders(resolved: ResolvedCaller): Record<string, string> 
   if (resolved.status === 'valid') headers['Cache-Control'] = 'private, no-store'
   return headers
 }
+
+/**
+ * Private mode: `X_MD_REQUIRE_API_KEY=1` makes every API route refuse callers
+ * that present no valid key. Landing pages, docs and discovery documents stay
+ * public; they describe the API, they are not it.
+ */
+export function apiKeyRequired(): boolean {
+  return ['1', 'true'].includes(process.env.X_MD_REQUIRE_API_KEY ?? '')
+}
+
+/** The problem detail to answer with when private mode rejects `resolved`, or nothing when the caller may proceed. */
+export function keyRequirementFailure(resolved: ResolvedCaller): string | undefined {
+  if (!apiKeyRequired() || resolved.status === 'valid') return undefined
+  if (resolved.status === 'unverified') return 'The key store is unavailable and this deployment requires an API key. Retry shortly.'
+  return 'This deployment requires an API key: send `Authorization: Bearer <key>`.'
+}

@@ -3,6 +3,7 @@
  * Vite dev middleware so behavior is identical in both. Callers are responsible
  * for admin authentication before invoking these.
  */
+import { IMPORT_KEY } from './quotas.js'
 import { createApiKey, deleteApiKey, listApiKeys, toView, updateApiKey, type ApiKeyRecord } from './apikeys.js'
 import { kvDurable } from './kv.js'
 import { resetPool, setPoolSettings } from './pool.js'
@@ -24,8 +25,8 @@ export interface AdminResponse {
 const failed = (status: number, code: string, detail: string): AdminResponse => ({ status, failure: { code, detail } })
 
 function positiveLimit(value: unknown): number | undefined {
-  const n = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim() || 'NaN')
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined
 }
 
 export async function handleKeysApi(method: string, body: unknown): Promise<AdminResponse> {
@@ -33,7 +34,7 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
   switch (method) {
     case 'GET': {
       const keys = (await listApiKeys()).map(toView)
-      return { status: 200, body: { keys, defaultLimit: defaultKeyLimitPer15m() } }
+      return { status: 200, body: { keys, defaultLimit: defaultKeyLimitPer15m(), defaultImportLimit: IMPORT_KEY.quota } }
     }
     case 'POST': {
       const label = (typeof input.label === 'string' ? input.label : '').trim().slice(0, 80) || 'unnamed'
@@ -43,18 +44,28 @@ export async function handleKeysApi(method: string, body: unknown): Promise<Admi
         if (given === undefined) return failed(400, 'invalid_body', 'limitPer15m must be a positive integer.')
         limit = given
       }
-      const { record, secret } = await createApiKey(label, limit)
+      let importLimit: number | undefined
+      if (input.importPer15m !== undefined && input.importPer15m !== null && input.importPer15m !== '') {
+        importLimit = positiveLimit(input.importPer15m)
+        if (importLimit === undefined) return failed(400, 'invalid_body', 'importPer15m must be a positive integer.')
+      }
+      const { record, secret } = await createApiKey(label, limit, importLimit)
       return { status: 201, body: { key: toView(record), secret } }
     }
     case 'PATCH': {
       const id = typeof input.id === 'string' ? input.id : ''
       if (!id) return failed(400, 'invalid_body', 'id is required.')
-      const patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'disabled'>> = {}
+      const patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'importPer15m' | 'disabled'>> = {}
       if (typeof input.label === 'string') patch.label = input.label.trim().slice(0, 80)
       if (input.limitPer15m !== undefined) {
         const limit = positiveLimit(input.limitPer15m)
         if (limit === undefined) return failed(400, 'invalid_body', 'limitPer15m must be a positive integer.')
         patch.limitPer15m = limit
+      }
+      if (input.importPer15m !== undefined) {
+        const limit = positiveLimit(input.importPer15m)
+        if (limit === undefined) return failed(400, 'invalid_body', 'importPer15m must be a positive integer.')
+        patch.importPer15m = limit
       }
       if (typeof input.disabled === 'boolean') patch.disabled = input.disabled
       const updated = await updateApiKey(id, patch)

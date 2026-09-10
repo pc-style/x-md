@@ -13,9 +13,10 @@ Every page here is available as Markdown: append `.md` to the URL, or send `Acce
 ## Read routes
 
 - [Posts and threads](https://x.pcstyle.dev/docs/posts.md): `GET /{handle}/status/{id}`, plus `thread`, `context`, `replies`, `userinfo`, and `nocache`.
-- [Profiles and connections](https://x.pcstyle.dev/docs/profiles.md): `GET /{handle}`, `/followers`, `/following`, and what is filtered out.
+- [Profiles and connections](https://x.pcstyle.dev/docs/profiles.md): `GET /{handle}` with `with_replies`, `with_reposts`, `until` and `limit` up to 100, plus `/followers` and `/following`.
+- [Import a post history](https://x.pcstyle.dev/docs/bulk-import.md): `GET /{handle}/posts` — thousands of posts in one request, replies included, `since`/`until`/`max_posts`, `format=ndjson` streaming, and the per-account archive (`index=true`).
 - [Search X](https://x.pcstyle.dev/docs/search.md): `GET /search?q=…`, the `latest`, `top`, `photos`, `videos`, and `users` feeds, and which need configured sessions.
-- [Pagination](https://x.pcstyle.dev/docs/pagination.md): `cursor` versus `page`, the limit of 20, and the ten-page ceiling.
+- [Pagination](https://x.pcstyle.dev/docs/pagination.md): `cursor` versus `page`, exact pages up to 100, offset cursors, and why cursors have no ceiling.
 
 ## Contracts
 

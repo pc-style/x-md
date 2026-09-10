@@ -28,6 +28,11 @@ import {
   accountKeyKey,
   accountKeyPolicy,
   apiIpKey,
+  IMPORT_IP,
+  IMPORT_KEY,
+  importKeyPolicy,
+  importIpKey,
+  importKeyKey,
   searchIpKey,
   searchKeyKey,
   type QuotaPolicy,
@@ -43,12 +48,12 @@ export interface QuotaState extends QuotaPolicy {
 }
 
 /** Which deeper allowances a route can spend on top of the front door. */
-export type QuotaScope = 'read' | 'search'
+export type QuotaScope = 'read' | 'search' | 'import'
 
 export interface QuotaCaller {
   ip: string
   /** Present only for a verified API key; anonymous callers are limited by IP. */
-  key?: { id: string; limit: number }
+  key?: { id: string; limit: number; importLimit?: number }
 }
 
 export interface RequestQuota {
@@ -140,6 +145,7 @@ export function setUncacheable(res: HeaderWriter): void {
 /** The policies that apply to `scope` for `caller`, front door first. */
 export function quotaPolicies(scope: QuotaScope, caller: QuotaCaller): QuotaPolicy[] {
   const policies: QuotaPolicy[] = [API_IP]
+  if (scope === 'import') return [...policies, caller.key ? importKeyPolicy(caller.key.importLimit ?? IMPORT_KEY.quota) : IMPORT_IP]
   if (scope !== 'search') return policies
   policies.push(caller.key ? SEARCH_KEY : SEARCH_IP)
   policies.push(caller.key ? accountKeyPolicy(caller.key.limit) : ACCOUNT_IP)
@@ -153,6 +159,10 @@ function counterFor(policy: QuotaPolicy, caller: QuotaCaller): string {
       return searchKeyKey(caller.key?.id ?? 'unknown')
     case SEARCH_IP.name:
       return searchIpKey(caller.ip)
+    case IMPORT_KEY.name:
+      return importKeyKey(caller.key?.id ?? 'unknown')
+    case IMPORT_IP.name:
+      return importIpKey(caller.ip)
     case ACCOUNT_KEY_NAME:
       return accountKeyKey(caller.key?.id ?? 'unknown')
     default:

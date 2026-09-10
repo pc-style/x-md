@@ -29,6 +29,7 @@ export default defineConfig({
           '/posts',
           '/search',
           '/profiles',
+          '/bulk-import',
           '/pagination',
           '/responses',
           '/reliability',

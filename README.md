@@ -110,7 +110,7 @@ Browse routes return compact Markdown by default and structured data with `?form
 | `GET /:handle/followers` | Followers |
 | `GET /:handle/following` | Accounts followed |
 
-The default `limit` is 20 and the maximum is 20. Pass the opaque `cursor` returned as `nextCursor`, or use `page=1` through `page=10`; values above 10 are clamped. Without a cursor, page pagination walks upstream pages and can be slower. A cursor fetches one upstream page. Results can contain fewer items than `limit`, especially profiles, because replies and reposts are filtered after retrieval.
+The default `limit` is 20 and the maximum is 100; every page is cut exactly at `limit` (search feeds served by own accounts answer 20). Pass the opaque `cursor` returned as `nextCursor` — there is no ceiling on a cursor chain — or use `page=1` through `page=10`; values above 10 are clamped. Profile reads return original posts unless `with_replies=true` / `with_reposts=true` is set, and `until=<date>` jumps straight to a date. Search takes `since` and `until`.
 
 ```bash
 curl -sS 'https://x.pcstyle.dev/elonmusk'
@@ -156,6 +156,18 @@ RateLimit-Reset: 60
 Counters are per instance unless a shared KV store is configured.
 
 Browse JSON includes the resource-specific `profile`, `posts`, or `users`, plus `page`, `limit`, optional `nextCursor`, rendered `markdown`, and cache status. The verified upstream profile API does not expose pinned-post markers, and public X lists are explicitly unsupported.
+
+## Import a post history
+
+`GET /{handle}/posts` returns an account's history in bulk — thousands of posts, replies included, raw JSON, in seconds:
+
+```bash
+curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sN 'https://x.pcstyle.dev/paulg/posts?since=2026-06-01&format=ndjson'   # stream
+curl -sS 'https://x.pcstyle.dev/paulg/posts?index=true'                        # what is archived already
+```
+
+X hands out a timeline one cursor at a time; x.md mints cursors for arbitrary instants and walks many chains at once, then stores what it collected so the next import only fetches the gap. Measured: 1379 posts in 7.8 s at `concurrency=32` against the public upstream, 8× a sequential walk at equal completeness ([bench/RESULTS-scale.md](bench/RESULTS-scale.md)). Parameters: `since`, `until`, `max_posts` (≤5000), `with_replies`, `with_reposts`, `only_replies`, `concurrency` (≤32 per upstream), `format=json|ndjson`, `refresh`, `index`. Full guide: [Import a post history](https://x.pcstyle.dev/docs/bulk-import).
 
 ## Agent skill
 
@@ -203,7 +215,8 @@ Optional environment variables:
 | --- | --- |
 | `CONTEXT_DEV_API_KEY` | Context.dev converter fallback |
 | `X_SEARCH_SESSIONS_JSON` | Configuration for the live search provider; the expected shape is defined in `lib/xsearch.ts`. Locally, the gitignored `accounts.local.json` is read instead. Without it, Photos, Videos, and Users return `503` |
-| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters and durable app state. Falls back to per-instance memory |
+| `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters, the per-account post archive, and durable app state. Falls back to per-instance memory |
+| `FXTWITTER_BASE_URL` | Optional upstream override: one FxEmbed base URL or a comma-separated pool. Requests rotate across the pool and a throttled base sits out its `Retry-After`. Default `https://api.fxtwitter.com` |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
 | `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |

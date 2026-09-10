@@ -43,7 +43,8 @@ way once expanded.
 | Job | Route |
 | --- | --- |
 | One post, its thread, and its replies | `GET /{handle}/status/{id}` |
-| A profile and its latest original posts | `GET /{handle}` |
+| A profile and its latest posts | `GET /{handle}` (add `with_replies=true`, `with_reposts=true`, `limit=100`) |
+| An account's whole post history as raw JSON | `GET /{handle}/posts?since={date}&max_posts=2000` |
 | Search public posts or accounts | `GET /search?q={query}&feed=latest\|top\|photos\|videos\|users` |
 | Who follows an account | `GET /{handle}/followers` |
 | Who an account follows | `GET /{handle}/following` |
@@ -57,6 +58,7 @@ The same reads, versioned and stable for machine callers, live under
 GET /api/v1/posts?url={status url}
 GET /api/v1/search?q={query}
 GET /api/v1/profiles/{handle}
+GET /api/v1/profiles/{handle}/posts
 GET /api/v1/profiles/{handle}/followers
 GET /api/v1/profiles/{handle}/following
 ```
@@ -80,17 +82,20 @@ usually an upstream gap, not evidence about the post.
 
 ## Pagination
 
-`limit` defaults to 20 and is capped at 20. Continue with the opaque `cursor`
-returned as `nextCursor` — one cursor, one upstream page. `page=1` through
-`page=10` also works but walks upstream pages and is slower; values above 10 are
-clamped. Results can hold fewer items than `limit` because replies and reposts
-are filtered after retrieval.
+`limit` defaults to 20 and is capped at 100 (search feeds served by own
+accounts answer 20). Every page is cut exactly at `limit`; only the last page
+of a list is shorter. Continue with the opaque `cursor` returned as
+`nextCursor`; there is no cursor ceiling. `page=1` through `page=10` also works
+but walks upstream pages and is slower; values above 10 are clamped. Search
+takes `since` and `until`.
 
 ## Limits and failures
 
 - Live search: 5 uncached requests per minute per IP. Cache hits are free.
 - Live-provider requests: a further shared allowance per IP per 15-minute
   window. Every feed and every page of a page walk counts as one request.
+- Bulk imports through `/{handle}/posts`: 10 per 15 minutes per IP, 60 per API
+  key, one unit per import however many posts it returns.
 - `429` carries `Retry-After` in seconds. Wait that long. Do not retry in a
   loop, and do not fan out across IPs.
 - `503` with `Retry-After: 30` means an upstream provider is down.
@@ -110,8 +115,9 @@ no write path in the service.
 - No X credentials accepted from callers, ever. Do not send any.
 - No private, protected, suspended, or deleted content.
 - No X Lists, direct messages, notifications, home timeline, or analytics.
-- No bulk export or firehose. Rate limits are the intended ceiling, not an
-  obstacle to route around.
+- No firehose or multi-account dataset building. One account's history is
+  available in bulk through `/{handle}/posts`; rate limits are the intended
+  ceiling elsewhere, not an obstacle to route around.
 - No SLA, contract, or support commitment, and no guarantee of completeness —
   read `warnings` rather than inferring from what is missing.
 
