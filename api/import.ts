@@ -82,6 +82,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   if (Number.isNaN(maxPosts)) return invalid(`\`max_posts\` must be a whole number from 1 to ${IMPORT_MAX_POSTS}.`)
   if (Number.isNaN(concurrency)) return invalid(`\`concurrency\` must be a whole number from 1 to ${IMPORT_MAX_CONCURRENCY}.`)
 
+  res.setHeader('Vary', 'Accept')
+  res.setHeader('X-Source', 'fxtwitter')
+  res.setHeader('Cache-Control', 'no-store')
+  // HEAD learns the headers and the quota state; it neither reads the archive nor spends an import.
+  if (req.method === 'HEAD') return res.status(200).end()
+
   // `index=true` answers from the archive index alone: what we already hold for this account.
   if (flag(param('index'), false)) {
     const archive = await readHistoryIndex(handle)
@@ -115,10 +121,6 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // A client that leaves stops the walk instead of leaving up to 32 chains running.
   const aborter = new AbortController()
   res.once('close', () => aborter.abort())
-  res.setHeader('Vary', 'Accept')
-  res.setHeader('X-Source', 'fxtwitter')
-  res.setHeader('Cache-Control', 'no-store')
-  if (req.method === 'HEAD') return res.status(200).end()
 
   if (format === 'ndjson') {
     // Posts are streamed unsorted as the parallel chains deliver them; the

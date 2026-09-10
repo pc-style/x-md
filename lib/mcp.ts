@@ -54,7 +54,7 @@ export const MCP_INSTRUCTIONS = [
   'Use x_md_search_posts to find current public discussion on a topic or to locate an account by name.',
   'Use x_md_get_followers and x_md_get_following to page through an account’s public connections.',
   'Every tool is read-only: none of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.',
-  'Paging is page- and cursor-based; limit is capped at 20 per call and page at 10, so walk deep result sets with next_cursor.',
+  'Paging is page- and cursor-based; limit is capped at 100 per call and page at 10, so walk deep result sets with next_cursor.',
   'Live search is rate limited per IP. A 429 comes back as an isError result naming the seconds to wait, not as a transport failure.',
 ].join(' ')
 

@@ -106,6 +106,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
     }
+    // A keyed response stays out of shared caches whatever the renderer chose.
+    for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
 
     if (status === 200) captureArchive(req, res, { ...result, resource: 'tweet', degraded: result.source !== 'fxtwitter' })
 

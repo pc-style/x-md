@@ -25,8 +25,8 @@ export interface AdminResponse {
 const failed = (status: number, code: string, detail: string): AdminResponse => ({ status, failure: { code, detail } })
 
 function positiveLimit(value: unknown): number | undefined {
-  const n = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : undefined
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').trim() || 'NaN')
+  return Number.isSafeInteger(n) && n > 0 ? n : undefined
 }
 
 export async function handleKeysApi(method: string, body: unknown): Promise<AdminResponse> {

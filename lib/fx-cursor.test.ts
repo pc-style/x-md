@@ -30,6 +30,11 @@ describe('timeline cursors', () => {
     expect(snowflakeTime(decoded.issuedAt & ~0xffffn)).toBeLessThanOrEqual(Date.UTC(2026, 8, 9))
   })
 
+  test('dates before the Twitter epoch clamp to it instead of going negative', () => {
+    expect(snowflakeAt(Date.UTC(2005, 0, 1))).toBe(0n)
+    expect(snowflakeAt(-1)).toBe(0n)
+  })
+
   test('snowflake helpers agree with a known id', () => {
     expect(snowflakeTime('2097354282609566046')).toBe(Date.UTC(2026, 8, 8, 16, 0, 2, 589))
     expect(snowflakeTime(snowflakeAt(1_700_000_000_000))).toBe(1_700_000_000_000)

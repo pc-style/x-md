@@ -174,7 +174,8 @@ export function withServerEvents(handlerKind: 'convert' | 'browse' | 'import' | 
     const endpoint = handlerKind === 'convert' ? (param('handle') && param('id') ? 'status_convert' : 'generic_convert')
       : handlerKind === 'oembed' ? 'oembed' : handlerKind === 'import' ? 'profile_import' : aggregate || !resource ? 'api_browse' : `${resource}_browse`
     const state: Context = { route: handlerKind === 'browse' && resource ? resource : handlerKind, endpoint, resultCount: 0, pending: [], failures: new Map() }
-    const format = handlerKind === 'oembed' || wantsJson(param('format'), String(req.headers.accept ?? '')) ? 'json' : param('format') === 'obsidian' && handlerKind === 'convert' ? 'obsidian' : 'markdown'
+    // Imports have no Markdown representation: json unless ndjson was asked for.
+    const format = handlerKind === 'import' ? (param('format') === 'ndjson' ? 'ndjson' : 'json') : handlerKind === 'oembed' || wantsJson(param('format'), String(req.headers.accept ?? '')) ? 'json' : param('format') === 'obsidian' && handlerKind === 'convert' ? 'obsidian' : 'markdown'
     return context.run(state, () => {
       capture('endpoint_called', { endpoint, format, full: param('full') === 'true',
         thread: /^(off|full|conversation|[0-9]{1,3})$/.test(param('thread')) ? param('thread') : 'full',
