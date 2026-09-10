@@ -68,20 +68,22 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
-  // Private mode: the permalink surface is API too, so it needs a key as well.
-  // Preview bots are exempt: an Open Graph card is not data access.
-  const resolved = await resolveCaller(req.headers)
-  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   const userAgent = String(req.headers['user-agent'] ?? '')
-  const keyFailure = keyRequirementFailure(resolved)
-  if (keyFailure && !isEmbedUserAgent(userAgent)) {
-    return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
-  }
   const requestedFormat = param('format')
   const asJson = wantsJson(requestedFormat, accept)
   const asMarkdown = wantsMarkdown(requestedFormat, accept)
   const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
+
+  // Private mode: the permalink surface is API too, so it needs a key as well.
+  // Only an actual Open Graph card is exempt: a preview bot's user agent asking
+  // for JSON or Markdown is data access and is gated like any other caller.
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure && !asEmbed) {
+    return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
+  }
 
   try {
     const result = await convertTweet({

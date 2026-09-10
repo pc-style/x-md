@@ -109,6 +109,16 @@ describe('importWithHistory', () => {
     expect(originals.posts.some((p) => p.replying_to)).toBe(false)
   })
 
+  test('a backfill the result cap prevents is reported as truncation', async () => {
+    await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW), maxPosts: 5000 })
+    vi.mocked(importProfilePosts).mockClear()
+    // The archive alone fills max_posts, so the older half of the range is never walked.
+    const result = await importWithHistory({ handle: 'ada', since: new Date(NOW - 200 * HOUR), until: new Date(NOW), maxPosts: 101 })
+    expect(result.posts).toHaveLength(101)
+    expect(result.meta.archive.walked).toEqual([])
+    expect(result.meta.truncated).toBe(true)
+  })
+
   test('coverage, not post dates, decides the gaps: a repeat of the same request walks nothing older', async () => {
     // since falls between two hourly posts, so the oldest post is newer than since.
     const since = new Date(NOW - 100 * HOUR - 30 * 60_000)

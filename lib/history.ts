@@ -265,6 +265,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   }
 
   const maxPosts = input.maxPosts ?? 500
+  let capped = false
   if (!index) {
     await walk('refresh', since, until, maxPosts)
   } else {
@@ -280,6 +281,10 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     const needOlder = !index.floor_reached && (since === undefined || coveredSince === undefined || since < coveredSince)
     if (needOlder && emitted.size < maxPosts) {
       await walk('backfill', since, coveredSince === undefined ? until : coveredSince + EDGE_OVERLAP_MS, maxPosts)
+    } else if (needOlder) {
+      // The archive alone filled the cap, so the older part of the range was
+      // never walked: the caller has to know there is more than it got.
+      capped = true
     }
   }
   index = await record(s, handle, fresh, covered)
@@ -288,7 +293,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   // Final body from the archive, filtered and capped, newest first. When nothing
   // was walked the first read is still current, so do not read it again.
   let posts = (walked.length === 0 && archived ? archived : await s.range(handle, since ?? 0, until)).filter(wanted)
-  const truncated = posts.length > maxPosts
+  const truncated = posts.length > maxPosts || capped
   if (truncated) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
   const freshIds = new Set(fresh.map((post) => post.id))

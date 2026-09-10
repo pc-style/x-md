@@ -66,6 +66,8 @@ export interface JsonSchema {
   properties?: Record<string, JsonSchema>
   required?: readonly string[]
   additionalProperties?: boolean | JsonSchema
+  oneOf?: readonly JsonSchema[]
+  allOf?: readonly JsonSchema[]
   deprecated?: boolean
   examples?: readonly (string | number)[]
 }
@@ -532,6 +534,7 @@ const IMPORT_PARAMS: readonly ParameterObject[] = [
   booleanParam('only_replies', 'Return only the account\'s replies.', BROWSE_TRUE),
   { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY_PER_BASE, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
   { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` streams one `{"post": …}` line per post as the parallel chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
+  booleanParam('index', 'Answer from the archive index alone, without walking upstream: what x.md already holds for this account and how far back it reaches. Not metered as an import. The body is an `ImportIndexResponse` instead of posts.', BROWSE_TRUE),
 ]
 
 // ---------------------------------------------------------------------------
@@ -591,10 +594,10 @@ function browseSuccess(description: string, search: boolean): ResponseObject {
 
 function importSuccess(): ResponseObject {
   return {
-    description: 'Every matching post in the range, newest first, with the profile and a `meta` block describing the walk.',
+    description: 'Every matching post in the range, newest first, with the profile and a `meta` block describing the walk. With `index=true`, the archive index for the account instead.',
     headers: { ...RATE_LIMIT_HEADERS, Vary: headerRef('Vary'), 'Cache-Control': headerRef('CacheControl'), 'X-Source': headerRef('XSource'), 'X-Result-Count': headerRef('XResultCount'), 'X-Api-Key-Status': headerRef('XApiKeyStatus') },
     content: {
-      'application/json': { schema: schemaRef('ImportResponse') },
+      'application/json': { schema: schemaRef('ImportSuccessResponse') },
       'application/x-ndjson': { schema: { type: 'string', description: 'With `format=ndjson`: one JSON object per line. `{"post": Post}` lines as posts arrive, then one `{"meta": ImportMeta, "profile": Author}` line, or `{"error": Problem}` when the walk failed part-way.' } },
     },
   }
@@ -1257,6 +1260,41 @@ function schemas(): Record<string, JsonSchema> {
         duration_ms: { type: 'integer', description: 'Wall-clock time of the walk.' },
         estimated_rate_per_hour: { type: 'number', description: 'Posting rate estimated from the first page, which sized the windows.' },
         source: { type: 'string', enum: ['fxtwitter'] },
+        archive: { description: 'What the per-account archive held before and after this import: the index plus `served` (posts answered from it), `added` (posts this walk stored), and `walked` (which walks ran).', allOf: [schemaRef('ArchiveIndex')] },
+      },
+    },
+    ArchiveIndex: {
+      type: 'object',
+      title: 'ArchiveIndex',
+      description: 'What x.md already holds for an account. Coverage bounds, not post dates, decide which part of a later request still has to be walked.',
+      additionalProperties: true,
+      required: ['handle', 'count', 'updated_at', 'floor_reached'],
+      properties: {
+        handle: str('The archived account.'),
+        count: { type: 'integer', description: 'Posts held for the account.' },
+        oldest: str('ISO 8601 time of the oldest original post held.'),
+        newest: str('ISO 8601 time of the newest original post held.'),
+        updated_at: str('ISO 8601 time of the last walk that touched the archive.'),
+        floor_reached: { type: 'boolean', description: 'True when the archive reaches X\'s timeline floor: nothing older exists upstream.' },
+        covered_since: str('ISO 8601 lower bound of the time range walks have covered so far.'),
+        covered_until: str('ISO 8601 upper bound of the time range walks have covered so far.'),
+      },
+    },
+    ImportSuccessResponse: {
+      title: 'ImportSuccessResponse',
+      description: 'The 200 body of an import: posts and their `meta`, or with `index=true` the archive index alone.',
+      oneOf: [schemaRef('ImportResponse'), schemaRef('ImportIndexResponse')],
+    },
+    ImportIndexResponse: {
+      type: 'object',
+      title: 'ImportIndexResponse',
+      description: 'The JSON body of `index=true`: the archive index for the account, or `null` when nothing has been imported yet.',
+      additionalProperties: false,
+      required: ['handle', 'archive', 'persistent'],
+      properties: {
+        handle: str('The account that was asked about.'),
+        archive: { oneOf: [schemaRef('ArchiveIndex'), { type: 'null' }] },
+        persistent: { type: 'boolean', description: 'True when the archive is backed by Redis and survives the process; false when it lives in memory and the next instance starts empty.' },
       },
     },
     ImportResponse: {
