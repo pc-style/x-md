@@ -13,7 +13,9 @@ export interface OriginRequest {
   socket?: unknown
 }
 
-const PUBLIC_EMBED_HOSTS = new Set(['x.pcstyle.dev', 'mdfromx.com', 'x-md.vercel.app'])
+import { PARALLEL_HOSTS } from './domain-pages.js'
+
+const PUBLIC_EMBED_HOSTS = new Set(['x.pcstyle.dev', ...PARALLEL_HOSTS, 'x-md.vercel.app'])
 
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value

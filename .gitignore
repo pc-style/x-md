@@ -44,3 +44,5 @@ accounts.local.json
 
 .blume/
 .blume-verify/
+# X session tokens for a self-hosted FxEmbed pool; never commit
+accss.json

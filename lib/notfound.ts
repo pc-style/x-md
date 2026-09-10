@@ -13,15 +13,28 @@ import { CONTENT_TYPE, selectRepresentation, type Repr } from './negotiate.js'
 
 const SITE = 'https://x.pcstyle.dev'
 
-/** Mirrors the link set blume already builds into /404.md and /404.json. */
-export const NOT_FOUND_LINKS: ProblemLink[] = [
-  { label: 'Home', href: `${SITE}/` },
-  { label: 'Documentation', href: `${SITE}/docs` },
-  { label: 'Sitemap', href: `${SITE}/sitemap.xml` },
-  { label: 'Docs index for AI agents (llms.txt)', href: `${SITE}/llms.txt` },
-  { label: 'JSON API description (openapi.json)', href: `${SITE}/openapi.json` },
-  { label: 'JSON API index', href: `${SITE}/api` },
-]
+/** Mirrors the link set blume already builds into /404.md and /404.json, on the origin the request used. */
+export function notFoundLinks(origin: string = SITE): ProblemLink[] {
+  return [
+    { label: 'Home', href: `${origin}/` },
+    { label: 'Documentation', href: `${origin}/docs` },
+    { label: 'Sitemap', href: `${origin}/sitemap.xml` },
+    { label: 'Docs index for AI agents (llms.txt)', href: `${origin}/llms.txt` },
+    { label: 'JSON API description (openapi.json)', href: `${origin}/openapi.json` },
+    { label: 'JSON API index', href: `${origin}/api` },
+  ]
+}
+
+export const NOT_FOUND_LINKS: ProblemLink[] = notFoundLinks()
+
+/** The origin of the failing request; `instance` always comes from requestOrigin(), so it is one of ours. */
+function originOf(instance: string): string {
+  try {
+    return new URL(instance).origin
+  } catch {
+    return SITE
+  }
+}
 
 const URL_SHAPES: [string, string][] = [
   ['/{handle}', 'a public X profile'],
@@ -67,7 +80,7 @@ function sentence(path?: string, detail?: string): string {
   return path ? `No resource exists at ${path}.` : 'The requested URL does not exist.'
 }
 
-export function notFoundMarkdown(path?: string, detail?: string): string {
+export function notFoundMarkdown(path?: string, detail?: string, links: ProblemLink[] = NOT_FOUND_LINKS): string {
   return [
     '# 404 Not Found',
     '',
@@ -75,7 +88,7 @@ export function notFoundMarkdown(path?: string, detail?: string): string {
     '',
     '## Where to look next',
     '',
-    ...NOT_FOUND_LINKS.map((link) => `- [${link.label}](${link.href})`),
+    ...links.map((link) => `- [${link.label}](${link.href})`),
     '',
     '## Valid URL shapes',
     '',
@@ -94,7 +107,7 @@ export function notFoundProblem(
     instance,
     detail: sentence(path, detail),
     status: 404,
-    links: NOT_FOUND_LINKS,
+    links: notFoundLinks(originOf(instance)),
   })
 }
 
@@ -121,8 +134,8 @@ function escapeHtml(value: string): string {
  * an agent that sent no Accept header still gets the machine-readable version
  * instead of a styled dead end.
  */
-export function notFoundHtml(path?: string, detail?: string): string {
-  const markdown = notFoundMarkdown(path, detail)
+export function notFoundHtml(path?: string, detail?: string, links: ProblemLink[] = NOT_FOUND_LINKS): string {
+  const markdown = notFoundMarkdown(path, detail, links)
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>404 Not Found - x.md</title>
@@ -143,7 +156,7 @@ pre{white-space:pre-wrap;background:#fffdf7;border:1px solid #e5e2d9;border-radi
 <h1>404 Not Found</h1>
 <p>${escapeHtml(sentence(path, detail))}</p>
 <h2>Where to look next</h2>
-<ul>${NOT_FOUND_LINKS.map((link) => `<li><a href="${link.href}">${escapeHtml(link.label)}</a></li>`).join('')}</ul>
+<ul>${links.map((link) => `<li><a href="${link.href}">${escapeHtml(link.label)}</a></li>`).join('')}</ul>
 <h2>Valid URL shapes</h2>
 <ul>${URL_SHAPES.map(([shape, description]) => `<li><code>${escapeHtml(shape)}</code> - ${escapeHtml(description)}</li>`).join('')}</ul>
 <h2>Machine-readable version</h2>
@@ -176,12 +189,13 @@ export function notFoundResponse(init: NotFoundInit): {
   // missing in every media type, so answering 406 would hide the real problem.
   const chosen = selectRepresentation(accept, OFFERS, init.fallback ?? defaultRepresentation(init.path)) ?? 'markdown'
   const problem = notFoundProblem(init.instance, init.path, init.detail, init.code)
+  const links = notFoundLinks(originOf(init.instance))
   const body =
     chosen === 'json'
       ? `${JSON.stringify(problem, null, 2)}\n`
       : chosen === 'markdown'
-        ? notFoundMarkdown(init.path, init.detail)
-        : notFoundHtml(init.path, init.detail)
+        ? notFoundMarkdown(init.path, init.detail, links)
+        : notFoundHtml(init.path, init.detail, links)
 
   return {
     status: 404,

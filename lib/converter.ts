@@ -39,6 +39,7 @@ export interface ConvertSuccess {
 }
 
 import type { FxTweet } from './fxtwitter.js'
+import { PARALLEL_HOSTS } from './domain-pages.js'
 
 const ALLOWED_HOSTS = new Set([
   'x.com',
@@ -46,7 +47,7 @@ const ALLOWED_HOSTS = new Set([
   'www.twitter.com',
   'mobile.twitter.com',
   'x.pcstyle.dev',
-  'mdfromx.com',
+  ...PARALLEL_HOSTS,
 ])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 export const STATUS_PATH = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d+)(?:\/(?:video|photo)\/[1-9]\d*)?\/?$/

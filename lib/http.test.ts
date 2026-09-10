@@ -5,6 +5,8 @@ describe('requestOrigin', () => {
   test('preserves the parallel domain for API discovery and embeds', () => {
     expect(requestOrigin({ headers: { host: 'mdfromx.com', 'x-forwarded-proto': 'https' } }))
       .toBe('https://mdfromx.com')
+    expect(requestOrigin({ headers: { host: 'fast.mdfromx.com', 'x-forwarded-proto': 'https' } }))
+      .toBe('https://fast.mdfromx.com')
     expect(requestOrigin({ headers: { host: 'mdfromx.com.evil.example' } }))
       .toBe('https://x.pcstyle.dev')
   })
