@@ -20,6 +20,11 @@
 - declined with reason: all-repost block over `limit` (already decided on #25: over-deliver, never skip; forging a cursor at a repost id is wrong because reposts sort by repost time).
 - deferred as follow-ups, not this PR: private-mode discovery contract (card `authentication`, OpenAPI security), profile-work quota (adam's decision), pool cooldown wait, archive repost timeline position, atomic index update, NDJSON cap.
 
+## review round 2 (c746ecf)
+- fixed the out-of-diff/minor items (keyed no-store, HEAD before archive read, epoch clamp, upstream-health spread order, admin unavailable state, safe-integer quotas, import analytics format, stale limit/history copy).
+- declined: HEAD free of the front-door quota (convert and browse charge HEAD too); benchmark strategy label (record of the run behind bench/RESULTS.md); api/index.ts private-mode auth metadata (same follow-up as the discovery contract).
+- state: build/Vercel/Socket green, CodeQL fails on the pre-existing SHA-256 API-key alert (false positive, not a required check), CodeRabbit CHANGES_REQUESTED rests on the declined HEAD item only.
+
 ## open (adam decides)
 - fast.mdfromx.com: still on the separate `x-md-fast` Vercel project (private mode, own FxEmbed pool, Upstash). Move the domain to `x-md` or retire it.
 - whether bulk import may stay keyless on the public service, and whether `regions: ["fra1"]` should apply to the whole project.
