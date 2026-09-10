@@ -44,6 +44,8 @@ export const SEARCH_KEY: QuotaPolicy = { name: 'search-key', quota: 30, windowSe
  */
 export const IMPORT_IP: QuotaPolicy = { name: 'import-ip', quota: 10, windowSec: 15 * 60, partition: 'ip' }
 export const IMPORT_KEY: QuotaPolicy = { name: 'import-key', quota: 60, windowSec: 15 * 60, partition: 'key' }
+/** The same policy with a key's own allowance; the name stays fixed, the quota is the key's. */
+export const importKeyPolicy = (limit: number): QuotaPolicy => ({ ...IMPORT_KEY, quota: limit })
 
 /** Window of the account-backed search pool (lib/xsearch.ts, lib/pool.ts). */
 export const ACCOUNT_WINDOW_SEC = 15 * 60

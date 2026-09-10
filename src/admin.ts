@@ -3,6 +3,18 @@ import type { ApiKeyView } from '../lib/apikeys'
 import type { PoolSnapshot } from '../lib/pool'
 import type { searchRateModel } from '../lib/xsearch'
 
+interface UpstreamView {
+  base: string
+  kind: 'self-hosted' | 'external'
+  total?: number
+  ready?: number
+  resting?: number
+  retired?: number
+  unknown?: number
+  remainingKnown?: number
+  error?: string
+}
+
 type PoolView = ReturnType<typeof searchRateModel> & {
   durableStore: boolean
   keyCount: number
@@ -96,10 +108,32 @@ function renderPool(p: PoolView) {
   if (!input('idleMinutes').dataset.dirty) input('idleMinutes').value = String(s.idleReleaseMinutes)
 
   const warnings: string[] = []
-  if (!remaining && s.capacity) warnings.push('Pool exhausted. Key allowances still depend on the pool.')
-  if (p.allocatedToKeysPer15m > s.capacity) warnings.push(`Overallocated: ${p.allocatedToKeysPer15m.toLocaleString()} assigned / ${s.capacity.toLocaleString()} capacity.`)
+  if (!remaining && s.capacity) warnings.push('Search pool exhausted. Key search allowances still depend on the pool.')
+  // Without search sessions the pool is simply absent; allowances are then meaningless, not overallocated.
+  if (s.capacity && p.allocatedToKeysPer15m > s.capacity) warnings.push(`Overallocated: ${p.allocatedToKeysPer15m.toLocaleString()} assigned / ${s.capacity.toLocaleString()} search capacity.`)
+  if (!s.capacity) warnings.push('No search sessions on this deployment: search falls through to public providers. Imports use the import upstream.')
   if (!p.durableStore) warnings.push('In-memory store. Set KV_REST_API_URL and KV_REST_API_TOKEN to persist keys.')
   message('poolWarning', warnings.join(' '))
+}
+
+function renderUpstream(upstreams: UpstreamView[]) {
+  const own = upstreams.filter((u) => u.kind === 'self-hosted')
+  const total = own.reduce((a, u) => a + (u.total ?? 0), 0)
+  const ready = own.reduce((a, u) => a + (u.ready ?? 0), 0)
+  const resting = own.reduce((a, u) => a + (u.resting ?? 0), 0)
+  const retired = own.reduce((a, u) => a + (u.retired ?? 0), 0)
+  const remaining = own.reduce((a, u) => a + (u.remainingKnown ?? 0), 0)
+  const failed = own.filter((u) => u.error)
+  text('importReady', own.length ? ready : '—')
+  text('importTotal', own.length ? total : '—')
+  const notes: string[] = []
+  if (!own.length) notes.push(upstreams.length ? 'Public upstream only' : 'No upstream configured')
+  if (resting) notes.push(`${resting} resting`)
+  if (retired) notes.push(`${retired} retired`)
+  if (remaining) notes.push(`${remaining.toLocaleString()} requests left this window (seen)`)
+  if (failed.length) notes.push(`${failed.length} upstream${failed.length > 1 ? 's' : ''} unreachable`)
+  text('importNote', notes.join(' · '))
+  $('importNote').title = upstreams.map((u) => `${u.base}: ${u.kind}${u.error ? ` (${u.error})` : ''}`).join('\n')
 }
 
 function renderKeys(keys: ApiKeyView[], shares: PoolSnapshot['keys']) {
@@ -111,7 +145,7 @@ function renderKeys(keys: ApiKeyView[], shares: PoolSnapshot['keys']) {
   }
   tbody.querySelector('.empty-row')?.remove()
   if (!keys.length) {
-    tbody.innerHTML = '<tr class="empty-row"><td class="empty" colspan="6">No keys yet.</td></tr>'
+    tbody.innerHTML = '<tr class="empty-row"><td class="empty" colspan="8">No keys yet.</td></tr>'
     return
   }
   for (const key of keys) {
@@ -123,9 +157,11 @@ function renderKeys(keys: ApiKeyView[], shares: PoolSnapshot['keys']) {
       row.innerHTML = `<td><span class="key-label"></span><code class="key-id"></code></td>
         <td><input class="key-limit" type="number" min="1" step="1" required /></td>
         <td class="key-remaining"><span class="key-left"></span><div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill"></div></div></td>
+        <td><input class="key-import-limit" type="number" min="1" step="1" required /></td>
+        <td class="key-import-remaining"><span class="key-import-left"></span><div class="meter" role="meter" aria-valuemin="0" aria-valuemax="100"><div class="meter-fill"></div></div></td>
         <td><span class="key-status"></span></td><td class="key-last muted"></td>
         <td><div class="row-actions"><button class="ghost" data-action="save">Save</button><button class="ghost" data-action="toggle"></button><button class="ghost danger" data-action="delete">Delete</button></div></td>`
-      row.querySelector('input')!.addEventListener('input', (event) => { (event.target as HTMLInputElement).dataset.dirty = 'true' })
+      row.querySelectorAll('input').forEach((field) => field.addEventListener('input', (event) => { (event.target as HTMLInputElement).dataset.dirty = 'true' }))
       tbody.appendChild(row)
     }
     const set = (selector: string, value: string) => { row!.querySelector(selector)!.textContent = value }
@@ -134,7 +170,7 @@ function renderKeys(keys: ApiKeyView[], shares: PoolSnapshot['keys']) {
     set('.key-label', key.label)
     row.querySelector<HTMLElement>('.key-label')!.title = key.label
     set('.key-id', key.id)
-    const limit = row.querySelector('input')!
+    const limit = row.querySelector<HTMLInputElement>('.key-limit')!
     limit.setAttribute('aria-label', `Allowance for ${key.label}`)
     if (!limit.dataset.dirty) limit.value = String(key.limitPer15m)
     set('.key-left', key.disabled ? '—' : share ? `${remaining.toLocaleString()} / ${key.limitPer15m.toLocaleString()}` : 'Unavailable')
@@ -142,6 +178,15 @@ function renderKeys(keys: ApiKeyView[], shares: PoolSnapshot['keys']) {
     const bar = row.querySelector<HTMLElement>('.meter')!
     bar.setAttribute('aria-label', `Remaining allowance for ${key.label}`)
     meter(bar, key.disabled ? 0 : remaining, key.limitPer15m, key.disabled ? 'Key disabled; no available allowance' : share ? `${remaining} of ${key.limitPer15m} remaining; shared pool availability applies` : 'Usage unavailable', !remaining && !key.disabled)
+    const importLimitField = row.querySelector<HTMLInputElement>('.key-import-limit')!
+    const importLimit = share?.importLimit ?? key.importPer15m ?? 0
+    importLimitField.setAttribute('aria-label', `Bulk import allowance for ${key.label}`)
+    if (!importLimitField.dataset.dirty) importLimitField.value = String(importLimit)
+    const importLeft = share ? Math.max(0, importLimit - share.importUsed) : 0
+    set('.key-import-left', key.disabled ? '—' : share ? `${importLeft.toLocaleString()} / ${importLimit.toLocaleString()}` : 'Unavailable')
+    const importBar = row.querySelector<HTMLElement>('.key-import-remaining .meter')!
+    importBar.setAttribute('aria-label', `Remaining bulk imports for ${key.label}`)
+    meter(importBar, key.disabled ? 0 : importLeft, importLimit, key.disabled ? 'Key disabled' : `${importLeft} of ${importLimit} imports remaining this window`, !importLeft && !key.disabled)
     const status = row.querySelector<HTMLElement>('.key-status')!
     status.textContent = key.disabled ? 'Disabled' : share?.idle ? 'Idle' : 'Active'
     set('.key-last', key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never')
@@ -170,9 +215,10 @@ function refresh(): Promise<boolean> {
   text('snapshotStatus', 'Refreshing…')
   refreshing = (async () => {
     try {
-      const [pool, keys] = await Promise.all([
+      const [pool, keys, upstream] = await Promise.all([
         api<PoolView>('/api/admin/pool'),
-        api<{ keys: ApiKeyView[]; defaultLimit: number }>('/api/admin/keys'),
+        api<{ keys: ApiKeyView[]; defaultLimit: number; defaultImportLimit: number }>('/api/admin/keys'),
+        api<{ upstreams: UpstreamView[] }>('/api/admin/upstream').catch(() => ({ upstreams: [] as UpstreamView[] })),
       ])
       currentSession.signal.throwIfAborted()
       snapshot = pool
@@ -180,6 +226,8 @@ function refresh(): Promise<boolean> {
       refreshFailed = false
       $('dashboard').hidden = false
       renderPool(pool)
+      renderUpstream(upstream.upstreams)
+      input('newImportLimit').placeholder = String(keys.defaultImportLimit)
       renderKeys(keys.keys, pool.share.keys)
       message('appMsg')
       return true
@@ -287,10 +335,11 @@ $('createForm').addEventListener('submit', (event) => {
   event.preventDefault()
   const label = input('newLabel').value
   const raw = input('newLimit').value.trim()
+  const rawImport = input('newImportLimit').value.trim()
   void mutate(async () => {
     $('secretBox').hidden = true
     text('secret', '')
-    const result = await api<{ secret: string }>('/api/admin/keys', 'POST', { label, limitPer15m: raw ? Number(raw) : undefined })
+    const result = await api<{ secret: string }>('/api/admin/keys', 'POST', { label, limitPer15m: raw ? Number(raw) : undefined, importPer15m: rawImport ? Number(rawImport) : undefined })
     text('secret', result.secret)
     $('secretBox').hidden = false
     $('createForm').hidden = true
@@ -310,13 +359,15 @@ $('keys').addEventListener('click', (event) => {
   const key = row && keyRecords.get(row.dataset.id!)
   if (!button || !row || !key || refreshing || mutating) return
   const action = button.dataset.action
-  const limit = row.querySelector('input')!
-  if (action === 'save' && !limit.reportValidity()) return
+  const limit = row.querySelector<HTMLInputElement>('.key-limit')!
+  const importLimit = row.querySelector<HTMLInputElement>('.key-import-limit')!
+  if (action === 'save' && !(limit.reportValidity() && importLimit.reportValidity())) return
   if (action === 'delete' && !confirm(`Delete key "${key.label}"? Requests using it will fail immediately.`)) return
   const nextLimit = Number(limit.value)
+  const nextImportLimit = Number(importLimit.value)
   void mutate(async () => {
     if (action === 'delete') await api('/api/admin/keys', 'DELETE', { id: key.id })
-    else await api('/api/admin/keys', 'PATCH', action === 'save' ? { id: key.id, limitPer15m: nextLimit } : { id: key.id, disabled: !key.disabled })
+    else await api('/api/admin/keys', 'PATCH', action === 'save' ? { id: key.id, limitPer15m: nextLimit, importPer15m: nextImportLimit } : { id: key.id, disabled: !key.disabled })
     if (action === 'save' && Number(limit.value) === nextLimit) delete limit.dataset.dirty
   }, 'keysMsg', action === 'delete' ? 'Key deleted.' : action === 'save' ? 'Allowance saved.' : `Key ${key.disabled ? 'enabled' : 'disabled'}.`)
 })

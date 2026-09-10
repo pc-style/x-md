@@ -10,7 +10,8 @@ import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCUR
 import { historyPersistent, importWithHistory, readHistoryIndex } from '../lib/history.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
 import { clientIp, rateLimit } from '../lib/ratelimit.js'
-import { IMPORT_IP, IMPORT_KEY, importIpKey, importKeyKey } from '../lib/quotas.js'
+import { IMPORT_IP, IMPORT_KEY, importIpKey, importKeyKey, importKeyPolicy } from '../lib/quotas.js'
+import { importAllowance } from '../lib/apikeys.js'
 import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 
 /**
@@ -56,8 +57,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const keyFailure = keyRequirementFailure(resolved)
   if (keyFailure) return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
 
+  const importLimit = resolved.record ? importAllowance(resolved.record, IMPORT_KEY.quota) : IMPORT_KEY.quota
   const quotaCaller: QuotaCaller = resolved.caller.kind === 'key'
-    ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
+    ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit, importLimit } }
     : { ip: resolved.ip }
   const quota = await chargeRequestQuota('import', quotaCaller)
   applyRequestQuota(res, quota)
@@ -102,7 +104,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // The import allowance is the deeper policy: spend one unit per walk.
-  const allowance = resolved.caller.kind === 'key' ? IMPORT_KEY : IMPORT_IP
+  const allowance = resolved.caller.kind === 'key' ? importKeyPolicy(importLimit) : IMPORT_IP
   const counter = resolved.caller.kind === 'key' ? importKeyKey(resolved.caller.id) : importIpKey(resolved.ip)
   const verdict = await rateLimit(counter, allowance.quota, allowance.windowSec)
   if (!verdict.allowed) {

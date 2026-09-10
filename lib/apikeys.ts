@@ -12,7 +12,10 @@ import { kv } from './kv.js'
 export interface ApiKeyRecord {
   id: string
   label: string
+  /** Account-backed search allowance per 15 minutes. */
   limitPer15m: number
+  /** Bulk imports per 15 minutes. Absent on keys minted before imports existed: they get the policy default. */
+  importPer15m?: number
   disabled: boolean
   createdAt: number
   /** Stored under its own key so activity stamps never race admin edits of the record. */
@@ -50,11 +53,11 @@ function stripStamp(record: ApiKeyRecord): ApiKeyRecord {
   return rest as ApiKeyRecord
 }
 
-export async function createApiKey(label: string, limitPer15m: number): Promise<{ record: ApiKeyRecord; secret: string }> {
+export async function createApiKey(label: string, limitPer15m: number, importPer15m?: number): Promise<{ record: ApiKeyRecord; secret: string }> {
   const id = randomBytes(6).toString('hex')
   const secret = `xmd_${randomBytes(24).toString('hex')}`
   const hash = hashSecret(secret)
-  const record: ApiKeyRecord = { id, label, limitPer15m, disabled: false, createdAt: Date.now(), hash }
+  const record: ApiKeyRecord = { id, label, limitPer15m, ...(importPer15m !== undefined ? { importPer15m } : {}), disabled: false, createdAt: Date.now(), hash }
   // Record and index first, hash mapping last: a partial failure leaves a visible,
   // unusable key that the dashboard can delete, never an invisible usable one.
   await kv().set(recordKey(id), JSON.stringify(record))
@@ -80,7 +83,7 @@ export async function listApiKeys(): Promise<ApiKeyRecord[]> {
 
 export async function updateApiKey(
   id: string,
-  patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'disabled'>>,
+  patch: Partial<Pick<ApiKeyRecord, 'label' | 'limitPer15m' | 'importPer15m' | 'disabled'>>,
 ): Promise<ApiKeyRecord | null> {
   const current = await getApiKey(id)
   if (!current) return null
@@ -127,4 +130,9 @@ export async function touchApiKey(record: ApiKeyRecord, now = Date.now()): Promi
   } catch {
     // non-critical
   }
+}
+
+/** A key's bulk-import allowance per 15 minutes; keys minted before imports existed use the policy default. */
+export function importAllowance(record: Pick<ApiKeyRecord, 'importPer15m'>, fallback: number): number {
+  return record.importPer15m ?? fallback
 }
