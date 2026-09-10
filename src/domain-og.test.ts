@@ -34,6 +34,7 @@ describe('domain-specific social cards', () => {
     expect(domainFile('/docs/posts/')).toBe('docs/posts/index.html')
     expect(domainFile('/api/docs/pages/docs/posts.json')).toBe('api/docs/pages/docs/posts.json')
     expect(domainFile('/docs/llms.txt')).toBe('docs/llms.txt')
+    expect(domainFile('/blume-search.json')).toBe('blume-search.json')
     expect(domainFile('/og/docs/posts.png')).toBe('og/docs/posts.png')
     expect(domainFile('/og.png')).toBe('og.png')
     expect(domainFile('/.well-known/api-catalog')).toBe('.well-known/api-catalog')

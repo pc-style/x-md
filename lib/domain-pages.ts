@@ -13,6 +13,7 @@ const FILES = new Set([
   'llms.txt', 'llms-full.txt', 'auth.md', 'pricing.md', 'agents.md',
   'robots.txt', 'sitemap.xml', 'schemamap.xml', 'openapi.json', 'server.json',
   'site.webmanifest', '.well-known/ard.json', '.well-known/ai-catalog.json',
+  'blume-search.json', 'agent-readability.json',
   '.well-known/api-catalog', '.well-known/mcp/server-card.json',
 ])
 
