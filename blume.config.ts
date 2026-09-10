@@ -4,7 +4,7 @@ export default defineConfig({
   title: 'x.md docs',
   description: 'Read X posts, search, and profiles as Markdown or JSON. Start with one request.',
   basePath: '/docs',
-  logo: { text: 'x.md', href: 'https://x.pcstyle.dev' },
+  logo: { text: 'x.md', href: '/' },
   content: { root: 'docs' },
   deployment: {
     output: 'static',
@@ -40,8 +40,9 @@ export default defineConfig({
       '/mcp',
       '/self-hosting',
     ],
-    actions: [{ label: 'Website', href: 'https://x.pcstyle.dev' }],
-    cta: { label: 'Convert', href: 'https://x.pcstyle.dev/#convert' },
+    // Blume prefixes navigation links with /docs; step back to the site root.
+    actions: [{ label: 'Website', href: '/../' }],
+    cta: { label: 'Convert', href: '/../#convert' },
   },
   github: { owner: 'pc-style', repo: 'x-md', branch: 'main' },
   lastModified: true,

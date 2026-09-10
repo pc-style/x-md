@@ -13,7 +13,7 @@ export interface OriginRequest {
   socket?: unknown
 }
 
-const PUBLIC_EMBED_HOSTS = new Set(['x.pcstyle.dev', 'x-md.vercel.app'])
+const PUBLIC_EMBED_HOSTS = new Set(['x.pcstyle.dev', 'mdfromx.com', 'x-md.vercel.app'])
 
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value
