@@ -43,8 +43,8 @@ h2 { font-size: 13px; font-weight: 500; }
 #resetTime { color: var(--color-ink-2); }
 #snapshotStatus[data-state="stale"] { color: var(--color-danger); }
 main { max-width: 1176px; padding: 36px 28px 64px; margin: 0 auto; }
-.metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding-bottom: 28px; border-bottom: 1px solid var(--color-line); }
-.metric { min-width: 0; padding: 0 28px; border-left: 1px solid var(--color-line); }
+.metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding-bottom: 28px; border-bottom: 1px solid var(--color-line); }
+.metric { min-width: 0; padding: 0 22px; border-left: 1px solid var(--color-line); }
 .metric:first-child { padding-left: 0; border-left: 0; }
 .metric:last-child { padding-right: 0; }
 .metric h2 { color: var(--color-ink-3); font-size: 12px; font-weight: 400; }
