@@ -252,7 +252,7 @@
       "unauthorized": {
         "status": 401,
         "title": "Unauthorized",
-        "resolution": "This route is private. The public read-only API needs no credentials; see https://x.pcstyle.dev/openapi.json.",
+        "resolution": "This route needs credentials: send `Authorization: Bearer <key>`. On the public x.md the read API needs none; see https://x.pcstyle.dev/openapi.json.",
         "type": "https://x.pcstyle.dev/docs/reliability#unauthorized"
       },
       "not_found": {

@@ -8,6 +8,7 @@ import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 
 async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'convert')
@@ -67,7 +68,15 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     )
   }
 
+  // Private mode: the permalink surface is API too, so it needs a key as well.
+  // Preview bots are exempt: an Open Graph card is not data access.
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   const userAgent = String(req.headers['user-agent'] ?? '')
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure && !isEmbedUserAgent(userAgent)) {
+    return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
+  }
   const requestedFormat = param('format')
   const asJson = wantsJson(requestedFormat, accept)
   const asMarkdown = wantsMarkdown(requestedFormat, accept)

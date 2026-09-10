@@ -134,7 +134,7 @@ export const ERROR_CATALOG = {
   unauthorized: {
     status: 401,
     title: 'Unauthorized',
-    resolution: `This route is private. The public read-only API needs no credentials; see ${SITE}/openapi.json.`,
+    resolution: `This route needs credentials: send \`Authorization: Bearer <key>\`. On the public x.md the read API needs none; see ${SITE}/openapi.json.`,
   },
   not_found: {
     status: 404,

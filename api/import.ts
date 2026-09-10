@@ -2,7 +2,7 @@ import { withServerEvents } from '../lib/server-events.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
-import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { ConvertError } from '../lib/errors.js'
 import { parseDateInput } from '../lib/fx-cursor.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
@@ -53,6 +53,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   if (resolved.status === 'invalid') {
     return sendProblem(res, problemDetails('invalid_key', { instance, detail: 'Invalid or disabled API key.' }), accept, req.method)
   }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure) return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
 
   const quotaCaller: QuotaCaller = resolved.caller.kind === 'key'
     ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }

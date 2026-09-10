@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
-import { callerHeaders, resolveCaller } from '../lib/apiauth.js'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { parseJsonBody } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
 import { applyQuotaPolicyOnly } from '../lib/ratelimit-headers.js'
@@ -170,6 +170,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (resolved.status === 'invalid') {
     return transportError(res, 401, JSONRPC_INVALID_REQUEST, 'Invalid or disabled API key. Drop the Authorization header to call anonymously.')
   }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure) return transportError(res, 401, JSONRPC_INVALID_REQUEST, keyFailure)
 
   let outcome
   try {
