@@ -267,6 +267,12 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     // With more than one base the caller can retry at once on another one.
     throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', FX_BASES.length > 1 ? 0 : retryAfter)
   }
+  // A self-hosted instance whose accounts are exhausted answers 5xx rather than
+  // 429; in a pool that base sits out briefly and the page moves to the next one.
+  if (response.status >= 500 && FX_BASES.length > 1) {
+    coolUntil.set(base, Date.now() + FX_UPSTREAM_ERROR_COOLDOWN_MS)
+    throw new ConvertError(503, `FxTwitter upstream ${new URL(base).host} answered ${response.status}.`, 'upstream_rate_limited', 0)
+  }
 
   const data = (await response.json()) as FxApiResponse
 
@@ -329,6 +335,8 @@ export interface FxProfileStatusesOptions {
 export const FX_SHORT_PAGE = 8
 /** Upstream 429s a page may wait out before the import gives up on it. */
 const FX_THROTTLE_WAITS = 3
+/** How long a pooled base sits out after answering 5xx. */
+const FX_UPSTREAM_ERROR_COOLDOWN_MS = 60_000
 
 function abortableDelay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {

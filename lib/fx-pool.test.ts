@@ -31,4 +31,17 @@ describe('upstream pool', () => {
     // fx-a is cooling: the next picks skip it.
     expect([pickFxBase(), pickFxBase()]).toEqual(['https://api.fxtwitter.com', 'https://fx-b.example'])
   })
+
+  test('a base answering 5xx (exhausted accounts) is sidelined the same way', async () => {
+    const hosts: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
+      const { host } = new URL(String(input))
+      hosts.push(host)
+      if (host === 'fx-a.example') return new Response('{"code":500,"message":"All methods failed"}', { status: 500, headers: { 'content-type': 'application/json' } })
+      return new Response(JSON.stringify(page(30)), { status: 200, headers: { 'content-type': 'application/json' } })
+    }))
+    const result = await fetchFxProfileStatuses('ada', undefined, 100, { withReplies: true, retries: 2 })
+    expect(result.results).toHaveLength(30)
+    expect(hosts).toEqual(['fx-a.example', 'fx-b.example'])
+  })
 })
