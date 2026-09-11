@@ -18,6 +18,7 @@
  * Engagement counts in archived posts are as of the walk that stored them.
  * `refresh: true` re-walks the requested range and overwrites.
  */
+import { ConvertError } from './errors.js'
 import { redisConfig, redisPipeline, type RedisCommand } from './redis.js'
 import { importProfilePosts, isRepost, isReply, ownPost, postTime, type ImportInput, type ImportMeta, type ImportResult } from './import.js'
 import type { FxAuthor, FxTweet } from './fxtwitter.js'
@@ -185,18 +186,30 @@ interface Coverage { since?: number; until: number; floor: boolean }
 async function record(s: Store, handle: string, posts: FxTweet[], covered: Coverage[]): Promise<HistoryIndex> {
   if (posts.length) await s.put(handle, posts)
   const previous = await s.readIndex(handle)
+  if (!posts.length && !covered.length && previous) return previous
   const stats = await s.stats(handle)
   // Oldest/newest come from the posts this request added (reposts excluded:
   // they carry the original's date) merged with what the index already said.
   const times = posts.filter((post) => !isRepost(post)).map(postTime).filter(Boolean)
   const oldestMs = Math.min(...times, previous?.oldest ? Date.parse(previous.oldest) : Infinity)
   const newestMs = Math.max(...times, previous?.newest ? Date.parse(previous.newest) : -Infinity)
-  // Coverage grows monotonically: the walks in this request plus what was covered before.
-  const sinceValues = covered.map((c) => c.since)
-  const prevSince = previous?.covered_since ? Date.parse(previous.covered_since) : undefined
-  const floor = covered.some((c) => c.floor) || (previous?.floor_reached ?? false)
-  const coveredSince = floor || sinceValues.includes(undefined) ? undefined : Math.min(...(sinceValues as number[]), ...(prevSince !== undefined ? [prevSince] : []))
-  const coveredUntil = Math.max(...covered.map((c) => c.until), previous?.covered_until ? Date.parse(previous.covered_until) : 0)
+  // Only advertise a contiguous covered range. A capped top-up or a refresh
+  // can be disjoint from the old archive; retaining its old lower bound would
+  // hide the unfetched gap forever. Keep the newest interval conservatively.
+  const intervals = [...covered]
+  if (previous?.covered_until) intervals.push({
+    since: previous.floor_reached ? undefined : previous.covered_since ? Date.parse(previous.covered_since) : previous.oldest ? Date.parse(previous.oldest) : Date.parse(previous.covered_until),
+    until: Date.parse(previous.covered_until), floor: previous.floor_reached,
+  })
+  intervals.sort((a, b) => b.until - a.until)
+  let coverage = intervals[0]
+  for (const interval of intervals.slice(1)) {
+    if (interval.until < (coverage.since ?? -Infinity)) break
+    coverage = { since: coverage.since === undefined || interval.since === undefined ? undefined : Math.min(coverage.since, interval.since), until: coverage.until, floor: coverage.floor || interval.floor }
+  }
+  const floor = coverage?.floor ?? false
+  const coveredSince = coverage?.since
+  const coveredUntil = coverage?.until
   const index: HistoryIndex = {
     handle,
     count: stats.count,
@@ -217,6 +230,9 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const handle = input.handle
   const until = input.until?.getTime() ?? Date.now()
   const since = input.since?.getTime()
+  if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
+  const maxPosts = input.maxPosts ?? 500
+  let capped = false
   const withReplies = input.withReplies ?? true
   const withReposts = input.withReposts ?? true
   const onlyReplies = input.onlyReplies ?? false
@@ -232,7 +248,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const emit = (post: FxTweet) => {
     if (!post.id || emitted.has(post.id) || !wanted(post)) return
     emitted.add(post.id)
-    input.onPost?.(post)
+    if (emitted.size <= maxPosts) input.onPost?.(post)
   }
 
   let index = input.refresh ? undefined : await s.readIndex(handle)
@@ -247,13 +263,15 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     const result = await importProfilePosts({
       handle, since: from === undefined ? undefined : new Date(from), until: new Date(to), maxPosts,
       concurrency: input.concurrency, withReplies: true, withReposts: true, signal: input.signal, tuning: input.tuning,
-      onPost: (post) => { fresh.push(post); if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
+      onPost: (post) => { if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
     })
+    fresh.push(...result.posts)
+    capped ||= result.meta.truncated
     profile ??= result.profile
     walks.push(result.meta)
     // A capped walk did not reach `from`; what it covered ends at its oldest post.
     const reachedFrom = !result.meta.truncated
-    covered.push({ since: result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: result.meta.floor_reached })
+    covered.push({ since: reachedFrom && result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: reachedFrom && result.meta.floor_reached })
     return result
   }
 
@@ -264,8 +282,6 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     for (const post of archived) emit(post)
   }
 
-  const maxPosts = input.maxPosts ?? 500
-  let capped = false
   if (!index) {
     await walk('refresh', since, until, maxPosts)
   } else {

@@ -29,3 +29,7 @@
 - fast.mdfromx.com: still on the separate `x-md-fast` Vercel project (private mode, own FxEmbed pool, Upstash). Move the domain to `x-md` or retire it.
 - whether bulk import may stay keyless on the public service, and whether `regions: ["fra1"]` should apply to the whole project.
 - commits are unsigned (no signing key on this VM); main's ruleset requires signed commits.
+
+## PR #25 review (2026-09-11)
+- Asked to review, fix all findings, and merge. Main already contains the feature through #28; preserve its follow-up fixes when reconciling #25.
+- Fix archive streaming cap, freshness, sorted result persistence, truncation propagation, warm-cache range validation, and report Mermaid strict mode.

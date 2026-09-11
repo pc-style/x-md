@@ -2,6 +2,11 @@
 
 Notable changes to x.md. Versions are git tags on `main`; the hosted API at x.pcstyle.dev always runs the latest tagged release.
 
+## 1.1.2 - 2026-09-11
+
+- fixed bulk imports exceeding the streaming cap, losing truncation information, and storing arrival-order results instead of the newest posts.
+- kept cache reads from resetting upstream freshness, preserved unfetched archive gaps for later backfills, and rejected reversed date ranges before starting an import.
+
 ## 1.1.1 - 2026-09-11
 
 - fixed mcp pagination rejecting continuation cursors longer than 1,024 characters. clients can now pass long `next_cursor` values back unchanged.
