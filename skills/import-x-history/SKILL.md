@@ -1,25 +1,25 @@
 ---
 name: import-x-history
-description: "Imports an X (Twitter) account's post history in bulk through fast.mdfromx.com: hundreds to thousands of posts in one request, replies and reposts included, raw JSON or a streamed NDJSON feed, with per-account archiving so repeat imports return in under a second. Use when onboarding a user from their X handle, building a writing-style or memory profile from someone's posts, or when you need more than one page of an account's timeline. Requires an API key. Read-only."
+description: "Imports an X (Twitter) account's post history in bulk through x.pcstyle.dev: hundreds to thousands of posts in one request, replies and reposts included, raw JSON or a streamed NDJSON feed, with per-account archiving so repeat imports return in under a second. Use when onboarding a user from their X handle, building a writing-style or memory profile from someone's posts, or when you need more than one page of an account's timeline. No key needed; a key raises the import allowance. Read-only."
 allowed-tools:
-  - Bash(curl *fast.mdfromx.com*)
+  - Bash(curl *x.pcstyle.dev*)
 ---
 
 # import x history
 
-one request, one handle, as much history as you ask for. base URL `https://fast.mdfromx.com`. every API call needs the key:
+one request, one handle, as much history as you ask for. base URL `https://x.pcstyle.dev` (`https://mdfromx.com` is the same service). no key is needed: anonymous imports are metered per address, **10 per 15 minutes**. a key lifts that to **60 per 15 minutes per key**; send it as:
 
 ```
 Authorization: Bearer $XMD_FAST_KEY
 ```
 
-no key → `401 unauthorized`. the key is in the environment as `XMD_FAST_KEY`; never print it.
+if the key is in the environment as `XMD_FAST_KEY`, use it and never print it. a self-hosted deployment in private mode (`X_MD_REQUIRE_API_KEY`) answers `401 unauthorized` without one.
 
 ## the one call you need
 
 ```bash
 curl -sS -H "Authorization: Bearer $XMD_FAST_KEY" \
-  "https://fast.mdfromx.com/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000"
+  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000"
 ```
 
 response: `{ "profile": {...}, "posts": [...], "meta": {...} }`
@@ -55,7 +55,7 @@ the service stores what it walks per handle. the next import of that handle only
 
 ```bash
 curl -sS -H "Authorization: Bearer $XMD_FAST_KEY" \
-  "https://fast.mdfromx.com/api/v1/profiles/paulg/posts?index=true"
+  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true"
 # {"handle":"paulg","archive":{"count":1166,"oldest":"…","newest":"…","covered_since":"…","covered_until":"…","floor_reached":false,…},"persistent":true}
 ```
 
@@ -65,17 +65,17 @@ archived posts keep the engagement counts from when they were stored. pass `refr
 
 ```bash
 curl -sN -H "Authorization: Bearer $XMD_FAST_KEY" \
-  "https://fast.mdfromx.com/api/v1/profiles/paulg/posts?since=2026-01-01&format=ndjson"
+  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-01-01&format=ndjson"
 ```
 
 archived posts stream first (instantly), fresh ones follow. lines are unsorted; the trailing `meta` line means the walk finished. the stream carries the first `max_posts` to arrive, not the newest.
 
 ## limits and errors
 
-- imports are metered on their own: **60 per 15 minutes per key** (`import-key` in `RateLimit-Policy`), one unit per import however many posts it returns. `index=true` is free
+- imports are metered on their own: **10 per 15 minutes per address** without a key (`import-ip` in `RateLimit-Policy`), **60 per 15 minutes per key** with one (`import-key`); one unit per import however many posts it returns. `index=true` is free
 - every response carries `RateLimit` / `RateLimit-Policy`; pace against them instead of discovering `429`
 - errors are RFC 9457 problem JSON with a machine `code`:
-  - `401 unauthorized` — no or bad key
+  - `401 unauthorized` — bad key, or no key on a private-mode deployment
   - `400 invalid_option` — bad date, `since` ≥ `until`, or a count out of range
   - `404 not_found` — unknown, suspended or protected account
   - `429 rate_limited` — wait `Retry-After` seconds
@@ -84,6 +84,6 @@ archived posts stream first (instantly), fresh ones follow. lines are unsorted; 
 
 ## what else is there
 
-the same key works on the rest of the read API — a single post or thread (`/api/v1/posts?url=…`), a profile page with `limit` up to 100 (`/api/v1/profiles/{handle}?with_replies=true&limit=100&format=json`), search with `since`/`until` (`/api/v1/search?q=…`), followers/following. full reference: `https://fast.mdfromx.com/openapi.json`, guide: `https://fast.mdfromx.com/docs/bulk-import`.
+the same base URL (and key, if you have one) works on the rest of the read API — a single post or thread (`/api/v1/posts?url=…`), a profile page with `limit` up to 100 (`/api/v1/profiles/{handle}?with_replies=true&limit=100&format=json`), search with `since`/`until` (`/api/v1/search?q=…`), followers/following. full reference: `https://x.pcstyle.dev/openapi.json`, guide: `https://x.pcstyle.dev/docs/bulk-import`.
 
 read-only: this never posts, follows, or reads protected accounts, DMs or Lists.

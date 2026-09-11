@@ -18,6 +18,7 @@
  * Engagement counts in archived posts are as of the walk that stored them.
  * `refresh: true` re-walks the requested range and overwrites.
  */
+import { ConvertError } from './errors.js'
 import { redisConfig, redisPipeline, type RedisCommand } from './redis.js'
 import { importProfilePosts, isRepost, isReply, ownPost, postTime, type ImportInput, type ImportMeta, type ImportResult } from './import.js'
 import type { FxAuthor, FxTweet } from './fxtwitter.js'
@@ -185,6 +186,7 @@ interface Coverage { since?: number; until: number; floor: boolean }
 async function record(s: Store, handle: string, posts: FxTweet[], covered: Coverage[]): Promise<HistoryIndex> {
   if (posts.length) await s.put(handle, posts)
   const previous = await s.readIndex(handle)
+  if (!posts.length && !covered.length && previous) return previous
   const stats = await s.stats(handle)
   // Oldest/newest come from the posts this request added (reposts excluded:
   // they carry the original's date) merged with what the index already said.
@@ -217,6 +219,9 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const handle = input.handle
   const until = input.until?.getTime() ?? Date.now()
   const since = input.since?.getTime()
+  if (since !== undefined && since >= until) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
+  const maxPosts = input.maxPosts ?? 500
+  let capped = false
   const withReplies = input.withReplies ?? true
   const withReposts = input.withReposts ?? true
   const onlyReplies = input.onlyReplies ?? false
@@ -232,7 +237,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const emit = (post: FxTweet) => {
     if (!post.id || emitted.has(post.id) || !wanted(post)) return
     emitted.add(post.id)
-    input.onPost?.(post)
+    if (emitted.size <= maxPosts) input.onPost?.(post)
   }
 
   let index = input.refresh ? undefined : await s.readIndex(handle)
@@ -247,8 +252,10 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     const result = await importProfilePosts({
       handle, since: from === undefined ? undefined : new Date(from), until: new Date(to), maxPosts,
       concurrency: input.concurrency, withReplies: true, withReposts: true, signal: input.signal, tuning: input.tuning,
-      onPost: (post) => { fresh.push(post); if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
+      onPost: (post) => { if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
     })
+    fresh.push(...result.posts)
+    capped ||= result.meta.truncated
     profile ??= result.profile
     walks.push(result.meta)
     // A capped walk did not reach `from`; what it covered ends at its oldest post.
@@ -264,7 +271,6 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     for (const post of archived) emit(post)
   }
 
-  const maxPosts = input.maxPosts ?? 500
   if (!index) {
     await walk('refresh', since, until, maxPosts)
   } else {
@@ -280,6 +286,10 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     const needOlder = !index.floor_reached && (since === undefined || coveredSince === undefined || since < coveredSince)
     if (needOlder && emitted.size < maxPosts) {
       await walk('backfill', since, coveredSince === undefined ? until : coveredSince + EDGE_OVERLAP_MS, maxPosts)
+    } else if (needOlder) {
+      // The archive alone filled the cap, so the older part of the range was
+      // never walked: the caller has to know there is more than it got.
+      capped = true
     }
   }
   index = await record(s, handle, fresh, covered)
@@ -288,7 +298,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   // Final body from the archive, filtered and capped, newest first. When nothing
   // was walked the first read is still current, so do not read it again.
   let posts = (walked.length === 0 && archived ? archived : await s.range(handle, since ?? 0, until)).filter(wanted)
-  const truncated = posts.length > maxPosts
+  const truncated = posts.length > maxPosts || capped
   if (truncated) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
   const freshIds = new Set(fresh.map((post) => post.id))

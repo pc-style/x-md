@@ -36,9 +36,12 @@ export interface ConvertSuccess {
   cache: CacheStatus
   posts: FxTweet[]
   compact: boolean
+  /** When this service retrieved the upstream snapshot, not the upstream's own cache age. */
+  fetchedAt?: string
 }
 
 import type { FxTweet } from './fxtwitter.js'
+import { PARALLEL_HOSTS } from './domain-pages.js'
 
 const ALLOWED_HOSTS = new Set([
   'x.com',
@@ -46,7 +49,7 @@ const ALLOWED_HOSTS = new Set([
   'www.twitter.com',
   'mobile.twitter.com',
   'x.pcstyle.dev',
-  'mdfromx.com',
+  ...PARALLEL_HOSTS,
 ])
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 export const STATUS_PATH = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d+)(?:\/(?:video|photo)\/[1-9]\d*)?\/?$/
@@ -234,6 +237,7 @@ async function convertTweetUncached(
 
   return {
     body,
+    fetchedAt: new Date().toISOString(),
     warnings,
     canonicalUrl,
     format,
@@ -255,7 +259,7 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   const { canonicalUrl, handle, id } = resolveTarget(input)
 
   const cacheKey = buildCacheKey({
-    v: 5,
+    v: 6,
     id,
     handle: handle.toLowerCase(),
     format,
@@ -319,6 +323,9 @@ export function markdownResponse(result: ConvertSuccess, asJson = false, asHtml 
   if (result.cache !== 'bypass') {
     sharedHeaders['Cache-Control'] = cacheControlHeader()
     sharedHeaders['Vercel-CDN-Cache-Control'] = vercelCacheControlHeader()
+  } else {
+    sharedHeaders['Cache-Control'] = 'no-store'
+    sharedHeaders['Vercel-CDN-Cache-Control'] = 'no-store'
   }
 
   if (asJson) {
@@ -335,6 +342,7 @@ export function markdownResponse(result: ConvertSuccess, asJson = false, asHtml 
         postCount: result.postCount,
         source: result.source,
         cache: result.cache,
+        fetched_at: result.fetchedAt,
       }),
     }
   }

@@ -28,7 +28,7 @@ export function headerHtml(options: { page: PageKind }) {
   return `
   <header class="site-header">
     <nav aria-label="Primary" class="site-header-inner">
-      <a href="/" class="text-[17px] font-black tracking-tight text-ink">x.md</a>
+      <a href="/" class="text-wordmark font-wordmark tracking-wordmark text-ink">x.md</a>
       <div class="hidden items-center gap-1 md:flex">
         ${items}
       </div>
@@ -115,7 +115,7 @@ export function footerHtml(page?: PageKind) {
     <div class="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-14 sm:px-8">
       <div class="flex flex-col gap-10 lg:flex-row lg:justify-between">
         <div class="max-w-[34ch]">
-          <a href="/" class="text-[17px] font-black tracking-tight text-ink">x.md</a>
+          <a href="/" class="text-wordmark font-wordmark tracking-wordmark text-ink">x.md</a>
           <p class="mt-3 text-[13.5px] leading-relaxed text-ink-3">
             Read public X posts, threads, profiles, and search results as Markdown or JSON.
             Read-only, open source, no account required.

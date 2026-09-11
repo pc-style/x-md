@@ -24,7 +24,8 @@ export interface TimelineCursor {
 
 /** Snowflake id whose timestamp is `ms` (worker/sequence bits zero). */
 export function snowflakeAt(ms: number): bigint {
-  return (BigInt(Math.max(0, Math.floor(ms))) - TWEPOCH) << 22n
+  // Nothing predates the Twitter epoch; clamping there keeps the id non-negative.
+  return (BigInt(Math.max(Number(TWEPOCH), Math.floor(ms))) - TWEPOCH) << 22n
 }
 
 /** Millisecond timestamp encoded in a snowflake id. */

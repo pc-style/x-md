@@ -8,8 +8,9 @@ import { ConvertError } from './errors.js'
  * so a walk keeps going on the others. Each base is capped independently by
  * FX_PER_BASE_INFLIGHT (lib/import.ts reads the pool size for its own cap).
  */
-export const FX_BASES: readonly string[] = (process.env.FXTWITTER_BASE_URL ?? 'https://api.fxtwitter.com')
+const configuredFxBases = (process.env.FXTWITTER_BASE_URL ?? '')
   .split(',').map((base) => base.trim().replace(/\/+$/, '')).filter(Boolean)
+export const FX_BASES: readonly string[] = configuredFxBases.length > 0 ? configuredFxBases : ['https://api.fxtwitter.com']
 const coolUntil = new Map<string, number>()
 let rotation = 0
 

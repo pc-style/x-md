@@ -116,7 +116,15 @@ function renderPool(p: PoolView) {
   message('poolWarning', warnings.join(' '))
 }
 
-function renderUpstream(upstreams: UpstreamView[]) {
+function renderUpstream(upstreams: UpstreamView[] | null) {
+  if (!upstreams) {
+    // A failed status call is not "nothing configured"; say so instead of hiding a pool.
+    text('importReady', '—')
+    text('importTotal', '—')
+    text('importNote', 'Upstream status unavailable')
+    $('importNote').title = ''
+    return
+  }
   const own = upstreams.filter((u) => u.kind === 'self-hosted')
   const total = own.reduce((a, u) => a + (u.total ?? 0), 0)
   const ready = own.reduce((a, u) => a + (u.ready ?? 0), 0)
@@ -218,7 +226,7 @@ function refresh(): Promise<boolean> {
       const [pool, keys, upstream] = await Promise.all([
         api<PoolView>('/api/admin/pool'),
         api<{ keys: ApiKeyView[]; defaultLimit: number; defaultImportLimit: number }>('/api/admin/keys'),
-        api<{ upstreams: UpstreamView[] }>('/api/admin/upstream').catch(() => ({ upstreams: [] as UpstreamView[] })),
+        api<{ upstreams: UpstreamView[] }>('/api/admin/upstream').catch(() => ({ upstreams: null })),
       ])
       currentSession.signal.throwIfAborted()
       snapshot = pool

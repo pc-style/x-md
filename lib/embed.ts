@@ -84,7 +84,12 @@ function pollBlock(poll: FxPoll, barLength = 32): string {
 }
 
 export function embedDescription(tweet: FxTweet): string {
-  let text = tweet.text ?? ''
+  let text = tweet.article?.preview_text?.trim() ||
+    tweet.article?.content?.blocks?.map(block => block.text?.trim()).filter(Boolean).join('\n\n').slice(0, 1000) || tweet.text || ''
+  if (tweet.article?.title) {
+    const author = tweet.author?.name ?? tweet.author?.screen_name
+    if (author) text = `${author}${tweet.author?.screen_name ? ` (@${tweet.author.screen_name})` : ''}\n\n${text}`
+  }
   if (tweet.poll && Array.isArray(tweet.poll.choices)) {
     text += pollBlock(tweet.poll)
   }
@@ -205,6 +210,8 @@ function stillImagePlan(item: FxMediaItem | undefined): MediaPlan | undefined {
 }
 
 function mediaPlan(tweet: FxTweet, multiImage: boolean, staticVideoFallback: boolean): MediaPlan {
+  const cover = tweet.article?.cover_media?.media_info?.original_img_url
+  if (cover) return { card: 'summary_large_image', tags: photoTags({ url: cover }) }
   const own = tweet.media
   const quoted = tweet.quote?.media
   const video = firstVideo(own) ?? firstVideo(quoted)
@@ -273,7 +280,7 @@ export function buildEmbedHtml(tweet: FxTweet, options: EmbedOptions): string {
   const name = tweet.author?.name ?? handle
   const id = tweet.id ?? '0'
   const canonical = tweet.url ?? `https://x.com/${handle}/status/${id}`
-  const title = `${name} (@${handle})`
+  const title = tweet.article?.title?.trim() || `${name} (@${handle})`
   const description = embedDescription(tweet)
   const proof = socialProof(tweet) ?? 'Embed'
   const userAgent = options.userAgent ?? ''
@@ -321,7 +328,7 @@ export function embedResponse(
   if (!tweet) {
     return {
       status: 404,
-      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      headers: { 'Content-Type': 'application/json; charset=utf-8', ...(result.cache === 'bypass' ? { 'Cache-Control': 'no-store', 'Vercel-CDN-Cache-Control': 'no-store' } : {}) },
       body: JSON.stringify({ error: 'Post not found or unavailable.', code: 'not_found' }),
     }
   }
@@ -341,6 +348,9 @@ export function embedResponse(
     const ttl = Number.parseInt(process.env.CACHE_TTL_SECONDS ?? '3600', 10)
     const seconds = Number.isFinite(ttl) && ttl > 0 ? ttl : 3600
     headers['Vercel-CDN-Cache-Control'] = `public, s-maxage=${seconds}, stale-while-revalidate=86400`
+  } else {
+    headers['Cache-Control'] = 'no-store'
+    headers['Vercel-CDN-Cache-Control'] = 'no-store'
   }
 
   return { status: 200, headers, body: buildEmbedHtml(tweet, options) }

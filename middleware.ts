@@ -1,6 +1,6 @@
 import { next, rewrite } from '@vercel/functions'
 import { notAcceptableBody, selectRepresentation } from './lib/negotiate.js'
-import { DOMAIN_PREFIX, PARALLEL_HOST, domainFile } from './lib/domain-pages.js'
+import { DOMAIN_PREFIX, PARALLEL_HOSTS, domainFile } from './lib/domain-pages.js'
 
 /**
  * Content negotiation for the HTML pages.
@@ -31,14 +31,14 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
-  const variant = (path: string) => url.hostname === PARALLEL_HOST && domainFile(path)
+  const variant = (path: string) => PARALLEL_HOSTS.has(url.hostname) && domainFile(path)
     ? `${DOMAIN_PREFIX}/${domainFile(path)}` : path
   const file = domainFile(url.pathname)
   const isNegotiated = ['/', '/docs', '/about', '/contact', '/privacy', '/terms'].includes(url.pathname)
     || (url.pathname.startsWith('/docs/') && !/\.[a-z0-9]+$/i.test(url.pathname))
 
   if (!isNegotiated) {
-    return url.hostname === PARALLEL_HOST && file
+    return PARALLEL_HOSTS.has(url.hostname) && file
       ? rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url)) : next()
   }
 
@@ -76,7 +76,7 @@ export default function middleware(request: Request): Response {
     return rewrite(new URL(variant(md), request.url), { headers: { Vary: 'Accept', Link: link } })
   }
 
-  if (url.hostname === PARALLEL_HOST && file) {
+  if (PARALLEL_HOSTS.has(url.hostname) && file) {
     return rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url), {
       headers: { Vary: 'Accept', Link: link },
     })

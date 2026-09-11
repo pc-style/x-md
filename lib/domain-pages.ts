@@ -1,4 +1,6 @@
 export const PARALLEL_HOST = 'mdfromx.com'
+/** Hosts served from the mdfromx.com variant tree; dynamic self-links may name any of them. */
+export const PARALLEL_HOSTS: ReadonlySet<string> = new Set([PARALLEL_HOST, `fast.${PARALLEL_HOST}`])
 export const DOMAIN_PREFIX = '/_domains/mdfromx'
 
 /** Built text variants preserve all wording except the service hostname. */
@@ -28,5 +30,6 @@ export function domainFile(pathname: string): string | null {
   if (path === 'docs') return 'docs/index.html'
   if (path.startsWith('docs/')) return /\.[a-z]+$/i.test(path) ? path : `${path}/index.html`
   if (path.startsWith('api/docs/') && path.endsWith('.json')) return path
+  if (path.startsWith('.well-known/agent-skills/')) return path
   return null
 }

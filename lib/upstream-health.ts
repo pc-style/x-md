@@ -25,7 +25,8 @@ export async function upstreamHealth(): Promise<UpstreamHealth[]> {
       if (response.status === 404) return { base, kind: 'external' }
       if (!response.ok) return { base, kind: 'self-hosted', error: `HTTP ${response.status}` }
       const body = (await response.json()) as Omit<UpstreamHealth, 'base' | 'kind'>
-      return { base, kind: 'self-hosted', ...body }
+      // The body is upstream data; the identity fields stay ours.
+      return { ...body, base, kind: 'self-hosted' }
     } catch (error) {
       return { base, kind: 'self-hosted', error: String(error).slice(0, 120) }
     }
