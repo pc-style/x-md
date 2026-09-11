@@ -2,6 +2,10 @@
 
 Notable changes to x.md. Versions are git tags on `main`; the hosted API at x.pcstyle.dev always runs the latest tagged release.
 
+## 1.1.1 - 2026-09-11
+
+- fixed mcp pagination rejecting continuation cursors longer than 1,024 characters. clients can now pass long `next_cursor` values back unchanged.
+
 ## 1.1.0 - 2026-09-08
 
 An agent-readiness release. Nothing in 1.0.0 changed behaviour; everything below is additive, and the routes that got a new name kept their old one.

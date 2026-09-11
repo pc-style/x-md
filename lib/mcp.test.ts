@@ -171,6 +171,29 @@ describe('tools/call', () => {
     expect(Object.keys(structured).filter((key) => !allowed.includes(key))).toEqual([])
   })
 
+  test('search accepts its own long continuation cursor on the next call', async () => {
+    // Live conversation searches produce growing cursors: page four of the
+    // reported conversation returned 1,290 characters, beyond the old cap.
+    const cursor = `xsearch:${'a'.repeat(1282)}`
+    const args = { q: 'conversation_id:2097725468569207019' }
+    const page = {
+      resource: 'search' as const, query: args.q, feed: 'latest',
+      page: 1, limit: 20, source: 'xsearch' as const, cache: 'miss' as const,
+      posts: [{ id: '1', text: 'first reply' }], markdown: '# first page',
+    }
+    browseMock.mockResolvedValueOnce({ ...page, nextCursor: cursor })
+    const first = ok(await dispatch({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'x_md_search_posts', arguments: args } }))
+    const nextCursor = (first.structuredContent as Record<string, unknown>).next_cursor
+    expect(nextCursor).toBe(cursor)
+
+    browseMock.mockResolvedValueOnce({ ...page, posts: [{ id: '2', text: 'next reply' }], markdown: '# next page' })
+    const next = ok(await dispatch({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'x_md_search_posts', arguments: { ...args, cursor: nextCursor } } }))
+    expect(next.isError).toBe(false)
+    expect(browseMock).toHaveBeenLastCalledWith(expect.objectContaining({ resource: 'search', q: args.q, cursor }))
+    expect(next.structuredContent).toMatchObject({ posts: [{ id: '2' }] })
+    expect(next.structuredContent).not.toHaveProperty('next_cursor')
+  })
+
   test('a post call maps max_posts onto the thread cap the converter takes', async () => {
     convertMock.mockResolvedValue({
       body: '# post',
