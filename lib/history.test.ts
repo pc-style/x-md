@@ -180,6 +180,7 @@ describe('importWithHistory', () => {
       const result = await fakeEngine(input)
       result.meta.truncated = true
       result.meta.oldest = new Date(NOW + 99 * HOUR).toISOString()
+      result.meta.floor_reached = true
       return result
     })
     await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW + 100 * HOUR), maxPosts: 2 })

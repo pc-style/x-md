@@ -271,7 +271,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     walks.push(result.meta)
     // A capped walk did not reach `from`; what it covered ends at its oldest post.
     const reachedFrom = !result.meta.truncated
-    covered.push({ since: result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: result.meta.floor_reached })
+    covered.push({ since: reachedFrom && result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: reachedFrom && result.meta.floor_reached })
     return result
   }
 
