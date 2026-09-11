@@ -173,4 +173,19 @@ describe('importWithHistory', () => {
     await expect(importWithHistory({ handle: 'ada', since: new Date(NOW), until: new Date(NOW - HOUR) })).rejects.toMatchObject({ code: 'invalid_option' })
   })
 
+  test('a capped top-up does not claim the unfetched gap as covered', async () => {
+    await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW), maxPosts: 5000 })
+    vi.setSystemTime(NOW + 100 * HOUR)
+    vi.mocked(importProfilePosts).mockImplementationOnce(async input => {
+      const result = await fakeEngine(input)
+      result.meta.truncated = true
+      result.meta.oldest = new Date(NOW + 99 * HOUR).toISOString()
+      return result
+    })
+    await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW + 100 * HOUR), maxPosts: 2 })
+    const result = await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW + 100 * HOUR), maxPosts: 5000 })
+    expect(result.posts).toHaveLength(201)
+    expect(result.meta.archive.walked).toEqual(['backfill'])
+  })
+
 })

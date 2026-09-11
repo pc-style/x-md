@@ -193,12 +193,23 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
   const times = posts.filter((post) => !isRepost(post)).map(postTime).filter(Boolean)
   const oldestMs = Math.min(...times, previous?.oldest ? Date.parse(previous.oldest) : Infinity)
   const newestMs = Math.max(...times, previous?.newest ? Date.parse(previous.newest) : -Infinity)
-  // Coverage grows monotonically: the walks in this request plus what was covered before.
-  const sinceValues = covered.map((c) => c.since)
-  const prevSince = previous?.covered_since ? Date.parse(previous.covered_since) : undefined
-  const floor = covered.some((c) => c.floor) || (previous?.floor_reached ?? false)
-  const coveredSince = floor || sinceValues.includes(undefined) ? undefined : Math.min(...(sinceValues as number[]), ...(prevSince !== undefined ? [prevSince] : []))
-  const coveredUntil = Math.max(...covered.map((c) => c.until), previous?.covered_until ? Date.parse(previous.covered_until) : 0)
+  // Only advertise a contiguous covered range. A capped top-up or a refresh
+  // can be disjoint from the old archive; retaining its old lower bound would
+  // hide the unfetched gap forever. Keep the newest interval conservatively.
+  const intervals = [...covered]
+  if (previous?.covered_until) intervals.push({
+    since: previous.floor_reached ? undefined : previous.covered_since ? Date.parse(previous.covered_since) : previous.oldest ? Date.parse(previous.oldest) : Date.parse(previous.covered_until),
+    until: Date.parse(previous.covered_until), floor: previous.floor_reached,
+  })
+  intervals.sort((a, b) => b.until - a.until)
+  let coverage = intervals[0]
+  for (const interval of intervals.slice(1)) {
+    if (interval.until < (coverage.since ?? -Infinity)) break
+    coverage = { since: coverage.since === undefined || interval.since === undefined ? undefined : Math.min(coverage.since, interval.since), until: coverage.until, floor: coverage.floor || interval.floor }
+  }
+  const floor = coverage?.floor ?? false
+  const coveredSince = coverage?.since
+  const coveredUntil = coverage?.until
   const index: HistoryIndex = {
     handle,
     count: stats.count,

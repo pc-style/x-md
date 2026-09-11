@@ -77,6 +77,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const until = parseDateInput(param('until'))
   if (param('since') && !since) return invalid('`since` must be an ISO date, ISO datetime, or unix timestamp.')
   if (param('until') && !until) return invalid('`until` must be an ISO date, ISO datetime, or unix timestamp.')
+  if (since && since.getTime() >= (until?.getTime() ?? Date.now())) return invalid('`since` must be earlier than `until`.')
   const maxPosts = bounded(param('max_posts') ?? param('limit'), IMPORT_MAX_POSTS)
   const concurrency = bounded(param('concurrency'), IMPORT_MAX_CONCURRENCY)
   if (Number.isNaN(maxPosts)) return invalid(`\`max_posts\` must be a whole number from 1 to ${IMPORT_MAX_POSTS}.`)
