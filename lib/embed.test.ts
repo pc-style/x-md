@@ -275,6 +275,19 @@ describe('embed and oEmbed responses', () => {
     expect(response.body).toContain('Nathan (@nthglsn)')
   })
 
+  test('bypassed not-found previews cannot be cached', () => {
+    const response = embedResponse({ ...result, posts: [], cache: 'bypass' }, { origin: 'https://mdfromx.com' })
+    expect(response.status).toBe(404)
+    expect(response.headers['Cache-Control']).toBe('no-store')
+    expect(response.headers['Vercel-CDN-Cache-Control']).toBe('no-store')
+  })
+
+  test('bypassed HTML previews cannot be cached', () => {
+    const response = embedResponse({ ...result, cache: 'bypass' }, { origin: 'https://mdfromx.com', userAgent: 'Discordbot/2.0' })
+    expect(response.headers['Cache-Control']).toBe('no-store')
+    expect(response.headers['Vercel-CDN-Cache-Control']).toBe('no-store')
+  })
+
   test('oembedPayload maps query fields the way Discord reads them', () => {
     expect(
       oembedPayload(
@@ -321,5 +334,24 @@ describe('embed and oEmbed responses', () => {
       provider_url: 'https://x.com/hams/status/2089772419175047410',
       type: 'rich',
     })
+  })
+})
+
+describe('article previews', () => {
+  const article: FxTweet = {
+    id: '2098047492772249730', text: 'https://x.com/i/article/2098045587400658947',
+    author: { name: 'Mustafa Ali', screen_name: 'mustafa01ali', avatar_url: 'https://pbs.twimg.com/avatar.jpg' },
+    article: { title: 'Shopify is moving from React Native to Native', preview_text: 'Moving our mobile apps back to Swift and Kotlin.', cover_media: { media_info: { original_img_url: 'https://pbs.twimg.com/article.jpg' } } },
+  }
+  test('uses article title, excerpt and cover instead of a naked URL and avatar', () => {
+    const html = buildEmbedHtml(article, { origin: 'https://mdfromx.com', userAgent: 'Discordbot/2.0' })
+    expect(html).toContain('og:title" content="Shopify is moving from React Native to Native')
+    expect(html).toContain('Moving our mobile apps back to Swift and Kotlin.')
+    expect(html).toContain('og:image" content="https://pbs.twimg.com/article.jpg')
+    expect(html).toContain('summary_large_image')
+    expect(html).toContain('Mustafa Ali')
+  })
+  test('falls back to article blocks when the preview is missing', () => {
+    expect(embedDescription({ ...article, article: { title: 'Title', content: { blocks: [{ text: 'First paragraph.' }] } } })).toContain('First paragraph.')
   })
 })

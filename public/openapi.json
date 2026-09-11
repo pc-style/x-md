@@ -9944,6 +9944,11 @@
             "type": "integer",
             "description": "Length of `posts`."
           },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When x.md fetched this upstream snapshot. Preserved on cache hits; upstream providers may have their own cache."
+          },
           "source": {
             "type": "string",
             "enum": [

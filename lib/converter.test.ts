@@ -257,10 +257,10 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     )
   })
 
-  test('cache key uses version 5, normalized handle, and includes post-context defaults', async () => {
+  test('cache key uses version 6, normalized handle, and includes post-context defaults', async () => {
     await convertTweet({ url: validUrl, thread: 'full' })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ v: 5, handle: 'testuser', context: 'full', replies: 'top' }),
+      expect.objectContaining({ v: 6, handle: 'testuser', context: 'full', replies: 'top' }),
     )
   })
 
@@ -291,4 +291,14 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     expect(keyFromNull).toEqual(keyFromFull)
     expect(keyFromFull).toEqual(keyFromConversation)
   })
+})
+
+
+test('JSON exposes snapshot time and bypass responses cannot be cached by clients or CDN', async () => {
+  const result = await convertTweet({ url: 'https://x.com/testuser/status/1234567890', format: 'json' })
+  expect(Number.isFinite(Date.parse(result.fetchedAt!))).toBe(true)
+  const response = markdownResponse({ ...result, cache: 'bypass' }, true)
+  expect(JSON.parse(response.body).fetched_at).toBe(result.fetchedAt)
+  expect(response.headers['Cache-Control']).toBe('no-store')
+  expect(response.headers['Vercel-CDN-Cache-Control']).toBe('no-store')
 })

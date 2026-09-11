@@ -1208,6 +1208,7 @@ function schemas(): Record<string, JsonSchema> {
         compact: { type: 'boolean', description: 'False when `full=true` widened the rendering.' },
         warnings: { type: 'array', description: 'Non-fatal notes, such as a truncated thread or a fallback provider. Always present, often empty.', items: { type: 'string' } },
         postCount: int('Length of `posts`.'),
+        fetched_at: { type: 'string', format: 'date-time', description: 'When x.md fetched this upstream snapshot. Preserved on cache hits; upstream providers may have their own cache.' },
         source: { type: 'string', enum: ['fxtwitter', 'syndication', 'contextdev', 'firecrawl'], description: 'Upstream provider that answered.' },
         cache: { type: 'string', enum: ['hit', 'miss', 'bypass'], description: 'Whether the application cache served this response.' },
       },
