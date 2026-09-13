@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import { domainFile, domainText } from './domain-pages.js'
 
 const TYPES: Record<string, string> = {
@@ -13,15 +13,18 @@ const TYPES: Record<string, string> = {
 export async function siteResponse(path: string, origin: string): Promise<Response> {
   const file = domainFile(path)
   if (!file) return new Response('Not found', { status: 404 })
+  const root = resolve(process.cwd(), 'dist')
+  const filename = resolve(root, file)
+  if (!filename.startsWith(root + sep)) return new Response('Not found', { status: 404 })
   try {
     let body: string | Uint8Array
     if (file.endsWith('.tar.gz')) {
-      body = await readFile(resolve(process.cwd(), 'dist', file))
+      body = await readFile(filename)
     } else if (file.endsWith('.png')) {
       const { renderSiteOg } = await import('./site-og.js')
       body = await renderSiteOg(file, origin)
     } else {
-      body = domainText(await readFile(resolve(process.cwd(), 'dist', file), 'utf8'), origin)
+      body = domainText(await readFile(filename, 'utf8'), origin)
       if (file === '.well-known/agent-skills/index.json') {
         const index = JSON.parse(body)
         for (const skill of index.skills) {

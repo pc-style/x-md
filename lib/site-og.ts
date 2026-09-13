@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
+import { resolve, sep } from 'node:path'
 import { renderOgImage } from '../.cache/blume-og.mjs'
 import { domainText } from './domain-pages.js'
 
@@ -7,8 +7,11 @@ import { domainText } from './domain-pages.js'
 export async function renderSiteOg(file: string, origin: string): Promise<Uint8Array> {
   const root = process.cwd()
   const docs = file !== 'og.png'
+  const pagesRoot = resolve(root, 'dist/api/docs/pages')
+  const metadata = resolve(pagesRoot, file.slice(3).replace(/\.png$/, '.json'))
+  if (!metadata.startsWith(pagesRoot + sep)) throw new Error('Invalid OG metadata path')
   const page = docs
-    ? JSON.parse(await readFile(resolve(root, 'dist/api/docs/pages', file.slice(3).replace(/\.png$/, '.json')), 'utf8')) as { title: string; description?: string }
+    ? JSON.parse(await readFile(metadata, 'utf8')) as { title: string; description?: string }
     : { title: 'Tweets are just markdown now.', description: 'Read any public X post, thread, or profile as clean Markdown. One URL swap.' }
   return new Uint8Array(await renderOgImage({
     title: domainText(page.title, origin),
