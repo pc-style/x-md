@@ -742,9 +742,10 @@ async function runBrowse(
 }
 
 const TOOL_RUNNERS: Record<string, ToolRunner> = {
-  async x_md_get_post(args) {
+  async x_md_get_post(args, ctx) {
     const thread = text(args.thread) ?? 'full'
     const result = await convertTweet({
+      origin: ctx.site,
       url: text(args.url) ?? null,
       handle: text(args.handle) ?? null,
       id: text(args.id) ?? null,

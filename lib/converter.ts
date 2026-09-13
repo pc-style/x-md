@@ -14,6 +14,7 @@ export type OutputFormat = 'markdown' | 'obsidian' | 'json'
 export { ConvertError }
 
 export interface ConvertInput {
+  origin?: string
   url?: string | null
   handle?: string | null
   id?: string | null
@@ -54,7 +55,7 @@ const ALLOWED_HOSTS = new Set([
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 export const STATUS_PATH = /^\/([A-Za-z0-9_]{1,15})\/status\/(\d+)(?:\/(?:video|photo)\/[1-9]\d*)?\/?$/
 
-export function parseStatusUrl(raw: string): { handle: string; id: string; canonicalUrl: string } {
+export function parseStatusUrl(raw: string, origin?: string): { handle: string; id: string; canonicalUrl: string } {
   let parsed: URL
   try {
     parsed = new URL(raw.trim())
@@ -64,6 +65,7 @@ export function parseStatusUrl(raw: string): { handle: string; id: string; canon
 
   const host = parsed.hostname.replace(/^www\./, '')
   const isAllowed =
+    (origin !== undefined && parsed.origin === origin) ||
     ALLOWED_HOSTS.has(host) ||
     LOCAL_HOSTS.has(host) ||
     host.endsWith('.vercel.app')
@@ -96,7 +98,7 @@ export function parseStatusUrl(raw: string): { handle: string; id: string; canon
 
 export function resolveTarget(input: ConvertInput): { canonicalUrl: string; handle: string; id: string } {
   if (input.url) {
-    return parseStatusUrl(input.url)
+    return parseStatusUrl(input.url, input.origin)
   }
 
   if (input.handle && input.id) {

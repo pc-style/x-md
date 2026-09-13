@@ -2,10 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
-  "regions": ["fra1"],
+  "regions": [
+    "fra1"
+  ],
   "functions": {
     "api/import.ts": {
       "maxDuration": 120
+    },
+    "api/site.ts": {
+      "includeFiles": "{dist/**,docs-assets/fonts/**,public/logo.svg}"
     }
   },
   "rewrites": [

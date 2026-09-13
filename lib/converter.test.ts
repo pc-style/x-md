@@ -302,3 +302,12 @@ test('JSON exposes snapshot time and bypass responses cannot be cached by client
   expect(response.headers['Cache-Control']).toBe('no-store')
   expect(response.headers['Vercel-CDN-Cache-Control']).toBe('no-store')
 })
+
+
+describe('status URLs on attached domains', () => {
+  test('accepts a permalink on the incoming origin and normalizes it to X', () => {
+    expect(parseStatusUrl('https://www.elon-dont-c-and-d-me-plz.dev/jack/status/20', 'https://www.elon-dont-c-and-d-me-plz.dev'))
+      .toEqual({ handle: 'jack', id: '20', canonicalUrl: 'https://x.com/jack/status/20' })
+    expect(() => parseStatusUrl('https://unrelated.example/jack/status/20', 'https://future.example')).toThrow()
+  })
+})
