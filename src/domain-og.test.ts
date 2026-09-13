@@ -6,6 +6,12 @@ import { domainText, domainFile } from '../lib/domain-pages'
 const hosts = ['mdfromx.com', 'fast.mdfromx.com', 'www.elon-dont-c-and-d-me-plz.dev', 'future-domain.example']
 
 describe('host-aware pages and social cards', () => {
+  test('leaves unrelated hostnames intact and handles sentence punctuation', () => {
+    const source = 'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path mdfromx.com.'
+    expect(domainText(source, 'https://future.example')).toBe(
+      'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path future.example.',
+    )
+  })
   test.each(hosts)('uses %s throughout raw HTML metadata and copy', (host) => {
     const original = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
     const result = domainText(original, `https://${host}`)

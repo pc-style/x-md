@@ -4,7 +4,7 @@ export const PARALLEL_HOSTS: ReadonlySet<string> = new Set([PARALLEL_HOST, `fast
 /** Adapt authored service references; third-party URLs keep their original hosts. */
 export function domainText(source: string, origin: string): string {
   const { host } = new URL(origin)
-  return source.replace(/(https:\/\/)?(?:x\.pcstyle\.dev|(?:fast\.)?mdfromx\.com)/g,
+  return source.replace(/(?<![a-zA-Z0-9_.-])(https:\/\/)?(?:x\.pcstyle\.dev|(?:fast\.)?mdfromx\.com)(?![a-zA-Z0-9_-]|\.[a-zA-Z0-9_-])/g,
     (_match, scheme) => scheme ? origin : host)
 }
 
