@@ -8,11 +8,26 @@ sidebar:
 
 One request, one account, as much history as you ask for. `GET /{handle}/posts` walks X's timeline **in parallel**, keeps every field upstream sends, and remembers what it collected so the next import only fetches what is new.
 
+Set `X_MD_API_KEY` to your issued API key (see [Authentication](#authentication)).
+
 ```bash
-curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
+  'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
 Built for onboarding importers and memory builders: the kind of client that needs 500–2000 posts, replies included, before a user finishes reading the welcome screen.
+
+## Authentication
+
+Set `X_MD_API_KEY` to the API key you were issued, then send it in the `Authorization: Bearer` header shown in each example. This is an x.md API key, not an X account token. Do not put the key in the URL; query-string keys and custom headers are not accepted.
+
+```bash
+export X_MD_API_KEY='your-api-key'
+```
+
+Deployments that require authentication reject requests without a valid key with `401 unauthorized`. On deployments that allow public access, the header is optional and a valid key uses your key's import allowance. An invalid or disabled key returns `401 invalid_key`. Check the response's `X-Api-Key-Status` header for `valid` to confirm the key was accepted.
+
+The same header applies to JSON imports, NDJSON streams and `index=true` requests on both URL forms. See [authentication details](/auth.md) for how keys are issued and revoked.
 
 ## Quickstart
 
@@ -23,17 +38,20 @@ Built for onboarding importers and memory builders: the kind of client that need
     <Tabs>
       <Tab title="Last 3 months">
         ```bash
-        curl -sS "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-90 days' +%F)&max_posts=2000"
+        curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
+          "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-90 days' +%F)&max_posts=2000"
         ```
       </Tab>
       <Tab title="Last year">
         ```bash
-        curl -sS "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-1 year' +%F)&max_posts=5000"
+        curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
+          "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-1 year' +%F)&max_posts=5000"
         ```
       </Tab>
       <Tab title="Everything available">
         ```bash
-        curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?max_posts=5000'
+        curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
+          'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?max_posts=5000'
         ```
         Without `since` the walk goes as far back as X serves — roughly the 3200 most recent timeline entries — and `meta.floor_reached` is `true` when it got there.
       </Tab>
@@ -70,7 +88,8 @@ Built for onboarding importers and memory builders: the kind of client that need
 
   <Step title="Stream it if you render as you go">
     ```bash
-    curl -sN 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
+    curl -sN -H "Authorization: Bearer $X_MD_API_KEY" \
+      'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
     ```
 
     ```text
@@ -112,7 +131,8 @@ Every import stores what it walked, per account. The next import of that account
 Ask what is held without spending anything:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true'
+curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
+  'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true'
 ```
 
 ```json
