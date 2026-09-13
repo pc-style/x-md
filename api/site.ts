@@ -1,3 +1,4 @@
+import notFoundHandler from './notfound.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
 import { requestOrigin } from '../lib/http.js'
@@ -15,7 +16,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const response = await siteResponse(path, origin)
     if (response.status === 404) {
-      return sendProblem(res, problemDetails('not_found', { instance }), accept, req.method)
+      return notFoundHandler(req, res)
     }
     response.headers.forEach((value, name) => res.setHeader(name, value))
     res.status(response.status)

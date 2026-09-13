@@ -53,7 +53,7 @@ export async function siteResponse(path: string, origin: string): Promise<Respon
       'X-Content-Type-Options': 'nosniff',
     } })
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return new Response('Not found', { status: 404 })
+    if (['ENOENT', 'EISDIR', 'ENOTDIR'].includes((error as NodeJS.ErrnoException).code ?? '')) return new Response('Not found', { status: 404 })
     throw error
   }
 }

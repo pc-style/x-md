@@ -3,6 +3,9 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createHash } from 'node:crypto'
+import { IncomingMessage, ServerResponse } from 'node:http'
+import { Socket } from 'node:net'
+import siteHandler from '../api/site'
 import { siteResponse } from './site'
 
 let root: string
@@ -10,6 +13,7 @@ const archive = Buffer.from([31, 139, 8, 0, 255, 254])
 beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'xmd-site-'))
   await mkdir(join(root, 'dist/.well-known/agent-skills'), { recursive: true })
+  await mkdir(join(root, 'dist/.well-known/agent-skills/import-x-history'))
   await writeFile(join(root, 'dist/index.html'), '<a href="https://x.pcstyle.dev/docs">x.pcstyle.dev</a>')
   await writeFile(join(root, 'dist/openapi.json'), JSON.stringify({ servers: [{ url: 'https://x.pcstyle.dev' }, { url: 'https://mdfromx.com' }] }))
   await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.md'), '# Use https://x.pcstyle.dev')
@@ -42,8 +46,28 @@ describe('host-aware public responses', () => {
     expect(Buffer.from(await binary.arrayBuffer())).toEqual(archive)
   })
   test('missing pages and traversal return 404', async () => {
-    for (const path of ['/docs/missing', '/docs/../../.env', '/api/convert']) {
+    for (const path of ['/docs/missing', '/docs/../../.env', '/api/convert', '/.well-known/agent-skills/import-x-history', '/.well-known/agent-skills/index.json/nope']) {
       expect((await siteResponse(path, 'https://future.example')).status).toBe(404)
     }
   })
+})
+
+
+test.each(['text/html', 'text/markdown', 'application/json'])('missing pages retain the negotiated recovery response for %s', async (accept) => {
+  const req = new IncomingMessage(new Socket()) as any
+  req.method = 'GET'
+  req.url = '/api/site?path=%2Fdocs%2Fmissing'
+  req.query = { path: '/docs/missing' }
+  req.headers = { host: 'future.example', accept }
+  const res = new ServerResponse(req) as any
+  res.status = (code: number) => { res.statusCode = code; return res }
+  res.send = (body: string) => { res.body = body; return res }
+  res.end = () => res
+  await siteHandler(req, res)
+  expect(res.statusCode).toBe(404)
+  expect(res.getHeader('content-type')).toContain(accept)
+  expect(res.body).toContain('/docs/missing')
+  expect(res.body).not.toContain('/api/site')
+  expect(res.body).toContain('https://future.example/')
+  if (accept === 'application/json') expect(JSON.parse(res.body).instance).toBe('https://future.example/docs/missing')
 })
