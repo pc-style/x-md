@@ -31,12 +31,21 @@ export function trackRequest(
     ? String(resource) : endpoint
   const method = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method ?? '') ? req.method : 'OTHER'
 
+  /**
+   * How the caller authenticated, as the response reports it. Read at finish
+   * time by both events: a failure rate is only readable per caller class if
+   * `request_failed` carries the same dimension `request_completed` does.
+   */
+  function keyStatus(): 'valid' | 'invalid' | 'unverified' | 'anonymous' {
+    const header = res.getHeader('X-Api-Key-Status')
+    return header === 'valid' || header === 'invalid' || header === 'unverified' ? header : 'anonymous'
+  }
+
   async function send() {
     try {
       const cacheHeader = res.getHeader('X-Cache')
       const cache = cacheHeader === 'HIT' ? 'hit' : cacheHeader === 'MISS' ? 'miss' : cacheHeader === 'BYPASS' ? 'bypass' : 'unknown'
-      const keyStatus = res.getHeader('X-Api-Key-Status')
-      const auth = keyStatus === 'valid' || keyStatus === 'invalid' || keyStatus === 'unverified' ? keyStatus : 'anonymous'
+      const auth = keyStatus()
       const uuid = randomUUID()
       const response = await fetch(`${host!.replace(/\/$/, '')}/i/v0/e/`, {
         method: 'POST',
@@ -80,10 +89,13 @@ export function trackRequest(
     const onFinish = () => {
       res.off('close', onClose)
       const status = res.statusCode
+      const auth = keyStatus()
       const failed = status >= 400 ? captureServerEvent('request_failed', {
         route, status,
         error_type: notedErrorType(res, status),
         duration_ms: Math.max(0, Math.round(performance.now() - started)),
+        access: auth === 'valid' ? 'key' : 'public',
+        key_status: auth,
       }) : Promise.resolve()
       void Promise.all([failed, send()]).finally(resolve)
     }
