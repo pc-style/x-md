@@ -1,6 +1,6 @@
 import { next, rewrite } from '@vercel/functions'
 import { notAcceptableBody, selectRepresentation } from './lib/negotiate.js'
-import { DOMAIN_PREFIX, PARALLEL_HOSTS, domainFile } from './lib/domain-pages.js'
+import { domainFile } from './lib/domain-pages.js'
 
 /**
  * Content negotiation for the HTML pages.
@@ -10,7 +10,7 @@ import { DOMAIN_PREFIX, PARALLEL_HOSTS, domainFile } from './lib/domain-pages.js
  * the filesystem and the cache, so it is the only place an agent asking for
  * `Accept: text/markdown` can be handed the Markdown twin of a page.
  *
- * Domain variants include static docs, discovery documents, and social cards.
+ * Host-aware responses include static docs, discovery documents, and social cards.
  * All API, permalink, and shared asset requests immediately pass through.
  */
 export const config = {
@@ -31,15 +31,16 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
-  const variant = (path: string) => PARALLEL_HOSTS.has(url.hostname) && domainFile(path)
-    ? `${DOMAIN_PREFIX}/${domainFile(path)}` : path
+  const needsHost = url.hostname !== 'x.pcstyle.dev'
+  const variant = (path: string) => needsHost && domainFile(path)
+    ? `/api/site?${new URLSearchParams({ path })}` : path
   const file = domainFile(url.pathname)
   const isNegotiated = ['/', '/docs', '/about', '/contact', '/privacy', '/terms'].includes(url.pathname)
     || (url.pathname.startsWith('/docs/') && !/\.[a-z0-9]+$/i.test(url.pathname))
 
   if (!isNegotiated) {
-    return PARALLEL_HOSTS.has(url.hostname) && file
-      ? rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url)) : next()
+    return needsHost && file
+      ? rewrite(new URL(variant(url.pathname), request.url)) : next()
   }
 
   // The matcher also catches files under /docs (llms.txt, the .md twins
@@ -76,8 +77,8 @@ export default function middleware(request: Request): Response {
     return rewrite(new URL(variant(md), request.url), { headers: { Vary: 'Accept', Link: link } })
   }
 
-  if (PARALLEL_HOSTS.has(url.hostname) && file) {
-    return rewrite(new URL(`${DOMAIN_PREFIX}/${file}`, request.url), {
+  if (needsHost && file) {
+    return rewrite(new URL(variant(url.pathname), request.url), {
       headers: { Vary: 'Accept', Link: link },
     })
   }

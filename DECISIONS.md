@@ -33,3 +33,11 @@
 ## PR #25 review (2026-09-11)
 - Asked to review, fix all findings, and merge. Main already contains the feature through #28; preserve its follow-up fixes when reconciling #25.
 - Fix archive streaming cap, freshness, sorted result persistence, truncation propagation, warm-cache range validation, and report Mermaid strict mode.
+
+
+## Host-aware website (2026-09-13)
+- Request: every attached domain should use its own host in docs, links, and OGs, without a code change for each new domain.
+- Reproduced: new domain's raw `/docs` HTML names x.pcstyle.dev in canonical, OG, examples, and discovery links.
+- Replace the mdfromx-only build tree with middleware routing to a Vercel function that reads bundled public build output and substitutes service references per request. Keep main host's existing static output. Render alternate-host PNGs with Blume's existing renderer and local fonts.
+- Host comes from validated Host, never x-forwarded-host; no network fetch to that host for static rendering. CDN cache separates by host/path. Pass the current origin to converter input validation as well.
+- Scope: open and watch a PR against main. No merge or production publish requested.

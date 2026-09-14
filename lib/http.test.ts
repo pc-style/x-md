@@ -2,13 +2,16 @@ import { describe, expect, test } from 'vitest'
 import { requestOrigin, wantsJson, wantsMarkdown } from './http.js'
 
 describe('requestOrigin', () => {
+  test.each(['www.elon-dont-c-and-d-me-plz.dev', 'future-domain.example'])('supports newly attached host %s', (host) => {
+    expect(requestOrigin({ headers: { host } })).toBe(`https://${host}`)
+  })
   test('preserves the parallel domain for API discovery and embeds', () => {
     expect(requestOrigin({ headers: { host: 'mdfromx.com', 'x-forwarded-proto': 'https' } }))
       .toBe('https://mdfromx.com')
     expect(requestOrigin({ headers: { host: 'fast.mdfromx.com', 'x-forwarded-proto': 'https' } }))
       .toBe('https://fast.mdfromx.com')
     expect(requestOrigin({ headers: { host: 'mdfromx.com.evil.example' } }))
-      .toBe('https://x.pcstyle.dev')
+      .toBe('https://mdfromx.com.evil.example')
   })
   test('uses the request host for known public and local hosts', () => {
     expect(
@@ -34,7 +37,9 @@ describe('requestOrigin', () => {
 
   test('falls back to the hosted origin', () => {
     expect(requestOrigin({ headers: {} })).toBe('https://x.pcstyle.dev')
-    expect(requestOrigin({ headers: { host: 'evil.example' } })).toBe('https://x.pcstyle.dev')
+    for (const host of ['evil.example/path', 'user@evil.example', 'evil.example,other.example', 'evil.example\"<>', 'host:99999']) {
+      expect(requestOrigin({ headers: { host } })).toBe('https://x.pcstyle.dev')
+    }
   })
 })
 
