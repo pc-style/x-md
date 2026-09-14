@@ -87,6 +87,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await convertTweet({
+      origin: requestOrigin(req),
       url: param('url'),
       handle: param('handle'),
       id: param('id'),

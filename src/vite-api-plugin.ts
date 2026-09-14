@@ -147,6 +147,7 @@ async function handleConvert(
 
   try {
     const result = await convertTweet({
+      origin: requestOrigin(req),
       url: url.searchParams.get('url'),
       handle: statusMatch?.[1] ?? url.searchParams.get('handle'),
       id: statusMatch?.[2] ?? url.searchParams.get('id'),

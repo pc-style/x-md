@@ -13,17 +13,8 @@ export interface OriginRequest {
   socket?: unknown
 }
 
-import { PARALLEL_HOSTS } from './domain-pages.js'
-
-const PUBLIC_EMBED_HOSTS = new Set(['x.pcstyle.dev', ...PARALLEL_HOSTS, 'x-md.vercel.app'])
-
 function headerValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value
-}
-
-function hostnameOf(host: string | undefined): string | undefined {
-  if (!host) return undefined
-  return host.split(',')[0]?.trim().replace(/:\d+$/, '') || undefined
 }
 
 function requestProtocol(req: OriginRequest): 'http' | 'https' {
@@ -37,10 +28,11 @@ function requestProtocol(req: OriginRequest): 'http' | 'https' {
 }
 
 export function requestOrigin(req: OriginRequest, fallback = 'https://x.pcstyle.dev'): string {
-  const hostHeader = headerValue(req.headers.host)
-  const hostname = hostnameOf(hostHeader)
-  if (hostname && (PUBLIC_EMBED_HOSTS.has(hostname) || hostname === 'localhost' || hostname === '127.0.0.1')) {
-    return `${requestProtocol(req)}://${hostHeader}`
+  // Vercel routes only attached domains here. Do not trust x-forwarded-host,
+  // and validate the authority before reflecting it into HTML or documents.
+  const host = headerValue(req.headers.host)
+  if (host && /^(?:[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?|\[[a-f0-9:]+\])(?::[0-9]{1,5})?$/i.test(host)) {
+    try { return new URL(`${requestProtocol(req)}://${host}`).origin } catch { /* invalid authority */ }
   }
   return fallback
 }
