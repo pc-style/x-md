@@ -71,9 +71,16 @@ export function trackCache(hit: boolean): void {
   })
 }
 
-export function trackRateLimit(limit_type: 'ip' | 'key' | 'global'): void {
+/**
+ * `policy` is the advertised quota name the caller was told about, so a rejection
+ * can be attributed to the gate that fired. Several gates share a `limit_type`:
+ * without the name, a front-door burst and an exhausted account allowance are
+ * indistinguishable, which is exactly the difference between "client is bursting"
+ * and "the allowance is too small".
+ */
+export function trackRateLimit(limit_type: 'ip' | 'key' | 'global', policy: string): void {
   const state = context.getStore()
-  if (state) capture('rate_limit_applied', { route: state.route, limit_type })
+  if (state) capture('rate_limit_applied', { route: state.route, limit_type, policy })
 }
 
 export function trackFallback(primary_provider: Provider, fallback_provider: Provider, reason: 'primary_timeout' | 'primary_error' | 'primary_empty' | 'primary_unavailable'): void {

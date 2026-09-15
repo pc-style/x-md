@@ -8,6 +8,7 @@ import {
 } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
+import { kv } from './kv.js'
 import { SEARCH_IP, SEARCH_KEY, searchIpKey, searchKeyKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
@@ -41,12 +42,79 @@ export type BrowseResource = 'profile' | 'search' | 'followers' | 'following'
 export type BrowseSource = 'fxtwitter' | 'xsearch' | 'firecrawl'
 
 /** After FxTwitter search fails, skip it for this long so requests go straight to the next tier. */
-const FX_SEARCH_BREAKER_MS = 60_000
-let fxSearchDownUntil = 0
+const FX_SEARCH_BREAKER_FIRST_MS = 60_000
+/**
+ * Ceiling on the cooldown. FxTwitter search can be down for days at a time (its
+ * own X sessions fail, and it answers `{code:404, results:[]}` to everything),
+ * and a one-minute breaker re-probes it thousands of times a day: every probe
+ * spends an upstream round trip inside a caller's search before the fallback
+ * runs, and reports an upstream error. Doubling the cooldown per consecutive
+ * failure walks a durable outage up to two probes an hour while a blip still
+ * clears in a minute.
+ */
+const FX_SEARCH_BREAKER_MAX_MS = 30 * 60_000
+/** Strikes past this add nothing: the cooldown is already at its ceiling. */
+const FX_SEARCH_MAX_STRIKES = 12
+/** Shared so one instance's probe cools down the fleet, not just itself. */
+const FX_SEARCH_BREAKER_KEY = 'search:fxtwitter:breaker'
+/** How long a read of the shared state is trusted before consulting the store again. */
+const FX_SEARCH_BREAKER_TTL_MS = 5_000
 
-/** Test hook. */
-export function resetSearchBreaker(): void {
-  fxSearchDownUntil = 0
+interface SearchBreaker {
+  /** Epoch ms until which FxTwitter search is skipped. */
+  until: number
+  /** Consecutive failed probes, which set the length of the next cooldown. */
+  strikes: number
+}
+
+const BREAKER_CLEAR: SearchBreaker = { until: 0, strikes: 0 }
+let fxSearchBreaker: { value: SearchBreaker; at: number } | undefined
+
+/**
+ * The shared breaker state, cached per instance. An open breaker is answered
+ * from memory until it expires; a store outage reads as clear, so the worst a
+ * broken store can do is put us back on the old probe-every-time behaviour.
+ */
+async function readSearchBreaker(): Promise<SearchBreaker> {
+  const now = Date.now()
+  if (fxSearchBreaker && (now - fxSearchBreaker.at < FX_SEARCH_BREAKER_TTL_MS || now < fxSearchBreaker.value.until)) {
+    return fxSearchBreaker.value
+  }
+  let value = BREAKER_CLEAR
+  try {
+    const raw = await kv().get(FX_SEARCH_BREAKER_KEY)
+    const parsed = raw ? (JSON.parse(raw) as Partial<SearchBreaker>) : undefined
+    if (typeof parsed?.until === 'number' && typeof parsed.strikes === 'number') {
+      // Strikes from an outage that ended long ago must not put the next blip
+      // straight on the ceiling, and the store has no expiry of its own.
+      value = now > parsed.until + FX_SEARCH_BREAKER_MAX_MS ? BREAKER_CLEAR : { until: parsed.until, strikes: parsed.strikes }
+    }
+  } catch {
+    // Probing is the safe failure mode: it is what an unshared breaker does.
+  }
+  fxSearchBreaker = { value, at: now }
+  return value
+}
+
+async function tripSearchBreaker(): Promise<void> {
+  const { strikes } = await readSearchBreaker()
+  const next = Math.min(strikes + 1, FX_SEARCH_MAX_STRIKES)
+  const value: SearchBreaker = { until: Date.now() + Math.min(FX_SEARCH_BREAKER_FIRST_MS * 2 ** (next - 1), FX_SEARCH_BREAKER_MAX_MS), strikes: next }
+  fxSearchBreaker = { value, at: Date.now() }
+  await kv().set(FX_SEARCH_BREAKER_KEY, JSON.stringify(value)).catch(() => undefined)
+}
+
+/** A served search means the outage is over; the next one starts from the short cooldown. */
+async function clearSearchBreaker(): Promise<void> {
+  if (fxSearchBreaker?.value.strikes === 0) return
+  fxSearchBreaker = { value: BREAKER_CLEAR, at: Date.now() }
+  await kv().del(FX_SEARCH_BREAKER_KEY).catch(() => undefined)
+}
+
+/** Test hook. `keepShared` drops only the cache, as a cold instance inheriting the stored state would. */
+export async function resetSearchBreaker(keepShared = false): Promise<void> {
+  fxSearchBreaker = undefined
+  if (!keepShared) await kv().del(FX_SEARCH_BREAKER_KEY).catch(() => undefined)
 }
 
 /**
@@ -350,13 +418,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (caller.kind === 'key') {
       const verdict = await rateLimit(searchKeyKey(caller.id), SEARCH_KEY.quota, SEARCH_KEY.windowSec)
       if (!verdict.allowed) {
-        trackRateLimit('key')
+        trackRateLimit('key', SEARCH_KEY.name)
         throw new ConvertError(429, 'Too many live search lookups for this API key in a short burst. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_KEY.name)
       }
     } else if (caller.ip) {
       const verdict = await rateLimit(searchIpKey(caller.ip), SEARCH_IP.quota, SEARCH_IP.windowSec)
       if (!verdict.allowed) {
-        trackRateLimit('ip')
+        trackRateLimit('ip', SEARCH_IP.name)
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
@@ -374,8 +442,11 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
+    // Only the feeds FxTwitter can serve consult its breaker.
+    const fxFeed = ['latest', 'top'].includes(feed)
+    const fxDown = fxFeed && Date.now() < (await readSearchBreaker()).until
     const live: Array<{ source: BrowseSource; limit: number; pages: number; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
-    if (['latest', 'top'].includes(feed) && Date.now() >= fxSearchDownUntil) live.push({ source: 'fxtwitter', limit, pages: LIST_MAX_UPSTREAM_PAGES, search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
+    if (fxFeed && !fxDown) live.push({ source: 'fxtwitter', limit, pages: LIST_MAX_UPSTREAM_PAGES, search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
     // Own-account searches spend a scarce per-account budget: one upstream page per request.
     if (xsearchConfigured()) live.push({ source: 'xsearch', limit: accountLimit, pages: 1, search: (cursor) => searchXStatuses(query, feed, cursor, accountLimit, caller) })
     // A continuation belongs to the provider that issued its cursor.
@@ -383,15 +454,16 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
     let outage: ConvertError | undefined
     for (const provider of providers) {
-      const isFallback = outage || (provider.source === 'xsearch' && ['latest', 'top'].includes(feed) && !tagged && Date.now() < fxSearchDownUntil)
+      const isFallback = outage || (provider.source === 'xsearch' && !tagged && fxDown)
       try {
         const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages)
+        if (provider.source === 'fxtwitter') await clearSearchBreaker()
         // Report only once the fallback has served the request.
         if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
         return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), source: provider.source })
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
-        if (provider.source === 'fxtwitter') fxSearchDownUntil = Date.now() + FX_SEARCH_BREAKER_MS
+        if (provider.source === 'fxtwitter') await tripSearchBreaker()
         outage = error
       }
     }
