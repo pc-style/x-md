@@ -62,6 +62,16 @@ describe('production request analytics', () => {
     for (const secret of ['private-search', 'private-token', '192.0.2.55']) expect(serialized).not.toContain(secret)
   })
 
+  test('reports the caller class on failures too, so a failure rate can be read per class', async () => {
+    const { req, res } = request()
+    trackRequest(req, res, 'browse', 'search')
+    res.statusCode = 429
+    res.setHeader('X-Api-Key-Status', 'valid')
+    await finish(res)
+    const failed = fetchMock.mock.calls.map((call) => JSON.parse(call[1].body)).find((event) => event.event === 'request_failed')
+    expect(failed.properties).toMatchObject({ route: 'search', status: 429, error_type: 'rate_limited', access: 'key', key_status: 'valid' })
+  })
+
   test.each(['preview', 'development', ''])('does not track %s', (environment) => {
     vi.stubEnv('VERCEL_ENV', environment)
     const { req, res } = request()

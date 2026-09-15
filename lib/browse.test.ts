@@ -16,6 +16,15 @@ vi.mock('./ratelimit.js', () => ({
   rateLimit: vi.fn(async () => ({ allowed: true, limit: 30, remaining: 29, retryAfter: 60 })),
 }))
 
+const kvStore = vi.hoisted(() => new Map<string, string>())
+vi.mock('./kv.js', () => ({
+  kv: () => ({
+    get: async (key: string) => kvStore.get(key) ?? null,
+    set: async (key: string, value: string) => { kvStore.set(key, value) },
+    del: async (key: string) => { kvStore.delete(key) },
+  }),
+}))
+
 vi.mock('./xsearch.js', () => ({
   xsearchConfigured: vi.fn(() => false),
   searchXStatuses: vi.fn(),
@@ -43,9 +52,9 @@ const post = { id: '1', text: 'hello', url: 'https://x.com/ada/status/1', author
 /** `n` distinct posts, ids `${prefix}1..n`. */
 const posts = (n: number, prefix = 'p') => Array.from({ length: n }, (_, i) => ({ ...post, id: `${prefix}${i + 1}` }))
 
-beforeEach(() => {
+beforeEach(async () => {
   vi.clearAllMocks()
-  resetSearchBreaker()
+  await resetSearchBreaker()
 })
 
 describe('browse', () => {
@@ -236,6 +245,34 @@ describe('search provider chain', () => {
     await browse({ resource: 'search', q: 'b', nocache: true })
     expect(searchFxStatuses).toHaveBeenCalledTimes(1)
     expect(searchXStatuses).toHaveBeenCalledTimes(2)
+  })
+
+  test('backs the breaker off further on each consecutive failure, and shares it across instances', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live] })
+    const start = Date.now()
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(start)
+    await browse({ resource: 'search', q: 'a', nocache: true })
+
+    // A cold instance inherits the cooldown instead of restarting the backoff.
+    await resetSearchBreaker(true)
+    await browse({ resource: 'search', q: 'b', nocache: true })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+
+    // The first cooldown is a minute; the second failure doubles it.
+    clock.mockReturnValue(start + 61_000)
+    await browse({ resource: 'search', q: 'c', nocache: true })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(2)
+    clock.mockReturnValue(start + 122_000)
+    await browse({ resource: 'search', q: 'd', nocache: true })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(2)
+
+    // A served search ends the outage, so the next one starts from the short cooldown again.
+    clock.mockReturnValue(start + 200_000)
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: posts(20) })
+    await browse({ resource: 'search', q: 'e', nocache: true })
+    expect([...kvStore.keys()]).toEqual([])
+    clock.mockRestore()
   })
 
   test('routes tagged cursors to their provider only', async () => {

@@ -145,16 +145,16 @@ test('concurrent request contexts stay isolated and rate-limit types are structu
   const b = exchange({ resource: 'followers', via: 'route' })
   let release!: () => void
   const gate = new Promise<void>(resolve => { release = resolve })
-  const first = withServerEvents('browse', async () => { await gate; trackRateLimit('key'); a.res.emit('finish') })(a.req, a.res)
-  await withServerEvents('browse', () => { trackRateLimit('global'); b.res.emit('finish'); release() })(b.req, b.res)
-  await first; trackRateLimit('ip'); await flush()
-  expect(events('rate_limit_applied').map(p => [p.route, p.limit_type])).toEqual([['followers', 'global'], ['search', 'key']])
+  const first = withServerEvents('browse', async () => { await gate; trackRateLimit('key', 'account-key'); a.res.emit('finish') })(a.req, a.res)
+  await withServerEvents('browse', () => { trackRateLimit('global', 'account-ip'); b.res.emit('finish'); release() })(b.req, b.res)
+  await first; trackRateLimit('ip', 'search-ip'); await flush()
+  expect(events('rate_limit_applied').map(p => [p.route, p.limit_type, p.policy])).toEqual([['followers', 'global', 'account-ip'], ['search', 'key', 'account-key']])
 })
 
 test.each(['preview', 'development'])('does not send new events in %s', async environment => {
   vi.stubEnv('VERCEL_ENV', environment)
   const { req, res } = exchange()
-  await withServerEvents('convert', () => { trackRateLimit('ip'); res.emit('finish') })(req, res)
+  await withServerEvents('convert', () => { trackRateLimit('ip', 'search-ip'); res.emit('finish') })(req, res)
   await flush(); expect(sent).toHaveLength(0)
 })
 
