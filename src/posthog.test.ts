@@ -45,7 +45,8 @@ test('enables web analytics through the proxy without replay or interaction capt
     api_host: 'https://p.pcstyle.dev', ui_host: 'https://eu.posthog.com',
     capture_pageview: true, capture_pageleave: true, persistence: 'localStorage',
     person_profiles: 'never', autocapture: { dom_event_allowlist: [] }, capture_exceptions: false,
-    disable_session_recording: true, capture_performance: { web_vitals: true }, enable_heatmaps: false,
+    disable_session_recording: true,
+    capture_performance: { web_vitals: true, web_vitals_attribution: false }, enable_heatmaps: false,
   }))
   captureLandingEvent('conversion_requested')
   captureLandingEvent('skill_install_command_copied')
@@ -80,12 +81,16 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
 
   const webVitals = beforeSend({ event: '$web_vitals', properties: {
     $web_vitals_LCP_value: 1234,
-    $web_vitals_LCP_event: { name: 'LCP', rating: 'good' },
+    $web_vitals_LCP_event: {
+      name: 'LCP', value: 1234, rating: 'good', delta: 12, navigationType: 'navigate',
+      attribution: { target: '#private-button', url: 'https://example.test/private' },
+      entries: [{ url: 'https://example.test/private-entry' }],
+    },
     private_metric: 'private-value',
   } })
   expect(webVitals.properties).toMatchObject({
     $web_vitals_LCP_value: 1234,
-    $web_vitals_LCP_event: { name: 'LCP', rating: 'good' },
+    $web_vitals_LCP_event: { name: 'LCP', value: 1234, rating: 'good', delta: 12, navigationType: 'navigate' },
   })
   expect(JSON.stringify(webVitals)).not.toContain('private')
   expect(beforeSend({ event: '$autocapture', properties: {} })).toBeNull()
