@@ -1,4 +1,5 @@
 import { trackCache } from './server-events.js'
+import { redisConfig, redisPipeline } from './redis.js'
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -81,6 +82,48 @@ async function writeDisk<T>(key: string, entry: CacheEnvelope<T>): Promise<void>
   }
 }
 
+/**
+ * Shared cross-instance layer over the same Upstash/Vercel KV Redis the rate
+ * limiter uses. Serverless instances do not share the in-process `memory` map,
+ * so without this every isolated instance repeats upstream work on a cold key.
+ * Best-effort: a store failure leaves the request to fall through to the origin.
+ */
+function sharedKey(key: string): string {
+  return `cache:${hashKey(key)}`
+}
+
+async function readShared<T>(key: string): Promise<CacheEnvelope<T> | undefined> {
+  const config = redisConfig()
+  if (!config) return undefined
+  try {
+    const data = await redisPipeline<string | null>(config, [['GET', sharedKey(key)]], 3000)
+    if (data[0]?.error) throw new Error(data[0].error)
+    const raw = data[0]?.result
+    if (!raw) return undefined
+    return JSON.parse(raw) as CacheEnvelope<T>
+  } catch (error) {
+    console.warn(`[cache] shared read failed: ${String(error).slice(0, 120)}`)
+    return undefined
+  }
+}
+
+async function writeShared<T>(key: string, entry: CacheEnvelope<T>, ttl: number): Promise<void> {
+  const config = redisConfig()
+  if (!config) return
+  const seconds = Math.max(1, Math.ceil(ttl / 1000))
+  try {
+    const data = await redisPipeline(config, [['SET', sharedKey(key), JSON.stringify(entry), 'EX', seconds]], 3000)
+    if (data[0]?.error) throw new Error(data[0].error)
+  } catch (error) {
+    console.warn(`[cache] shared write failed: ${String(error).slice(0, 120)}`)
+  }
+}
+
+/** Test hook: drop the in-process hot layer to simulate a fresh runtime instance. */
+export function resetMemoryCache(): void {
+  memory.clear()
+}
+
 export function buildCacheKey(parts: Record<string, string | number>): string {
   return Object.entries(parts)
     .sort(([a], [b]) => a.localeCompare(b))
@@ -93,6 +136,14 @@ export async function getCached<T>(key: string): Promise<{ value: T; status: Cac
   if (mem !== undefined) {
     touchMemory(key, memory.get(key) as CacheEnvelope<T>)
     return { value: mem, status: 'hit' }
+  }
+
+  const shared = await readShared<T>(key)
+  const fromShared = readEnvelope(shared)
+  if (fromShared !== undefined && shared) {
+    touchMemory(key, shared)
+    pruneMemory()
+    return { value: fromShared, status: 'hit' }
   }
 
   const disk = await readDisk<T>(key)
@@ -114,7 +165,9 @@ export async function setCached<T>(key: string, value: T, ttl = ttlMs()): Promis
 
   touchMemory(key, entry)
   pruneMemory()
-  await writeDisk(key, entry)
+  // Both durable writes are best-effort; run them together so a miss does not
+  // pay for the Redis round trip and the disk write back to back.
+  await Promise.all([writeShared(key, entry, ttl), writeDisk(key, entry)])
 }
 
 /**
