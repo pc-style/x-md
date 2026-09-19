@@ -39,13 +39,14 @@ beforeEach(() => {
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 
-test('enables pageviews through the proxy without replay or automatic content capture', async () => {
+test('enables web analytics through the proxy without replay or interaction capture', async () => {
   const { captureLandingEvent } = await import('./posthog')
   expect(posthog.init).toHaveBeenCalledWith('phc_test', expect.objectContaining({
     api_host: 'https://p.pcstyle.dev', ui_host: 'https://eu.posthog.com',
     capture_pageview: true, capture_pageleave: true, persistence: 'localStorage',
-    person_profiles: 'never', autocapture: false, capture_exceptions: false,
-    disable_session_recording: true, capture_performance: false, enable_heatmaps: false,
+    person_profiles: 'never', autocapture: { dom_event_allowlist: [] }, capture_exceptions: false,
+    disable_session_recording: true,
+    capture_performance: { web_vitals: true, web_vitals_attribution: false }, enable_heatmaps: false,
   }))
   captureLandingEvent('conversion_requested')
   captureLandingEvent('skill_install_command_copied')
@@ -57,12 +58,41 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
   const result = beforeSend({ event: '$pageview', properties: {
     token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
+    $lib_custom_api_host: 'https://p.pcstyle.dev',
     $current_url: window.location.href, $referrer: 'private-referrer', $initial_current_url: window.location.href,
     $set: { email: 'private-email' }, form_content: 'private-form',
   }, $set: { email: 'private-email' }, $set_once: { name: 'private-name' } })
   expect(result.properties).toMatchObject({ token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
+    $lib_custom_api_host: 'https://p.pcstyle.dev',
     $current_url: 'https://x.pcstyle.dev/', $host: 'x.pcstyle.dev', $pathname: '/', $ip: null, $process_person_profile: false })
   expect(JSON.stringify(result)).not.toContain('private-')
+
+  const pageleave = beforeSend({ event: '$pageleave', properties: {
+    $prev_pageview_max_content_percentage: 0.75,
+    $prev_pageview_max_scroll_percentage: 0.8,
+    $prev_pageview_pathname: '/',
+    $current_url: `${window.location.href}private`,
+  } })
+  expect(pageleave.properties).toMatchObject({
+    $prev_pageview_max_content_percentage: 0.75,
+    $prev_pageview_max_scroll_percentage: 0.8,
+    $prev_pageview_pathname: '/',
+  })
+
+  const webVitals = beforeSend({ event: '$web_vitals', properties: {
+    $web_vitals_LCP_value: 1234,
+    $web_vitals_LCP_event: {
+      name: 'LCP', value: 1234, rating: 'good', delta: 12, navigationType: 'navigate',
+      attribution: { target: '#private-button', url: 'https://example.test/private' },
+      entries: [{ url: 'https://example.test/private-entry' }],
+    },
+    private_metric: 'private-value',
+  } })
+  expect(webVitals.properties).toMatchObject({
+    $web_vitals_LCP_value: 1234,
+    $web_vitals_LCP_event: { name: 'LCP', value: 1234, rating: 'good', delta: 12, navigationType: 'navigate' },
+  })
+  expect(JSON.stringify(webVitals)).not.toContain('private')
   expect(beforeSend({ event: '$autocapture', properties: {} })).toBeNull()
   expect(beforeSend({ event: '$exception', properties: {} })).toBeNull()
   window.location.pathname = '/admin'
