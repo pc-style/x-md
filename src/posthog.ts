@@ -55,13 +55,18 @@ try {
   if (blocked) clearActor()
 } catch { /* Fail closed when privacy settings cannot be read. */ }
 
-const events = new Set(['$pageview', '$pageleave', 'conversion_requested', 'skill_install_command_copied'])
+const events = new Set(['$pageview', '$pageleave', '$web_vitals', 'conversion_requested', 'skill_install_command_copied'])
 const properties = new Set([
   'token', 'distinct_id', '$device_id', '$session_id', '$window_id', '$pageview_id',
   '$browser', '$browser_version', '$os', '$os_version', '$device_type',
   '$screen_height', '$screen_width', '$viewport_height', '$viewport_width',
-  '$lib', '$lib_version', '$is_identified', '$pageleave_reason',
-  '$prev_pageview_id', '$prev_pageview_duration',
+  '$lib', '$lib_version', '$lib_custom_api_host', '$is_identified', '$pageleave_reason',
+  '$prev_pageview_id', '$prev_pageview_duration', '$prev_pageview_pathname',
+  '$prev_pageview_max_content_percentage', '$prev_pageview_max_scroll_percentage',
+  '$web_vitals_FCP_value', '$web_vitals_FCP_event',
+  '$web_vitals_LCP_value', '$web_vitals_LCP_event',
+  '$web_vitals_INP_value', '$web_vitals_INP_event',
+  '$web_vitals_CLS_value', '$web_vitals_CLS_event',
 ])
 
 if (!blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production' && posthogKey && posthogHost?.startsWith('https://') && window.location.pathname === '/') {
@@ -73,11 +78,12 @@ if (!blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'producti
       defaults: '2026-05-30',
       persistence: 'localStorage',
       person_profiles: 'never',
-      autocapture: false,
+      // Keep scroll-depth collection active without capturing clicks, forms, or DOM content.
+      autocapture: { dom_event_allowlist: [] },
       capture_pageview: true,
       capture_pageleave: true,
       capture_exceptions: false,
-      capture_performance: false,
+      capture_performance: { web_vitals: true },
       disable_session_recording: true,
       disable_surveys: true,
       enable_heatmaps: false,
