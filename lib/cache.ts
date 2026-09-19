@@ -59,12 +59,30 @@ function readEnvelope<T>(entry: CacheEnvelope<T> | undefined): T | undefined {
   return entry.value
 }
 
+/**
+ * `JSON.parse` only proves the bytes were JSON. A durable entry can predate a
+ * shape change or be written by something else, and a non-numeric `expiresAt`
+ * would read as unexpired forever, so reject anything that is not an envelope.
+ */
+function parseEnvelope<T>(raw: string): CacheEnvelope<T> | undefined {
+  const parsed: unknown = JSON.parse(raw)
+  if (!parsed || typeof parsed !== 'object') return undefined
+  const entry = parsed as Partial<CacheEnvelope<T>>
+  if (!('value' in entry)) return undefined
+  if (!isTimestamp(entry.storedAt) || !isTimestamp(entry.expiresAt)) return undefined
+  return entry as CacheEnvelope<T>
+}
+
+function isTimestamp(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 async function readDisk<T>(key: string): Promise<CacheEnvelope<T> | undefined> {
   if (!diskCacheEnabled()) return undefined
   try {
     const file = path.join(cacheDir(), `${hashKey(key)}.json`)
     const raw = await readFile(file, 'utf8')
-    return JSON.parse(raw) as CacheEnvelope<T>
+    return parseEnvelope<T>(raw)
   } catch {
     return undefined
   }
@@ -100,7 +118,7 @@ async function readShared<T>(key: string): Promise<CacheEnvelope<T> | undefined>
     if (data[0]?.error) throw new Error(data[0].error)
     const raw = data[0]?.result
     if (!raw) return undefined
-    return JSON.parse(raw) as CacheEnvelope<T>
+    return parseEnvelope<T>(raw)
   } catch (error) {
     console.warn(`[cache] shared read failed: ${String(error).slice(0, 120)}`)
     return undefined

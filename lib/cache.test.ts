@@ -112,3 +112,22 @@ test('without a shared store a fresh instance misses (per-process only)', async 
   resetMemoryCache()
   expect(await getCached('k')).toBeUndefined()
 })
+
+test('a malformed shared entry is a miss, not a permanent hit', async () => {
+  vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+  vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+  const { fetch, store } = fakeRedis()
+  vi.stubGlobal('fetch', fetch)
+
+  await setCached('k', { markdown: 'stored' })
+  const sharedKey = [...store.keys()][0]!
+  // An entry with no `expiresAt` has no expiry to compare against, so it must
+  // not be served instead of the origin.
+  store.set(sharedKey, JSON.stringify({ value: { markdown: 'malformed' } }))
+
+  resetMemoryCache()
+  const origin = vi.fn(async () => ({ markdown: 'fresh' }))
+  const result = await withCache('k', false, origin)
+  expect(result).toEqual({ value: { markdown: 'fresh' }, status: 'miss' })
+  expect(origin).toHaveBeenCalledTimes(1)
+})
