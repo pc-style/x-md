@@ -91,6 +91,8 @@ export interface ImportMeta {
   windows: number
   pages: number
   retried_pages: number
+  /** The walk skipped a page after bounded retries; this range is incomplete. */
+  warnings?: Array<'page_missing'>
   duration_ms: number
   /** Posts per hour estimated from the first page, which sized the windows. */
   estimated_rate_per_hour: number
@@ -229,6 +231,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
   let emptyBeyond = 0
   let sinceReached = false
   let floorReached = false
+  let pageMissing = false
   /** Discovery stopped because `maxPosts` was already collected: older history probably exists. */
   let cappedOut = false
   // Nothing predates the account, and no account has more windows than this;
@@ -262,8 +265,23 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     // Upstream answered with nothing at all. A seek into a quiet stretch still
     // returns the entries below it; only a seek past the floor returns none.
     let barren = false
+    let resumedAfterMiss = false
     for (let pages = 0; ; pages += 1) {
-      const page = await fetchPage(cursor)
+      let page: Awaited<ReturnType<typeof fetchPage>>
+      try {
+        page = await fetchPage(cursor)
+      } catch (error) {
+        if (!(error instanceof ConvertError && error.code === 'partial_upstream_failure')) throw error
+        pageMissing = true
+        // A forged seek can continue below the last known timeline position.
+        // If the miss recurs, other windows can still finish this partial walk.
+        if (pages > 0 && !resumedAfterMiss && oldestSeen < window.start) {
+          resumedAfterMiss = true
+          cursor = cursorAt(oldestSeen)
+          continue
+        }
+        break
+      }
       if (page.results.length === 0) {
         barren = pages === 0
         break
@@ -334,7 +352,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
 
   // Newest first. Reposts sort by the original post's id, which is all upstream gives.
   let posts = [...seen.values()].sort((a, b) => (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
-  const truncated = posts.length > maxPosts || cappedOut
+  const truncated = posts.length > maxPosts || cappedOut || pageMissing
   if (posts.length > maxPosts) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
   const iso = (ms: number) => new Date(ms).toISOString()
@@ -350,7 +368,8 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       oldest: originals.length ? iso(postTime(originals[originals.length - 1])) : undefined,
       newest: originals.length ? iso(postTime(originals[0])) : undefined,
       truncated,
-      floor_reached: floorReached,
+      floor_reached: floorReached && !pageMissing,
+      warnings: pageMissing ? ['page_missing'] : undefined,
       with_replies: withReplies,
       with_reposts: withReposts,
       only_replies: onlyReplies,

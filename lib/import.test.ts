@@ -8,6 +8,7 @@ vi.mock('./fxtwitter.js', async () => {
 import { decodeTimelineCursor, encodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
 import { fetchFxProfile, fetchFxProfileStatuses, type FxListResponse, type FxTweet } from './fxtwitter.js'
 import { estimateRate, importProfilePosts, isReply, ownPost, postTime } from './import.js'
+import { ConvertError } from './errors.js'
 
 const HOUR = 3_600_000
 const NOW = Date.UTC(2026, 8, 9, 12)
@@ -240,6 +241,22 @@ describe('importProfilePosts', () => {
     })
     await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000, concurrency: 4 })).rejects.toThrow('upstream exploded')
     expect(upstream.calls()).toBeLessThan(12)
+  })
+
+  test('a missing timeline page leaves a warning and other windows finish', async () => {
+    const entries = timeline('ada', 400, 1)
+    const upstream = fakeUpstream(entries)
+    let calls = 0
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (...args) => {
+      calls += 1
+      if (calls === 5) throw new ConvertError(502, 'page missing', 'partial_upstream_failure', 10)
+      return upstream.mock(args[0], args[1])
+    })
+    const result = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 300 * HOUR), until: new Date(NOW), maxPosts: 5000, concurrency: 4 })
+    expect(result.posts.length).toBeGreaterThan(30)
+    expect(result.meta.warnings).toEqual(['page_missing'])
+    expect(result.meta.truncated).toBe(true)
+    expect(result.meta.floor_reached).toBe(false)
   })
 
   test('keeps posts that X positions under a newer reply (conversation modules)', async () => {

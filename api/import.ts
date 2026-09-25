@@ -1,7 +1,7 @@
 import { withServerEvents } from '../lib/server-events.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
-import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
+import { problemDetails, problemFrom, requestInstance, sendProblem, streamProblemFrom } from '../lib/apierror.js'
 import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { ConvertError } from '../lib/errors.js'
 import { parseDateInput } from '../lib/fx-cursor.js'
@@ -130,12 +130,13 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
     res.setHeader('X-Accel-Buffering', 'no')
     res.flushHeaders()
+    let streamedPosts = 0
     try {
-      const result = await importWithHistory({ ...options, signal: aborter.signal, onPost: (post) => { res.write(`${JSON.stringify({ post })}\n`) } })
+      const result = await importWithHistory({ ...options, signal: aborter.signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
       if (!(error instanceof ConvertError)) console.error(error)
-      const problem = problemFrom(error, instance)
+      const problem = streamProblemFrom(error, instance, streamedPosts)
       res.write(`${JSON.stringify({ error: problem })}\n`)
     }
     return res.end()

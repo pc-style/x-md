@@ -14,6 +14,7 @@ import {
   problemMediaType,
   problemResponse,
   sendProblem,
+  streamProblemFrom,
   setDeprecationHeaders,
 } from './apierror.js'
 import { ConvertError } from './errors.js'
@@ -70,6 +71,24 @@ describe('problem documents', () => {
     expect(response.headers['Cache-Control']).toBe('no-store')
     expect(problemFrom(new ConvertError(429, 'slow down', 'rate_limited'), 'https://x.pcstyle.dev/search').retry_after).toBe(60)
     expect(problemFrom(new ConvertError(503, 'no sessions', 'search_unavailable'), 'https://x.pcstyle.dev/search').retry_after).toBe(30)
+  })
+
+  test('problem links use the serving host', () => {
+    const problem = problemFrom(new ConvertError(503, 'try again', 'upstream_unavailable', 30), 'https://mdfromx.com/api/v1/profiles/theo/posts')
+    const response = problemResponse(problem, 'application/problem+json')
+    expect(problem.type).toBe('https://mdfromx.com/docs/reliability#upstream-unavailable')
+    expect(problem.documentation_url).toBe('https://mdfromx.com/docs/reliability#errors')
+    expect(response.headers.Link).toContain('<https://mdfromx.com/docs/reliability#errors>')
+    expect(response.headers.Link).toContain('<https://mdfromx.com/openapi.json>')
+    expect(response.headers['Retry-After']).toBe('30')
+  })
+
+  test('a terminal stream miss is retryable and counts delivered posts', () => {
+    const problem = streamProblemFrom(new ConvertError(404, 'Post not found or unavailable.', 'not_found'), 'https://mdfromx.com/api/v1/profiles/theo/posts', 232)
+    expect(problem).toMatchObject({ status: 502, code: 'partial_upstream_failure', retry_after: 10, streamed_posts: 232 })
+    expect(problem.type).toBe('https://mdfromx.com/docs/reliability#partial-upstream-failure')
+    expect(streamProblemFrom(new ConvertError(503, 'provider unavailable', 'upstream_rate_limited', 20), 'https://mdfromx.com/api/v1/profiles/theo/posts', 232)).toMatchObject({ status: 502, code: 'partial_upstream_failure', retry_after: 20, streamed_posts: 232 })
+    expect(streamProblemFrom(new ConvertError(503, 'provider unavailable', 'upstream_rate_limited', 0), 'https://mdfromx.com/api/v1/profiles/theo/posts', 232).retry_after).toBe(10)
   })
 
   test('a provider code outside the catalogue is described by its status class', () => {

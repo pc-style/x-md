@@ -277,12 +277,17 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 
   const data = (await response.json()) as FxApiResponse
 
-  if (data.code === 404 || data.message === 'NOT_FOUND') {
-    throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
-  }
-
   if (data.message === 'PRIVATE_TWEET') {
     throw new ConvertError(404, 'Post is private and cannot be fetched.', 'private_tweet')
+  }
+
+  if (data.code === 404 || data.message === 'NOT_FOUND') {
+    // "User not found" is also returned during provider outages. It does not
+    // establish that X deleted, suspended, or protected the account.
+    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) {
+      throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
+    }
+    throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
   }
 
   if (!response.ok || (data.code && data.code >= 400)) {
@@ -315,7 +320,7 @@ function encodeQuery(params: Record<string, string | number | undefined>): strin
 
 export async function fetchFxProfile(handle: string): Promise<FxAuthor> {
   const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`)
-  if (!data.user) throw new ConvertError(404, 'Profile not found.', 'not_found')
+  if (!data.user) throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
   return data.user
 }
 
@@ -368,9 +373,9 @@ export async function fetchFxProfileStatuses(
       // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
       // This does not mean the profile or any post vanished: retry the same page.
       if (error instanceof ConvertError && error.code === 'not_found') {
-        if (!cursor) throw error
+        if (!cursor) throw new ConvertError(503, 'X profile timeline could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
         if (attempt + 1 < attempts) continue
-        throw new ConvertError(503, 'X timeline is temporarily unavailable upstream. Retry shortly.', 'upstream_error')
+        throw new ConvertError(502, 'X timeline page could not be resolved upstream.', 'partial_upstream_failure', 10)
       }
       // A throttled page is worth a short wait when the caller asked for retries;
       // the loop still ends with the error so a hard limit surfaces as 503.

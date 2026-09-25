@@ -34,6 +34,7 @@ export interface ProblemDetails {
   documentation_url: string
   links?: ProblemLink[]
   retry_after?: number
+  streamed_posts?: number
   /** Alias of `detail`, kept for clients written against the old shape. */
   error?: string
 }
@@ -171,6 +172,16 @@ export const ERROR_CATALOG = {
     title: 'Upstream provider error',
     resolution: 'Retry with backoff. x.md reads a third-party provider that can fail independently.',
   },
+  partial_upstream_failure: {
+    status: 502,
+    title: 'Partial upstream failure',
+    resolution: 'Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.',
+  },
+  upstream_unavailable: {
+    status: 503,
+    title: 'Upstream profile unavailable',
+    resolution: 'The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.',
+  },
   upstream_rate_limited: {
     status: 503,
     title: 'Upstream provider is rate limiting x.md',
@@ -236,20 +247,25 @@ function safeDetail(value: string, max = 400): string {
   return cleaned.length > max ? `${cleaned.slice(0, max - 1)}\u2026` : cleaned
 }
 
+function problemOrigin(instance: string): string {
+  try { return new URL(instance).origin } catch { return SITE }
+}
+
 export function problemDetails(code: string, init: ProblemInit): ProblemDetails {
   // `code` is reported as raised so a caller can log the provider that failed;
   // everything an agent acts on comes from the documented type it maps to.
   const { code: documented, entry } = catalogEntry(code, init.status)
   const detail = safeDetail(init.detail ?? entry.title) || entry.title
+  const origin = problemOrigin(init.instance)
   const problem: ProblemDetails = {
-    type: `${SITE}/docs/reliability#${documented.replace(/_/g, '-')}`,
+    type: `${origin}/docs/reliability#${documented.replace(/_/g, '-')}`,
     title: entry.title,
     status: init.status ?? entry.status,
     detail,
     instance: init.instance,
     code,
     resolution: entry.resolution,
-    documentation_url: ERRORS_DOC,
+    documentation_url: `${origin}/docs/reliability#errors`,
     error: detail,
   }
   if (init.retryAfter !== undefined) problem.retry_after = init.retryAfter
@@ -285,11 +301,12 @@ export interface ProblemResponse {
 }
 
 export function problemResponse(problem: ProblemDetails, accept: string): ProblemResponse {
+  const origin = problemOrigin(problem.instance)
   const headers: Record<string, string> = {
     'Content-Type': `${problemMediaType(accept)}; charset=utf-8`,
     'Cache-Control': 'no-store',
     Vary: 'Accept',
-    Link: `<${ERRORS_DOC}>; rel="help", <${SITE}/openapi.json>; rel="service-desc"`,
+    Link: `<${problem.documentation_url}>; rel="help", <${origin}/openapi.json>; rel="service-desc"`,
   }
   if (problem.retry_after !== undefined) headers['Retry-After'] = String(problem.retry_after)
   return { status: problem.status, headers, body: `${JSON.stringify(problem, null, 2)}\n` }
@@ -306,6 +323,15 @@ export function problemFrom(error: unknown, instance: string): ProblemDetails {
     })
   }
   return problemDetails('internal_error', { instance })
+}
+
+/** A stream has already committed HTTP 200; its final line must carry the failure and delivered count. */
+export function streamProblemFrom(error: unknown, instance: string, streamedPosts: number): ProblemDetails {
+  const problem = streamedPosts > 0 && error instanceof ConvertError && (error.status === 404 || error.status >= 500)
+    ? problemDetails('partial_upstream_failure', { instance, detail: 'Upstream stopped before the profile stream could finish.', retryAfter: error.retryAfter && error.retryAfter > 0 ? error.retryAfter : 10 })
+    : problemFrom(error, instance)
+  problem.streamed_posts = streamedPosts
+  return problem
 }
 
 /** Absolute `instance` URI for the failing request. */

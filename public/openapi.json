@@ -301,6 +301,18 @@
         "resolution": "Retry with backoff. x.md reads a third-party provider that can fail independently.",
         "type": "https://x.pcstyle.dev/docs/reliability#upstream-error"
       },
+      "partial_upstream_failure": {
+        "status": 502,
+        "title": "Partial upstream failure",
+        "resolution": "Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
+        "type": "https://x.pcstyle.dev/docs/reliability#partial-upstream-failure"
+      },
+      "upstream_unavailable": {
+        "status": 503,
+        "title": "Upstream profile unavailable",
+        "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+        "type": "https://x.pcstyle.dev/docs/reliability#upstream-unavailable"
+      },
       "upstream_rate_limited": {
         "status": 503,
         "title": "Upstream provider is rate limiting x.md",
@@ -1415,6 +1427,57 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              }
+            }
           }
         },
         "externalDocs": {
@@ -1917,7 +1980,7 @@
             }
           },
           "502": {
-            "description": "Upstream provider error. Retry with backoff. x.md reads a third-party provider that can fail independently.",
+            "description": "Partial upstream failure. Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1939,6 +2002,9 @@
               },
               "Link": {
                 "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
               }
             },
             "content": {
@@ -1947,8 +2013,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_error": {
-                    "$ref": "#/components/examples/upstream_error"
+                  "partial_upstream_failure": {
+                    "$ref": "#/components/examples/partial_upstream_failure"
                   }
                 }
               },
@@ -1957,8 +2023,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_error": {
-                    "$ref": "#/components/examples/upstream_error"
+                  "partial_upstream_failure": {
+                    "$ref": "#/components/examples/partial_upstream_failure"
                   }
                 }
               }
@@ -2541,6 +2607,57 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              }
+            }
           }
         },
         "externalDocs": {
@@ -3064,6 +3181,57 @@
                 "examples": {
                   "upstream_error": {
                     "$ref": "#/components/examples/upstream_error"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
                   }
                 }
               }
@@ -4954,6 +5122,57 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              }
+            }
           }
         },
         "externalDocs": {
@@ -5456,7 +5675,7 @@
             }
           },
           "502": {
-            "description": "Upstream provider error. Retry with backoff. x.md reads a third-party provider that can fail independently.",
+            "description": "Partial upstream failure. Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5478,6 +5697,9 @@
               },
               "Link": {
                 "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
               }
             },
             "content": {
@@ -5486,8 +5708,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_error": {
-                    "$ref": "#/components/examples/upstream_error"
+                  "partial_upstream_failure": {
+                    "$ref": "#/components/examples/partial_upstream_failure"
                   }
                 }
               },
@@ -5496,8 +5718,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_error": {
-                    "$ref": "#/components/examples/upstream_error"
+                  "partial_upstream_failure": {
+                    "$ref": "#/components/examples/partial_upstream_failure"
                   }
                 }
               }
@@ -6080,6 +6302,57 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              }
+            }
           }
         },
         "externalDocs": {
@@ -6603,6 +6876,57 @@
                 "examples": {
                   "upstream_error": {
                     "$ref": "#/components/examples/upstream_error"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
                   }
                 }
               }
@@ -9319,6 +9643,21 @@
           "error": "Invalid or disabled API key."
         }
       },
+      "upstream_unavailable": {
+        "summary": "Upstream profile unavailable",
+        "value": {
+          "type": "https://x.pcstyle.dev/docs/reliability#upstream-unavailable",
+          "title": "Upstream profile unavailable",
+          "status": 503,
+          "detail": "Upstream profile unavailable",
+          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "code": "upstream_unavailable",
+          "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "error": "Upstream profile unavailable",
+          "retry_after": 30
+        }
+      },
       "invalid_option": {
         "summary": "Invalid query option",
         "value": {
@@ -9331,6 +9670,21 @@
           "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
           "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
           "error": "Invalid query option"
+        }
+      },
+      "partial_upstream_failure": {
+        "summary": "Partial upstream failure",
+        "value": {
+          "type": "https://x.pcstyle.dev/docs/reliability#partial-upstream-failure",
+          "title": "Partial upstream failure",
+          "status": 502,
+          "detail": "Partial upstream failure",
+          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "code": "partial_upstream_failure",
+          "resolution": "Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
+          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "error": "Partial upstream failure",
+          "retry_after": 10
         }
       },
       "upstream_rate_limited": {
@@ -10121,7 +10475,7 @@
           },
           "truncated": {
             "type": "boolean",
-            "description": "True when the range held more than `max_posts`; the response holds the newest `max_posts`."
+            "description": "True when the range exceeded `max_posts` or a missing upstream page left it incomplete."
           },
           "floor_reached": {
             "type": "boolean",
@@ -10151,6 +10505,16 @@
           "retried_pages": {
             "type": "integer",
             "description": "How many of those were retries of a page that came back short or throttled."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "page_missing"
+              ]
+            },
+            "description": "A page stayed unavailable after retries; the returned range is incomplete and is not recorded as fully covered."
           },
           "duration_ms": {
             "type": "integer",
@@ -10219,6 +10583,10 @@
           "covered_until": {
             "type": "string",
             "description": "ISO 8601 upper bound of the time range walks have covered so far."
+          },
+          "incomplete": {
+            "type": "boolean",
+            "description": "A page was missing; the next import re-walks the requested range."
           }
         }
       },
@@ -10688,6 +11056,8 @@
               "rate_limited",
               "internal_error",
               "upstream_error",
+              "partial_upstream_failure",
+              "upstream_unavailable",
               "upstream_rate_limited",
               "search_unavailable",
               "admin_unconfigured"
@@ -10713,7 +11083,12 @@
           "retry_after": {
             "type": "integer",
             "minimum": 1,
-            "description": "Seconds to wait before retrying. Set on 429 and 503, and mirrored in the `Retry-After` header."
+            "description": "Seconds to wait before retrying. Set on 429, 503, and partial import 502 errors; mirrored in the `Retry-After` header when headers are still writable."
+          },
+          "streamed_posts": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "On a terminal NDJSON error, how many post lines were sent before this error line."
           },
           "error": {
             "type": "string",

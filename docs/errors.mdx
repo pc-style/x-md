@@ -38,7 +38,8 @@ Errors follow [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457)
 | `resolution` | yes | What the caller should do next, in one sentence. |
 | `documentation_url` | yes | Where the codes are documented. |
 | `error` | yes | Alias of `detail`, kept for clients written against the older `{ error, code }` shape. |
-| `retry_after` | on `429` and `503` | Seconds to wait, mirroring the `Retry-After` header. |
+| `retry_after` | on retryable errors with a delay | Seconds to wait. It mirrors `Retry-After` when headers can still be written; a terminal NDJSON error carries it only in the body. |
+| `streamed_posts` | on an NDJSON terminal error | Number of post lines already sent before the error line. |
 | `links` | sometimes | Related routes, each `{ label, href }`. A `404` on an unknown path uses this to suggest where to go instead. |
 
 Branch on `status` for the class of failure and on `code` for the specific one. Do not parse `detail`, and do not compare `title` strings.
@@ -54,7 +55,7 @@ The body is `application/problem+json; charset=utf-8`. A caller whose `Accept` h
 | `Cache-Control: no-store` | every problem response | Errors are never stored, by us or by a CDN. The recoverable `404` document sends `public, max-age=0, must-revalidate` instead, so a cache must revalidate it before reusing it. |
 | `Link: …; rel="help"` | every problem response | This documentation. |
 | `Link: …; rel="service-desc"` | every error | [`/openapi.json`](https://x.pcstyle.dev/openapi.json). |
-| `Retry-After` | `429`, `503` | Seconds to wait. Takes precedence over the `RateLimit` reset if the two disagree. |
+| `Retry-After` | `429`, `503`, and partial import `502` | Seconds to wait. Takes precedence over the `RateLimit` reset if the two disagree. |
 | `Allow` | `405` | The methods this route accepts. |
 | `Deprecation`, `Sunset` | errors from a deprecated route | See [versioning](/versioning). |
 
@@ -95,7 +96,7 @@ The public read API needs no credentials. These appear only when a credential wa
 
 | Code | Title | Meaning | What to do |
 | --- | --- | --- | --- |
-| `not_found` | Not found | The post or profile does not exist, is deleted, protected, or suspended. | Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available. |
+| `not_found` | Not found | The post or profile is confirmed missing or inaccessible. An ambiguous provider miss is never enough to establish this. | Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available. |
 | `route_not_found` | API route not found | The path is not a route on this service. | Discover the public API through [/api](https://x.pcstyle.dev/api), [/openapi.json](https://x.pcstyle.dev/openapi.json), or [/.well-known/api-catalog](https://x.pcstyle.dev/.well-known/api-catalog). |
 
 A `404` is a routing dead end for an agent, so both forms carry `links` pointing at the routes that do exist. Follow them rather than guessing at another path.
@@ -125,6 +126,8 @@ x.md reads third-party providers that fail independently of it, so these are usu
 | --- | --- | --- | --- |
 | `internal_error` | Unexpected error | A bug or an unhandled condition in x.md itself. | Retry with exponential backoff. If it persists, open an issue at [github.com/pc-style/x-md/issues](https://github.com/pc-style/x-md/issues). |
 | `upstream_error` | Upstream provider error | A data provider failed or answered with something unusable. | Retry with backoff. x.md reads a third-party provider that can fail independently. |
+| `upstream_unavailable` | Upstream profile unavailable | The provider returned an ambiguous profile miss, such as `User not found`; it could not confirm whether the profile exists. | Wait for `Retry-After`, then retry. Do not treat the profile as deleted. |
+| `partial_upstream_failure` | Partial upstream failure | A timeline page stayed unavailable after retries and the stream could not finish. `streamed_posts` counts lines already delivered. | Wait for the error body's `retry_after`, then retry the import and deduplicate by post ID. |
 | `search_unavailable` | Search temporarily unavailable | Live search has no healthy session. Photos, Videos, and Users have no fallback. | Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions. |
 | `admin_unconfigured` | Admin is not configured | The deployment's private admin route has no token set. Not part of the public API. | Set `X_MD_ADMIN_TOKEN` on the deployment. This route is not part of the public API. |
 
@@ -136,7 +139,7 @@ x.md reads third-party providers that fail independently of it, so these are usu
 | `401` | No | Fix or drop the credential. |
 | `404` | No | Follow `links`, or confirm the content is public. A retry does not undelete a post. |
 | `429` | Yes | After `Retry-After` seconds, exactly once per window. |
-| `500`, `502` | Yes | Exponential backoff with jitter, a few attempts, then give up and report. |
+| `500`, `502` | Yes | Exponential backoff with jitter. Honor `Retry-After` when present. |
 | `503` | Yes | After `Retry-After` seconds. `search_unavailable` on Photos, Videos, or Users may stay down for a while. |
 
 ## The same catalogue, machine-readable
