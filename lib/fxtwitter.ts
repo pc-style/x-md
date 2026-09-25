@@ -365,6 +365,13 @@ export async function fetchFxProfileStatuses(
     try {
       data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path, options.signal)
     } catch (error) {
+      // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
+      // This does not mean the profile or any post vanished: retry the same page.
+      if (error instanceof ConvertError && error.code === 'not_found') {
+        if (!cursor) throw error
+        if (attempt + 1 < attempts) continue
+        throw new ConvertError(503, 'X timeline is temporarily unavailable upstream. Retry shortly.', 'upstream_error')
+      }
       // A throttled page is worth a short wait when the caller asked for retries;
       // the loop still ends with the error so a hard limit surfaces as 503.
       if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
