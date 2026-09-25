@@ -51,6 +51,26 @@ describe('importWithHistory', () => {
     expect(index?.oldest).toBe(new Date(NOW - 100 * HOUR).toISOString())
   })
 
+  test('a missing page is not marked covered and the next import re-walks it', async () => {
+    vi.mocked(importProfilePosts).mockImplementationOnce(async input => {
+      const result = await fakeEngine(input)
+      result.meta.warnings = ['page_missing']
+      result.meta.truncated = true
+      return result
+    })
+    const range = { handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW), maxPosts: 5000 }
+    const partial = await importWithHistory(range)
+    expect(partial.meta.warnings).toEqual(['page_missing'])
+    expect(partial.meta.floor_reached).toBe(false)
+    expect(partial.meta.archive.incomplete).toBe(true)
+    vi.mocked(importProfilePosts).mockClear()
+    const complete = await importWithHistory(range)
+    expect(complete.meta.archive.walked).toEqual(['refresh'])
+    expect(vi.mocked(importProfilePosts)).toHaveBeenCalledTimes(1)
+    expect(complete.meta.archive.incomplete).toBe(false)
+    expect(complete.meta.warnings).toBeUndefined()
+  })
+
   test('a later import only tops up the gap and serves the rest from the archive', async () => {
     await importWithHistory({ handle: 'ada', since: new Date(NOW - 100 * HOUR), until: new Date(NOW), maxPosts: 5000 })
     vi.mocked(importProfilePosts).mockClear()

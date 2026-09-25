@@ -683,7 +683,7 @@ function problemExample(code: ErrorCode): ProblemDetails {
 
 function retryAfterFor(code: ErrorCode): number | undefined {
   const status = ERROR_CATALOG[code].status
-  return status === 429 ? 41 : status === 503 ? 30 : undefined
+  return status === 429 ? 41 : status === 503 ? 30 : code === 'partial_upstream_failure' ? 10 : undefined
 }
 
 /** One typed problem response. Every documented status carries the same body. */
@@ -729,8 +729,8 @@ function errorResponses(codes: readonly ErrorCode[], recoverable: boolean): Reco
  * status is only documented where a handler can really produce it.
  */
 const POST_ERRORS: readonly ErrorCode[] = ['missing_url', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
-const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
-const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_rate_limited']
+const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable']
+const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable', 'partial_upstream_failure', 'upstream_rate_limited']
 const SEARCH_ERRORS: readonly ErrorCode[] = ['missing_query', 'invalid_key', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 const LEGACY_BROWSE_ERRORS: readonly ErrorCode[] = ['invalid_resource', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 /** oEmbed reads nothing upstream, so it can only fail on method, quota or a bug. */
@@ -1249,7 +1249,7 @@ function schemas(): Record<string, JsonSchema> {
         until: str('The upper bound that was used, ISO 8601.'),
         oldest: str('ISO 8601 time of the oldest original post returned. Send it as `until` to continue past a truncated result.'),
         newest: str('ISO 8601 time of the newest original post returned.'),
-        truncated: { type: 'boolean', description: 'True when the range held more than `max_posts`; the response holds the newest `max_posts`.' },
+        truncated: { type: 'boolean', description: 'True when the range exceeded `max_posts` or a missing upstream page left it incomplete.' },
         floor_reached: { type: 'boolean', description: 'True when upstream stopped answering before `since`: X serves roughly the 3200 most recent timeline entries.' },
         with_replies: { type: 'boolean' },
         with_reposts: { type: 'boolean' },
@@ -1258,6 +1258,7 @@ function schemas(): Record<string, JsonSchema> {
         windows: { type: 'integer', description: 'Time windows the range was cut into.' },
         pages: { type: 'integer', description: 'Upstream timeline pages fetched, retries included.' },
         retried_pages: { type: 'integer', description: 'How many of those were retries of a page that came back short or throttled.' },
+        warnings: { type: 'array', items: { type: 'string', enum: ['page_missing'] }, description: 'A page stayed unavailable after retries; the returned range is incomplete and is not recorded as fully covered.' },
         duration_ms: { type: 'integer', description: 'Wall-clock time of the walk.' },
         estimated_rate_per_hour: { type: 'number', description: 'Posting rate estimated from the first page, which sized the windows.' },
         source: { type: 'string', enum: ['fxtwitter'] },
@@ -1279,6 +1280,7 @@ function schemas(): Record<string, JsonSchema> {
         floor_reached: { type: 'boolean', description: 'True when the archive reaches X\'s timeline floor: nothing older exists upstream.' },
         covered_since: str('ISO 8601 lower bound of the time range walks have covered so far.'),
         covered_until: str('ISO 8601 upper bound of the time range walks have covered so far.'),
+        incomplete: { type: 'boolean', description: 'A page was missing; the next import re-walks the requested range.' },
       },
     },
     ImportSuccessResponse: {
@@ -1455,7 +1457,8 @@ function schemas(): Record<string, JsonSchema> {
         resolution: str('What the caller should do next to succeed.'),
         documentation_url: { type: 'string', format: 'uri', description: 'The error reference page.' },
         links: { type: 'array', description: 'Extra next steps, when there are any.', items: schemaRef('ProblemLink') },
-        retry_after: { type: 'integer', minimum: 1, description: 'Seconds to wait before retrying. Set on 429 and 503, and mirrored in the `Retry-After` header.' },
+        retry_after: { type: 'integer', minimum: 1, description: 'Seconds to wait before retrying. Set on 429, 503, and partial import 502 errors; mirrored in the `Retry-After` header when headers are still writable.' },
+        streamed_posts: { type: 'integer', minimum: 0, description: 'On a terminal NDJSON error, how many post lines were sent before this error line.' },
         error: { type: 'string', deprecated: true, description: 'Alias of `detail`, kept for clients written against the pre-RFC-9457 `{error, code}` shape. Do not depend on it.' },
       },
     },

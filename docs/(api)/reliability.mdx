@@ -30,14 +30,16 @@ Branch on `status` for the class of failure and on `code` for the specific one. 
 | --- | --- | --- |
 | `400` | Missing query, invalid handle, unsupported parameter value | Fix the request. Retrying it unchanged fails identically. |
 | `401` | An API key was offered and rejected | Drop the header to call anonymously. The public API needs no credentials. |
-| `404` | Post or profile missing, deleted, protected, or an unknown path | Follow the `links` in the body. Check the public source URL on x.com. |
+| `404` | Confirmed missing or inaccessible content, or an unknown path | Follow the `links` in the body. Check the public source URL on x.com. An ambiguous provider miss uses `503`. |
 | `405` | A write method on a read-only route | Use `GET`, `HEAD`, or `OPTIONS`; read `Allow`. |
 | `406` | An `Accept` header that excludes every representation | Ask for `text/markdown`, `application/json`, or `text/html`. |
 | `429` | A quota is exhausted | Sleep for `Retry-After` seconds, then retry once. |
-| `502`, `503` | Provider failure, or live search has no healthy session | Retry with backoff and jitter, not in a loop. |
+| `502`, `503` | Provider failure, ambiguous profile miss, or live search has no healthy session | Honor `Retry-After` when present; retry with backoff and jitter. |
 | `500` | A bug in x.md | Retry with backoff; if it persists, open an issue. |
 
 **[The full error catalogue](/errors)** lists every machine `code` with its meaning and its recovery step.
+
+Bulk NDJSON imports end with `{"meta":…}` after all post lines. If one timeline page remains unavailable after retries, the import can finish with `meta.warnings: ["page_missing"]`, `truncated: true`, and `floor_reached: false`; retry the range to fill the gap. If it cannot continue, the last line is an RFC 9457 `error` with a retryable `partial_upstream_failure` code and `streamed_posts`. An HTTP 200 on a stream does not by itself mean the import completed.
 
 ## Rate limits
 

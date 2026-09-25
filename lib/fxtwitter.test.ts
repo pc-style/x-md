@@ -6,6 +6,7 @@ import {
   fetchFxConversationReplies,
   searchFxStatuses,
   fetchFxProfileStatuses,
+  fetchFxProfile,
   type FxTweet,
   type FxReplyingTo,
 } from './fxtwitter.js'
@@ -129,10 +130,26 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 2 })).rejects.toMatchObject({
-      status: 503,
-      code: 'upstream_error',
+      status: 502,
+      code: 'partial_upstream_failure',
     })
     expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  test('maps an ambiguous profile 404 to a retryable upstream failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
+    await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable', retryAfter: 30 })
+  })
+
+  test('maps a missing profile payload to a retryable upstream failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 200, message: 'OK' }), { status: 200 })))
+    await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
+  })
+
+  test('keeps an explicit private post non-retryable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'PRIVATE_TWEET' }), { status: 404 })))
+    const { fetchFxStatus } = await import('./fxtwitter.js')
+    await expect(fetchFxStatus('20')).rejects.toMatchObject({ status: 404, code: 'private_tweet' })
   })
 
   test('preserves not_found for an uncursored missing profile timeline', async () => {
