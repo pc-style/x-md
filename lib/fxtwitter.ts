@@ -373,7 +373,7 @@ export async function fetchFxProfileStatuses(
       // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
       // This does not mean the profile or any post vanished: retry the same page.
       if (error instanceof ConvertError && error.code === 'not_found') {
-        if (!cursor) throw error
+        if (!cursor) throw new ConvertError(503, 'X profile timeline could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
         if (attempt + 1 < attempts) continue
         throw new ConvertError(502, 'X timeline page could not be resolved upstream.', 'partial_upstream_failure', 10)
       }
