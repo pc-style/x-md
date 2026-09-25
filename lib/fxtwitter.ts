@@ -368,6 +368,7 @@ export async function fetchFxProfileStatuses(
       // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
       // This does not mean the profile or any post vanished: retry the same page.
       if (error instanceof ConvertError && error.code === 'not_found') {
+        if (!cursor) throw error
         if (attempt + 1 < attempts) continue
         throw new ConvertError(503, 'X timeline is temporarily unavailable upstream. Retry shortly.', 'upstream_error')
       }

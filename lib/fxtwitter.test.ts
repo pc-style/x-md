@@ -134,6 +134,17 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
+
+  test('preserves not_found for an uncursored missing profile timeline', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' }), { status: 404 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchFxProfileStatuses('missing', undefined, 100, { retries: 4 })).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })
 
 // ---------------------------------------------------------------------------
