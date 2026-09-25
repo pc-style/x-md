@@ -7,6 +7,7 @@ import {
   searchFxStatuses,
   fetchFxProfileStatuses,
   fetchFxProfile,
+  fetchFxConnections,
   type FxTweet,
   type FxReplyingTo,
 } from './fxtwitter.js'
@@ -144,6 +145,11 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
   test('maps a missing profile payload to a retryable upstream failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 200, message: 'OK' }), { status: 200 })))
     await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
+  })
+
+  test('maps an ambiguous followers miss to a retryable upstream failure', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
+    await expect(fetchFxConnections('theo', 'followers')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
   })
 
   test('keeps an explicit private post non-retryable', async () => {

@@ -328,7 +328,7 @@ export function problemFrom(error: unknown, instance: string): ProblemDetails {
 /** A stream has already committed HTTP 200; its final line must carry the failure and delivered count. */
 export function streamProblemFrom(error: unknown, instance: string, streamedPosts: number): ProblemDetails {
   const problem = streamedPosts > 0 && error instanceof ConvertError && (error.status === 404 || error.status >= 500)
-    ? problemDetails('partial_upstream_failure', { instance, detail: 'Upstream stopped before the profile stream could finish.', retryAfter: error.retryAfter ?? 10 })
+    ? problemDetails('partial_upstream_failure', { instance, detail: 'Upstream stopped before the profile stream could finish.', retryAfter: error.retryAfter && error.retryAfter > 0 ? error.retryAfter : 10 })
     : problemFrom(error, instance)
   problem.streamed_posts = streamedPosts
   return problem

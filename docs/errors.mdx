@@ -38,7 +38,7 @@ Errors follow [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457)
 | `resolution` | yes | What the caller should do next, in one sentence. |
 | `documentation_url` | yes | Where the codes are documented. |
 | `error` | yes | Alias of `detail`, kept for clients written against the older `{ error, code }` shape. |
-| `retry_after` | on retryable errors with a delay | Seconds to wait, mirroring the `Retry-After` header. |
+| `retry_after` | on retryable errors with a delay | Seconds to wait. It mirrors `Retry-After` when headers can still be written; a terminal NDJSON error carries it only in the body. |
 | `streamed_posts` | on an NDJSON terminal error | Number of post lines already sent before the error line. |
 | `links` | sometimes | Related routes, each `{ label, href }`. A `404` on an unknown path uses this to suggest where to go instead. |
 
@@ -127,7 +127,7 @@ x.md reads third-party providers that fail independently of it, so these are usu
 | `internal_error` | Unexpected error | A bug or an unhandled condition in x.md itself. | Retry with exponential backoff. If it persists, open an issue at [github.com/pc-style/x-md/issues](https://github.com/pc-style/x-md/issues). |
 | `upstream_error` | Upstream provider error | A data provider failed or answered with something unusable. | Retry with backoff. x.md reads a third-party provider that can fail independently. |
 | `upstream_unavailable` | Upstream profile unavailable | The provider returned an ambiguous profile miss, such as `User not found`; it could not confirm whether the profile exists. | Wait for `Retry-After`, then retry. Do not treat the profile as deleted. |
-| `partial_upstream_failure` | Partial upstream failure | A timeline page stayed unavailable after retries and the stream could not finish. `streamed_posts` counts lines already delivered. | Wait for `Retry-After`, then retry the import and deduplicate by post ID. |
+| `partial_upstream_failure` | Partial upstream failure | A timeline page stayed unavailable after retries and the stream could not finish. `streamed_posts` counts lines already delivered. | Wait for the error body's `retry_after`, then retry the import and deduplicate by post ID. |
 | `search_unavailable` | Search temporarily unavailable | Live search has no healthy session. Photos, Videos, and Users have no fallback. | Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions. |
 | `admin_unconfigured` | Admin is not configured | The deployment's private admin route has no token set. Not part of the public API. | Set `X_MD_ADMIN_TOKEN` on the deployment. This route is not part of the public API. |
 

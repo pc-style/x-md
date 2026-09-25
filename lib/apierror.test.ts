@@ -88,6 +88,7 @@ describe('problem documents', () => {
     expect(problem).toMatchObject({ status: 502, code: 'partial_upstream_failure', retry_after: 10, streamed_posts: 232 })
     expect(problem.type).toBe('https://mdfromx.com/docs/reliability#partial-upstream-failure')
     expect(streamProblemFrom(new ConvertError(503, 'provider unavailable', 'upstream_rate_limited', 20), 'https://mdfromx.com/api/v1/profiles/theo/posts', 232)).toMatchObject({ status: 502, code: 'partial_upstream_failure', retry_after: 20, streamed_posts: 232 })
+    expect(streamProblemFrom(new ConvertError(503, 'provider unavailable', 'upstream_rate_limited', 0), 'https://mdfromx.com/api/v1/profiles/theo/posts', 232).retry_after).toBe(10)
   })
 
   test('a provider code outside the catalogue is described by its status class', () => {

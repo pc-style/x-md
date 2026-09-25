@@ -284,7 +284,7 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   if (data.code === 404 || data.message === 'NOT_FOUND') {
     // "User not found" is also returned during provider outages. It does not
     // establish that X deleted, suspended, or protected the account.
-    if (/^2\/profile\/[^/?]+$/.test(path)) {
+    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) {
       throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
     }
     throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
