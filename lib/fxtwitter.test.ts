@@ -5,6 +5,7 @@ import {
   fetchFxFullThread,
   fetchFxConversationReplies,
   searchFxStatuses,
+  fetchFxProfileStatuses,
   type FxTweet,
   type FxReplyingTo,
 } from './fxtwitter.js'
@@ -103,6 +104,35 @@ describe('getParentStatusId', () => {
       replying_to_status: ['50'],
     })
     expect(getParentStatusId(tweet)).toBe('50')
+  })
+})
+
+describe('fetchFxProfileStatuses transient cursor misses', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  test('retries a timeline 404 at the same cursor and returns the recovered page', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' }), { status: 404 }))
+      .mockResolvedValue(new Response(JSON.stringify({ code: 200, results: Array.from({ length: 10 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'next' } }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const page = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4 })
+
+    expect(page.results).toHaveLength(10)
+    expect(page.attempts).toBe(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0][0])).toBe(String(fetchMock.mock.calls[1][0]))
+  })
+
+  test('reports repeated timeline 404s as an upstream failure', async () => {
+    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' }), { status: 404 })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 2 })).rejects.toMatchObject({
+      status: 503,
+      code: 'upstream_error',
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })
 
