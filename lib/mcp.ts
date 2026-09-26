@@ -2,6 +2,8 @@ import { buildFeedbackToolDescription, FeedbackSubmitError, submitFeedback } fro
 import { browse, type BrowseResult } from './browse.js'
 import { convertTweet } from './converter.js'
 import { ConvertError } from './errors.js'
+import { FEEDBACK_IP, feedbackIpKey } from './quotas.js'
+import { rateLimit } from './ratelimit.js'
 import type { SearchCaller } from './xsearch.js'
 
 export const MCP_SERVER_NAME = 'io.github.pc-style/x-md'
@@ -825,7 +827,10 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
   x_md_search_posts: (args, ctx) => runBrowse('search', args, ctx),
   x_md_get_followers: (args, ctx) => runBrowse('followers', args, ctx),
   x_md_get_following: (args, ctx) => runBrowse('following', args, ctx),
-  async submit_feedback(args) {
+  async submit_feedback(args, ctx) {
+    // Refund rejected calls so a caller retrying early does not push its own reset further out.
+    const gate = await rateLimit(feedbackIpKey(ctx.ip ?? ''), FEEDBACK_IP.quota, FEEDBACK_IP.windowSec, false, true)
+    if (!gate.allowed) throw new ConvertError(429, 'Feedback rate limit reached.', 'rate_limited', gate.retryAfter, FEEDBACK_IP.name)
     const result = await submitFeedback(
       {
         message: (text(args.message) ?? '').trim(),

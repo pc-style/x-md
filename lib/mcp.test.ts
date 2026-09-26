@@ -287,6 +287,18 @@ describe('tools/call', () => {
     expect(result.isError).toBe(true)
     expect((result.content as Array<{ text: string }>)[0]!.text).toBe('Feedback could not be submitted (HTTP 429): Too many requests')
   })
+
+  test('feedback is capped per caller before it can spend the shared Notra budget', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ feedback: { id: 'fb_2' }, deduplicated: false }), { status: 202 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const send = () => dispatch({ jsonrpc: '2.0', id: 13, method: 'tools/call', params: { name: 'submit_feedback', arguments: { message: 'hi' } } }, { ip: '198.51.100.9' })
+    for (let i = 0; i < 5; i++) expect(ok(await send()).isError).toBe(false)
+    const capped = ok(await send())
+    vi.unstubAllGlobals()
+    expect(capped.isError).toBe(true)
+    expect((capped.content as Array<{ text: string }>)[0]!.text).toMatch(/^Feedback rate limit reached\. \(HTTP 429, code rate_limited, retry after \d+s\)$/)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+  })
 })
 
 describe('resources', () => {

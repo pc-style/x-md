@@ -47,6 +47,14 @@ export const IMPORT_KEY: QuotaPolicy = { name: 'import-key', quota: 60, windowSe
 /** The same policy with a key's own allowance; the name stays fixed, the quota is the key's. */
 export const importKeyPolicy = (limit: number): QuotaPolicy => ({ ...IMPORT_KEY, quota: limit })
 
+/**
+ * MCP `submit_feedback` (lib/mcp.ts). Notra's public inbox allows 30 posts per
+ * 10 minutes per IP, and every hosted caller shares this deployment's egress
+ * IP, so one caller must not be able to spend that budget for everyone. MCP-only
+ * and not advertised in `RateLimit` headers, since no HTTP route charges it.
+ */
+export const FEEDBACK_IP: QuotaPolicy = { name: 'feedback-ip', quota: 5, windowSec: 10 * 60, partition: 'ip' }
+
 /** Window of the account-backed search pool (lib/xsearch.ts, lib/pool.ts). */
 export const ACCOUNT_WINDOW_SEC = 15 * 60
 
@@ -78,6 +86,7 @@ export const searchIpKey = (ip: string): string => `search:ip:${ip}`
 export const searchKeyKey = (id: string): string => `search:key:${id}`
 export const importIpKey = (ip: string): string => `import:ip:${ip || 'unknown'}`
 export const importKeyKey = (id: string): string => `import:key:${id}`
+export const feedbackIpKey = (ip: string): string => `feedback:ip:${ip || 'unknown'}`
 export const accountIpKey = (ip: string): string => `xsearch:ip:${ip || 'unknown'}`
 export const accountKeyKey = (id: string): string => `xsearch:key:${id}`
 
