@@ -52,20 +52,20 @@
       "displayName": "x.md MCP server",
       "type": "application/mcp-server-card+json",
       "url": "https://x.pcstyle.dev/.well-known/mcp/server-card.json",
-      "description": "Streamable-HTTP MCP server for public X content. Reads one post with its thread, a profile with its latest original posts, a public post search, or an account's followers and following. Read-only and unauthenticated.",
+      "description": "Streamable-HTTP MCP server for public X content. Reads one post with its thread, a profile with its latest original posts, a public post search, or an account's followers and following. Read-only toward X; its one write, submit_feedback, sends feedback to the x.md team. Unauthenticated.",
       "tags": [
         "mcp",
         "x",
         "twitter",
-        "markdown",
-        "read-only"
+        "markdown"
       ],
       "capabilities": [
         "x_md_get_post",
         "x_md_get_profile",
         "x_md_search_posts",
         "x_md_get_followers",
-        "x_md_get_following"
+        "x_md_get_following",
+        "submit_feedback"
       ],
       "representativeQueries": [
         "read this X post and its replies",

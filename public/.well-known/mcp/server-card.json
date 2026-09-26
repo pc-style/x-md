@@ -67,6 +67,11 @@
       "name": "x_md_get_following",
       "title": "List the accounts an X account follows",
       "description": "Page through the accounts a public X account follows, returning each one’s handle, display name, bio, and counts. Use it to map who an account pays attention to. Read-only and unauthenticated; protected accounts return an error instead of partial data."
+    },
+    {
+      "name": "submit_feedback",
+      "title": "Submit feedback",
+      "description": "Send feedback about x.md to the x.md team. Use it to report bugs, request features, ask questions or share what worked well. Include the exact steps or URL when reporting a problem."
     }
   ],
   "resources": [

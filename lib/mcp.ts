@@ -1,6 +1,9 @@
+import { buildFeedbackToolDescription, FeedbackSubmitError, submitFeedback } from '@usenotra/geo/feedback'
 import { browse, type BrowseResult } from './browse.js'
 import { convertTweet } from './converter.js'
 import { ConvertError } from './errors.js'
+import { FEEDBACK_IP, feedbackIpKey } from './quotas.js'
+import { rateLimit } from './ratelimit.js'
 import type { SearchCaller } from './xsearch.js'
 
 export const MCP_SERVER_NAME = 'io.github.pc-style/x-md'
@@ -10,6 +13,8 @@ export const MCP_SITE = 'https://x.pcstyle.dev'
 export const MCP_ENDPOINT = `${MCP_SITE}/mcp`
 export const MCP_DOCS_URL = `${MCP_SITE}/docs/mcp`
 export const MCP_SERVER_DESCRIPTION = 'Read public X posts, threads, profiles, and search results as Markdown or JSON.'
+/** The Notra inbox that submit_feedback posts to. It takes no credential, so it is public by design. */
+export const MCP_FEEDBACK_URL = 'https://api.usenotra.com/v1/feedback/x-md'
 
 /**
  * Two protocol eras, both live.
@@ -53,7 +58,9 @@ export const MCP_INSTRUCTIONS = [
   'Use x_md_get_profile to learn who an account is and what it has posted recently.',
   'Use x_md_search_posts to find current public discussion on a topic or to locate an account by name.',
   'Use x_md_get_followers and x_md_get_following to page through an account’s public connections.',
-  'Every tool is read-only: none of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.',
+  'Every x_md_ tool is read-only: none of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.',
+  'When the user hits a problem with x.md, or asks for something it does not support, use submit_feedback to send a bug report, feature request, question, or praise to the x.md team; include the tool call or URL involved and leave out personal data.',
+  'submit_feedback is the only tool that writes anything, and it writes to the x.md feedback inbox, never to X.',
   'Paging is page- and cursor-based; limit is capped at 100 per call and page at 10, so walk deep result sets with next_cursor.',
   'Live search is rate limited per IP. A 429 comes back as an isError result naming the seconds to wait, not as a transport failure.',
 ].join(' ')
@@ -107,7 +114,7 @@ export interface McpContext {
 
 export type DispatchOutcome = { result: unknown } | { error: JsonRpcError } | null
 
-/** Every tool reads live third-party data and changes nothing, so the hints never vary. */
+/** Every X tool reads live third-party data and changes nothing, so their hints never vary. */
 const READ_ONLY: Omit<McpToolAnnotations, 'title'> = {
   readOnlyHint: true,
   destructiveHint: false,
@@ -237,6 +244,9 @@ function connectionTool(name: string, resource: 'followers' | 'following', title
     annotations: { title, ...READ_ONLY },
   }
 }
+
+const FEEDBACK_KINDS = ['bug', 'feature', 'praise', 'question', 'other'] as const
+const FEEDBACK_SENTIMENTS = ['negative', 'neutral', 'positive'] as const
 
 export const MCP_TOOLS: McpTool[] = [
   {
@@ -407,6 +417,47 @@ export const MCP_TOOLS: McpTool[] = [
     'List the accounts an X account follows',
     'Page through the accounts a public X account follows, returning each one’s handle, display name, bio, and counts. Use it to map who an account pays attention to. Read-only and unauthenticated; protected accounts return an error instead of partial data.',
   ),
+  // The same tool @usenotra/geo's registerFeedbackTool puts on an SDK McpServer,
+  // spelled out as JSON Schema because this server dispatches by hand.
+  {
+    name: 'submit_feedback',
+    title: 'Submit feedback',
+    description: buildFeedbackToolDescription(MCP_SERVER_TITLE),
+    inputSchema: {
+      $schema: DRAFT,
+      type: 'object',
+      additionalProperties: false,
+      required: ['message'],
+      properties: {
+        message: {
+          type: 'string',
+          minLength: 1,
+          maxLength: 4000,
+          description: 'The feedback, bug report, feature request, or question. Include the exact steps, tool call, or URL when reporting a problem.',
+        },
+        title: { type: 'string', minLength: 1, maxLength: 200, description: 'Short one-line summary. Written for you when omitted.' },
+        kind: { type: 'string', enum: [...FEEDBACK_KINDS], description: 'What sort of feedback this is. Classified for you when omitted.' },
+        sentiment: { type: 'string', enum: [...FEEDBACK_SENTIMENTS], description: 'How the user feels about it. Classified for you when omitted.' },
+        contextUrl: {
+          type: 'string',
+          format: 'uri',
+          maxLength: 2048,
+          description: 'The x.md page, docs URL, or X link the feedback is about.',
+        },
+      },
+    },
+    outputSchema: {
+      $schema: DRAFT,
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'deduplicated'],
+      properties: {
+        id: { type: 'string', description: 'Identifier of the recorded feedback entry.' },
+        deduplicated: { type: 'boolean', description: 'True when identical feedback was already recorded and reused.' },
+      },
+    },
+    annotations: { title: 'Submit feedback', readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
 ]
 
 export function mcpResources(site: string = MCP_SITE): McpResource[] {
@@ -776,6 +827,25 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
   x_md_search_posts: (args, ctx) => runBrowse('search', args, ctx),
   x_md_get_followers: (args, ctx) => runBrowse('followers', args, ctx),
   x_md_get_following: (args, ctx) => runBrowse('following', args, ctx),
+  async submit_feedback(args, ctx) {
+    // Refund rejected calls so a caller retrying early does not push its own reset further out.
+    const gate = await rateLimit(feedbackIpKey(ctx.ip ?? ''), FEEDBACK_IP.quota, FEEDBACK_IP.windowSec, false, true)
+    if (!gate.allowed) throw new ConvertError(429, 'Feedback rate limit reached.', 'rate_limited', gate.retryAfter, FEEDBACK_IP.name)
+    const result = await submitFeedback(
+      {
+        message: (text(args.message) ?? '').trim(),
+        title: text(args.title)?.trim() || undefined,
+        kind: FEEDBACK_KINDS.find((kind) => kind === args.kind),
+        sentiment: FEEDBACK_SENTIMENTS.find((sentiment) => sentiment === args.sentiment),
+        contextUrl: text(args.contextUrl),
+      },
+      { url: MCP_FEEDBACK_URL },
+    )
+    return {
+      text: result.deduplicated ? 'This feedback was already recorded.' : 'Thanks, the feedback was sent to the team.',
+      structured: { id: result.id, deduplicated: result.deduplicated },
+    }
+  },
 }
 
 async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutcome> {
@@ -809,6 +879,9 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
           isError: true,
         },
       }
+    }
+    if (error instanceof FeedbackSubmitError) {
+      return { result: { content: [{ type: 'text', text: `Feedback could not be submitted (HTTP ${error.status}): ${error.message}` }], isError: true } }
     }
     console.error(error)
     return { result: { content: [{ type: 'text', text: `Tool ${name} failed against an upstream source. Retry in a moment.` }], isError: true } }
