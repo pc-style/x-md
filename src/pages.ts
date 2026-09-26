@@ -278,7 +278,7 @@ export function privacyHtml(): string {
         <ul>
           <li>Send <strong>DNT: 1</strong>, <strong>Sec-GPC: 1</strong>, or <strong>X-Xmd-Archive-Opt-Out: 1</strong> with a request, or set the <strong>__Host-xmd_archive_optout=1</strong> cookie: archive capture is skipped and the landing-page analytics do not initialise.</li>
           <li>Use <strong>?nocache=true</strong> to bypass the application cache for a request.</li>
-          <li>Block the third-party requests listed below, or run the service yourself &mdash; a <a href="/docs/self-hosting">self-hosted deployment</a> with no analytics variables configured sends nothing anywhere.</li>
+          <li>Block the third-party requests listed below, or run the service yourself &mdash; a <a href="/docs/self-hosting">self-hosted deployment</a> with no analytics variables configured sends nothing anywhere unless an agent calls the MCP <strong>submit_feedback</strong> tool.</li>
         </ul>
 
         <h2>Third parties</h2>
@@ -287,7 +287,9 @@ export function privacyHtml(): string {
           FxTwitter that supply the content. When analytics are configured, events go to a PostHog
           instance. Loading the landing page in a browser additionally fetches a web font from Fontshare and
           a Product Hunt badge image; both are ordinary third-party requests made by your browser and can be
-          blocked without affecting the API.
+          blocked without affecting the API. When an agent calls the MCP <strong>submit_feedback</strong> tool,
+          the message it writes, with any title, kind, sentiment, and context URL, goes to Notra, which hosts
+          the x.md feedback inbox; nothing else from the request is attached.
         </p>
 
         <h2>Changes</h2>

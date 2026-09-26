@@ -92,7 +92,8 @@ protected authors are excluded entirely.
 - Use `?nocache=true` to bypass the application cache for a request.
 - Block the third-party requests listed below, or run the service yourself — a
   [self-hosted deployment](https://x.pcstyle.dev/docs/self-hosting) with no
-  analytics variables configured sends nothing anywhere.
+  analytics variables configured sends nothing anywhere unless an agent calls
+  the MCP `submit_feedback` tool.
 
 ## Third parties
 
@@ -101,7 +102,10 @@ endpoints and FxTwitter that supply the content. When analytics are configured,
 events go to a PostHog instance. Loading the landing page in a browser
 additionally fetches a web font from Fontshare and a Product Hunt badge image;
 both are ordinary third-party requests made by your browser and can be blocked
-without affecting the API.
+without affecting the API. When an agent calls the MCP `submit_feedback` tool,
+the message it writes, with any title, kind, sentiment, and context URL, goes to
+Notra, which hosts the x.md feedback inbox; nothing else from the request is
+attached.
 
 ## Changes
 

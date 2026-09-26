@@ -21,7 +21,7 @@ sidebar:
 
 ## Connect
 
-One URL, no key, no OAuth: point your client at `https://x.pcstyle.dev/mcp` and the five tools below show up. Pick your client.
+One URL, no key, no OAuth: point your client at `https://x.pcstyle.dev/mcp` and the six tools below show up. Pick your client.
 
 <Tabs>
   <Tab title="Claude Code">
@@ -134,7 +134,7 @@ A client that sends `Accept: text/event-stream` gets the reply as a single SSE f
 
 ## Tools
 
-Every tool is read-only and annotated `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`. None of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.
+The five `x_md_` tools are read-only and annotated `readOnlyHint: true`, `destructiveHint: false`, `idempotentHint: true`, `openWorldHint: true`. None of them post, reply, like, follow, or read protected accounts, direct messages, or Lists. `submit_feedback` is the one tool that writes, and it writes to the x.md feedback inbox, never to X, so it is annotated `readOnlyHint: false` and `idempotentHint: false`.
 
 | Tool | Use it when | Arguments |
 | --- | --- | --- |
@@ -143,8 +143,9 @@ Every tool is read-only and annotated `readOnlyHint: true`, `destructiveHint: fa
 | `x_md_search_posts` | You need current public discussion on a topic, or to locate an account by name | `q`; `feed`, `page`, `limit`, `cursor`, `full` |
 | `x_md_get_followers` | You need to sample or size an account's audience | `handle`; `page`, `limit`, `cursor`, `full` |
 | `x_md_get_following` | You need to map who an account pays attention to | `handle`; `page`, `limit`, `cursor`, `full` |
+| `submit_feedback` | The user hits a bug, asks for something x.md does not support, has a question, or wants to say what worked | `message`; `title`, `kind`, `sentiment`, `contextUrl` |
 
-Each result carries the rendered Markdown as text content plus `structuredContent` matching the tool's `outputSchema`. Paging works exactly as it does over HTTP: `limit` caps at 20, `page` caps at 10, and deep walks follow `next_cursor`.
+Each read result carries the rendered Markdown as text content plus `structuredContent` matching the tool's `outputSchema`; `submit_feedback` returns a one-line confirmation and the stored entry's `id`. Paging works exactly as it does over HTTP: `limit` caps at 20, `page` caps at 10, and deep walks follow `next_cursor`.
 
 ```bash
 curl -sS -X POST https://x.pcstyle.dev/mcp \

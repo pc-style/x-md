@@ -95,15 +95,16 @@ describe('protocol negotiation', () => {
 })
 
 describe('tools/list', () => {
-  test('every tool is named, described, typed, and annotated read-only', async () => {
+  test('every tool is named, described, typed, and annotated; only feedback writes', async () => {
     const tools = ok(await dispatch({ jsonrpc: '2.0', id: 4, method: 'tools/list' })).tools as typeof MCP_TOOLS
-    expect(tools).toHaveLength(5)
+    expect(tools).toHaveLength(6)
     expect(tools.map((tool) => tool.name)).toEqual([
       'x_md_get_post',
       'x_md_get_profile',
       'x_md_search_posts',
       'x_md_get_followers',
       'x_md_get_following',
+      'submit_feedback',
     ])
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length)
 
@@ -112,11 +113,12 @@ describe('tools/list', () => {
       expect(tool.name.length).toBeGreaterThanOrEqual(4)
       expect(tool.title.length).toBeGreaterThan(0)
       expect(tool.description.length).toBeGreaterThanOrEqual(20)
+      const writes = tool.name === 'submit_feedback'
       expect(tool.annotations).toEqual({
         title: tool.title,
-        readOnlyHint: true,
+        readOnlyHint: !writes,
         destructiveHint: false,
-        idempotentHint: true,
+        idempotentHint: !writes,
         openWorldHint: true,
       })
 
@@ -133,13 +135,14 @@ describe('tools/list', () => {
     }
   })
 
-  test('the four tools with a fixed argument declare it required', async () => {
+  test('the tools with a fixed argument declare it required', async () => {
     const tools = ok(await dispatch({ jsonrpc: '2.0', id: 4, method: 'tools/list' })).tools as typeof MCP_TOOLS
     const required = Object.fromEntries(tools.map((tool) => [tool.name, tool.inputSchema.required]))
     expect(required.x_md_get_profile).toEqual(['handle'])
     expect(required.x_md_search_posts).toEqual(['q'])
     expect(required.x_md_get_followers).toEqual(['handle'])
     expect(required.x_md_get_following).toEqual(['handle'])
+    expect(required.submit_feedback).toEqual(['message'])
     // get_post takes a url OR a handle plus an id, so the choice is an anyOf.
     expect(tools[0]!.inputSchema.anyOf).toEqual([{ required: ['url'] }, { required: ['handle', 'id'] }])
   })
@@ -257,6 +260,32 @@ describe('tools/call', () => {
     expect(result.isError).toBe(true)
     expect((result.content as Array<{ text: string }>)[0]!.text).toContain('x_md_get_profile')
     logged.mockRestore()
+  })
+
+  test('feedback is posted to the Notra inbox and the stored id comes back', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ feedback: { id: 'fb_1' }, deduplicated: false }), { status: 202 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = ok(await dispatch({
+      jsonrpc: '2.0', id: 11, method: 'tools/call',
+      params: { name: 'submit_feedback', arguments: { message: '  search drops quoted posts  ', kind: 'bug', contextUrl: 'https://x.pcstyle.dev/docs/mcp' } },
+    }))
+    vi.unstubAllGlobals()
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://api.usenotra.com/v1/feedback/x-md')
+    expect(init.method).toBe('POST')
+    expect(new Headers(init.headers).get('authorization')).toBeNull()
+    expect(JSON.parse(String(init.body))).toEqual({ message: 'search drops quoted posts', kind: 'bug', contextUrl: 'https://x.pcstyle.dev/docs/mcp' })
+    expect(result.isError).toBe(false)
+    expect(result.structuredContent).toEqual({ id: 'fb_1', deduplicated: false })
+  })
+
+  test('a rejected feedback submission is a readable tool result', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429 })))
+    const result = ok(await dispatch({ jsonrpc: '2.0', id: 12, method: 'tools/call', params: { name: 'submit_feedback', arguments: { message: 'hi' } } }))
+    vi.unstubAllGlobals()
+    expect(result.isError).toBe(true)
+    expect((result.content as Array<{ text: string }>)[0]!.text).toBe('Feedback could not be submitted (HTTP 429): Too many requests')
   })
 })
 

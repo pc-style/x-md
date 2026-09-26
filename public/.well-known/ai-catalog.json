@@ -65,7 +65,8 @@
         "x_md_get_profile",
         "x_md_search_posts",
         "x_md_get_followers",
-        "x_md_get_following"
+        "x_md_get_following",
+        "submit_feedback"
       ],
       "representativeQueries": [
         "read this X post and its replies",
