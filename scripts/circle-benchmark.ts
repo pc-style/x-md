@@ -27,7 +27,13 @@ async function circle(handle: string) {
     for (const [name, value] of Object.entries({ format: 'json', ...params })) url.searchParams.set(name, value)
     for (let attempt = 0; ; attempt++) {
       const start = performance.now()
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(125_000) })
+      let response: Response
+      try {
+        response = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(125_000) })
+      } catch (error) {
+        requests.push({ path, status: 0, ms: Math.round(performance.now() - start), retry: attempt })
+        throw error
+      }
       const parsed: unknown = await response.json().catch(() => null)
       const body = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Body : {}
       const expectsProfile = path.startsWith('/api/v1/profiles/') && !path.endsWith('/posts')
@@ -119,7 +125,7 @@ async function circle(handle: string) {
   }))
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
-  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }
