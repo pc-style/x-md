@@ -133,8 +133,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     : error
 
   if (format === 'ndjson') {
-    // Posts are streamed unsorted as the parallel chains deliver them; the
-    // trailing `meta` line is the signal that the walk finished.
+    // Emit the final selection so NDJSON and JSON agree. The trailing meta
+    // line is required to distinguish completion from a broken connection.
     res.status(200)
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
     res.setHeader('X-Accel-Buffering', 'no')
@@ -144,8 +144,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await importWithHistory({ ...options, signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
-      if (!(error instanceof ConvertError)) console.error(error)
-      const problem = streamProblemFrom(importError(error), instance, streamedPosts)
+      const normalized = importError(error)
+      if (!(normalized instanceof ConvertError)) console.error(normalized)
+      const problem = streamProblemFrom(normalized, instance, streamedPosts)
       res.write(`${JSON.stringify({ error: problem })}\n`)
     }
     return res.end()
@@ -165,8 +166,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
       return res.status(status).send(body)
     }
-    if (!(error instanceof ConvertError)) console.error(error)
-    return sendProblem(res, problemFrom(importError(error), instance), accept, req.method)
+    const normalized = importError(error)
+    if (!(normalized instanceof ConvertError)) console.error(normalized)
+    return sendProblem(res, problemFrom(normalized, instance), accept, req.method)
   }
 }
 

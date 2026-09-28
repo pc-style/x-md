@@ -449,3 +449,13 @@ test('require_live refuses web snippets when mention search is unavailable', asy
   await expect(browse({ resource: 'search', q: '@ada', require_live: 'true' })).rejects.toMatchObject({ code: 'search_unavailable' })
   expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
 })
+
+test('direct replies have bounded sample semantics, without fake pagination', async () => {
+  const {fetchFxConversationReplies} = await import('./fxtwitter.js')
+  vi.mocked(fetchFxConversationReplies).mockResolvedValue([post])
+  const result=await browse({resource:'replies',id:'20',limit:100})
+  expect(result.posts).toEqual([post])
+  expect(result.nextCursor).toBeUndefined()
+  expect(fetchFxConversationReplies).toHaveBeenCalledWith('20','recency',100)
+  await expect(browse({resource:'replies',id:'20',cursor:'next'})).rejects.toMatchObject({code:'invalid_option'})
+})
