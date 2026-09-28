@@ -23,6 +23,7 @@
  *   floor come back empty; three empty windows in a row past the newest
  *   non-empty one ends the import.
  */
+import { withImportSlot } from './import-admission.js'
 import { ConvertError } from './errors.js'
 import { cursorAt, snowflakeTime } from './fx-cursor.js'
 import { FX_BASES, fetchFxProfile, fetchFxProfileStatuses, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
@@ -84,6 +85,8 @@ export interface ImportMeta {
   truncated: boolean
   /** Upstream stopped answering before `since`: X's ~3200 entry timeline floor. */
   floor_reached: boolean
+  covered_since?: string
+  next_until?: string
   with_replies: boolean
   with_reposts: boolean
   only_replies: boolean
@@ -124,12 +127,13 @@ let inFlight = 0
 const waiting: Array<() => void> = []
 async function governed<T>(task: () => Promise<T>): Promise<T> {
   if (inFlight >= IMPORT_MAX_CONCURRENCY) await new Promise<void>((resolve) => waiting.push(resolve))
-  inFlight += 1
+  else inFlight += 1
   try {
     return await task()
   } finally {
-    inFlight -= 1
-    waiting.shift()?.()
+    const next = waiting.shift()
+    if (next) next()
+    else inFlight -= 1
   }
 }
 
@@ -173,6 +177,10 @@ export function estimateRate(page: FxTweet[], handle: string): number {
 }
 
 export async function importProfilePosts(input: ImportInput): Promise<ImportResult> {
+  return withImportSlot(() => walkProfilePosts(input))
+}
+
+async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
   const startedAt = Date.now()
   const handle = input.handle
   const withReplies = input.withReplies ?? true
@@ -218,14 +226,15 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
 
   // First page from the range top: sizes the windows and covers the newest slice.
   const [profile, first] = await Promise.all([
-    fetchFxProfile(handle),
+    fetchFxProfile(handle, input.signal),
     fetchPage(cursorAt(until + 1)),
   ])
   const rate = estimateRate(first.results, handle)
-  const windowMs = Math.min(Math.max((input.tuning?.windowTargetPosts ?? WINDOW_TARGET_POSTS) / rate, WINDOW_MIN_HOURS), WINDOW_MAX_HOURS) * 3_600_000
+  let windowMs = Math.min(Math.max((input.tuning?.windowTargetPosts ?? WINDOW_TARGET_POSTS) / rate, WINDOW_MIN_HOURS), WINDOW_MAX_HOURS) * 3_600_000
 
   // Lazy window generator plus a stack of subdivisions from over-long windows.
   let nextIndex = 0
+  let nextStart = until
   const extra: Window[] = []
   let newestNonEmpty = -1
   let emptyBeyond = 0
@@ -246,13 +255,14 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       cappedOut = true
       return undefined
     }
-    const start = until - nextIndex * windowMs
+    const start = nextStart
     let end = start - windowMs
     if (end <= lowerBound) {
       end = lowerBound
       sinceReached = true
     }
     if (start <= lowerBound) return undefined
+    nextStart = end
     return { start, end, index: nextIndex++ }
   }
 
@@ -260,6 +270,7 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     stats.windows += 1
     // A forged cursor starts strictly below its instant, so seek 1 ms past the bound to include it.
     let cursor = cursorAt(window.start + 1)
+    const cursors = new Set<string>()
     let own = 0
     let oldestSeen = window.start
     // Upstream answered with nothing at all. A seek into a quiet stretch still
@@ -269,7 +280,9 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
     for (let pages = 0; ; pages += 1) {
       let page: Awaited<ReturnType<typeof fetchPage>>
       try {
-        page = await fetchPage(cursor)
+        if (cursors.has(cursor)) { pageMissing = true; break }
+        cursors.add(cursor)
+        page = window.index === 0 && pages === 0 ? first : await fetchPage(cursor)
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'partial_upstream_failure')) throw error
         pageMissing = true
@@ -286,6 +299,11 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
         barren = pages === 0
         break
       }
+      // Activity can fall sharply in older history. Resize future windows
+      // from observed pages instead of retaining a bursty first-page rate.
+      const observedRate = estimateRate(page.results, handle)
+      const observedWindow = Math.min(Math.max((input.tuning?.windowTargetPosts ?? WINDOW_TARGET_POSTS) / observedRate, WINDOW_MIN_HOURS), WINDOW_MAX_HOURS) * 3_600_000
+      windowMs = Math.max(windowMs, observedWindow)
       // Pages are ordered by timeline position, not by `created_at`: X groups a
       // conversation so an older parent sits right above the newer reply that
       // put it there. So keep every own entry a page returns (windows overlap
@@ -304,12 +322,15 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       const position = tail.length > 0 ? Math.max(...tail) : undefined
       if (position !== undefined) oldestSeen = Math.min(oldestSeen, position)
       const crossed = position !== undefined && position < window.end
+      // Skip quiet intervals already covered by this page's tail.
+      if (crossed && position !== undefined) nextStart = Math.min(nextStart, position)
       if (crossed || !page.cursor?.bottom) break
       if (pages + 1 >= WINDOW_MAX_PAGES) {
         // Rate was underestimated for this stretch; hand the rest to another chain,
         // but only when this one moved: a window that yielded no own original post
         // would otherwise be re-queued unchanged forever.
         if (oldestSeen < window.start && oldestSeen > window.end) extra.push({ start: oldestSeen, end: window.end, index: window.index })
+        else pageMissing = true
         break
       }
       cursor = page.cursor.bottom
@@ -341,10 +362,12 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       await walk(window)
     }
   }
+  const workers = Array.from({ length: concurrency }, worker)
   try {
-    await Promise.all(Array.from({ length: concurrency }, worker))
+    await Promise.all(workers)
   } catch (error) {
     stopAll.abort(error)
+    await Promise.allSettled(workers)
     throw error
   } finally {
     input.signal?.removeEventListener('abort', onOuterAbort)
@@ -352,7 +375,8 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
 
   // Newest first. Reposts sort by the original post's id, which is all upstream gives.
   let posts = [...seen.values()].sort((a, b) => (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
-  const truncated = posts.length > maxPosts || cappedOut || pageMissing
+  const budgetReached = nextIndex >= MAX_WINDOWS && !sinceReached && !floorReached
+  const truncated = posts.length > maxPosts || cappedOut || pageMissing || budgetReached
   if (posts.length > maxPosts) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))
   const iso = (ms: number) => new Date(ms).toISOString()
@@ -368,8 +392,10 @@ export async function importProfilePosts(input: ImportInput): Promise<ImportResu
       oldest: originals.length ? iso(postTime(originals[originals.length - 1])) : undefined,
       newest: originals.length ? iso(postTime(originals[0])) : undefined,
       truncated,
-      floor_reached: floorReached && !pageMissing,
-      warnings: pageMissing ? ['page_missing'] : undefined,
+      covered_since: iso(Math.max(lowerBound, nextStart)),
+      next_until: truncated ? iso(Math.max(lowerBound, nextStart, originals.length ? postTime(originals[originals.length - 1]) : until)) : undefined,
+      floor_reached: (floorReached || (sinceReached && (since === undefined || since < joined))) && !pageMissing && !budgetReached,
+      warnings: pageMissing || budgetReached ? ['page_missing'] : undefined,
       with_replies: withReplies,
       with_reposts: withReposts,
       only_replies: onlyReplies,

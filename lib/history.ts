@@ -18,6 +18,7 @@
  * Engagement counts in archived posts are as of the walk that stored them.
  * `refresh: true` re-walks the requested range and overwrites.
  */
+import { withHistoryLock } from './import-admission.js'
 import { ConvertError } from './errors.js'
 import { redisConfig, redisPipeline, type RedisCommand } from './redis.js'
 import { importProfilePosts, isRepost, isReply, ownPost, postTime, type ImportInput, type ImportMeta, type ImportResult } from './import.js'
@@ -37,6 +38,7 @@ export interface HistoryIndex {
   covered_until?: string
   /** A missing upstream page left a gap that the next request must re-walk. */
   incomplete?: boolean
+  coverage_version?: number
 }
 
 export interface HistoryMeta extends ImportMeta {
@@ -108,11 +110,11 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
       if (!flat.length) return undefined
       const map: Record<string, string> = {}
       for (let i = 0; i < flat.length; i += 2) map[flat[i]] = flat[i + 1]
-      return { handle: map.handle ?? handle, count: Number(map.count ?? 0), oldest: map.oldest || undefined, newest: map.newest || undefined, updated_at: map.updated_at ?? new Date(0).toISOString(), floor_reached: map.floor_reached === '1', covered_since: map.covered_since || undefined, covered_until: map.covered_until || undefined, incomplete: map.incomplete === '1' }
+      return { handle: map.handle ?? handle, count: Number(map.count ?? 0), oldest: map.oldest || undefined, newest: map.newest || undefined, updated_at: map.updated_at ?? new Date(0).toISOString(), floor_reached: map.floor_reached === '1', covered_since: map.covered_since || undefined, covered_until: map.covered_until || undefined, incomplete: map.incomplete === '1', coverage_version: Number(map.coverage_version ?? 0) }
     },
     async writeIndex(index) {
       const k = keys(index.handle).index
-      await run([['HSET', k, 'handle', index.handle, 'count', index.count, 'oldest', index.oldest ?? '', 'newest', index.newest ?? '', 'updated_at', index.updated_at, 'floor_reached', index.floor_reached ? '1' : '0', 'covered_since', index.covered_since ?? '', 'covered_until', index.covered_until ?? '', 'incomplete', index.incomplete ? '1' : '0']])
+      await run([['HSET', k, 'handle', index.handle, 'count', index.count, 'oldest', index.oldest ?? '', 'newest', index.newest ?? '', 'updated_at', index.updated_at, 'floor_reached', index.floor_reached ? '1' : '0', 'covered_since', index.covered_since ?? '', 'covered_until', index.covered_until ?? '', 'incomplete', index.incomplete ? '1' : '0', 'coverage_version', 2]])
     },
     async put(handle, posts) {
       const k = keys(handle)
@@ -199,7 +201,7 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
   // can be disjoint from the old archive; retaining its old lower bound would
   // hide the unfetched gap forever. Keep the newest interval conservatively.
   const intervals = [...covered]
-  if (previous?.covered_until && !previous.incomplete) intervals.push({
+  if (previous?.covered_until && previous.coverage_version === 2 && !previous.incomplete) intervals.push({
     since: previous.floor_reached ? undefined : previous.covered_since ? Date.parse(previous.covered_since) : previous.oldest ? Date.parse(previous.oldest) : Date.parse(previous.covered_until),
     until: Date.parse(previous.covered_until), floor: previous.floor_reached,
   })
@@ -220,6 +222,7 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
     updated_at: new Date().toISOString(),
     floor_reached: floor,
     incomplete,
+    coverage_version: 2,
     covered_since: coveredSince === undefined ? undefined : new Date(coveredSince).toISOString(),
     covered_until: coveredUntil ? new Date(coveredUntil).toISOString() : previous?.incomplete ? undefined : previous?.covered_until,
   }
@@ -228,6 +231,10 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
 }
 
 export async function importWithHistory(input: HistoryInput): Promise<HistoryResult> {
+  return withHistoryLock(input.handle, () => importHistory(input))
+}
+
+async function importHistory(input: HistoryInput): Promise<HistoryResult> {
   const s = store()
   const startedAt = Date.now()
   const handle = input.handle
@@ -251,7 +258,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const emit = (post: FxTweet) => {
     if (!post.id || emitted.has(post.id) || !wanted(post)) return
     emitted.add(post.id)
-    if (emitted.size <= maxPosts) input.onPost?.(post)
+    // Stream only the final selection: concurrent arrivals can be evicted by newer posts.
   }
 
   let index = input.refresh ? undefined : await s.readIndex(handle)
@@ -265,7 +272,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
   const walk = async (kind: HistoryMeta['archive']['walked'][number], from: number | undefined, to: number, maxPosts: number) => {
     walked.push(kind)
     const result = await importProfilePosts({
-      handle, since: from === undefined ? undefined : new Date(from), until: new Date(to), maxPosts,
+      handle, since: from === undefined ? undefined : new Date(from), until: new Date(to), maxPosts: !withReplies || !withReposts || onlyReplies ? 5000 : maxPosts,
       concurrency: input.concurrency, withReplies: true, withReposts: true, signal: input.signal, tuning: input.tuning,
       onPost: (post) => { if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
     })
@@ -276,7 +283,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     walks.push(result.meta)
     // A capped walk did not reach `from`; what it covered ends at its oldest post.
     const reachedFrom = !result.meta.truncated
-    if (!result.meta.warnings?.length) covered.push({ since: reachedFrom && result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: reachedFrom && result.meta.floor_reached })
+    if (!result.meta.warnings?.length) covered.push({ since: reachedFrom && result.meta.floor_reached ? undefined : reachedFrom ? from : (result.meta.next_until ? Date.parse(result.meta.next_until) : result.meta.oldest ? Date.parse(result.meta.oldest) : to), until: to, floor: reachedFrom && result.meta.floor_reached })
     return result
   }
 
@@ -287,7 +294,7 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     for (const post of archived) emit(post)
   }
 
-  if (!index || index.incomplete) {
+  if (!index || index.incomplete || index.coverage_version !== 2) {
     await walk('refresh', since, until, maxPosts)
   } else {
     const coveredUntil = index.covered_until ? Date.parse(index.covered_until) : (index.newest ? Date.parse(index.newest) : undefined)
@@ -328,6 +335,8 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     newest: originals.length ? new Date(postTime(originals[0])).toISOString() : undefined,
     truncated,
     floor_reached: warnings.length ? false : index.floor_reached,
+    covered_since: index.covered_since,
+    next_until: truncated && originals.length ? new Date(Math.max(postTime(originals[originals.length - 1]), index.covered_since ? Date.parse(index.covered_since) : 0)).toISOString() : undefined,
     warnings: warnings.length ? [...new Set(warnings)] : undefined,
     with_replies: withReplies,
     with_reposts: withReposts,
@@ -341,5 +350,6 @@ export async function importWithHistory(input: HistoryInput): Promise<HistoryRes
     source: 'fxtwitter',
     archive: { ...index, served: posts.filter((post) => !freshIds.has(post.id)).length, added, walked },
   }
+  for (const post of posts) input.onPost?.(post)
   return { profile, posts, meta }
 }

@@ -47,6 +47,11 @@ interface CatalogEntry {
 
 /** Every machine code x.md can emit: its stable title and how to recover. */
 export const ERROR_CATALOG = {
+  import_busy: {
+    status: 503,
+    title: 'Fresh import capacity is busy',
+    resolution: 'Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.',
+  },
   missing_url: {
     status: 400,
     title: 'Missing url parameter',

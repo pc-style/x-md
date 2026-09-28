@@ -83,6 +83,13 @@ function operations(origin: string): Operation[] {
       example: `${origin}/api/v1/profiles/jack/following`,
     },
     {
+      operationId: 'readPostReplies',
+      method: 'GET',
+      path: '/api/v1/posts/{id}/replies',
+      description: 'A bounded sample of direct replies, newest first; no cursor or exhaustive coverage.',
+      example: `${origin}/api/v1/posts/20/replies?limit=100&format=json`,
+    },
+    {
       operationId: 'searchPosts',
       method: 'GET',
       path: '/api/v1/search',

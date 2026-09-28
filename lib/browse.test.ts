@@ -36,6 +36,7 @@ vi.mock('./fxtwitter.js', () => ({
   fetchFxProfile: vi.fn(),
   fetchFxProfileStatuses: vi.fn(),
   fetchFxConnections: vi.fn(),
+  fetchFxConversationReplies: vi.fn(),
   searchFxStatuses: vi.fn(),
 }))
 
@@ -64,12 +65,12 @@ describe('browse', () => {
       results: [post, { ...post, id: '2', replying_to: ['bob'] }, { ...post, id: '3', reposted_by: 'bob' }],
       cursor: { bottom: 'next' },
     })
-    const result = await browse({ resource: 'profile', handle: 'ada', nocache: true })
+    const result = await browse({ resource: 'profile', handle: 'ada', limit: 1, nocache: true })
     expect(result.posts).toHaveLength(1)
     expect(result.markdown).toContain('[@ada](https://x.com/ada)')
     expect(result.markdown).toContain('[Source](https://x.com/ada/status/1)')
-    expect(result.markdown).toContain('/ada?cursor=next')
-    expect(result.markdown).toContain('/ada?page=2')
+    expect(result.markdown).toContain('cursor=profile%3Anext')
+    expect(result.markdown).toContain('page=2')
   })
 
   test('walks cursors sequentially for page=N and cuts blocks exactly at the limit', async () => {
@@ -167,7 +168,7 @@ describe('browse', () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     await browse({ resource: 'search', q: 'x-md', format: 'json' })
     expect(vi.mocked(buildCacheKey)).toHaveBeenCalledWith(
-      expect.objectContaining({ format: 'json', v: 5 }),
+      expect.objectContaining({ format: 'json', v: 6 }),
     )
   })
 })
@@ -383,16 +384,16 @@ describe('profile pages', () => {
       ],
       cursor: { bottom: REAL },
     })
-    const all = await browse({ resource: 'profile', handle: 'ada', with_replies: 'true', with_reposts: 'true', nocache: true })
+    const all = await browse({ resource: 'profile', handle: 'ada', limit: 3, with_replies: 'true', with_reposts: 'true', nocache: true })
     expect(all.posts?.map((p) => p.id?.slice(-1))).toEqual(['1', '2', '3'])
     expect(all.markdown).toContain('with_replies=true')
     expect(all.markdown).toContain('with_reposts=true')
-    expect(fetchFxProfileStatuses).toHaveBeenCalledWith('ada', undefined, 20, { withReplies: true, retries: 2 })
+    expect(fetchFxProfileStatuses).toHaveBeenCalledWith('ada', undefined, 100, { withReplies: true, retries: 2 })
     const replies = await browse({ resource: 'profile', handle: 'ada', with_replies: 'true', nocache: true })
     expect(replies.posts?.map((p) => p.id?.slice(-1))).toEqual(['1', '2'])
     const originals = await browse({ resource: 'profile', handle: 'ada', nocache: true })
     expect(originals.posts?.map((p) => p.id?.slice(-1))).toEqual(['1'])
-    expect(fetchFxProfileStatuses).toHaveBeenCalledWith('ada', undefined, 20, { withReplies: false, retries: 2 })
+    expect(fetchFxProfileStatuses).toHaveBeenCalledWith('ada', undefined, 100, { withReplies: false, retries: 2 })
   })
 
   test('assembles up to 100 posts from several upstream pages and cuts exactly at the limit', async () => {
@@ -400,39 +401,28 @@ describe('profile pages', () => {
     let next = 300
     vi.mocked(fetchFxProfileStatuses).mockImplementation(async () => {
       const results = Array.from({ length: 30 }, () => mine(next--))
-      return { results, cursor: { bottom: REAL } }
+      return { results, cursor: { bottom: `page-${next}` } }
     })
     const result = await browse({ resource: 'profile', handle: 'ada', limit: 100, nocache: true })
     expect(result.posts).toHaveLength(100)
     expect(result.limit).toBe(100)
     expect(fetchFxProfileStatuses).toHaveBeenCalledTimes(4)
-    // The continuation is forged at the last returned post, not the upstream page end.
-    const decoded = decodeTimelineCursor(result.nextCursor!)!
-    expect(decoded.sortIndex.toString()).toBe(result.posts![99].id)
-    expect(decoded.direction).toBe(2)
-    expect(decoded.issuedAt).toBe(decodeTimelineCursor(REAL)!.issuedAt)
+    expect(result.nextCursor).toBe('profile:page-210@10')
   })
 
-  test('never ends a block on a repost', async () => {
-    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', name: 'Ada' })
-    vi.mocked(fetchFxProfileStatuses).mockResolvedValue({
-      results: [mine(5), mine(4, { author: { screen_name: 'bob' }, reposted_by: { screen_name: 'ada' } }), mine(3)],
-      cursor: { bottom: REAL },
-    })
-    const result = await browse({ resource: 'profile', handle: 'ada', limit: 2, with_reposts: 'true', nocache: true })
-    expect(result.posts?.map((p) => p.id?.slice(-1))).toEqual(['5'])
-    expect(decodeTimelineCursor(result.nextCursor!)!.sortIndex.toString()).toBe(result.posts![0].id)
-  })
-
-  test('falls back to the previous upstream page when the overflow is all reposts', async () => {
-    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', name: 'Ada' })
+  test('repost-heavy pages respect limit and resume without losing overflow', async () => {
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada' })
     const rt = (id: number) => mine(id, { author: { screen_name: 'bob' }, reposted_by: { screen_name: 'ada' } })
-    vi.mocked(fetchFxProfileStatuses)
-      .mockResolvedValueOnce({ results: [mine(9), mine(8)], cursor: { bottom: 'page-2' } })
-      .mockResolvedValueOnce({ results: [rt(7), rt(6), rt(5)], cursor: { bottom: REAL } })
-    const result = await browse({ resource: 'profile', handle: 'ada', limit: 3, with_reposts: 'true', nocache: true })
-    expect(result.posts?.map((p) => p.id?.slice(-1))).toEqual(['9', '8'])
-    expect(result.nextCursor).toBe('page-2')
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (_h, cursor) => cursor === 'end' ? { results: [] } : {
+      results: [mine(9), rt(8), rt(7), rt(6), mine(5)], cursor: { bottom: 'end' },
+    })
+    const first = await browse({ resource: 'profile', handle: 'ada', limit: 2, with_reposts: 'true' })
+    const second = await browse({ resource: 'profile', handle: 'ada', limit: 2, with_reposts: 'true', cursor: first.nextCursor })
+    const third = await browse({ resource: 'profile', handle: 'ada', limit: 2, with_reposts: 'true', cursor: second.nextCursor })
+    expect([...first.posts!, ...second.posts!, ...third.posts!].map(p => p.id?.slice(-1))).toEqual(['9', '8', '7', '6', '5'])
+    expect(first.posts).toHaveLength(2)
+    expect(second.posts).toHaveLength(2)
+    expect(third.nextCursor).toBeUndefined()
   })
 
   test('seeks to `until` with a forged cursor and rejects bad dates', async () => {
@@ -443,4 +433,19 @@ describe('profile pages', () => {
     expect(snowflakeTime(decodeTimelineCursor(cursor)!.sortIndex)).toBe(Date.UTC(2026, 2, 1))
     await expect(browse({ resource: 'profile', handle: 'ada', until: 'soon', nocache: true })).rejects.toMatchObject({ code: 'invalid_option' })
   })
+})
+
+test('identity-only profile lookup does not spend a timeline request', async () => {
+  vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', avatar_url: 'https://pbs.twimg.com/ada.jpg' })
+  const result = await browse({ resource: 'profile', handle: 'ada', include_posts: 'false' })
+  expect(result.profile?.screen_name).toBe('ada')
+  expect(fetchFxProfileStatuses).not.toHaveBeenCalled()
+  expect(result.posts).toEqual([])
+})
+
+test('require_live refuses web snippets when mention search is unavailable', async () => {
+  vi.mocked(xsearchConfigured).mockReturnValue(false)
+  vi.mocked(searchFxStatuses).mockRejectedValue(new ConvertError(503, 'unavailable', 'search_unavailable'))
+  await expect(browse({ resource: 'search', q: '@ada', require_live: 'true' })).rejects.toMatchObject({ code: 'search_unavailable' })
+  expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
 })

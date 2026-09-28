@@ -142,16 +142,25 @@ function xDate(date: Date | undefined): string | undefined {
 
 export function tweetToFx(tweet: Tweet): FxTweet {
   const handle = tweet.username
+  const raw = tweet.__raw_UNSTABLE as ({
+    in_reply_to_screen_name?: string
+    display_text_range?: number[]
+    entities?: { user_mentions?: Array<{ screen_name?: string; indices?: number[] }> }
+  }) | undefined
   const photos = tweet.photos.map((photo) => ({ type: 'photo', url: photo.url, alt: photo.alt_text }))
   const videos = tweet.videos.map((video) => ({ type: 'video', url: video.url, thumbnail_url: video.preview }))
   const all = [...photos, ...videos]
   return {
+    type: 'status',
     id: tweet.id,
+    raw_text: { text: tweet.text, display_text_range: raw?.display_text_range,
+      facets: raw?.entities?.user_mentions?.filter(mention => mention.screen_name).map(mention => ({ type: 'mention', original: `@${mention.screen_name}`, indices: mention.indices })) ?? [] },
+    replying_to: tweet.inReplyToStatusId ? { screen_name: raw?.in_reply_to_screen_name ?? tweet.inReplyToStatus?.username, status: tweet.inReplyToStatusId } : undefined,
     url: tweet.permanentUrl ?? (handle && tweet.id ? `https://x.com/${handle}/status/${tweet.id}` : undefined),
     text: tweet.text,
     created_at: xDate(tweet.timeParsed),
     created_timestamp: tweet.timestamp,
-    author: handle ? { name: tweet.name ?? handle, screen_name: handle, url: `https://x.com/${handle}`, id: tweet.userId } : undefined,
+    author: handle ? { avatar_url: tweet.avatar, name: tweet.name ?? handle, screen_name: handle, url: `https://x.com/${handle}`, id: tweet.userId } : undefined,
     replies: tweet.replies,
     retweets: tweet.retweets,
     likes: tweet.likes,

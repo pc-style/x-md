@@ -135,6 +135,8 @@ export type FxReplyingTo =
   | null
 
 export interface FxTweet {
+  type?: 'status'
+  raw_text?: { text?: string; display_text_range?: number[]; facets?: Array<{ type: string; original: string; indices?: number[] }> }
   url?: string
   id?: string
   text?: string
@@ -252,10 +254,13 @@ export function retryAfterSeconds(header: string | null): number | undefined {
 async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   let response: Response
   const base = pickFxBase()
+  const remaining = Math.ceil(((coolUntil.get(base) ?? 0) - Date.now()) / 1000)
+  if (remaining > 0) throw new ConvertError(503, 'The data source is cooling down. Retry after the indicated delay.', 'upstream_rate_limited', remaining)
   try {
+    const timeout = AbortSignal.timeout(12_000)
     response = await providerFetch('fxtwitter', `${base}/${path}`, {
       headers: { Accept: 'application/json', 'User-Agent': UA },
-      signal,
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     })
   } catch (error) {
     if (signal?.aborted) throw error
@@ -275,7 +280,11 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
     throw new ConvertError(503, `FxTwitter upstream ${new URL(base).host} answered ${response.status}.`, 'upstream_rate_limited', 0)
   }
 
-  const data = (await response.json()) as FxApiResponse
+  if (response.status >= 500) throw new ConvertError(503, 'The data source is temporarily unavailable.', 'upstream_unavailable', retryAfterSeconds(response.headers.get('retry-after')) ?? 30)
+  let data: FxApiResponse
+  try { data = await response.json() as FxApiResponse } catch {
+    throw new ConvertError(502, 'The data source returned an invalid response.', 'partial_upstream_failure', 10)
+  }
 
   if (data.message === 'PRIVATE_TWEET') {
     throw new ConvertError(404, 'Post is private and cannot be fetched.', 'private_tweet')
@@ -301,7 +310,10 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   // A valid empty list is not an outage; a missing expected payload is.
   if (path.startsWith('2/status/') && !data.status && !data.tweet) reportProviderResponse(response, 'empty_response')
   else if (/^2\/profile\/[^/?]+$/.test(path) && !(data as { user?: unknown }).user) reportProviderResponse(response, 'empty_response')
-  else if ((path.startsWith('2/search?') || /^2\/profile\/[^/]+\/(statuses|followers|following)/.test(path)) && !Array.isArray((data as { results?: unknown }).results)) reportProviderResponse(response, 'parse_failure')
+  else if ((path.startsWith('2/search?') || /^2\/profile\/[^/]+\/(statuses|followers|following)/.test(path)) && !Array.isArray((data as { results?: unknown }).results)) {
+    reportProviderResponse(response, 'parse_failure')
+    throw new ConvertError(502, 'The data source omitted the requested list.', 'partial_upstream_failure', 10)
+  }
 
   return data as T
 }
@@ -318,10 +330,19 @@ function encodeQuery(params: Record<string, string | number | undefined>): strin
   return query.toString()
 }
 
-export async function fetchFxProfile(handle: string): Promise<FxAuthor> {
-  const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`)
-  if (!data.user) throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
-  return data.user
+export async function fetchFxProfile(handle: string, signal?: AbortSignal): Promise<FxAuthor> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`, signal)
+      if (!data.user) throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
+      return data.user
+    } catch (error) {
+      // NOT_FOUND is intermittently returned for real profiles. One bounded
+      // retry recovers it; an actual provider Retry-After must be surfaced.
+      if (attempt || !(error instanceof ConvertError) || error.code !== 'upstream_unavailable' || !error.message.startsWith('X profile')) throw error
+      await abortableDelay(250, signal)
+    }
+  }
 }
 
 export interface FxProfileStatusesOptions {
@@ -379,10 +400,10 @@ export async function fetchFxProfileStatuses(
       }
       // A throttled page is worth a short wait when the caller asked for retries;
       // the loop still ends with the error so a hard limit surfaces as 503.
-      if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && throttled < FX_THROTTLE_WAITS) {
+      if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && (error.retryAfter ?? 0) <= 10 && throttled < FX_THROTTLE_WAITS) {
         throttled += 1
         attempt -= 1
-        if (error.retryAfter) await abortableDelay(Math.min(error.retryAfter, 10) * 1000, options.signal)
+        if (error.retryAfter) await abortableDelay(error.retryAfter * 1000, options.signal)
         continue
       }
       throw error

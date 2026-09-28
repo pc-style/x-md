@@ -8,16 +8,16 @@ sidebar:
 
 ## Read a profile
 
-`GET /{handle}` — the permalink form. It returns the profile and its recent posts: original posts only by default, up to 100 per page with `limit`. Add `with_replies=true` and `with_reposts=true` to get the account's replies and reposts too. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`, so `limit=100` really returns 100.
+`GET /{handle}` — the permalink form. It returns the profile and its recent posts: original posts only by default, up to 100 per page with `limit`. Add `with_replies=true` and `with_reposts=true` to get the account's replies and reposts too. The response contains at most `limit` posts. Filtering, deduplication, upstream depth and a bounded page budget can produce a shorter response; follow `nextCursor` even after a short page.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/vercel?full=true'
+curl -sS 'https://mdfromx.com/vercel?full=true'
 ```
 
 `GET /api/v1/profiles/{handle}` — the same read on the [versioned surface](/versioning).
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
+curl -sS 'https://mdfromx.com/api/v1/profiles/vercel?full=true'
 ```
 
 ## Read connections
@@ -25,13 +25,13 @@ curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
 `GET /{handle}/followers` and `GET /{handle}/following` list who follows an account and who it follows, up to 100 per page, raw JSON with `format=json`, and no ceiling on how far a cursor goes.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/vercel/followers'
+curl -sS 'https://mdfromx.com/vercel/followers'
 ```
 
 The same two lists sit under `/api/v1/profiles/{handle}`:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel/following?format=json'
+curl -sS 'https://mdfromx.com/api/v1/profiles/vercel/following?format=json'
 ```
 
 | Permalink route | Versioned route | JSON fields |
@@ -46,7 +46,8 @@ Both forms take the same options and return the same body; the versioned ones ar
 
 | Parameter | Default | Behavior |
 | --- | --- | --- |
-| `limit` | `20` | Items per response, maximum **100**. Every page is cut exactly at `limit`, assembled from as many upstream pages as it takes. |
+| `include_posts` | `true` | Set `false` to fetch only identity/profile, including `avatar_url`, without reading a timeline. Useful for circle enrichment. |
+| `limit` | `20` | Items per response, maximum **100**. An upper bound, not a promised count. Follow `nextCursor` until absent. |
 | `with_replies` | `false` | Profile only. `true` includes the account's replies. |
 | `with_reposts` | `false` | Profile only. `true` includes reposts. A repost is the original post with `reposted_by` set, so it carries the original's `id` and `created_at`. |
 | `until` | — | Profile only. ISO date, ISO datetime, or unix timestamp: the page starts just below that instant, so you can jump to a date without walking cursors. Ignored when `cursor` is present. |
@@ -63,7 +64,7 @@ Follow `nextCursor` to continue. [See pagination](/pagination).
 For hundreds or thousands of posts at once — replies included, raw JSON, streamed — use the bulk route instead of paging:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sS 'https://mdfromx.com/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
 It walks the timeline in parallel, remembers what it collected, and answers repeat imports from that archive. [Import a post history](/bulk-import) covers it end to end.

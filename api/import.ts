@@ -6,7 +6,7 @@ import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apia
 import { ConvertError } from '../lib/errors.js'
 import { parseDateInput } from '../lib/fx-cursor.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
-import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY, IMPORT_MAX_POSTS } from '../lib/import.js'
+import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY_PER_BASE, IMPORT_MAX_POSTS } from '../lib/import.js'
 import { historyPersistent, importWithHistory, readHistoryIndex } from '../lib/history.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
 import { clientIp, rateLimit } from '../lib/ratelimit.js'
@@ -73,15 +73,20 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const invalid = (detail: string) => sendProblem(res, problemDetails('invalid_option', { instance, detail }), accept, req.method)
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) return sendProblem(res, problemDetails('invalid_handle', { instance, detail: 'A valid X handle is required.' }), accept, req.method)
   if (format !== 'json' && format !== 'ndjson') return invalid('`format` must be `json` or `ndjson`.')
+  for (const name of ['with_replies', 'with_reposts', 'only_replies', 'refresh', 'index']) {
+    if (param(name) !== undefined && !['true', 'false', '1', '0'].includes(param(name)!)) return invalid(`\`${name}\` must be true, false, 1, or 0.`)
+  }
+  if (param('max_posts') && param('limit') && param('max_posts') !== param('limit')) return invalid('Use max_posts or its limit alias, not conflicting values.')
+  if (flag(param('only_replies'), false) && param('with_replies') && !flag(param('with_replies'), true)) return invalid('only_replies=true conflicts with with_replies=false.')
   const since = parseDateInput(param('since'))
   const until = parseDateInput(param('until'))
   if (param('since') && !since) return invalid('`since` must be an ISO date, ISO datetime, or unix timestamp.')
   if (param('until') && !until) return invalid('`until` must be an ISO date, ISO datetime, or unix timestamp.')
   if (since && since.getTime() >= (until?.getTime() ?? Date.now())) return invalid('`since` must be earlier than `until`.')
   const maxPosts = bounded(param('max_posts') ?? param('limit'), IMPORT_MAX_POSTS)
-  const concurrency = bounded(param('concurrency'), IMPORT_MAX_CONCURRENCY)
+  const concurrency = bounded(param('concurrency'), IMPORT_MAX_CONCURRENCY_PER_BASE)
   if (Number.isNaN(maxPosts)) return invalid(`\`max_posts\` must be a whole number from 1 to ${IMPORT_MAX_POSTS}.`)
-  if (Number.isNaN(concurrency)) return invalid(`\`concurrency\` must be a whole number from 1 to ${IMPORT_MAX_CONCURRENCY}.`)
+  if (Number.isNaN(concurrency)) return invalid(`\`concurrency\` must be a whole number from 1 to ${IMPORT_MAX_CONCURRENCY_PER_BASE}.`)
 
   res.setHeader('Vary', 'Accept')
   res.setHeader('X-Source', 'fxtwitter')
@@ -122,6 +127,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // A client that leaves stops the walk instead of leaving up to 32 chains running.
   const aborter = new AbortController()
   res.once('close', () => aborter.abort())
+  const signal = AbortSignal.any([aborter.signal, AbortSignal.timeout(110_000)])
+  const importError = (error: unknown) => signal.aborted && signal.reason?.name === 'TimeoutError'
+    ? new ConvertError(502, 'The import exceeded its time budget. Retry the same range.', 'partial_upstream_failure', 10)
+    : error
 
   if (format === 'ndjson') {
     // Posts are streamed unsorted as the parallel chains deliver them; the
@@ -132,18 +141,18 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.flushHeaders()
     let streamedPosts = 0
     try {
-      const result = await importWithHistory({ ...options, signal: aborter.signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
+      const result = await importWithHistory({ ...options, signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
       if (!(error instanceof ConvertError)) console.error(error)
-      const problem = streamProblemFrom(error, instance, streamedPosts)
+      const problem = streamProblemFrom(importError(error), instance, streamedPosts)
       res.write(`${JSON.stringify({ error: problem })}\n`)
     }
     return res.end()
   }
 
   try {
-    const result = await importWithHistory({ ...options, signal: aborter.signal })
+    const result = await importWithHistory({ ...options, signal })
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('X-Result-Count', String(result.meta.count))
     res.setHeader('X-Import-Pages', String(result.meta.pages))
@@ -157,7 +166,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(status).send(body)
     }
     if (!(error instanceof ConvertError)) console.error(error)
-    return sendProblem(res, problemFrom(error, instance), accept, req.method)
+    return sendProblem(res, problemFrom(importError(error), instance), accept, req.method)
   }
 }
 

@@ -286,3 +286,12 @@ describe('importProfilePosts', () => {
     expect(estimateRate([], 'ada')).toBe(1)
   })
 })
+
+test('reaching account creation reports exhausted accessible history', async () => {
+  const entries = timeline('ada', 50, 1)
+  vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', joined: xdate(NOW - 51 * HOUR) })
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(fakeUpstream(entries).mock)
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 5000 })
+  expect(result.meta.floor_reached).toBe(true)
+  expect(result.meta.truncated).toBe(false)
+})

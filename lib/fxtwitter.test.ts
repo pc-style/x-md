@@ -138,17 +138,17 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
   })
 
   test('maps an ambiguous profile 404 to a retryable upstream failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
     await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable', retryAfter: 30 })
   })
 
   test('maps a missing profile payload to a retryable upstream failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 200, message: 'OK' }), { status: 200 })))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 200, message: 'OK' }), { status: 200 })))
     await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
   })
 
   test('maps an ambiguous followers miss to a retryable upstream failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 404, message: 'User not found' }), { status: 404 })))
     await expect(fetchFxConnections('theo', 'followers')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
   })
 
@@ -515,4 +515,17 @@ describe('retryAfterSeconds', () => {
     expect(seconds).toBeLessThanOrEqual(91)
     expect(retryAfterSeconds(new Date(Date.now() - 90_000).toUTCString())).toBe(1)
   })
+})
+
+test('rejects malformed timeline payloads instead of treating them as an empty floor', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 200 }), { status: 200 })))
+  await expect(fetchFxProfileStatuses('ada', 'cursor')).rejects.toMatchObject({ code: 'partial_upstream_failure' })
+})
+
+test('recovers one transient identity miss without failing the circle', async () => {
+  const fetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' })))
+    .mockResolvedValueOnce(new Response(JSON.stringify({ user: { screen_name: 'ada' } })))
+  vi.stubGlobal('fetch', fetch)
+  expect(await fetchFxProfile('ada')).toMatchObject({ screen_name: 'ada' })
+  expect(fetch).toHaveBeenCalledTimes(2)
 })
