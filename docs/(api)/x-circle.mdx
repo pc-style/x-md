@@ -23,12 +23,12 @@ Check `X-Api-Key-Status: valid`. An invalid key returns 401; retrying it does no
 | Identity and avatar | `/api/v1/profiles/{handle}?include_posts=false&format=json` | `profile.id`, `screen_name`, `name`, `avatar_url`, `protected` |
 | Own posts, replies, reposts | `/api/v1/profiles/{handle}/posts?since={ISO}&max_posts=1000&format=json` | `posts`, `meta`; replies and reposts default to true |
 | Timeline-position pagination | `/api/v1/profiles/{handle}?with_replies=true&with_reposts=true&limit=100&format=json` | `posts`, opaque `nextCursor` |
-| Incoming mentions | `/api/v1/search?q=%40{handle}&feed=latest&since={ISO}&limit=100&require_live=true&format=json` | `posts`, `nextCursor`; the live fallback can return at most 20 per request |
+| Incoming mentions | `/api/v1/search?q=(%40{handle}%20OR%20to%3A{handle})&feed=latest&since={ISO}&limit=100&require_live=true&format=json` | `posts`, `nextCursor`; the live fallback can return at most 20 per request |
 | Direct reply fallback | `/api/v1/posts/{id}/replies?limit=100&format=json` | `posts`; a bounded recent sample, without pagination or exhaustive coverage |
 | Parent/thread context | `/api/v1/posts?url={encodedStatusURL}&context=full&replies=recent&format=json` | `posts` with `context` of `parent`, `post`, `thread` or `reply` |
 | Missing member avatars | identity-only route above for each missing handle | `profile`; use at most four concurrent lookups |
 
-For a 120-day circle, freeze `until` once and compute `since = until - 120 days`. Run own posts and incoming search concurrently. Follow every returned search cursor, keeping the same query, feed and dates. Stop at your explicit page budget, repeated cursor, or absent cursor; a short page alone is **not** completion. Deduplicate post IDs within each direction. A capped search is a sample, not a full 120-day mention history.
+For a 120-day circle, freeze `until` once and compute `since = until - 120 days`. Run own posts and incoming search concurrently. Reuse `profile` from a fresh import for identity; call the identity-only endpoint if it is absent. Follow every returned search cursor, keeping the same query, feed and dates. Stop at your explicit page budget, repeated cursor, or absent cursor; a short page alone is **not** completion. If `warnings` reports an empty or repeated upstream page, stop, retain the current cursor for a later retry, and label search coverage incomplete. Deduplicate post IDs within each direction. A capped search is a sample, not a full 120-day mention history.
 
 ## Build interactions
 
@@ -38,7 +38,7 @@ For replies, `replying_to` is normally an object with `screen_name` and `status`
 
 Exclude self-interactions and deduplicate `(post ID, other handle, direction, kind)`. One compatible scoring rule weights reply 3, quote 2.5, mention 1.5 and repost 1, halves weight every 30 days, and combines outgoing score `a` and incoming score `b` as `a + b + 2 * sqrt(a * b)`. Keep source and coverage alongside scores: a larger score from a larger sample is not evidence of a closer relationship.
 
-If live mentions fail, use the direct-replies route for a bounded selection of the owner’s posts with replies. Deduplicate those post IDs before fetching. These samples omit unmentioned quotes and other incoming activity; label the result “reply sample” rather than “mentions complete”. Do not score degraded web search snippets.
+Search indexing can omit replies even on a successful search. Supplement search using the direct-replies route for a bounded selection of the owner’s posts with replies. Deduplicate those post IDs before fetching. These samples omit unmentioned quotes and other incoming activity; label the result “search + reply sample” (or “reply sample” after total search failure), never “mentions complete”. Do not score degraded web search snippets.
 
 ## Recovery and capacity
 

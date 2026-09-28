@@ -168,7 +168,7 @@ describe('browse', () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     await browse({ resource: 'search', q: 'x-md', format: 'json' })
     expect(vi.mocked(buildCacheKey)).toHaveBeenCalledWith(
-      expect.objectContaining({ format: 'json', v: 6 }),
+      expect.objectContaining({ format: 'json', v: 7 }),
     )
   })
 })
@@ -458,4 +458,23 @@ test('direct replies have bounded sample semantics, without fake pagination', as
   expect(result.nextCursor).toBeUndefined()
   expect(fetchFxConversationReplies).toHaveBeenCalledWith('20','recency',100)
   await expect(browse({resource:'replies',id:'20',cursor:'next'})).rejects.toMatchObject({code:'invalid_option'})
+})
+
+
+test('search exposes empty continuation pages without walking an arbitrary cursor chain', async () => {
+  vi.mocked(xsearchConfigured).mockReturnValue(true)
+  vi.mocked(searchXStatuses).mockResolvedValue({ results: [], cursor: { bottom: 'different-empty' } })
+  const result = await browse({ resource: 'search', q: '@ada', cursor: 'xsearch:current', nocache: true })
+  expect(result.warnings).toEqual(['empty_page'])
+  expect(result.nextCursor).toBe('xsearch:current')
+  expect(searchXStatuses).toHaveBeenCalledTimes(1)
+})
+
+test('search marks repeated cursors incomplete while retaining page results', async () => {
+  vi.mocked(xsearchConfigured).mockReturnValue(true)
+  vi.mocked(searchXStatuses).mockResolvedValue({ results: [post], cursor: { bottom: 'current' } })
+  const result = await browse({ resource: 'search', q: '@ada', cursor: 'xsearch:current', nocache: true })
+  expect(result.posts).toEqual([post])
+  expect(result.warnings).toEqual(['repeated_cursor'])
+  expect(result.nextCursor).toBeUndefined()
 })

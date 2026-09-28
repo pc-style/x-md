@@ -1234,6 +1234,7 @@ function schemas(): Record<string, JsonSchema> {
         handle: str('The account this page belongs to. Profile and connection reads only.'),
         page: { type: 'integer', minimum: 1, maximum: MAX_PAGE, description: 'Ordinal page that was served.' },
         limit: { type: 'integer', minimum: 1, maximum: PROFILE_MAX_LIMIT, description: `Maximum results this page could contain: up to ${PROFILE_MAX_LIMIT} on a profile, ${MAX_LIMIT} elsewhere.` },
+        warnings: { type: 'array', items: { type: 'string', enum: ['empty_page', 'repeated_cursor'] }, description: 'Search pagination made no progress. Retry the same cursor later; this is incomplete coverage, not exhaustion.' },
         nextCursor: str('Opaque cursor for the next page. Absent when there is no continuation — including on degraded search results. Send it back as `cursor`; never decode or edit it, and never reuse it on another feed.'),
         source: { type: 'string', enum: ['fxtwitter', 'xsearch', 'firecrawl'], description: 'Upstream provider that answered.' },
         degraded: { type: 'boolean', description: 'True when live X search was unavailable and web-indexed snippets were served instead: ordering and coverage differ, text may be truncated, metrics are missing, and there is no cursor.' },

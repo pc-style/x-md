@@ -14,7 +14,7 @@ const handles = process.argv.slice(2).filter(arg => !arg.startsWith('--'))
 const weights = { reply: 3, quote: 2.5, mention: 1.5, repost: 1 }
 type Kind = keyof typeof weights
 type Interaction = { id: string; handle: string; direction: 'in' | 'out'; kind: Kind; at: number; profile?: FxAuthor }
-type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
+type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; warnings?: string[]; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
 
 async function circle(handle: string) {
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) throw new Error('Invalid handle')
@@ -71,20 +71,22 @@ async function circle(handle: string) {
     let cursor: string | undefined
     const seen = new Set<string>()
     for (; searchPages < 10;) {
-      const result = await get('/api/v1/search', { q: `@${handle}`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', ...(cursor ? { cursor } : {}) })
+      const result = await get('/api/v1/search', { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', ...(cursor ? { cursor } : {}) })
       searchPages++
       for (const post of result.posts ?? []) { if (post.id) mentionIds.add(post.id); incoming(post) }
+      if (result.warnings?.length) { issues.push(...result.warnings.map(w => `search:${w}`)); break }
+      if (!result.posts?.length && result.nextCursor) { issues.push('search:empty_page'); break }
       if (!result.nextCursor) { searchComplete = true; break }
       if (seen.has(result.nextCursor)) { issues.push('search_repeated_cursor'); break }
       seen.add(result.nextCursor); cursor = result.nextCursor
     }
-    if (!searchComplete) issues.push('search_page_limit')
+    if (searchPages === 10 && !searchComplete) issues.push('search_page_limit')
   }
-  const [identity, own] = await Promise.all([
-    get(`/api/v1/profiles/${handle}`, { include_posts: 'false' }),
+  const [own] = await Promise.all([
     get(`/api/v1/profiles/${handle}/posts`, { since: since.toISOString(), until: until.toISOString(), max_posts: '1000', ...(fresh ? { refresh: 'true' } : {}) }),
     search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search' }),
   ])
+  const identity = own.profile ? { profile: own.profile } : await get(`/api/v1/profiles/${handle}`, { include_posts: 'false' })
   const ownPosts = own.posts ?? []
   if (own.meta?.truncated || own.meta?.warnings?.length) issues.push('own_posts_partial')
   for (const post of ownPosts) {
@@ -95,7 +97,7 @@ async function circle(handle: string) {
     add(post, post.quote?.author?.screen_name, 'out', 'quote', post.quote?.author)
     for (const name of mentions(post)) if (name.toLowerCase() !== parent?.toLowerCase()) add(post, name, 'out', 'mention')
   }
-  if (mentionSource !== 'search') {
+  { // Search indexing omits replies even when pagination exhausts; supplement both paths.
     const outgoing = new Map<string, number>()
     for (const event of interactions.values()) if (event.direction === 'out') {
       const name = event.handle.toLowerCase(); outgoing.set(name, (outgoing.get(name) ?? 0) + 1)
@@ -108,7 +110,7 @@ async function circle(handle: string) {
     await Promise.all(Array.from({ length: Math.min(6, queue.length) }, async () => {
       while (queue.length) { const post = queue.shift()!; try { const result = await get(`/api/v1/posts/${post.id}/replies`, { limit: '100' }); for (const reply of result.posts ?? []) { if (reply.id) mentionIds.add(reply.id); incoming(reply) } } catch { issues.push('reply_sample_failed') } }
     }))
-    mentionSource = 'reply_sample'
+    mentionSource = searchPages > 0 ? 'search_and_reply_sample' : 'reply_sample'
   }
   const scores = new Map<string, { handle: string; a: number; b: number; profile?: FxAuthor; events: number }>()
   for (const event of interactions.values()) {
