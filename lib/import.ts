@@ -282,7 +282,7 @@ async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
       try {
         if (cursors.has(cursor)) { pageMissing = true; break }
         cursors.add(cursor)
-        page = window.index === 0 && pages === 0 ? first : await fetchPage(cursor)
+        page = window.index === 0 && window.start === until && pages === 0 ? first : await fetchPage(cursor)
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'partial_upstream_failure')) throw error
         pageMissing = true

@@ -12,7 +12,7 @@ Set `X_MD_API_KEY` to your issued API key (see [Authentication](#authentication)
 
 ```bash
 curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-  'https://mdfromx.com/paulg/posts?since=2025-09-01&max_posts=2000'
+  'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
 For a complete interaction graph, combine this route with [the circle integration guide](/docs/x-circle). Imports contain the account’s own posts, replies and reposts; incoming mentions use search.
@@ -39,19 +39,19 @@ The same header applies to JSON imports, NDJSON streams and `index=true` request
       <Tab title="Last 3 months">
         ```bash
         curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-          "https://mdfromx.com/api/v1/profiles/paulg/posts?since=$(date -u -d '-90 days' +%F)&max_posts=2000"
+          "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-90 days' +%F)&max_posts=2000"
         ```
       </Tab>
       <Tab title="Last year">
         ```bash
         curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-          "https://mdfromx.com/api/v1/profiles/paulg/posts?since=$(date -u -d '-1 year' +%F)&max_posts=5000"
+          "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=$(date -u -d '-1 year' +%F)&max_posts=5000"
         ```
       </Tab>
       <Tab title="Everything available">
         ```bash
         curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-          'https://mdfromx.com/api/v1/profiles/paulg/posts?max_posts=5000'
+          'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?max_posts=5000'
         ```
         Without `since` the walk goes as far back as X serves — roughly the 3200 most recent timeline entries — and `meta.floor_reached` is `true` when it got there.
       </Tab>
@@ -89,7 +89,7 @@ The same header applies to JSON imports, NDJSON streams and `index=true` request
   <Step title="Stream it if you render as you go">
     ```bash
     curl -sN -H "Authorization: Bearer $X_MD_API_KEY" \
-      'https://mdfromx.com/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
+      'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-06-01&format=ndjson'
     ```
 
     ```text
@@ -132,7 +132,7 @@ Ask what is held without spending anything:
 
 ```bash
 curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-  'https://mdfromx.com/api/v1/profiles/paulg/posts?index=true'
+  'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true'
 ```
 
 ```json
@@ -168,7 +168,7 @@ Filtered imports may need to inspect up to 5000 unfiltered entries to fill the r
 
 - **Metering:** 10 imports per IP per 15 minutes; 60 per issued key by default, with per-key overrides advertised in `RateLimit-Policy`. `index=true` and HEAD spend only the general request allowance.
 - **Depth:** X exposes a limited recent timeline, often around 3200 entries. Counts include replies, reposts and conversation context upstream; the number of returned own posts may be smaller.
-- **Concurrency:** the hosted service admits two fresh walks at once across instances. Excess demand returns `503 import_busy` with `Retry-After: 5`. Archive-only reads do not use a fresh-walk slot. This is an admission limit, not a throughput guarantee.
+- **Concurrency:** the hosted service admits two fresh walks at once across instances. Excess demand returns `503 import_busy` with `Retry-After: 5`. Busy rejections refund the import allowance; the ordinary request limit still applies. Archive-only reads do not use a fresh-walk slot. This is an admission limit, not a throughput guarantee.
 - **Time:** the route allows 120 seconds. Actual duration depends on activity, range, cache state and provider availability. Give JSON imports a 125-second client timeout. NDJSON can end with a problem line despite HTTP 200.
 - **Retry:** on 429, `import_busy`, `upstream_unavailable` or `upstream_rate_limited`, wait at least `Retry-After`, then add jitter. Retry the identical request at most twice before reporting a recoverable failure. Do not reduce the specified wait or retry 400/401 errors.
 - **Parameters:** booleans accept only `true`, `false`, `1`, or `0`; invalid counts and conflicting aliases return 400. `only_replies=true` conflicts with `with_replies=false`.

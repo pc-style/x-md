@@ -446,7 +446,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (input.cursor || page !== 1) throw new ConvertError(400, 'Replies are a bounded sample and do not support pagination.', 'invalid_option')
     const posts = await fetchFxConversationReplies(input.id, 'recency', limit)
     const base = { resource, posts, page, limit, source: 'fxtwitter' as const }
-    return { ...base, markdown: posts.map(post => postLine(post, full)).join('\n') + '\n' }
+    return { ...base, markdown: [`# Replies to ${input.id}`, '', ...posts.map(post => postLine(post, full))].join('\n').trim() + '\n' }
   }
   const handle = validHandle(input.handle)
   if (resource === 'profile') {

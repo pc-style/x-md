@@ -9,7 +9,7 @@ import { requestOrigin, setCorsHeaders } from '../lib/http.js'
 import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCURRENCY_PER_BASE, IMPORT_MAX_POSTS } from '../lib/import.js'
 import { historyPersistent, importWithHistory, readHistoryIndex } from '../lib/history.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
-import { clientIp, rateLimit } from '../lib/ratelimit.js'
+import { clientIp, rateLimit, refundRateLimit } from '../lib/ratelimit.js'
 import { IMPORT_IP, IMPORT_KEY, importIpKey, importKeyKey, importKeyPolicy } from '../lib/quotas.js'
 import { importAllowance } from '../lib/apikeys.js'
 import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
@@ -17,7 +17,7 @@ import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 /**
  * `GET /:handle/posts` and `GET /api/v1/profiles/:handle/posts`: bulk profile
  * history as raw JSON. One request walks the whole requested range upstream in
- * parallel (lib/import.ts); `format=ndjson` streams posts as they arrive.
+ * parallel (lib/import.ts); `format=ndjson` emits the final selected posts followed by metadata.
  */
 
 function flag(value: string | undefined, fallback: boolean): boolean {
@@ -124,6 +124,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return sendProblem(res, problemDetails('rate_limited', { instance, detail: `Too many bulk imports ${resolved.caller.kind === 'key' ? 'for this API key' : 'from this address'}: ${allowance.quota} per ${allowance.windowSec / 60} minutes.`, retryAfter: verdict.retryAfter }), accept, req.method)
   }
 
+  const refundBusy = async (error: unknown) => {
+    if (error instanceof ConvertError && error.code === 'import_busy' && !verdict.degraded) {
+      await refundRateLimit(counter, allowance.windowSec, verdict.bucket)
+    }
+  }
+
   // A client that leaves stops the walk instead of leaving up to 32 chains running.
   const aborter = new AbortController()
   res.once('close', () => aborter.abort())
@@ -144,6 +150,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       const result = await importWithHistory({ ...options, signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
+      await refundBusy(error)
       const normalized = importError(error)
       if (!(normalized instanceof ConvertError)) console.error(normalized)
       const problem = streamProblemFrom(normalized, instance, streamedPosts)
@@ -161,6 +168,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Archive-Store', historyPersistent() ? 'redis' : 'memory')
     return res.status(200).send(JSON.stringify(result))
   } catch (error) {
+    await refundBusy(error)
     if (error instanceof ConvertError && error.status === 404) {
       const { status, headers, body } = notFoundResponse({ instance, accept: 'application/json', detail: browseNotFoundDetail('profile', handle, error.message), code: 'not_found', fallback: 'json' })
       for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)

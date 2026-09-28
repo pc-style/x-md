@@ -107,6 +107,17 @@ describe('importProfilePosts', () => {
     expect(ids.every((id, index) => index === 0 || ids[index - 1] > id)).toBe(true)
   })
 
+  test('continues a dense first window below its page-budget split', async () => {
+    const entries = timeline('ada', 900, 0.001)
+    const upstream = fakeUpstream(entries)
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(upstream.mock)
+    const result = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 2 * HOUR), until: new Date(NOW), maxPosts: 5000, concurrency: 1 })
+    expect(result.posts.map(post => post.id).sort()).toEqual(own('ada', entries).map(entry => entry.post.id).sort())
+    expect(result.meta.truncated).toBe(false)
+    expect(result.meta.warnings).toBeUndefined()
+    expect(upstream.calls()).toBeLessThan(40)
+  })
+
   test('is not fooled by short pages or old reposts', async () => {
     const entries = timeline('ada', 400, 2)
     const upstream = fakeUpstream(entries, { flakeEvery: 3 })

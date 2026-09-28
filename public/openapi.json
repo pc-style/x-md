@@ -2093,7 +2093,7 @@
               "type": "string",
               "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
             },
-            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here."
+            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs."
           },
           {
             "name": "max_posts",
@@ -5820,7 +5820,7 @@
               "type": "string",
               "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
             },
-            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here."
+            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs."
           },
           {
             "name": "max_posts",

@@ -24,7 +24,7 @@ async function circle(handle: string) {
     for (let attempt = 0; ; attempt++) {
       const start = performance.now()
       const response = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(125_000) })
-      const body = await response.json() as Body
+      const body = await response.json().catch(() => ({})) as Body
       requests.push({ path, status: response.status, ms: Math.round(performance.now() - start), retry: attempt })
       if (response.ok && !body.degraded) return body
       if (attempt >= 2 || ![429, 502, 503].includes(response.status)) throw new Error(`${response.status}:${body.code ?? 'degraded'}`)

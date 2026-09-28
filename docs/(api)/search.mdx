@@ -11,7 +11,7 @@ sidebar:
 `GET /search?q={query}` — the permalink form, mirroring `x.com/search`.
 
 ```bash
-curl -sS -G 'https://mdfromx.com/search' \
+curl -sS -G 'https://x.pcstyle.dev/search' \
   --data-urlencode 'q=from:vercel release' \
   --data-urlencode 'feed=latest' \
   --data-urlencode 'limit=20'
@@ -20,7 +20,7 @@ curl -sS -G 'https://mdfromx.com/search' \
 `GET /api/v1/search?q={query}` — the same search on the [versioned surface](/versioning). Same parameters, same body.
 
 ```bash
-curl -sS -G 'https://mdfromx.com/api/v1/search' \
+curl -sS -G 'https://x.pcstyle.dev/api/v1/search' \
   --data-urlencode 'q=from:vercel release' \
   --data-urlencode 'format=json'
 ```
@@ -42,17 +42,17 @@ Feed names are case-insensitive. `media` is an alias for `photos`; unknown value
 <Tabs>
   <Tab title="Photos">
     ```bash
-    curl -sS 'https://mdfromx.com/search?q=architecture&feed=photos'
+    curl -sS 'https://x.pcstyle.dev/search?q=architecture&feed=photos'
     ```
   </Tab>
   <Tab title="Videos">
     ```bash
-    curl -sS 'https://mdfromx.com/search?q=animation&feed=videos'
+    curl -sS 'https://x.pcstyle.dev/search?q=animation&feed=videos'
     ```
   </Tab>
   <Tab title="Users">
     ```bash
-    curl -sS 'https://mdfromx.com/search?q=typescript&feed=users&full=true'
+    curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=users&full=true'
     ```
   </Tab>
 </Tabs>
@@ -81,7 +81,7 @@ Post feeds return a `posts` array. The Users feed returns a `users` array instea
 
 ```js
 const response = await fetch(
-  'https://mdfromx.com/search?q=typescript&feed=users&format=json'
+  'https://x.pcstyle.dev/search?q=typescript&feed=users&format=json'
 )
 if (!response.ok) throw new Error(`Search failed: ${response.status}`)
 const { users, nextCursor } = await response.json()

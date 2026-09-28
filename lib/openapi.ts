@@ -527,7 +527,7 @@ const PROFILE_PARAMS: readonly ParameterObject[] = [{ ...booleanParam('include_p
 
 const IMPORT_PARAMS: readonly ParameterObject[] = [
   { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to include. Omit to go as far back as upstream allows (X serves roughly the 3200 most recent timeline entries; `meta.floor_reached` says when that floor was hit).' },
-  { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here.' },
+  { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs.' },
   { name: 'max_posts', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_POSTS, default: IMPORT_DEFAULT_MAX_POSTS }, description: `Most posts to return, newest first. Values outside 1–${IMPORT_MAX_POSTS} return 400. \`meta.truncated\` is true when the range held more.` },
   { ...booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   { ...booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
