@@ -11048,6 +11048,17 @@
             "maximum": 100,
             "description": "Maximum results this page could contain: up to 100 on a profile, 100 elsewhere."
           },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "empty_page",
+                "repeated_cursor"
+              ]
+            },
+            "description": "Search pagination made no progress. Retry the same cursor later; this is incomplete coverage, not exhaustion."
+          },
           "nextCursor": {
             "type": "string",
             "description": "Opaque cursor for the next page. Absent when there is no continuation — including on degraded search results. Send it back as `cursor`; never decode or edit it, and never reuse it on another feed."

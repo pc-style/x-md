@@ -14,7 +14,7 @@ const handles = process.argv.slice(2).filter(arg => !arg.startsWith('--'))
 const weights = { reply: 3, quote: 2.5, mention: 1.5, repost: 1 }
 type Kind = keyof typeof weights
 type Interaction = { id: string; handle: string; direction: 'in' | 'out'; kind: Kind; at: number; profile?: FxAuthor }
-type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
+type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; warnings?: string[]; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
 
 async function circle(handle: string) {
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) throw new Error('Invalid handle')
@@ -24,7 +24,7 @@ async function circle(handle: string) {
   const self = handle.toLowerCase()
   async function get(path: string, params: Record<string, string> = {}): Promise<Body> {
     const url = new URL(path, base)
-    for (const [name, value] of Object.entries({ format: 'json', ...params })) url.searchParams.set(name, value)
+    for (const [name, value] of Object.entries({ format: 'json', ...(fresh && !path.endsWith('/posts') ? { nocache: 'true' } : {}), ...params })) url.searchParams.set(name, value)
     for (let attempt = 0; ; attempt++) {
       const start = performance.now()
       let response: Response
@@ -65,26 +65,30 @@ async function circle(handle: string) {
     else if (post.quote?.author?.screen_name?.toLowerCase() === self) add(post, other, 'in', 'quote', post.author)
     else if (mentions(post).some(name => name.toLowerCase() === self)) add(post, other, 'in', 'mention', post.author)
   }
-  let searchPages = 0, searchComplete = false, mentionSource = 'search'
+  let searchPages = 0, searchComplete = false, mentionSource = 'search', searchStop = 'page_limit'
+  let searchResumeCursor: string | undefined
   const mentionIds = new Set<string>()
+  const searchOptions: Record<string, string> = { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', format: 'json', ...(fresh ? { nocache: 'true' } : {}) }
   const search = async () => {
     let cursor: string | undefined
     const seen = new Set<string>()
     for (; searchPages < 10;) {
-      const result = await get('/api/v1/search', { q: `@${handle}`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', ...(cursor ? { cursor } : {}) })
+      const result = await get('/api/v1/search', { ...searchOptions, ...(cursor ? { cursor } : {}) })
       searchPages++
       for (const post of result.posts ?? []) { if (post.id) mentionIds.add(post.id); incoming(post) }
-      if (!result.nextCursor) { searchComplete = true; break }
-      if (seen.has(result.nextCursor)) { issues.push('search_repeated_cursor'); break }
-      seen.add(result.nextCursor); cursor = result.nextCursor
+      if (result.warnings?.length) { issues.push(...result.warnings.map(w => `search:${w}`)); searchStop = 'warning'; break }
+      if (!result.posts?.length && result.nextCursor) { issues.push('search:empty_page'); searchStop = 'empty_page'; break }
+      if (!result.nextCursor) { searchComplete = true; searchStop = 'exhausted'; searchResumeCursor = undefined; break }
+      if (seen.has(result.nextCursor)) { issues.push('search_repeated_cursor'); searchStop = 'repeated_cursor'; break }
+      seen.add(result.nextCursor); cursor = result.nextCursor; searchResumeCursor = cursor
     }
-    if (!searchComplete) issues.push('search_page_limit')
+    if (searchStop === 'page_limit' && !searchComplete) issues.push('search_page_limit')
   }
-  const [identity, own] = await Promise.all([
-    get(`/api/v1/profiles/${handle}`, { include_posts: 'false' }),
+  const [own] = await Promise.all([
     get(`/api/v1/profiles/${handle}/posts`, { since: since.toISOString(), until: until.toISOString(), max_posts: '1000', ...(fresh ? { refresh: 'true' } : {}) }),
-    search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search' }),
+    search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search'; searchStop = 'error' }),
   ])
+  const identity = own.profile ? { profile: own.profile } : await get(`/api/v1/profiles/${handle}`, { include_posts: 'false' })
   const ownPosts = own.posts ?? []
   if (own.meta?.truncated || own.meta?.warnings?.length) issues.push('own_posts_partial')
   for (const post of ownPosts) {
@@ -95,7 +99,7 @@ async function circle(handle: string) {
     add(post, post.quote?.author?.screen_name, 'out', 'quote', post.quote?.author)
     for (const name of mentions(post)) if (name.toLowerCase() !== parent?.toLowerCase()) add(post, name, 'out', 'mention')
   }
-  if (mentionSource !== 'search') {
+  { // Search indexing omits replies even when pagination exhausts; supplement both paths.
     const outgoing = new Map<string, number>()
     for (const event of interactions.values()) if (event.direction === 'out') {
       const name = event.handle.toLowerCase(); outgoing.set(name, (outgoing.get(name) ?? 0) + 1)
@@ -108,7 +112,7 @@ async function circle(handle: string) {
     await Promise.all(Array.from({ length: Math.min(6, queue.length) }, async () => {
       while (queue.length) { const post = queue.shift()!; try { const result = await get(`/api/v1/posts/${post.id}/replies`, { limit: '100' }); for (const reply of result.posts ?? []) { if (reply.id) mentionIds.add(reply.id); incoming(reply) } } catch { issues.push('reply_sample_failed') } }
     }))
-    mentionSource = 'reply_sample'
+    mentionSource = searchPages > 0 ? 'search_and_reply_sample' : 'reply_sample'
   }
   const scores = new Map<string, { handle: string; a: number; b: number; profile?: FxAuthor; events: number }>()
   for (const event of interactions.values()) {
@@ -125,7 +129,8 @@ async function circle(handle: string) {
   }))
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
-  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const uniquePosts = new Set([...ownPosts.map(post => post.id), ...mentionIds].filter(Boolean)).size
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, unique_posts: uniquePosts, posts_per_second: Number((uniquePosts / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_resume: searchComplete ? undefined : { ...searchOptions, ...(searchResumeCursor ? { cursor: searchResumeCursor } : {}) }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }

@@ -167,7 +167,8 @@ async function collectList<T>(
   limit: number,
   fetchPage: (cursor?: string) => Promise<FxListResponse<T>>,
   maxUpstreamPages = LIST_MAX_UPSTREAM_PAGES,
-): Promise<{ results: T[]; next?: ListPosition }> {
+  reportStalls = false,
+): Promise<{ results: T[]; next?: ListPosition; warnings?: string[] }> {
   const blocks = start ? 1 : page
   let position: ListPosition | undefined = start ?? { offset: 0 }
   let results: T[] = []
@@ -178,6 +179,9 @@ async function collectList<T>(
     while (position && budget > 0 && results.length < limit) {
       budget -= 1
       const upstream = await fetchPage(position.cursor)
+      if (reportStalls && upstream.results.length === 0 && upstream.cursor?.bottom) {
+        return { results, next: position, warnings: ['empty_page'] }
+      }
       const items = upstream.results.slice(position.offset)
       const take = Math.min(items.length, limit - results.length)
       results.push(...items.slice(0, take))
@@ -185,6 +189,9 @@ async function collectList<T>(
       if (consumed < upstream.results.length) {
         next = { cursor: position.cursor, offset: consumed }
         break
+      }
+      if (reportStalls && upstream.cursor?.bottom === position.cursor && position.cursor !== undefined) {
+        return { results, warnings: ['repeated_cursor'] }
       }
       next = upstream.cursor?.bottom && upstream.cursor.bottom !== position.cursor ? { cursor: upstream.cursor.bottom, offset: 0 } : undefined
       position = next
@@ -234,6 +241,8 @@ export interface BrowseResult {
   page: number
   limit: number
   nextCursor?: string
+  /** An upstream page did not make progress; retry the same cursor, never infer full coverage. */
+  warnings?: string[]
   /** Profile only: which timeline entries were kept. */
   with_replies?: boolean
   with_reposts?: boolean
@@ -355,6 +364,7 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
   } else {
     lines.push(`# @${result.handle} ${result.resource}`, '', ...(result.users ?? []).map((user) => userLine(user, full)))
   }
+  if (result.warnings?.length) lines.push('', `> Incomplete pagination (${result.warnings.join(', ')}). Retry the same cursor later; this is not complete coverage.`)
   const next = continuation(input, result)
   if (next) lines.push('', next)
   return `${lines.join('\n').trim()}\n`
@@ -401,8 +411,8 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       }
       // Own-account searches spend a scarce per-account budget: one upstream page per request.
       const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
-      const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, accountLimit, (cursor) => searchXUsers(query, cursor, accountLimit, caller), 1)
-      return render({ resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), source: 'xsearch' })
+      const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, accountLimit, (cursor) => searchXUsers(query, cursor, accountLimit, caller), 1, true)
+      return render({ resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), warnings: list.warnings, source: 'xsearch' })
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
@@ -420,11 +430,11 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     for (const provider of providers) {
       const isFallback = outage || (provider.source === 'xsearch' && !tagged && fxDown)
       try {
-        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages)
+        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages, true)
         if (provider.source === 'fxtwitter') await clearSearchBreaker()
         // Report only once the fallback has served the request.
         if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
-        return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), source: provider.source })
+        return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), warnings: list.warnings, source: provider.source })
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
         if (provider.source === 'fxtwitter') await tripSearchBreaker()
@@ -492,12 +502,12 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
   }
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
   const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), resource === 'profile' ? PROFILE_MAX_LIMIT : MAX_LIMIT)
-  const key = buildCacheKey({ v: 6, id: input.id ?? '', require_live: truthy(input.require_live) ? 1 : 0, include_posts: String(input.include_posts ?? true), resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
+  const key = buildCacheKey({ v: 7, id: input.id ?? '', require_live: truthy(input.require_live) ? 1 : 0, include_posts: String(input.include_posts ?? true), resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
   const cached = await withCache(
     key,
     truthy(input.nocache),
     () => browseUncached(input, resource, page, limit),
-    (value) => (value.degraded ? DEGRADED_TTL_MS : undefined),
+    (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
   )
   return { ...cached.value, cache: cached.status }
 }
@@ -514,7 +524,7 @@ export function browseResponse(result: BrowseResult, asJson: boolean): { status:
   if (result.degraded) headers['X-Search-Degraded'] = 'true'
   if (result.cache !== 'bypass') {
     headers['Cache-Control'] = cacheControlHeader()
-    headers['Vercel-CDN-Cache-Control'] = result.degraded
+    headers['Vercel-CDN-Cache-Control'] = result.degraded || result.warnings?.length
       ? vercelCacheControlHeader(DEGRADED_TTL_MS / 1000)
       : vercelCacheControlHeader()
   }

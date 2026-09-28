@@ -108,3 +108,5 @@ Photos, Videos, and Users return `503` when their live source is unavailable. Th
 :::
 
 See [errors, limits, and caching](/reliability) and the [error catalogue](/errors).
+
+An upstream empty page with a continuation or a repeated cursor returns `warnings` (`empty_page` or `repeated_cursor`). Retain the current cursor and retry later; neither an empty page nor an absent continuation with warnings proves complete coverage. Search indexing can omit replies; use `(@handle OR to:handle)` and supplement with direct reply samples for interaction circles.
