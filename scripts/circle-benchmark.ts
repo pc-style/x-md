@@ -17,7 +17,12 @@ type Interaction = { id: string; handle: string; direction: 'in' | 'out'; kind: 
 type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; warnings?: string[]; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
 
 class ApiFailure extends Error {
-  constructor(readonly status: number, code: string, readonly retryAt: number) { super(`${status}:${code}`) }
+  readonly status: number
+  readonly retryAt: number
+  constructor(status: number, code: string, retryAt: number) {
+    super(`${status}:${code}`)
+    this.status = status; this.retryAt = retryAt
+  }
 }
 let searchBlockedUntil = 0
 
