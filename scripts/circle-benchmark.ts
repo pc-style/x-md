@@ -16,13 +16,23 @@ type Kind = keyof typeof weights
 type Interaction = { id: string; handle: string; direction: 'in' | 'out'; kind: Kind; at: number; profile?: FxAuthor }
 type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; warnings?: string[]; degraded?: boolean; code?: string; retry_after?: number; meta?: { truncated?: boolean; warnings?: string[]; floor_reached?: boolean; count?: number; archive?: { served: number; added: number }; pages?: number } }
 
+class ApiFailure extends Error {
+  readonly status: number
+  readonly retryAt: number
+  constructor(status: number, code: string, retryAt: number) {
+    super(`${status}:${code}`)
+    this.status = status; this.retryAt = retryAt
+  }
+}
+let searchBlockedUntil = 0
+
 async function circle(handle: string) {
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) throw new Error('Invalid handle')
   const started = performance.now(), until = new Date(process.env.X_MD_UNTIL ?? Date.now()), since = new Date(+until - 120 * 86400_000)
   const requests: Array<{ path: string; status: number; ms: number; retry: number; malformed?: boolean }> = []
   const issues: string[] = [], interactions = new Map<string, Interaction>()
   const self = handle.toLowerCase()
-  async function get(path: string, params: Record<string, string> = {}): Promise<Body> {
+  async function get(path: string, params: Record<string, string> = {}, retry = true): Promise<Body> {
     const url = new URL(path, base)
     for (const [name, value] of Object.entries({ format: 'json', ...(fresh && !path.endsWith('/posts') ? { nocache: 'true' } : {}), ...params })) url.searchParams.set(name, value)
     for (let attempt = 0; ; attempt++) {
@@ -43,10 +53,15 @@ async function circle(handle: string) {
       const malformed = response.ok && !valid
       requests.push({ path, status: response.status, ms: Math.round(performance.now() - start), retry: attempt, ...(malformed ? { malformed } : {}) })
       if (response.ok && valid && !body.degraded) return body
-      if (attempt >= 2 || (!malformed && ![429, 502, 503].includes(response.status))) throw new Error(`${response.status}:${malformed ? 'invalid_response' : body.code ?? 'degraded'}`)
       const header = response.headers.get('retry-after')
       const delay = header && /^\d+$/.test(header) ? Number(header) : header ? Math.max(1, Math.ceil((Date.parse(header) - Date.now()) / 1000)) : body.retry_after ?? 30
-      await new Promise(resolve => setTimeout(resolve, delay * 1000 + 250 + Math.random() * 500))
+      const now = Date.now(), candidate = now + delay * 1000
+      const retryAt = Number.isFinite(candidate) && delay >= 0 && candidate <= 8_640_000_000_000_000 ? candidate : now + 30_000
+      const waitMs = retryAt - now
+      // A foreground circle cannot honor long waits inline. Fail/defer with the
+      // original deadline instead of overflowing a timer or retrying early.
+      if (!retry || waitMs > 60_000 || attempt >= 2 || (!malformed && ![429, 502, 503].includes(response.status))) throw new ApiFailure(response.status, malformed ? 'invalid_response' : body.code ?? 'degraded', retryAt)
+      await new Promise(resolve => setTimeout(resolve, waitMs + 250 + Math.random() * 500))
     }
   }
   const add = (post: FxTweet, other: string | undefined, direction: 'in' | 'out', kind: Kind, profile?: FxAuthor) => {
@@ -66,14 +81,16 @@ async function circle(handle: string) {
     else if (mentions(post).some(name => name.toLowerCase() === self)) add(post, other, 'in', 'mention', post.author)
   }
   let searchPages = 0, searchComplete = false, mentionSource = 'search', searchStop = 'page_limit'
+  let searchRetryAt = 0
   let searchResumeCursor: string | undefined
   const mentionIds = new Set<string>()
   const searchOptions: Record<string, string> = { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', format: 'json', ...(fresh ? { nocache: 'true' } : {}) }
   const search = async () => {
+    if (Date.now() < searchBlockedUntil) { searchRetryAt = searchBlockedUntil; issues.push('search:deferred'); searchStop = 'deferred'; return }
     let cursor: string | undefined
     const seen = new Set<string>()
     for (; searchPages < 10;) {
-      const result = await get('/api/v1/search', { ...searchOptions, ...(cursor ? { cursor } : {}) })
+      const result = await get('/api/v1/search', { ...searchOptions, ...(cursor ? { cursor } : {}) }, false)
       searchPages++
       for (const post of result.posts ?? []) { if (post.id) mentionIds.add(post.id); incoming(post) }
       if (result.warnings?.length) { issues.push(...result.warnings.map(w => `search:${w}`)); searchStop = 'warning'; break }
@@ -86,7 +103,13 @@ async function circle(handle: string) {
   }
   const [own] = await Promise.all([
     get(`/api/v1/profiles/${handle}/posts`, { since: since.toISOString(), until: until.toISOString(), max_posts: '1000', ...(fresh ? { refresh: 'true' } : {}) }),
-    search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search'; searchStop = 'error' }),
+    search().catch(error => {
+      issues.push(`search:${String(error)}`); mentionSource = 'partial_search'; searchStop = 'error'
+      if (error instanceof ApiFailure && [429, 502, 503].includes(error.status)) {
+        searchRetryAt = error.retryAt
+        if (error.status === 429) searchBlockedUntil = Math.max(searchBlockedUntil, error.retryAt)
+      }
+    }),
   ])
   const identity = own.profile ? { profile: own.profile } : await get(`/api/v1/profiles/${handle}`, { include_posts: 'false' })
   const ownPosts = own.posts ?? []
@@ -130,7 +153,7 @@ async function circle(handle: string) {
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
   const uniquePosts = new Set([...ownPosts.map(post => post.id), ...mentionIds].filter(Boolean)).size
-  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, unique_posts: uniquePosts, posts_per_second: Number((uniquePosts / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_resume: searchComplete ? undefined : { ...searchOptions, ...(searchResumeCursor ? { cursor: searchResumeCursor } : {}) }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, unique_posts: uniquePosts, posts_per_second: Number((uniquePosts / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_retry_at: !searchComplete && searchRetryAt > Date.now() ? new Date(searchRetryAt).toISOString() : undefined, search_resume: searchComplete ? undefined : { ...searchOptions, ...(searchResumeCursor ? { cursor: searchResumeCursor } : {}) }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }

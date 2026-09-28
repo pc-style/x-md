@@ -204,8 +204,10 @@ describe('handlers answer with problem details', () => {
     expect(alias.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
     expect(alias.res.getHeader('Link')).toContain('rel="successor-version"')
 
-    const permalink = exchange({ url: '/api/convert?handle=jack&id=20', query: { handle: 'jack', id: '20' } })
+    // This checks route headers, so reject locally rather than depending on a live post.
+    const permalink = exchange({ url: '/api/convert?handle=jack&id=invalid', query: { handle: 'jack', id: 'invalid' } })
     await convertHandler(permalink.req, permalink.res)
+    expect(permalink.res.statusCode).toBe(400)
     expect(permalink.res.getHeader('Deprecation')).toBeUndefined()
 
     const versioned = exchange({ url: '/api/convert?via=route&url=notaurl', query: { via: 'route', url: 'notaurl' } })
