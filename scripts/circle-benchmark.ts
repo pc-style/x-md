@@ -55,9 +55,13 @@ async function circle(handle: string) {
       if (response.ok && valid && !body.degraded) return body
       const header = response.headers.get('retry-after')
       const delay = header && /^\d+$/.test(header) ? Number(header) : header ? Math.max(1, Math.ceil((Date.parse(header) - Date.now()) / 1000)) : body.retry_after ?? 30
-      const waitSeconds = Number.isFinite(delay) && delay >= 0 ? delay : 30
-      if (!retry || attempt >= 2 || (!malformed && ![429, 502, 503].includes(response.status))) throw new ApiFailure(response.status, malformed ? 'invalid_response' : body.code ?? 'degraded', Date.now() + waitSeconds * 1000)
-      await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000 + 250 + Math.random() * 500))
+      const now = Date.now(), candidate = now + delay * 1000
+      const retryAt = Number.isFinite(candidate) && delay >= 0 && candidate <= 8_640_000_000_000_000 ? candidate : now + 30_000
+      const waitMs = retryAt - now
+      // A foreground circle cannot honor long waits inline. Fail/defer with the
+      // original deadline instead of overflowing a timer or retrying early.
+      if (!retry || waitMs > 60_000 || attempt >= 2 || (!malformed && ![429, 502, 503].includes(response.status))) throw new ApiFailure(response.status, malformed ? 'invalid_response' : body.code ?? 'degraded', retryAt)
+      await new Promise(resolve => setTimeout(resolve, waitMs + 250 + Math.random() * 500))
     }
   }
   const add = (post: FxTweet, other: string | undefined, direction: 'in' | 'out', kind: Kind, profile?: FxAuthor) => {
