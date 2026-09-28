@@ -81,11 +81,12 @@ async function circle(handle: string) {
     else if (mentions(post).some(name => name.toLowerCase() === self)) add(post, other, 'in', 'mention', post.author)
   }
   let searchPages = 0, searchComplete = false, mentionSource = 'search', searchStop = 'page_limit'
+  let searchRetryAt = 0
   let searchResumeCursor: string | undefined
   const mentionIds = new Set<string>()
   const searchOptions: Record<string, string> = { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', format: 'json', ...(fresh ? { nocache: 'true' } : {}) }
   const search = async () => {
-    if (Date.now() < searchBlockedUntil) { issues.push('search:deferred'); searchStop = 'deferred'; return }
+    if (Date.now() < searchBlockedUntil) { searchRetryAt = searchBlockedUntil; issues.push('search:deferred'); searchStop = 'deferred'; return }
     let cursor: string | undefined
     const seen = new Set<string>()
     for (; searchPages < 10;) {
@@ -104,7 +105,10 @@ async function circle(handle: string) {
     get(`/api/v1/profiles/${handle}/posts`, { since: since.toISOString(), until: until.toISOString(), max_posts: '1000', ...(fresh ? { refresh: 'true' } : {}) }),
     search().catch(error => {
       issues.push(`search:${String(error)}`); mentionSource = 'partial_search'; searchStop = 'error'
-      if (error instanceof ApiFailure && [429, 502, 503].includes(error.status)) searchBlockedUntil = Math.max(searchBlockedUntil, error.retryAt)
+      if (error instanceof ApiFailure && [429, 502, 503].includes(error.status)) {
+        searchRetryAt = error.retryAt
+        if (error.status === 429) searchBlockedUntil = Math.max(searchBlockedUntil, error.retryAt)
+      }
     }),
   ])
   const identity = own.profile ? { profile: own.profile } : await get(`/api/v1/profiles/${handle}`, { include_posts: 'false' })
@@ -149,7 +153,7 @@ async function circle(handle: string) {
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
   const uniquePosts = new Set([...ownPosts.map(post => post.id), ...mentionIds].filter(Boolean)).size
-  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, unique_posts: uniquePosts, posts_per_second: Number((uniquePosts / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_retry_at: !searchComplete && searchBlockedUntil > Date.now() ? new Date(searchBlockedUntil).toISOString() : undefined, search_resume: searchComplete ? undefined : { ...searchOptions, ...(searchResumeCursor ? { cursor: searchResumeCursor } : {}) }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, unique_posts: uniquePosts, posts_per_second: Number((uniquePosts / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_retry_at: !searchComplete && searchRetryAt > Date.now() ? new Date(searchRetryAt).toISOString() : undefined, search_resume: searchComplete ? undefined : { ...searchOptions, ...(searchResumeCursor ? { cursor: searchResumeCursor } : {}) }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }
