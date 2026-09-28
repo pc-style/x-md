@@ -24,7 +24,7 @@ async function circle(handle: string) {
   const self = handle.toLowerCase()
   async function get(path: string, params: Record<string, string> = {}): Promise<Body> {
     const url = new URL(path, base)
-    for (const [name, value] of Object.entries({ format: 'json', ...params })) url.searchParams.set(name, value)
+    for (const [name, value] of Object.entries({ format: 'json', ...(fresh && !path.endsWith('/posts') ? { nocache: 'true' } : {}), ...params })) url.searchParams.set(name, value)
     for (let attempt = 0; ; attempt++) {
       const start = performance.now()
       let response: Response
