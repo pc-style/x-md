@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Benchmark · Fast X Circle</title><link rel="stylesheet" href="/style.css" />
+<style>
+  table { width: 100%; border-collapse: collapse; margin-top: 28px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--cn-rule); vertical-align: top; }
+  th { font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--cn-ink-2); }
+  tr.sum td { color: var(--cn-ink-2); font-weight: 700; }
+  figure { margin: 28px 0; }
+  figure img { width: min(560px, 100%); border-radius: 20px; background: var(--cn-navy); }
+  pre { white-space: pre-wrap; background: white; border: 1px solid var(--cn-rule); border-radius: 16px; padding: 16px; }
+</style></head><body>
+<header class="top"><a class="brand" href="/">Fast X Circle</a><nav><a href="/">Circle</a><a href="/benchmark.html">Benchmark</a><a href="/report.html">Report</a></nav></header>
+<main class="xc">
+  <h1 class="xc-title">Before and after</h1>
+  <p class="xc-lead">Three public accounts whose x.md archive was empty. Fast X Circle ran first, then X Circle’s own collector (ten pages of the account and ten pages of mentions), so the two do not compete for the same upstream. First progress is the first fetched post or mention. Complete is the ranked circle, including portrait lookups. Posts are own posts plus incoming mentions. Posts per second uses the complete time.</p>
+  <table><thead><tr><th>Account</th><th></th><th>First progress</th><th>Complete circle</th><th>Posts</th><th>Posts/s</th><th>People</th></tr></thead><tbody><tr><td rowspan="2">@seldo</td><td>X Circle</td><td>0.87s</td><td>10.08s</td><td>40</td><td>4.0</td><td>23</td></tr>
+      <tr><td>Fast X Circle</td><td>0.77s</td><td>2.25s</td><td>28</td><td>12.4</td><td>13</td></tr>
+      <tr class="sum"><td></td><td>Speedup</td><td colspan="5">first progress 1.13× · complete circle 4.47×</td></tr><tr><td rowspan="2">@vboykis</td><td>X Circle</td><td>0.95s</td><td>13.36s</td><td>442</td><td>33.1</td><td>50</td></tr>
+      <tr><td>Fast X Circle</td><td>0.91s</td><td>3.82s</td><td>343</td><td>89.7</td><td>50</td></tr>
+      <tr class="sum"><td></td><td>Speedup</td><td colspan="5">first progress 1.03× · complete circle 3.49×</td></tr><tr><td rowspan="2">@jlongster</td><td>X Circle</td><td>1.49s</td><td>13.75s</td><td>512</td><td>37.2</td><td>50</td></tr>
+      <tr><td>Fast X Circle</td><td>0.91s</td><td>3.12s</td><td>88</td><td>28.2</td><td>42</td></tr>
+      <tr class="sum"><td></td><td>Speedup</td><td colspan="5">first progress 1.64× · complete circle 4.40×</td></tr></tbody></table>
+  <figure><img src="/evidence/circle-demo.png" alt="A finished Fast X Circle in the browser" /><figcaption>The same circle, drawn in the browser, with a PNG export.</figcaption></figure>
+  <h2>Raw samples</h2>
+  <pre>[
+  {
+    "system": "x-circle",
+    "handle": "seldo",
+    "firstProgressMs": 868.8359140000002,
+    "completeMs": 10076.243233000001,
+    "postsProcessed": 40,
+    "postsPerSec": 3.969733468620407,
+    "people": 23,
+    "mentionsRead": true
+  },
+  {
+    "system": "fast-x-circle",
+    "handle": "seldo",
+    "firstProgressMs": 769.2458269999997,
+    "completeMs": 2254.2155129999996,
+    "postsProcessed": 28,
+    "postsPerSec": 12.42117261571698,
+    "people": 13,
+    "mentionsRead": true
+  },
+  {
+    "system": "x-circle",
+    "handle": "vboykis",
+    "firstProgressMs": 945.2565270000014,
+    "completeMs": 13362.994768,
+    "postsProcessed": 442,
+    "postsPerSec": 33.076417949249326,
+    "people": 50,
+    "mentionsRead": true
+  },
+  {
+    "system": "fast-x-circle",
+    "handle": "vboykis",
+    "firstProgressMs": 914.7104789999994,
+    "completeMs": 3824.1355460000013,
+    "postsProcessed": 343,
+    "postsPerSec": 89.69347343317204,
+    "people": 50,
+    "mentionsRead": true
+  },
+  {
+    "system": "x-circle",
+    "handle": "jlongster",
+    "firstProgressMs": 1493.0782990000007,
+    "completeMs": 13746.683439,
+    "postsProcessed": 512,
+    "postsPerSec": 37.24534737938545,
+    "people": 50,
+    "mentionsRead": true
+  },
+  {
+    "system": "fast-x-circle",
+    "handle": "jlongster",
+    "firstProgressMs": 908.0270479999999,
+    "completeMs": 3124.069317999998,
+    "postsProcessed": 88,
+    "postsPerSec": 28.16838906005352,
+    "people": 42,
+    "mentionsRead": true
+  }
+]</pre>
+</main></body></html>

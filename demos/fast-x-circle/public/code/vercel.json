@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/circle.ts": {
+      "maxDuration": 60
+    }
+  }
+}

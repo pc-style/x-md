@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fast X Circle</title>
+    <meta name="description" content="A faster X interaction circle. Type a public username and see who they talk with most, drawn as the posts arrive." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/">Fast X Circle</a>
+      <nav>
+        <a href="/">Circle</a>
+        <a href="/benchmark.html">Benchmark</a>
+        <a href="/report.html">Report</a>
+      </nav>
+    </header>
+    <main class="xc">
+      <div class="xc-top">
+        <h1 class="xc-title">Make your X interaction circle</h1>
+        <p class="xc-lead">Type a username. Recent public posts and mentions are read together, and the people this account talks with most draw in as they arrive, closest in the middle.</p>
+      </div>
+      <form id="xc-form" class="xc-field">
+        <label class="xc-label" for="xc-handle">X username</label>
+        <div class="xc-row">
+          <div class="xc-input">
+            <span aria-hidden="true">@</span>
+            <input id="xc-handle" name="handle" placeholder="username" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="80" aria-describedby="xc-note" />
+          </div>
+          <button id="xc-go" class="xc-go" type="submit">Make my circle</button>
+          <button id="xc-stop" class="xc-go xc-go--stop" type="button" hidden>Stop</button>
+        </div>
+        <div id="xc-status"></div>
+        <p id="xc-error" class="xc-error" role="alert" hidden></p>
+      </form>
+      <p class="xc-note" id="xc-note">Public accounts only. Posts and mentions are read through <b>x.md</b>. Nothing is saved on this server.</p>
+      <section id="xc-result" class="xc-result" hidden>
+        <h2 id="xc-result-title" class="xc-rtitle">Your circle</h2>
+        <p id="xc-basis" class="xc-basis"></p>
+        <div class="xc-work">
+          <div class="xc-stage">
+            <canvas id="xc-canvas" width="1200" height="1200" role="img" aria-label="Interaction circle"></canvas>
+            <div class="xc-actions">
+              <button id="xc-download" class="xc-btn" type="button">Download PNG</button>
+            </div>
+          </div>
+          <aside class="xc-panel" aria-label="Circle style">
+            <fieldset>
+              <legend>Background</legend>
+              <div id="xc-swatches" class="xc-swatches"></div>
+              <div class="xc-seg" role="group" aria-label="Fill">
+                <button type="button" data-fill="solid" aria-pressed="false">Solid</button>
+                <button type="button" data-fill="gradient" aria-pressed="true">Gradient</button>
+              </div>
+              <div class="xc-colors">
+                <label><input id="xc-color1" type="color" value="#00123B" /> From</label>
+                <label><input id="xc-color2" type="color" value="#26286B" /> To</label>
+              </div>
+            </fieldset>
+            <fieldset>
+              <legend>Size</legend>
+              <label class="xc-range"><span>People <output id="xc-count-out">50</output></span><input id="xc-count" type="range" min="10" max="50" step="1" value="50" /></label>
+              <label class="xc-range"><span>Photo size <output id="xc-scale-out">100%</output></span><input id="xc-scale" type="range" min="70" max="130" step="5" value="100" /></label>
+            </fieldset>
+            <fieldset>
+              <legend>Show</legend>
+              <label class="xc-check"><input data-flag="names" type="checkbox" /> Usernames</label>
+              <label class="xc-check"><input data-flag="ranks" type="checkbox" /> Rank numbers</label>
+              <label class="xc-check"><input data-flag="rings" type="checkbox" /> Ring lines</label>
+            </fieldset>
+          </aside>
+        </div>
+        <div class="xc-people">
+          <h3>Who is in it, and why</h3>
+          <p>Ranked by score. Untick someone to take them out of the picture; the next person moves up.</p>
+          <ol id="xc-people"></ol>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

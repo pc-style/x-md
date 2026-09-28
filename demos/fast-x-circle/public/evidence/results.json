@@ -1,0 +1,70 @@
+{
+  "measuredAt": "2026-09-28T06:46:43.850Z",
+  "accounts": [
+    "seldo",
+    "vboykis",
+    "jlongster"
+  ],
+  "samples": [
+    {
+      "system": "x-circle",
+      "handle": "seldo",
+      "firstProgressMs": 868.8359140000002,
+      "completeMs": 10076.243233000001,
+      "postsProcessed": 40,
+      "postsPerSec": 3.969733468620407,
+      "people": 23,
+      "mentionsRead": true
+    },
+    {
+      "system": "fast-x-circle",
+      "handle": "seldo",
+      "firstProgressMs": 769.2458269999997,
+      "completeMs": 2254.2155129999996,
+      "postsProcessed": 28,
+      "postsPerSec": 12.42117261571698,
+      "people": 13,
+      "mentionsRead": true
+    },
+    {
+      "system": "x-circle",
+      "handle": "vboykis",
+      "firstProgressMs": 945.2565270000014,
+      "completeMs": 13362.994768,
+      "postsProcessed": 442,
+      "postsPerSec": 33.076417949249326,
+      "people": 50,
+      "mentionsRead": true
+    },
+    {
+      "system": "fast-x-circle",
+      "handle": "vboykis",
+      "firstProgressMs": 914.7104789999994,
+      "completeMs": 3824.1355460000013,
+      "postsProcessed": 343,
+      "postsPerSec": 89.69347343317204,
+      "people": 50,
+      "mentionsRead": true
+    },
+    {
+      "system": "x-circle",
+      "handle": "jlongster",
+      "firstProgressMs": 1493.0782990000007,
+      "completeMs": 13746.683439,
+      "postsProcessed": 512,
+      "postsPerSec": 37.24534737938545,
+      "people": 50,
+      "mentionsRead": true
+    },
+    {
+      "system": "fast-x-circle",
+      "handle": "jlongster",
+      "firstProgressMs": 908.0270479999999,
+      "completeMs": 3124.069317999998,
+      "postsProcessed": 88,
+      "postsPerSec": 28.16838906005352,
+      "people": 42,
+      "mentionsRead": true
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "fast-x-circle",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/client.ts --outfile=public/app.js --target=browser",
+    "start": "bun server.ts",
+    "test": "vitest --run src"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
+  }
+}

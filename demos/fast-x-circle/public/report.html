@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Report · Fast X Circle</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="/">Fast X Circle</a>
+      <nav>
+        <a href="/">Circle</a>
+        <a href="/benchmark.html">Benchmark</a>
+        <a href="/report.html">Report</a>
+      </nav>
+    </header>
+    <main class="xc">
+      <h1 class="xc-title">How it is built</h1>
+      <p class="xc-lead">Fast X Circle keeps X Circle’s scoring, rings, and PNG export, and fills the picture while x.md is still collecting the account’s posts and incoming mentions.</p>
+      <section class="xc-people">
+        <h3>Same ranking</h3>
+        <p>A reply is worth 3, a quote 2.5, a mention 1.5, and a repost 1. Each value halves every 30 days. The two directions combine as the square of the sum of their square roots: one way stays the plain sum, and an even exchange doubles it. The reply chain at the start of an answer is not a mention. Up to 50 people are drawn, largest nearest the centre.</p>
+        <h3>What changed</h3>
+        <p>X Circle walks the public timeline and the mention search one page after another, then draws. This demo asks x.md for two things at once. A bulk import reads the last 7 days of posts, replies, and reposts (the part of the window that weighs most, and the part a single import can finish quickly). In parallel, search reads the full 120 days: the account’s own posts in four time slices, reposts in two slices, and incoming <code>@handle</code> posts in four slices. The canvas updates as soon as either source finds a person. Portrait URLs that the posts do not already carry are read from the public profile endpoint X Circle uses, because x.md’s profile route also downloads a page of posts.</p>
+        <h3>What is on this site</h3>
+        <p>The circle is the home page. The measured before-and-after is on the benchmark page. The TypeScript for the ranker, collector, drawing, and this page is under <a href="/code/">/code/</a>. The API key stays on the server.</p>
+      </section>
+    </main>
+  </body>
+</html>
