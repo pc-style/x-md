@@ -2,7 +2,11 @@
 import { writeFile } from 'node:fs/promises'
 import type { FxTweet, FxAuthor } from '../lib/fxtwitter.js'
 
-const base = process.env.X_MD_BASE_URL ?? 'https://mdfromx.com'
+const base = new URL(process.env.X_MD_BASE_URL ?? 'https://mdfromx.com')
+const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname)
+if (base.protocol !== 'https:' && !(base.protocol === 'http:' && loopback)) {
+  throw new Error('X_MD_BASE_URL must use HTTPS unless it targets loopback.')
+}
 const key = process.env.X_MD_API_KEY
 if (!key) throw new Error('Set the server-only X_MD_API_KEY environment variable.')
 const fresh = process.argv.includes('--fresh')
@@ -14,8 +18,8 @@ type Body = { profile?: FxAuthor; posts?: FxTweet[]; nextCursor?: string; degrad
 
 async function circle(handle: string) {
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) throw new Error('Invalid handle')
-  const started = performance.now(), until = new Date(), since = new Date(+until - 120 * 86400_000)
-  const requests: Array<{ path: string; status: number; ms: number; retry: number }> = []
+  const started = performance.now(), until = new Date(process.env.X_MD_UNTIL ?? Date.now()), since = new Date(+until - 120 * 86400_000)
+  const requests: Array<{ path: string; status: number; ms: number; retry: number; malformed?: boolean }> = []
   const issues: string[] = [], interactions = new Map<string, Interaction>()
   const self = handle.toLowerCase()
   async function get(path: string, params: Record<string, string> = {}): Promise<Body> {
@@ -24,10 +28,16 @@ async function circle(handle: string) {
     for (let attempt = 0; ; attempt++) {
       const start = performance.now()
       const response = await fetch(url, { headers: { Authorization: `Bearer ${key}`, Accept: 'application/json' }, signal: AbortSignal.timeout(125_000) })
-      const body = await response.json().catch(() => ({})) as Body
-      requests.push({ path, status: response.status, ms: Math.round(performance.now() - start), retry: attempt })
-      if (response.ok && !body.degraded) return body
-      if (attempt >= 2 || ![429, 502, 503].includes(response.status)) throw new Error(`${response.status}:${body.code ?? 'degraded'}`)
+      const parsed: unknown = await response.json().catch(() => null)
+      const body = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Body : {}
+      const expectsProfile = path.startsWith('/api/v1/profiles/') && !path.endsWith('/posts')
+      const valid = expectsProfile
+        ? typeof body.profile?.screen_name === 'string'
+        : Array.isArray(body.posts) && body.posts.every(post => post && typeof post.id === 'string') && (!path.endsWith('/posts') || typeof body.meta?.count === 'number')
+      const malformed = response.ok && !valid
+      requests.push({ path, status: response.status, ms: Math.round(performance.now() - start), retry: attempt, ...(malformed ? { malformed } : {}) })
+      if (response.ok && valid && !body.degraded) return body
+      if (attempt >= 2 || (!malformed && ![429, 502, 503].includes(response.status))) throw new Error(`${response.status}:${malformed ? 'invalid_response' : body.code ?? 'degraded'}`)
       const header = response.headers.get('retry-after')
       const delay = header && /^\d+$/.test(header) ? Number(header) : header ? Math.max(1, Math.ceil((Date.parse(header) - Date.now()) / 1000)) : body.retry_after ?? 30
       await new Promise(resolve => setTimeout(resolve, delay * 1000 + 250 + Math.random() * 500))
@@ -80,10 +90,17 @@ async function circle(handle: string) {
     for (const name of mentions(post)) if (name.toLowerCase() !== parent?.toLowerCase()) add(post, name, 'out', 'mention')
   }
   if (mentionSource !== 'search') {
-    const candidates = [...new Map(ownPosts.filter(p => p.id && p.replies && p.author?.screen_name?.toLowerCase() === self).map(p => [p.id, p])).values()].slice(0, 80)
+    const outgoing = new Map<string, number>()
+    for (const event of interactions.values()) if (event.direction === 'out') {
+      const name = event.handle.toLowerCase(); outgoing.set(name, (outgoing.get(name) ?? 0) + 1)
+    }
+    const frequent = new Set([...outgoing].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([name]) => name))
+    const priority = (post: FxTweet) => { const target = replyTo(post)?.toLowerCase(); return target && target !== self ? frequent.has(target) ? 0 : 2 : 1 }
+    const candidates = [...new Map(ownPosts.filter(p => p.id && p.replies && p.author?.screen_name?.toLowerCase() === self).map(p => [p.id, p])).values()]
+      .sort((a, b) => priority(a) - priority(b) || (b.created_timestamp ?? Date.parse(b.created_at ?? '') / 1000) - (a.created_timestamp ?? Date.parse(a.created_at ?? '') / 1000)).slice(0, 80)
     const queue = [...candidates]
     await Promise.all(Array.from({ length: Math.min(6, queue.length) }, async () => {
-      while (queue.length) { const post = queue.shift()!; try { const result = await get(`/api/v1/posts/${post.id}/replies`, { limit: '100' }); for (const reply of result.posts ?? []) incoming(reply) } catch { issues.push('reply_sample_failed') } }
+      while (queue.length) { const post = queue.shift()!; try { const result = await get(`/api/v1/posts/${post.id}/replies`, { limit: '100' }); for (const reply of result.posts ?? []) { if (reply.id) mentionIds.add(reply.id); incoming(reply) } } catch { issues.push('reply_sample_failed') } }
     }))
     mentionSource = 'reply_sample'
   }
@@ -102,7 +119,7 @@ async function circle(handle: string) {
   }))
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
-  const summary = { handle, fresh, wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status >= 400).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }

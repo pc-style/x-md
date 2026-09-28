@@ -10000,7 +10000,8 @@
             "profile",
             "search",
             "followers",
-            "following"
+            "following",
+            "replies"
           ]
         }
       },

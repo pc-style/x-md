@@ -259,7 +259,7 @@ const COMPONENT_HEADERS: Record<string, HeaderObject> = {
   },
   XBrowseResource: {
     description: 'Browse resource this response answered.',
-    schema: { type: 'string', enum: ['profile', 'search', 'followers', 'following'] },
+    schema: { type: 'string', enum: ['profile', 'search', 'followers', 'following', 'replies'] },
   },
   XResultCount: {
     description: 'Number of posts or users in the response body.',

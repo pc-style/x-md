@@ -442,7 +442,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
   }
 
   if (resource === 'replies') {
-    if (!input.id || !/^\d{1,25}$/.test(input.id)) throw new ConvertError(400, 'A numeric post id is required.', 'invalid_params')
+    if (!input.id || !/^\d{1,25}$/.test(input.id)) throw new ConvertError(400, '`id` must be a numeric post id.', 'invalid_option')
     if (input.cursor || page !== 1) throw new ConvertError(400, 'Replies are a bounded sample and do not support pagination.', 'invalid_option')
     const posts = await fetchFxConversationReplies(input.id, 'recency', limit)
     const base = { resource, posts, page, limit, source: 'fxtwitter' as const }
