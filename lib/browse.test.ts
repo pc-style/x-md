@@ -466,6 +466,7 @@ test('search exposes empty continuation pages without walking an arbitrary curso
   vi.mocked(searchXStatuses).mockResolvedValue({ results: [], cursor: { bottom: 'different-empty' } })
   const result = await browse({ resource: 'search', q: '@ada', cursor: 'xsearch:current', nocache: true })
   expect(result.warnings).toEqual(['empty_page'])
+  expect(result.markdown).toContain('Incomplete pagination')
   expect(result.nextCursor).toBe('xsearch:current')
   expect(searchXStatuses).toHaveBeenCalledTimes(1)
 })

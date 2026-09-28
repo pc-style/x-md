@@ -364,6 +364,7 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
   } else {
     lines.push(`# @${result.handle} ${result.resource}`, '', ...(result.users ?? []).map((user) => userLine(user, full)))
   }
+  if (result.warnings?.length) lines.push('', `> Incomplete pagination (${result.warnings.join(', ')}). Retry the same cursor later; this is not complete coverage.`)
   const next = continuation(input, result)
   if (next) lines.push('', next)
   return `${lines.join('\n').trim()}\n`
@@ -506,7 +507,7 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
     key,
     truthy(input.nocache),
     () => browseUncached(input, resource, page, limit),
-    (value) => (value.degraded ? DEGRADED_TTL_MS : undefined),
+    (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
   )
   return { ...cached.value, cache: cached.status }
 }
@@ -523,7 +524,7 @@ export function browseResponse(result: BrowseResult, asJson: boolean): { status:
   if (result.degraded) headers['X-Search-Degraded'] = 'true'
   if (result.cache !== 'bypass') {
     headers['Cache-Control'] = cacheControlHeader()
-    headers['Vercel-CDN-Cache-Control'] = result.degraded
+    headers['Vercel-CDN-Cache-Control'] = result.degraded || result.warnings?.length
       ? vercelCacheControlHeader(DEGRADED_TTL_MS / 1000)
       : vercelCacheControlHeader()
   }

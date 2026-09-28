@@ -65,7 +65,8 @@ async function circle(handle: string) {
     else if (post.quote?.author?.screen_name?.toLowerCase() === self) add(post, other, 'in', 'quote', post.author)
     else if (mentions(post).some(name => name.toLowerCase() === self)) add(post, other, 'in', 'mention', post.author)
   }
-  let searchPages = 0, searchComplete = false, mentionSource = 'search'
+  let searchPages = 0, searchComplete = false, mentionSource = 'search', searchStop = 'page_limit'
+  let searchResumeCursor: string | undefined
   const mentionIds = new Set<string>()
   const search = async () => {
     let cursor: string | undefined
@@ -74,17 +75,17 @@ async function circle(handle: string) {
       const result = await get('/api/v1/search', { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), limit: '100', require_live: 'true', ...(cursor ? { cursor } : {}) })
       searchPages++
       for (const post of result.posts ?? []) { if (post.id) mentionIds.add(post.id); incoming(post) }
-      if (result.warnings?.length) { issues.push(...result.warnings.map(w => `search:${w}`)); break }
-      if (!result.posts?.length && result.nextCursor) { issues.push('search:empty_page'); break }
-      if (!result.nextCursor) { searchComplete = true; break }
-      if (seen.has(result.nextCursor)) { issues.push('search_repeated_cursor'); break }
-      seen.add(result.nextCursor); cursor = result.nextCursor
+      if (result.warnings?.length) { issues.push(...result.warnings.map(w => `search:${w}`)); searchStop = 'warning'; break }
+      if (!result.posts?.length && result.nextCursor) { issues.push('search:empty_page'); searchStop = 'empty_page'; break }
+      if (!result.nextCursor) { searchComplete = true; searchStop = 'exhausted'; searchResumeCursor = undefined; break }
+      if (seen.has(result.nextCursor)) { issues.push('search_repeated_cursor'); searchStop = 'repeated_cursor'; break }
+      seen.add(result.nextCursor); cursor = result.nextCursor; searchResumeCursor = cursor
     }
-    if (searchPages === 10 && !searchComplete) issues.push('search_page_limit')
+    if (searchStop === 'page_limit' && !searchComplete) issues.push('search_page_limit')
   }
   const [own] = await Promise.all([
     get(`/api/v1/profiles/${handle}/posts`, { since: since.toISOString(), until: until.toISOString(), max_posts: '1000', ...(fresh ? { refresh: 'true' } : {}) }),
-    search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search' }),
+    search().catch(error => { issues.push(`search:${String(error)}`); mentionSource = 'partial_search'; searchStop = 'error' }),
   ])
   const identity = own.profile ? { profile: own.profile } : await get(`/api/v1/profiles/${handle}`, { include_posts: 'false' })
   const ownPosts = own.posts ?? []
@@ -127,7 +128,7 @@ async function circle(handle: string) {
   }))
   const wall_ms = Math.round(performance.now() - started)
   const events = [...interactions.values()], incomingCount = events.filter(e => e.direction === 'in').length
-  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
+  const summary = { handle, fresh, since: since.toISOString(), until: until.toISOString(), wall_ms, own_posts: ownPosts.length, incoming_posts: mentionIds.size, incoming_interactions: incomingCount, interactions: events.length, members: ranked.length, avatars: ranked.slice(0, 50).filter(s => s.profile?.avatar_url).length, posts_per_second: Number(((ownPosts.length + mentionIds.size) / (wall_ms / 1000)).toFixed(2)), search_pages: searchPages, search_complete: searchComplete, search_stop: searchStop, search_resume: searchComplete ? undefined : { q: `(@${handle} OR to:${handle})`, feed: 'latest', since: since.toISOString(), until: until.toISOString(), cursor: searchResumeCursor ?? null }, mention_source: mentionSource, issues: [...new Set(issues)], requests: requests.length, failures: requests.filter(r => r.status === 0 || r.status >= 400 || r.malformed).length, retries: requests.filter(r => r.retry > 0).length, own_meta: own.meta, top20: ranked.slice(0, 20).map(s => s.handle) }
   if (process.env.X_MD_EVIDENCE_DIR) await writeFile(`${process.env.X_MD_EVIDENCE_DIR}/circle-${handle}-${Date.now()}.json`, JSON.stringify({ summary, requests, interactions: events, ranked, owner: identity.profile }))
   console.log(JSON.stringify(summary))
 }
