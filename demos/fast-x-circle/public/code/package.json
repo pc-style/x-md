@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun build src/client.ts --outfile=public/app.js --target=browser",
+    "build": "bun build src/client.ts --outfile=public/app.js --target=browser && bun build src/vercel-handler.ts --outfile=api/circle.js --target=node --format=esm",
     "start": "bun server.ts",
     "test": "vitest --run src"
   },

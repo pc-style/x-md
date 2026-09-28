@@ -1,4 +1,4 @@
-// demos/fast-x-circle/src/draw.ts
+// src/draw.ts
 var SIZE = 1200;
 function rgb(hex) {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
@@ -194,7 +194,7 @@ function toPngBlob(canvas) {
   });
 }
 
-// demos/fast-x-circle/src/client.ts
+// src/client.ts
 var STEPS = [
   { id: "posts", label: "Reading recent posts and mentions" },
   { id: "people", label: "Scoring people and fetching their photos" }

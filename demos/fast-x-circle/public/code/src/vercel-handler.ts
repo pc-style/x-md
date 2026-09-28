@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { CircleError, collectCircle, type CircleEvent } from '../src/engine'
-import { beginCircle } from '../src/http'
+import { CircleError, collectCircle, type CircleEvent } from './engine'
+import { beginCircle } from './http'
 
 export const config = { maxDuration: 60 }
 
@@ -10,7 +10,7 @@ function clientIp(req: IncomingMessage): string {
   return value?.split(',')[0]?.trim() || 'unknown'
 }
 
-export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
   if (req.method !== 'GET') {
     res.statusCode = 405
     res.end('Method not allowed')
@@ -27,7 +27,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   const abort = new AbortController()
   const timer = setTimeout(() => abort.abort(), 55_000)
-  req.on('close', () => abort.abort())
+  if (typeof req.on === 'function') req.on('close', () => abort.abort())
   res.statusCode = 200
   res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
   res.setHeader('Cache-Control', 'no-cache, no-transform')
@@ -49,5 +49,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     clearTimeout(timer)
     gate.finish()
     if (!res.writableEnded) res.end()
+  }
+}
+
+export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    await handle(req, res)
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'failed'
+    if (!res.writableEnded) {
+      res.statusCode = 500
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      res.end(JSON.stringify({ code: 'unavailable', detail }))
+    }
   }
 }

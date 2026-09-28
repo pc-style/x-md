@@ -1,6 +1,8 @@
 {
+  "buildCommand": "bun run build",
+  "outputDirectory": "public",
   "functions": {
-    "api/circle.ts": {
+    "api/circle.js": {
       "maxDuration": 60
     }
   }
