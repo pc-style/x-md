@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X Circle, fast: see who an X account interacts with most</title>
+<meta name="description" content="A faster X Circle built on the x.md API: type a username and watch the circle of people it talks with most draw itself as posts stream in.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://pbs.twimg.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="bar">
+  <span class="bar-brand">X Circle <b>fast</b></span>
+  <nav><a href="/bench/">Benchmark</a><a href="/source/">Source</a><a href="https://cut-noodle.com/x-circle" rel="noopener">Original</a></nav>
+</header>
+<main class="xc">
+  <div class="xc-top">
+    <h1 class="xc-title">Make your X interaction circle</h1>
+    <p class="xc-lead">Type a username. The circle draws itself while its recent public posts and mentions stream in, with the people it talks with most in the middle.</p>
+  </div>
+
+  <form class="xc-field" id="xc-form" autocomplete="off">
+    <label class="xc-label" for="xc-handle">X username</label>
+    <div class="xc-row">
+      <div class="xc-input"><span aria-hidden="true">@</span><input id="xc-handle" name="handle" placeholder="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="80" aria-describedby="xc-note"></div>
+      <button type="submit" class="xc-go" id="xc-go" disabled>Make my circle</button>
+    </div>
+    <div class="scan" id="xc-scan" role="status" aria-live="polite" hidden>
+      <div class="scan-head">
+        <span class="scan-spin" aria-hidden="true"></span>
+        <div>
+          <p class="scan-title">Reading posts</p>
+          <p class="scan-sub">This takes a few seconds, and the circle appears as soon as the first posts land. <span class="scan-clock">0:00</span></p>
+        </div>
+      </div>
+      <div class="scan-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100"><span style="width:3%"></span></div>
+      <ol class="scan-steps"></ol>
+    </div>
+    <p class="xc-error" id="xc-error" role="alert" hidden></p>
+  </form>
+  <p class="xc-note" id="xc-note">Public accounts only, no login. Posts are read through the x.md API on this demo's server; nothing is saved.</p>
+
+  <section class="xc-examples" id="xc-examples" aria-labelledby="xc-how-title">
+    <h2 id="xc-how-title">How it scores</h2>
+    <ul class="xc-how">
+      <li><b>Two streams at once.</b> The account's own posts and replies, and posts by others that mention it.</li>
+      <li><b>Each post becomes interactions.</b> A reply is worth 3, a quote 2.5, a mention 1.5 and a repost 1, halving every 30 days.</li>
+      <li><b>Both ways counts double.</b> Given and received combine as (√given + √received)², so mutual conversations move closest.</li>
+    </ul>
+  </section>
+
+  <section class="xc-result" id="xc-result" aria-labelledby="xc-result-title" hidden>
+    <div class="xc-rhead">
+      <h2 id="xc-result-title" class="xc-rtitle">Your circle</h2>
+      <span class="xc-live" id="xc-live">Live · updating as posts arrive</span>
+    </div>
+    <p class="xc-basis" id="xc-basis"></p>
+    <div class="xc-work">
+      <div class="xc-stage">
+        <canvas id="xc-canvas" width="1200" height="1200" role="img" aria-label="Interaction circle"></canvas>
+        <div class="xc-actions">
+          <button type="button" class="xc-btn" id="xc-download">Download PNG</button>
+          <button type="button" class="xc-btn xc-btn--quiet" id="xc-copy">Copy picture</button>
+          <button type="button" class="xc-btn xc-btn--quiet" id="xc-post">Post on X</button>
+        </div>
+        <div class="xc-share" aria-live="polite"><p id="xc-share-note"></p></div>
+      </div>
+      <aside class="xc-panel" aria-label="Circle style">
+        <fieldset>
+          <legend>Background</legend>
+          <div class="xc-swatches" id="xc-swatches"></div>
+          <div class="xc-seg" role="group" aria-label="Fill">
+            <button type="button" data-fill="solid" aria-pressed="false">Solid</button>
+            <button type="button" data-fill="gradient" aria-pressed="true">Gradient</button>
+          </div>
+          <div class="xc-colors">
+            <label id="xc-color1-label"><input type="color" id="xc-color1" value="#00123B">From</label>
+            <label id="xc-color2-wrap"><input type="color" id="xc-color2" value="#26286B">To</label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Size</legend>
+          <label class="xc-range"><span>People <output id="xc-count">50</output></span><input type="range" id="xc-count-range" min="10" max="50" step="1" value="50"></label>
+          <label class="xc-range"><span>Photo size <output id="xc-scale">100%</output></span><input type="range" id="xc-scale-range" min="70" max="130" step="5" value="100"></label>
+        </fieldset>
+        <fieldset>
+          <legend>Show</legend>
+          <label class="xc-check"><input type="checkbox" id="xc-names">Usernames</label>
+          <label class="xc-check"><input type="checkbox" id="xc-ranks">Rank numbers</label>
+          <label class="xc-check"><input type="checkbox" id="xc-rings">Ring lines</label>
+        </fieldset>
+      </aside>
+    </div>
+    <div class="xc-people">
+      <h3>Who is in it, and why</h3>
+      <p>Ranked by score. Untick someone to take them out of the picture; the next person moves up.</p>
+      <ol id="xc-list"></ol>
+    </div>
+  </section>
+</main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>
