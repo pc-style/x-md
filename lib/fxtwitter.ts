@@ -430,9 +430,9 @@ export async function searchFxStatuses(
     // FxTwitter answers `{code:404, results:[]}` when X's SearchTimeline gives it no
     // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
     // an outage, not a missing post, so surface it as retryable.
-    if (error instanceof ConvertError && error.code === 'not_found') {
-      trackUpstream('fxtwitter', 'empty_response', 404, started)
-      throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
+    if (error instanceof ConvertError && (error.code === 'not_found' || error.status >= 500)) {
+      if (error.code === 'not_found') trackUpstream('fxtwitter', 'empty_response', 404, started)
+      throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable', error.retryAfter)
     }
     throw error
   }

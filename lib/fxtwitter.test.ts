@@ -529,3 +529,10 @@ test('recovers one transient identity miss without failing the circle', async ()
   expect(await fetchFxProfile('ada')).toMatchObject({ screen_name: 'ada' })
   expect(fetch).toHaveBeenCalledTimes(2)
 })
+
+test('maps a search transport failure into the live-fallback error contract', async () => {
+  const { resetFxPool } = await import('./fxtwitter.js')
+  resetFxPool()
+  vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network unavailable') }))
+  await expect(searchFxStatuses('@ada','latest')).rejects.toMatchObject({code:'search_unavailable',status:503})
+})
