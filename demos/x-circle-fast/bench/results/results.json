@@ -1,0 +1,197 @@
+{
+  "demo": "http://localhost:8787",
+  "original": "https://cut-noodle.com/x-circle",
+  "handles": [
+    "rsms",
+    "tobi",
+    "shl"
+  ],
+  "results": [
+    {
+      "target": "fast",
+      "handle": "rsms",
+      "startedAt": "2026-09-28T06:19:42.074Z",
+      "archiveBefore": null,
+      "firstProgressMs": 1635,
+      "firstCircleMs": 1623,
+      "completeMs": 9923,
+      "postsProcessed": 1097,
+      "people": 50,
+      "postsPerSecond": 110.6,
+      "basis": "50 people from 1,097 posts since 31 May 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "rsms",
+        "marks": {
+          "start": 1033.7000000001863,
+          "firstProgress": 1616,
+          "firstCircle": 1633,
+          "harvestDone": 8164,
+          "complete": 9925
+        },
+        "postsRead": 1097,
+        "posts": 997,
+        "mentions": 100,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "fast",
+      "handle": "tobi",
+      "startedAt": "2026-09-28T06:19:56.538Z",
+      "archiveBefore": null,
+      "firstProgressMs": 1233,
+      "firstCircleMs": 1222,
+      "completeMs": 11491,
+      "postsProcessed": 790,
+      "people": 50,
+      "postsPerSecond": 68.7,
+      "basis": "50 people from 790 posts since 31 May 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "tobi",
+        "marks": {
+          "start": 1024.6999999997206,
+          "firstProgress": 1203,
+          "firstCircle": 1232,
+          "harvestDone": 7377,
+          "complete": 11494
+        },
+        "postsRead": 790,
+        "posts": 736,
+        "mentions": 54,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "fast",
+      "handle": "shl",
+      "startedAt": "2026-09-28T06:20:12.631Z",
+      "archiveBefore": null,
+      "firstProgressMs": 1184,
+      "firstCircleMs": 1174,
+      "completeMs": 10407,
+      "postsProcessed": 717,
+      "people": 50,
+      "postsPerSecond": 68.9,
+      "basis": "50 people from 717 posts since 1 Jun 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "shl",
+        "marks": {
+          "start": 1019.5999999996275,
+          "firstProgress": 1169,
+          "firstCircle": 1183,
+          "harvestDone": 7622,
+          "complete": 10409
+        },
+        "postsRead": 717,
+        "posts": 590,
+        "mentions": 127,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "original",
+      "handle": "rsms",
+      "startedAt": "2026-09-28T06:20:27.622Z",
+      "archiveBefore": {
+        "handle": "rsms",
+        "count": 1000,
+        "oldest": "2026-05-31T15:34:10.000Z",
+        "newest": "2026-09-27T16:34:58.000Z",
+        "updated_at": "2026-09-28T06:19:52.448Z",
+        "floor_reached": false,
+        "covered_since": "2026-05-31T15:34:10.000Z",
+        "covered_until": "2026-09-28T06:19:43.603Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 713,
+      "firstCircleMs": 14292,
+      "completeMs": 14473,
+      "postsProcessed": 525,
+      "people": 50,
+      "postsPerSecond": 36.3,
+      "basis": "50 people from 525 posts since 7 Sept 2026.",
+      "error": null
+    },
+    {
+      "target": "original",
+      "handle": "shl",
+      "startedAt": "2026-09-28T06:20:49.533Z",
+      "archiveBefore": {
+        "handle": "shl",
+        "count": 598,
+        "oldest": "2026-06-01T13:49:22.000Z",
+        "newest": "2026-09-27T01:16:53.000Z",
+        "updated_at": "2026-09-28T06:20:21.358Z",
+        "floor_reached": false,
+        "covered_since": "2026-05-31T06:20:14.000Z",
+        "covered_until": "2026-09-28T06:20:14.529Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 972,
+      "firstCircleMs": 14195,
+      "completeMs": 14429,
+      "postsProcessed": 457,
+      "people": 50,
+      "postsPerSecond": 31.7,
+      "basis": "50 people from 457 posts since 18 Jun 2026.",
+      "error": null
+    },
+    {
+      "target": "original",
+      "handle": "tobi",
+      "startedAt": "2026-09-28T06:22:20.374Z",
+      "archiveBefore": {
+        "handle": "tobi",
+        "count": 747,
+        "oldest": "2026-05-31T17:45:55.000Z",
+        "newest": "2026-09-27T22:25:53.000Z",
+        "updated_at": "2026-09-28T06:20:04.915Z",
+        "floor_reached": false,
+        "covered_since": "2026-05-31T06:19:57.000Z",
+        "covered_until": "2026-09-28T06:19:58.064Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 1084,
+      "firstCircleMs": 14019,
+      "completeMs": 14108,
+      "postsProcessed": 385,
+      "people": 50,
+      "postsPerSecond": 27.3,
+      "basis": "50 people from 385 posts since 9 Aug 2026.",
+      "error": null
+    }
+  ],
+  "notes": [
+    "The original first answered @tobi with \"There is no X account with that username. Check the spelling and try again.\" (a transient lookup failure on its side; the account exists and the demo read it). Its row is the immediate retry at 2026-09-28T06:22:20.374Z. Both runs are kept in the raw JSON."
+  ],
+  "failedAttempts": [
+    {
+      "target": "original",
+      "handle": "tobi",
+      "startedAt": "2026-09-28T06:20:46.867Z",
+      "archiveBefore": {
+        "handle": "tobi",
+        "count": 747,
+        "oldest": "2026-05-31T17:45:55.000Z",
+        "newest": "2026-09-27T22:25:53.000Z",
+        "updated_at": "2026-09-28T06:20:04.915Z",
+        "floor_reached": false,
+        "covered_since": "2026-05-31T06:19:57.000Z",
+        "covered_until": "2026-09-28T06:19:58.064Z",
+        "incomplete": false
+      },
+      "firstProgressMs": null,
+      "firstCircleMs": null,
+      "completeMs": null,
+      "postsProcessed": null,
+      "people": null,
+      "postsPerSecond": null,
+      "basis": null,
+      "error": "There is no X account with that username. Check the spelling and try again."
+    }
+  ],
+  "race": "hillelogram"
+}
