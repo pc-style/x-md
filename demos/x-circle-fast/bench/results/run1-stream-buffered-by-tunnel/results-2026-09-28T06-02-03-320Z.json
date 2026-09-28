@@ -1,0 +1,167 @@
+{
+  "demo": "https://fire-governing-assembled-flight.trycloudflare.com",
+  "original": "https://cut-noodle.com/x-circle",
+  "handles": [
+    "GergelyOrosz",
+    "antirez",
+    "wesbos"
+  ],
+  "results": [
+    {
+      "target": "fast",
+      "handle": "GergelyOrosz",
+      "startedAt": "2026-09-28T06:00:02.373Z",
+      "archiveBefore": null,
+      "firstProgressMs": 6001,
+      "firstCircleMs": 5988,
+      "completeMs": 10531,
+      "postsProcessed": 1120,
+      "people": 50,
+      "postsPerSecond": 106.4,
+      "basis": "50 people from 1,120 posts since 16 Jul 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "GergelyOrosz",
+        "marks": {
+          "start": 1334.4000000001397,
+          "firstProgress": 5970,
+          "firstCircle": 5998,
+          "harvestDone": 6936,
+          "complete": 10533
+        },
+        "postsRead": 1120,
+        "posts": 1000,
+        "mentions": 120,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "original",
+      "handle": "GergelyOrosz",
+      "startedAt": "2026-09-28T06:00:17.828Z",
+      "archiveBefore": {
+        "handle": "GergelyOrosz",
+        "count": 1000,
+        "oldest": "2026-08-06T15:18:40.000Z",
+        "newest": "2026-09-27T21:37:08.000Z",
+        "updated_at": "2026-09-28T06:00:16.862Z",
+        "floor_reached": false,
+        "covered_since": "2026-08-06T15:18:40.000Z",
+        "covered_until": "2026-09-28T06:00:04.318Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 850,
+      "firstCircleMs": 17778,
+      "completeMs": 18388,
+      "postsProcessed": 439,
+      "people": 50,
+      "postsPerSecond": 23.9,
+      "basis": "50 people from 439 posts since 18 Sept 2026.",
+      "error": null
+    },
+    {
+      "target": "fast",
+      "handle": "antirez",
+      "startedAt": "2026-09-28T06:00:40.957Z",
+      "archiveBefore": null,
+      "firstProgressMs": 12208,
+      "firstCircleMs": 12196,
+      "completeMs": 17913,
+      "postsProcessed": 1080,
+      "people": 50,
+      "postsPerSecond": 60.3,
+      "basis": "50 people from 1,080 posts since 31 May 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "antirez",
+        "marks": {
+          "start": 1095.1000000000931,
+          "firstProgress": 12182,
+          "firstCircle": 12205,
+          "harvestDone": 12237,
+          "complete": 17915
+        },
+        "postsRead": 1080,
+        "posts": 972,
+        "mentions": 108,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "original",
+      "handle": "antirez",
+      "startedAt": "2026-09-28T06:01:03.510Z",
+      "archiveBefore": {
+        "handle": "antirez",
+        "count": 973,
+        "oldest": "2026-05-31T07:40:27.000Z",
+        "newest": "2026-09-27T10:21:40.000Z",
+        "updated_at": "2026-09-28T06:00:54.278Z",
+        "floor_reached": false,
+        "covered_since": "2026-05-31T06:00:42.000Z",
+        "covered_until": "2026-09-28T06:00:42.597Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 1433,
+      "firstCircleMs": 17700,
+      "completeMs": 17916,
+      "postsProcessed": 446,
+      "people": 50,
+      "postsPerSecond": 24.9,
+      "basis": "50 people from 446 posts since 30 Aug 2026.",
+      "error": null
+    },
+    {
+      "target": "fast",
+      "handle": "wesbos",
+      "startedAt": "2026-09-28T06:01:26.228Z",
+      "archiveBefore": null,
+      "firstProgressMs": 5324,
+      "firstCircleMs": 5313,
+      "completeMs": 9600,
+      "postsProcessed": 1094,
+      "people": 50,
+      "postsPerSecond": 114,
+      "basis": "50 people from 1,094 posts since 1 Jun 2026.",
+      "error": null,
+      "pageMarks": {
+        "handle": "wesbos",
+        "marks": {
+          "start": 1159,
+          "firstProgress": 5302,
+          "firstCircle": 5322,
+          "harvestDone": 6300,
+          "complete": 9603
+        },
+        "postsRead": 1094,
+        "posts": 999,
+        "mentions": 95,
+        "state": "complete"
+      }
+    },
+    {
+      "target": "original",
+      "handle": "wesbos",
+      "startedAt": "2026-09-28T06:01:40.545Z",
+      "archiveBefore": {
+        "handle": "wesbos",
+        "count": 1000,
+        "oldest": "2026-06-04T18:40:17.000Z",
+        "newest": "2026-09-27T20:59:14.000Z",
+        "updated_at": "2026-09-28T06:01:36.047Z",
+        "floor_reached": false,
+        "covered_since": "2026-06-04T18:40:17.000Z",
+        "covered_until": "2026-09-28T06:01:27.950Z",
+        "incomplete": false
+      },
+      "firstProgressMs": 1176,
+      "firstCircleMs": 17864,
+      "completeMs": 18035,
+      "postsProcessed": 497,
+      "people": 50,
+      "postsPerSecond": 27.6,
+      "basis": "50 people from 497 posts since 8 Sept 2026.",
+      "error": null
+    }
+  ]
+}

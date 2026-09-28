@@ -136,6 +136,8 @@ async function measure(browser: Browser, target: 'fast' | 'original', handle: st
     }
     if (target === 'fast') m.pageMarks = await page.evaluate(() => (window as unknown as { __xc?: unknown }).__xc ?? null)
     await mkdir(OUT, { recursive: true })
+    await page.evaluate(() => { document.querySelector('.xc-result')?.scrollIntoView({ block: 'start' }); window.scrollBy(0, -16) })
+    await new Promise((r) => setTimeout(r, 300))
     await page.screenshot({ path: join(OUT, `${target}-${handle}.png`) as `${string}.png`, fullPage: false })
     const png = await page.evaluate(() => document.querySelector<HTMLCanvasElement>('.xc-stage canvas, .xc-result canvas')?.toDataURL('image/png') ?? null)
     if (png) await writeFile(join(OUT, `${target}-${handle}-circle.png`), Buffer.from(png.split(',')[1], 'base64'))

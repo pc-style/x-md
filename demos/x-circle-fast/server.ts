@@ -1,7 +1,8 @@
 import { readdir, stat } from 'node:fs/promises'
 import { join, normalize, relative } from 'node:path'
 import { cleanHandle } from './src/core.ts'
-import { DEFAULTS, harvest, resolveProfiles, type HarvestEvent } from './src/harvest.ts'
+import { DEFAULTS, harvest, resolveProfiles, type CircleEvent } from './src/harvest.ts'
+import { Jobs } from './src/jobs.ts'
 
 const ROOT = import.meta.dir
 const PORT = Number(process.env.PORT ?? 8787)
@@ -35,16 +36,8 @@ const CIRCLES_PER_IP = Number(process.env.CIRCLES_PER_IP ?? 12)
 const clientIp = (req: Request, server: Bun.Server<undefined>): string =>
   req.headers.get('cf-connecting-ip') ?? server.requestIP(req)?.address ?? 'unknown'
 
-function stream(run: (write: (value: unknown) => void, signal: AbortSignal) => Promise<void>, signal: AbortSignal): Response {
-  const encoder = new TextEncoder()
-  const body = new ReadableStream<Uint8Array>({
-    async start(controller) {
-      const write = (value: unknown) => { if (!signal.aborted) controller.enqueue(encoder.encode(JSON.stringify(value) + '\n')) }
-      try { await run(write, signal) } finally { if (!signal.aborted) controller.close() }
-    },
-  })
-  return new Response(body, { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no' } })
-}
+const jobs = new Jobs<CircleEvent>()
+const MAX_PROFILES_PER_CIRCLE = 200
 
 const json = (value: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...extra } })
@@ -93,30 +86,40 @@ const server = Bun.serve({
     const url = new URL(req.url)
     const { pathname } = url
 
-    if (pathname === '/api/circle') {
+    if (pathname === '/api/circle' && req.method === 'POST') {
       const handle = cleanHandle(url.searchParams.get('handle') ?? '')
       if (!handle) return json({ error: 'bad_handle' }, 400)
       const wait = allow('circle', clientIp(req, srv), CIRCLES_PER_IP, 15 * 60_000)
       if (wait !== null) return json({ error: 'rate_limited', retryAfter: wait }, 429, { 'Retry-After': String(wait) })
-      return stream(async (write, signal) => {
-        await harvest(handle, { base: BASE, key: KEY, signal, ...DEFAULTS }, (event: HarvestEvent) => {
-          if (event.type === 'done') console.log(`circle @${handle}: ${event.posts} posts + ${event.mentions} mentions (${event.mentionsSource}) ${JSON.stringify(event.timings)}`)
-          if (event.type === 'error') console.log(`circle @${handle}: error ${event.code} ${event.detail ?? ''}`)
-          write(event)
-        })
-      }, req.signal)
+      const { id, log } = jobs.create()
+      void harvest(handle, { base: BASE, key: KEY, signal: log.controller.signal, ...DEFAULTS }, (event) => {
+        if (event.type === 'done') console.log(`circle @${handle}: ${event.posts} posts + ${event.mentions} mentions (${event.mentionsSource}) ${JSON.stringify(event.timings)}`)
+        if (event.type === 'error') console.log(`circle @${handle}: error ${event.code} ${event.detail ?? ''}`)
+        log.push(event)
+        if (event.type === 'error') log.close()
+      })
+      return json({ id }, 201)
     }
 
-    if (pathname === '/api/profiles') {
-      const handles = (url.searchParams.get('handles') ?? '').split(',').map((h) => cleanHandle(h)).filter((h): h is string => Boolean(h)).slice(0, 60)
-      if (!handles.length) return json({ error: 'bad_handle' }, 400)
-      const wait = allow('profiles', clientIp(req, srv), 60, 15 * 60_000)
-      if (wait !== null) return json({ error: 'rate_limited', retryAfter: wait }, 429, { 'Retry-After': String(wait) })
-      const started = performance.now()
-      return stream(async (write, signal) => {
-        const { resolved, slowestMs } = await resolveProfiles(handles, { base: BASE, key: KEY, signal }, write)
-        console.log(`profiles: ${resolved}/${handles.length} in ${Math.round(performance.now() - started)} ms (slowest ${slowestMs} ms)`)
-      }, req.signal)
+    const job = /^\/api\/circle\/([0-9a-f-]{36})(\/profiles)?$/.exec(pathname)
+    if (job) {
+      const log = jobs.get(job[1])
+      if (!log) return json({ error: 'not_found' }, 404)
+      if (job[2] && req.method === 'POST') {
+        const handles = (url.searchParams.get('handles') ?? '').split(',').map((h) => cleanHandle(h)).filter((h): h is string => Boolean(h)).slice(0, 80)
+        if (!handles.length) return json({ error: 'bad_handle' }, 400)
+        log.profilesRequested += handles.length
+        if (log.profilesRequested > MAX_PROFILES_PER_CIRCLE) return json({ error: 'rate_limited' }, 429)
+        const started = performance.now()
+        void resolveProfiles(handles, { base: BASE, key: KEY, signal: log.controller.signal }, (person) => log.push({ type: 'person', person })).then(({ resolved, slowestMs }) => {
+          log.push({ type: 'profiles-done', handles })
+          console.log(`profiles: ${resolved}/${handles.length} in ${Math.round(performance.now() - started)} ms (slowest ${slowestMs} ms)`)
+        })
+        return json({ accepted: handles.length }, 202)
+      }
+      if (req.method === 'DELETE') { log.controller.abort(); log.close(); return new Response(null, { status: 204 }) }
+      const after = Math.max(0, Number(url.searchParams.get('after') ?? 0) || 0)
+      return json(await log.read(after, 20_000))
     }
 
     if (pathname === '/app.js') return new Response(clientJs, { headers: { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache' } })

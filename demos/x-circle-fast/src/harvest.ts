@@ -20,6 +20,12 @@ export type HarvestEvent =
   | { type: 'done'; posts: number; mentions: number; postsRead: number; oldest: number | null; postsOldest: number | null; mentionsOldest: number | null; mentionsSource: 'search' | 'replies' | null; timings: Record<string, number>; t: number }
   | { type: 'error'; code: 'not_found' | 'private' | 'empty' | 'unavailable' | 'rate_limited'; detail?: string; t: number }
 
+/** What the browser reads from a circle's log: the harvest, plus photos it asked for along the way. */
+export type CircleEvent =
+  | HarvestEvent
+  | { type: 'person'; person: Person }
+  | { type: 'profiles-done'; handles: string[] }
+
 export interface HarvestOptions {
   base: string
   key: string

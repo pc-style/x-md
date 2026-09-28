@@ -1,6 +1,6 @@
 import { cleanHandle, rank, type Interaction, type Member, type Person } from './core.ts'
 import { DEFAULT_STYLE, draw, loadImage, SIZE, toPngBlob, type Circle, type Style } from './draw.ts'
-import type { HarvestEvent } from './harvest.ts'
+import type { CircleEvent } from './harvest.ts'
 
 const FOOTER = 'x-circle · fast demo'
 const TOP = 50
@@ -58,6 +58,7 @@ let run: {
   requested: Set<string>
   inflight: number
   createdAt: number
+  job: string | null
 } | null = null
 const removed = new Set<string>()
 const images = new Map<string, HTMLImageElement>()
@@ -204,23 +205,19 @@ function requestAvatars(current: Member[]) {
     const wanted = unresolved(r, members())
     if (!wanted.length) { schedule(); return }
     for (const h of wanted) r.requested.add(h.toLowerCase())
+    if (!r.job) return
     r.inflight += 1
-    void (async () => {
-      try {
-        const response = await fetch(`/api/profiles?handles=${encodeURIComponent(wanted.join(','))}`, { signal: r.controller.signal })
-        if (!response.ok || !response.body) return
-        for await (const person of lines(response.body)) {
-          const p = person as Person
-          r.profiles.set(p.handle.toLowerCase(), p)
-          schedule()
-        }
-      } catch { /* aborted or offline: initials stay */ } finally {
-        r.inflight -= 1
-        for (const h of wanted) if (!r.profiles.has(h.toLowerCase())) r.profiles.set(h.toLowerCase(), { handle: h, name: h, avatar: null })
-        schedule()
-      }
-    })()
+    void fetch(`/api/circle/${r.job}/profiles?handles=${encodeURIComponent(wanted.join(','))}`, { method: 'POST', signal: r.controller.signal })
+      .then((response) => { if (!response.ok) settleProfiles(r, wanted) })
+      .catch(() => settleProfiles(r, wanted))
   }, r.done ? 0 : 250)
+}
+
+/** A photo request has finished: anyone it did not resolve keeps their initial. */
+function settleProfiles(r: NonNullable<typeof run>, handles: string[]) {
+  r.inflight -= 1
+  for (const h of handles) if (!r.profiles.has(h.toLowerCase())) r.profiles.set(h.toLowerCase(), { handle: h, name: h, avatar: null })
+  schedule()
 }
 
 function checkComplete(c: Circle) {
@@ -247,27 +244,16 @@ function checkComplete(c: Circle) {
 
 // ---- the run ---------------------------------------------------------------
 
-async function* lines(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown> {
-  const reader = body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  for (;;) {
-    const { value, done } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    let i: number
-    while ((i = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, i).trim()
-      buffer = buffer.slice(i + 1)
-      if (line) yield JSON.parse(line)
-    }
-  }
+function stop() {
+  if (!run) return
+  run.controller.abort()
+  if (run.job) void fetch(`/api/circle/${run.job}`, { method: 'DELETE', keepalive: true }).catch(() => {})
 }
 
 async function start(raw: string) {
   const handle = cleanHandle(raw)
   if (!handle) { showError('bad_handle'); return }
-  run?.controller.abort()
+  stop()
   showError(null)
   removed.clear()
   ranked = []
@@ -277,7 +263,7 @@ async function start(raw: string) {
   const marks: Marks = { start: performance.now() }
   run = {
     handle, owner: { handle, name: handle, avatar: null }, interactions: [], posts: 0, mentions: 0, oldest: null, mentionsSource: undefined,
-    done: false, marks, controller: new AbortController(), profiles: new Map(), requested: new Set(), inflight: 0, createdAt: Date.now(),
+    done: false, marks, controller: new AbortController(), profiles: new Map(), requested: new Set(), inflight: 0, createdAt: Date.now(), job: null,
   }
   const r = run
   $('.scan-title').textContent = `Reading @${handle}'s posts`
@@ -294,54 +280,73 @@ async function start(raw: string) {
     publish('error')
   }
   try {
-    const response = await fetch(`/api/circle?handle=${encodeURIComponent(handle)}`, { signal: r.controller.signal })
-    if (!response.ok || !response.body) { fail(response.status === 429 ? 'rate_limited' : response.status === 400 ? 'bad_handle' : 'unavailable'); return }
-    for await (const line of lines(response.body)) {
-      if (run !== r) return
-      const event = line as HarvestEvent
-      switch (event.type) {
-        case 'profile':
-          r.owner = { handle: event.profile.handle, name: event.profile.name, avatar: event.profile.avatar }
-          r.handle = event.profile.handle
-          input.value = event.profile.handle
-          break
-        case 'batch':
-          r.interactions.push(...event.interactions)
-          r.posts = event.posts
-          r.mentions = event.mentions
-          if (event.oldest && (r.oldest === null || event.oldest < r.oldest)) r.oldest = event.oldest
-          if (r.marks.firstProgress === undefined && (r.posts > 0 || r.mentions > 0)) r.marks.firstProgress = since(r.marks)
-          ranked = rank(r.interactions)
-          break
-        case 'mentions-source':
-          r.mentionsSource = event.source
-          break
-        case 'done':
-          r.posts = event.posts
-          r.mentions = event.mentions
-          r.oldest = event.oldest
-          r.mentionsSource = event.mentionsSource
-          r.done = true
-          r.marks.harvestDone = since(r.marks)
-          ranked = rank(r.interactions)
-          if (!ranked.length) { fail('no_one'); return }
-          style = { ...style, count: Math.min(Math.max(10, style.count), TOP) }
-          break
-        case 'error':
-          fail(event.code)
-          return
-        default: {
-          const never: never = event
-          throw new Error(`unexpected event ${JSON.stringify(never)}`)
-        }
-      }
-      publish(r.done ? 'harvested' : 'working')
-      schedule()
+    const created = await fetch(`/api/circle?handle=${encodeURIComponent(handle)}`, { method: 'POST', signal: r.controller.signal })
+    if (!created.ok) { fail(created.status === 429 ? 'rate_limited' : created.status === 400 ? 'bad_handle' : 'unavailable'); return }
+    r.job = ((await created.json()) as { id: string }).id
+    let cursor = 0
+    // Long polling: each request returns as soon as anything new is logged. It keeps
+    // going after the circle is complete so photos asked for later still arrive.
+    while (run === r) {
+      const response = await fetch(`/api/circle/${r.job}?after=${cursor}`, { signal: r.controller.signal })
+      if (!response.ok) { fail('unavailable'); return }
+      const page = (await response.json()) as { events: CircleEvent[]; next: number; closed: boolean }
+      cursor = page.next
+      for (const event of page.events) if (!apply(r, event, fail)) return
+      if (page.events.length) { publish(r.marks.complete !== undefined ? 'complete' : r.done ? 'harvested' : 'working'); schedule() }
+      if (page.closed) { if (!r.done) fail('unavailable'); return }
     }
-    if (!r.done) fail('unavailable')
   } catch {
-    if (r.controller.signal.aborted) { if (run === r) { setWorking(false); publish('stopped') } return }
+    if (r.controller.signal.aborted) {
+      if (run === r && r.marks.complete === undefined) { setWorking(false); publish('stopped') }
+      return
+    }
     fail('unavailable')
+  }
+}
+
+/** Folds one logged event into the run; false means the run has ended in an error. */
+function apply(r: NonNullable<typeof run>, event: CircleEvent, fail: (code: string) => void): boolean {
+  switch (event.type) {
+    case 'profile':
+      r.owner = { handle: event.profile.handle, name: event.profile.name, avatar: event.profile.avatar }
+      r.handle = event.profile.handle
+      input.value = event.profile.handle
+      return true
+    case 'batch':
+      r.interactions.push(...event.interactions)
+      r.posts = event.posts
+      r.mentions = event.mentions
+      if (event.oldest && (r.oldest === null || event.oldest < r.oldest)) r.oldest = event.oldest
+      if (r.marks.firstProgress === undefined && (r.posts > 0 || r.mentions > 0)) r.marks.firstProgress = since(r.marks)
+      ranked = rank(r.interactions)
+      return true
+    case 'mentions-source':
+      r.mentionsSource = event.source
+      return true
+    case 'done':
+      r.posts = event.posts
+      r.mentions = event.mentions
+      r.oldest = event.oldest
+      r.mentionsSource = event.mentionsSource
+      r.done = true
+      r.marks.harvestDone = since(r.marks)
+      ranked = rank(r.interactions)
+      if (!ranked.length) { fail('no_one'); return false }
+      style = { ...style, count: Math.min(Math.max(10, style.count), TOP) }
+      return true
+    case 'person':
+      r.profiles.set(event.person.handle.toLowerCase(), event.person)
+      return true
+    case 'profiles-done':
+      settleProfiles(r, event.handles)
+      return true
+    case 'error':
+      fail(event.code)
+      return false
+    default: {
+      const never: never = event
+      throw new Error(`unexpected event ${JSON.stringify(never)}`)
+    }
   }
 }
 
@@ -370,7 +375,7 @@ function update(patch: Partial<Style>) {
 }
 
 form.addEventListener('submit', (e) => { e.preventDefault(); if (!form.classList.contains('is-working')) void start(input.value) })
-go.addEventListener('click', (e) => { if (go.type === 'button') { e.preventDefault(); run?.controller.abort() } })
+go.addEventListener('click', (e) => { if (go.type === 'button') { e.preventDefault(); stop() } })
 input.addEventListener('input', () => { go.disabled = !input.value.trim() && go.type === 'submit' })
 $('#xc-swatches').addEventListener('click', (e) => {
   const name = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-swatch]')?.dataset.swatch
