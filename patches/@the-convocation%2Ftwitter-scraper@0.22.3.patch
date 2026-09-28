@@ -1,8 +1,28 @@
+diff --git a/node_modules/@the-convocation/twitter-scraper/.bun-tag-92c2f17c6cee3a93 b/.bun-tag-92c2f17c6cee3a93
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/default/cjs/index.js b/dist/default/cjs/index.js
-index 6b6aaf4a4cff943eff13e702afb24a31d8805b81..d630646c4dfdb02fcd6f74bc7d507395c282bc00 100644
+index 6b6aaf4a4cff943eff13e702afb24a31d8805b81..144aef59ab26de76c751cb21919668835d09f02e 100644
 --- a/dist/default/cjs/index.js
 +++ b/dist/default/cjs/index.js
-@@ -2905,6 +2905,19 @@ function parseSearchTimelineUsers(timeline) {
+@@ -2860,6 +2860,16 @@ function parseSearchTimelineTweets(timeline) {
+             tweetResultRaw?.edit_control?.edit_control_initial
+           );
+           if (tweetResult.success) {
++            const author = tweetResultRaw?.core?.user_results?.result;
++            tweetResult.tweet.avatar = author?.avatar?.image_url ?? author?.legacy?.profile_image_url_https;
++            const quoted = tweetResultRaw?.quoted_status_result?.result;
++            if (quoted?.legacy) {
++              const quoteResult = parseLegacyTweet(quoted.core?.user_results?.result?.core, quoted.core?.user_results?.result?.legacy, quoted.legacy);
++              if (quoteResult.success) {
++                quoteResult.tweet.avatar = quoted.core?.user_results?.result?.avatar?.image_url ?? quoted.core?.user_results?.result?.legacy?.profile_image_url_https;
++                tweetResult.tweet.quotedStatus = quoteResult.tweet;
++              }
++            }
+             if (!tweetResult.tweet.views && tweetResultRaw?.views?.count) {
+               const views = parseInt(tweetResultRaw.views.count);
+               if (!isNaN(views)) {
+@@ -2905,6 +2915,19 @@ function parseSearchTimelineUsers(timeline) {
              if (!profile.userId) {
                profile.userId = userResultRaw.rest_id;
              }
@@ -23,10 +43,27 @@ index 6b6aaf4a4cff943eff13e702afb24a31d8805b81..d630646c4dfdb02fcd6f74bc7d507395
            }
          } else if (entry.content?.cursorType === "Bottom") {
 diff --git a/dist/default/esm/index.mjs b/dist/default/esm/index.mjs
-index 2c0b74e314fca12b9eedb7cf006cf5073dd076fc..0fefcf9ee52b6fb99ed07db0ae21a0f07a4c2a09 100644
+index 2c0b74e314fca12b9eedb7cf006cf5073dd076fc..d9de4728fd809d8cb5c3c90736f1e3e481046e4e 100644
 --- a/dist/default/esm/index.mjs
 +++ b/dist/default/esm/index.mjs
-@@ -2884,6 +2884,19 @@ function parseSearchTimelineUsers(timeline) {
+@@ -2839,6 +2839,16 @@ function parseSearchTimelineTweets(timeline) {
+             tweetResultRaw?.edit_control?.edit_control_initial
+           );
+           if (tweetResult.success) {
++            const author = tweetResultRaw?.core?.user_results?.result;
++            tweetResult.tweet.avatar = author?.avatar?.image_url ?? author?.legacy?.profile_image_url_https;
++            const quoted = tweetResultRaw?.quoted_status_result?.result;
++            if (quoted?.legacy) {
++              const quoteResult = parseLegacyTweet(quoted.core?.user_results?.result?.core, quoted.core?.user_results?.result?.legacy, quoted.legacy);
++              if (quoteResult.success) {
++                quoteResult.tweet.avatar = quoted.core?.user_results?.result?.avatar?.image_url ?? quoted.core?.user_results?.result?.legacy?.profile_image_url_https;
++                tweetResult.tweet.quotedStatus = quoteResult.tweet;
++              }
++            }
+             if (!tweetResult.tweet.views && tweetResultRaw?.views?.count) {
+               const views = parseInt(tweetResultRaw.views.count);
+               if (!isNaN(views)) {
+@@ -2884,6 +2894,19 @@ function parseSearchTimelineUsers(timeline) {
              if (!profile.userId) {
                profile.userId = userResultRaw.rest_id;
              }
@@ -47,10 +84,27 @@ index 2c0b74e314fca12b9eedb7cf006cf5073dd076fc..0fefcf9ee52b6fb99ed07db0ae21a0f0
            }
          } else if (entry.content?.cursorType === "Bottom") {
 diff --git a/dist/node/cjs/index.cjs b/dist/node/cjs/index.cjs
-index 0b1395d0a53532dbfd80f03cce21780de909868c..3e95834c11180e5465c15b6b7ab64408f15b3e73 100644
+index 0b1395d0a53532dbfd80f03cce21780de909868c..62e9c4c85676a9c782845717f216ad11ae0d9e09 100644
 --- a/dist/node/cjs/index.cjs
 +++ b/dist/node/cjs/index.cjs
-@@ -2904,6 +2904,19 @@ function parseSearchTimelineUsers(timeline) {
+@@ -2859,6 +2859,16 @@ function parseSearchTimelineTweets(timeline) {
+             tweetResultRaw?.edit_control?.edit_control_initial
+           );
+           if (tweetResult.success) {
++            const author = tweetResultRaw?.core?.user_results?.result;
++            tweetResult.tweet.avatar = author?.avatar?.image_url ?? author?.legacy?.profile_image_url_https;
++            const quoted = tweetResultRaw?.quoted_status_result?.result;
++            if (quoted?.legacy) {
++              const quoteResult = parseLegacyTweet(quoted.core?.user_results?.result?.core, quoted.core?.user_results?.result?.legacy, quoted.legacy);
++              if (quoteResult.success) {
++                quoteResult.tweet.avatar = quoted.core?.user_results?.result?.avatar?.image_url ?? quoted.core?.user_results?.result?.legacy?.profile_image_url_https;
++                tweetResult.tweet.quotedStatus = quoteResult.tweet;
++              }
++            }
+             if (!tweetResult.tweet.views && tweetResultRaw?.views?.count) {
+               const views = parseInt(tweetResultRaw.views.count);
+               if (!isNaN(views)) {
+@@ -2904,6 +2914,19 @@ function parseSearchTimelineUsers(timeline) {
              if (!profile.userId) {
                profile.userId = userResultRaw.rest_id;
              }
@@ -71,10 +125,27 @@ index 0b1395d0a53532dbfd80f03cce21780de909868c..3e95834c11180e5465c15b6b7ab64408
            }
          } else if (entry.content?.cursorType === "Bottom") {
 diff --git a/dist/node/esm/index.mjs b/dist/node/esm/index.mjs
-index bbde9f0481cc1c218b485a4b28967fe16545a503..34087c71cdcf70e331b97ddf79c8f75003f77814 100644
+index bbde9f0481cc1c218b485a4b28967fe16545a503..bf9767b60648f5b9a6f63211cc0d8c4cac019c4a 100644
 --- a/dist/node/esm/index.mjs
 +++ b/dist/node/esm/index.mjs
-@@ -2883,6 +2883,19 @@ function parseSearchTimelineUsers(timeline) {
+@@ -2838,6 +2838,16 @@ function parseSearchTimelineTweets(timeline) {
+             tweetResultRaw?.edit_control?.edit_control_initial
+           );
+           if (tweetResult.success) {
++            const author = tweetResultRaw?.core?.user_results?.result;
++            tweetResult.tweet.avatar = author?.avatar?.image_url ?? author?.legacy?.profile_image_url_https;
++            const quoted = tweetResultRaw?.quoted_status_result?.result;
++            if (quoted?.legacy) {
++              const quoteResult = parseLegacyTweet(quoted.core?.user_results?.result?.core, quoted.core?.user_results?.result?.legacy, quoted.legacy);
++              if (quoteResult.success) {
++                quoteResult.tweet.avatar = quoted.core?.user_results?.result?.avatar?.image_url ?? quoted.core?.user_results?.result?.legacy?.profile_image_url_https;
++                tweetResult.tweet.quotedStatus = quoteResult.tweet;
++              }
++            }
+             if (!tweetResult.tweet.views && tweetResultRaw?.views?.count) {
+               const views = parseInt(tweetResultRaw.views.count);
+               if (!isNaN(views)) {
+@@ -2883,6 +2893,19 @@ function parseSearchTimelineUsers(timeline) {
              if (!profile.userId) {
                profile.userId = userResultRaw.rest_id;
              }
@@ -94,3 +165,15 @@ index bbde9f0481cc1c218b485a4b28967fe16545a503..34087c71cdcf70e331b97ddf79c8f750
              profiles.push(profile);
            }
          } else if (entry.content?.cursorType === "Bottom") {
+diff --git a/dist/types/index.d.ts b/dist/types/index.d.ts
+index 4475ae54574e28665d50c3e88ec4ab7d27facb29..9920fa713c84404d21bf7e15267d61e812c93b87 100644
+--- a/dist/types/index.d.ts
++++ b/dist/types/index.d.ts
+@@ -563,6 +563,7 @@ interface PlaceRaw {
+  * A parsed Tweet object.
+  */
+ interface Tweet {
++    avatar?: string;
+     __raw_UNSTABLE?: LegacyTweetRaw;
+     bookmarkCount?: number;
+     conversationId?: string;

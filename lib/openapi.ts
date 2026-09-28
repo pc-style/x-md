@@ -259,7 +259,7 @@ const COMPONENT_HEADERS: Record<string, HeaderObject> = {
   },
   XBrowseResource: {
     description: 'Browse resource this response answered.',
-    schema: { type: 'string', enum: ['profile', 'search', 'followers', 'following'] },
+    schema: { type: 'string', enum: ['profile', 'search', 'followers', 'following', 'replies'] },
   },
   XResultCount: {
     description: 'Number of posts or users in the response body.',
@@ -431,7 +431,7 @@ const PAGE_PARAM: ParameterObject = {
 const LIMIT_PARAM: ParameterObject = {
   name: 'limit',
   in: 'query',
-  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}. A page is assembled from as many upstream pages as it takes and cut exactly at \`limit\`; when the cut falls inside an upstream page the \`nextCursor\` carries an offset (\`…@15\`), so nothing is lost or repeated. Searches served by own accounts (\`photos\`, \`videos\`, \`users\`, or a fallback) answer at most ${ACCOUNT_SEARCH_LIMIT} per request and report that in \`limit\`.`,
+  description: `Maximum results in the page. Values above ${MAX_LIMIT} are clamped to ${MAX_LIMIT}. A bounded upstream walk returns at most \`limit\`; when the cut falls inside an upstream page the \`nextCursor\` carries an offset (\`…@15\`), so nothing is lost or repeated. Searches served by own accounts (\`photos\`, \`videos\`, \`users\`, or a fallback) answer at most ${ACCOUNT_SEARCH_LIMIT} per request and report that in \`limit\`.`,
   required: false,
   schema: { type: 'integer', minimum: 1, maximum: MAX_LIMIT, default: DEFAULT_LIMIT },
 }
@@ -507,7 +507,7 @@ const LIST_PARAMS: readonly ParameterObject[] = [CURSOR_PARAM, PAGE_PARAM, LIMIT
 
 const PROFILE_LIMIT_PARAM: ParameterObject = {
   ...LIMIT_PARAM,
-  description: `Maximum posts in the page. Values above ${PROFILE_MAX_LIMIT} are clamped to ${PROFILE_MAX_LIMIT}. A page is assembled from as many upstream pages as it takes and cut exactly at \`limit\`; its \`nextCursor\` continues right after the last post.`,
+  description: `Maximum posts in the page. Values above ${PROFILE_MAX_LIMIT} are clamped to ${PROFILE_MAX_LIMIT}. A bounded upstream walk returns at most \`limit\`; its \`nextCursor\` continues right after the last post.`,
   schema: { type: 'integer', minimum: 1, maximum: PROFILE_MAX_LIMIT, default: DEFAULT_LIMIT },
 }
 const WITH_REPLIES_PARAM = booleanParam('with_replies', 'Include the account\'s replies. Off by default: the page then holds original posts only.', BROWSE_TRUE)
@@ -523,17 +523,17 @@ const UNTIL_PARAM: ParameterObject = {
 }
 const SEARCH_SINCE_PARAM: ParameterObject = { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to match. Applied upstream as X\'s `since_time:` operator, so it works on every provider.' }
 const SEARCH_UNTIL_PARAM: ParameterObject = { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to match. Applied upstream as X\'s `until_time:` operator.' }
-const PROFILE_PARAMS: readonly ParameterObject[] = [CURSOR_PARAM, PAGE_PARAM, PROFILE_LIMIT_PARAM, WITH_REPLIES_PARAM, WITH_REPOSTS_PARAM, UNTIL_PARAM, BROWSE_FORMAT_PARAM, BROWSE_FULL_PARAM, BROWSE_NOCACHE_PARAM]
+const PROFILE_PARAMS: readonly ParameterObject[] = [{ ...booleanParam('include_posts', 'Default true. Set false for identity and avatar enrichment without reading a timeline.', BROWSE_TRUE), schema: { type: 'string', enum: ['true', 'false', '1', '0'], default: 'true' } },CURSOR_PARAM, PAGE_PARAM, PROFILE_LIMIT_PARAM, WITH_REPLIES_PARAM, WITH_REPOSTS_PARAM, UNTIL_PARAM, BROWSE_FORMAT_PARAM, BROWSE_FULL_PARAM, BROWSE_NOCACHE_PARAM]
 
 const IMPORT_PARAMS: readonly ParameterObject[] = [
   { name: 'since', in: 'query', required: false, schema: DATE_SCHEMA, example: '2025-01-01', description: 'Oldest post to include. Omit to go as far back as upstream allows (X serves roughly the 3200 most recent timeline entries; `meta.floor_reached` says when that floor was hit).' },
-  { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here.' },
-  { name: 'max_posts', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_POSTS, default: IMPORT_DEFAULT_MAX_POSTS }, description: `Most posts to return, newest first. Values above ${IMPORT_MAX_POSTS} are clamped. \`meta.truncated\` is true when the range held more.` },
+  { name: 'until', in: 'query', required: false, schema: DATE_SCHEMA, description: 'Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs.' },
+  { name: 'max_posts', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_POSTS, default: IMPORT_DEFAULT_MAX_POSTS }, description: `Most posts to return, newest first. Values outside 1–${IMPORT_MAX_POSTS} return 400. \`meta.truncated\` is true when the range held more.` },
   { ...booleanParam('with_replies', 'Include the account\'s replies. On by default.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   { ...booleanParam('with_reposts', 'Include the account\'s reposts. On by default. A repost is the original post with `reposted_by` set.', BROWSE_TRUE), schema: { type: 'string', enum: [...BROWSE_TRUE, 'false', '0'], default: 'true' } },
   booleanParam('only_replies', 'Return only the account\'s replies.', BROWSE_TRUE),
-  { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY_PER_BASE, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`.' },
-  { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` streams one `{"post": …}` line per post as the parallel chains deliver them (unsorted), then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
+  { name: 'concurrency', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: IMPORT_MAX_CONCURRENCY_PER_BASE, default: IMPORT_DEFAULT_CONCURRENCY }, description: 'Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After.' },
+  { name: 'format', in: 'query', required: false, schema: { type: 'string', enum: ['json', 'ndjson'], default: 'json' }, description: '`json` answers once with every post sorted newest first. `ndjson` emits the same selected posts as JSON after the walk completes, then a final `{"meta": …, "profile": …}` line, or `{"error": …}` if the walk failed.' },
   booleanParam('index', 'Answer from the archive index alone, without walking upstream: what x.md already holds for this account and how far back it reaches. Not metered as an import. The body is an `ImportIndexResponse` instead of posts.', BROWSE_TRUE),
 ]
 
@@ -610,8 +610,8 @@ function importOperation(path: string, operationId: string, summary: string): { 
       path,
       operationId,
       summary,
-      description: 'Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key\'s own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).',
-      tags: ['Profiles'],
+      description: 'Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks timeline windows in parallel and reuses archived results. Duration depends on account activity and data-source availability. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key\'s own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).',
+      tags: [path.endsWith('/replies') ? 'Posts' : 'Profiles'],
       parameters: [handleParam('path'), ...IMPORT_PARAMS],
       success: importSuccess(),
       errors: IMPORT_ERRORS,
@@ -729,9 +729,9 @@ function errorResponses(codes: readonly ErrorCode[], recoverable: boolean): Reco
  * status is only documented where a handler can really produce it.
  */
 const POST_ERRORS: readonly ErrorCode[] = ['missing_url', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error']
-const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable']
-const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable', 'partial_upstream_failure', 'upstream_rate_limited']
-const SEARCH_ERRORS: readonly ErrorCode[] = ['missing_query', 'invalid_key', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
+const PROFILE_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_params', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable']
+const IMPORT_ERRORS: readonly ErrorCode[] = ['invalid_handle', 'invalid_option', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'upstream_unavailable', 'partial_upstream_failure', 'upstream_rate_limited', 'import_busy']
+const SEARCH_ERRORS: readonly ErrorCode[] = ['invalid_option', 'missing_query', 'invalid_key', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 const LEGACY_BROWSE_ERRORS: readonly ErrorCode[] = ['invalid_resource', 'invalid_key', 'not_found', 'method_not_allowed', 'rate_limited', 'internal_error', 'upstream_error', 'search_unavailable']
 /** oEmbed reads nothing upstream, so it can only fail on method, quota or a bug. */
 const OEMBED_ERRORS: readonly ErrorCode[] = ['method_not_allowed', 'rate_limited', 'internal_error']
@@ -826,8 +826,8 @@ function profileOperation(path: string, operationId: string, summary: string, le
       path,
       operationId,
       summary,
-      description: `${lead}\n\nResults are paged: prefer the opaque \`nextCursor\` from the previous response over the ordinal \`page\`. ${NEGOTIATION}`,
-      tags: ['Profiles'],
+      description: `${lead}\n\n${path.endsWith('/replies') ? 'No cursor is returned; this sample does not establish complete conversation coverage.' : 'Results are paged: prefer nextCursor from the previous response over page.'} ${NEGOTIATION}`,
+      tags: [path.endsWith('/replies') ? 'Posts' : 'Profiles'],
       parameters,
       success: browseSuccess('The profile and its most recent original posts, or a page of connections.', false),
       errors: PROFILE_ERRORS,
@@ -847,7 +847,7 @@ function searchOperation(path: string, operationId: string, summary: string, lea
       summary,
       description: `${lead}\n\nResults are paged: prefer the opaque \`nextCursor\` over the ordinal \`page\`, and send a cursor back only to the feed that issued it. When live X search is unavailable, x.md may answer with web-indexed snippets marked \`degraded: true\` and no cursor. ${NEGOTIATION}`,
       tags: ['Search'],
-      parameters,
+      parameters: [...parameters, booleanParam('require_live', 'Reject degraded web snippets with 503 instead of treating them as a mention timeline.', BROWSE_TRUE)],
       success: browseSuccess('A page of matching posts, or of matching accounts when `feed=users`.', true),
       errors: SEARCH_ERRORS,
       docs: 'search',
@@ -890,6 +890,9 @@ function paths(): Record<string, { get: OperationObject }> {
       'Read a public X account: its bio, counts, and its most recent posts. Original posts only unless `with_replies` or `with_reposts` is set.',
       [handleParam('path'), ...PROFILE_PARAMS],
     ),
+    profileOperation('/api/v1/posts/{id}/replies', 'readPostReplies', 'Read a sample of direct replies',
+      'Returns up to 100 direct replies, newest first. This is a provider-limited sample, not exhaustive or cursor-paginated. Use search for broader incoming mentions.',
+      [{ name: 'id', in: 'path', required: true, description: 'Numeric id of the X post whose direct replies are requested.', schema: { type: 'string', pattern: '^[0-9]{1,25}$' } }, LIMIT_PARAM, BROWSE_FORMAT_PARAM, BROWSE_NOCACHE_PARAM]),
     importOperation('/api/v1/profiles/{handle}/posts', 'importProfilePosts', 'Import a profile\'s post history in bulk'),
     profileOperation(
       '/api/v1/profiles/{handle}/followers',
@@ -1162,6 +1165,8 @@ function schemas(): Record<string, JsonSchema> {
       properties: {
         url: { type: 'string', format: 'uri', description: 'Canonical x.com permalink.' },
         id: str('Numeric status id as a string.'),
+        type: { type: 'string', enum: ['status'] },
+        raw_text: { type: 'object', additionalProperties: true, description: 'Original text entities. facets contains mention entries with type=mention, original=@handle and UTF-16 indices; display_text_range excludes implicit reply prefixes.' },
         text: str('Post text with entities already expanded.'),
         created_at: str('Human-readable creation time as reported upstream.'),
         created_timestamp: int('Creation time as Unix seconds.'),
@@ -1220,7 +1225,7 @@ function schemas(): Record<string, JsonSchema> {
       additionalProperties: true,
       required: ['resource', 'page', 'limit', 'source', 'markdown', 'cache'],
       properties: {
-        resource: { type: 'string', enum: ['profile', 'search', 'followers', 'following'], description: 'Which resource this body answers.' },
+        resource: { type: 'string', enum: ['profile', 'search', 'followers', 'following', 'replies'], description: 'Which resource this body answers.' },
         profile: schemaRef('Author'),
         posts: { type: 'array', description: 'Matching posts. Present for `profile` and for post feeds.', items: schemaRef('Post') },
         users: { type: 'array', description: 'Matching accounts. Present for `followers`, `following` and `feed=users`.', items: schemaRef('Author') },
@@ -1247,7 +1252,9 @@ function schemas(): Record<string, JsonSchema> {
         count: { type: 'integer', description: 'Posts in this response.' },
         since: str('The requested lower bound, ISO 8601. Absent when the import went as far back as it could.'),
         until: str('The upper bound that was used, ISO 8601.'),
-        oldest: str('ISO 8601 time of the oldest original post returned. Send it as `until` to continue past a truncated result.'),
+        oldest: str('ISO 8601 time of the oldest original post returned.'),
+        next_until: str('Continuation upper bound for a capped import. Preserve since, deduplicate IDs; warnings require retrying the original range.'),
+        covered_since: str('Lower bound of the conservatively covered interval.'),
         newest: str('ISO 8601 time of the newest original post returned.'),
         truncated: { type: 'boolean', description: 'True when the range exceeded `max_posts` or a missing upstream page left it incomplete.' },
         floor_reached: { type: 'boolean', description: 'True when upstream stopped answering before `since`: X serves roughly the 3200 most recent timeline entries.' },
@@ -1482,7 +1489,7 @@ const VERSIONING_POLICY = [
 ].join('\n')
 
 const DESCRIPTION = [
-  'x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.',
+  'x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, issued keys authenticate with an Authorization bearer header, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.',
   '',
   'x.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.',
   '',

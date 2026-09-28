@@ -215,7 +215,7 @@ describe('function-calling compatibility', () => {
 })
 
 describe('pagination', () => {
-  const listOperations = operations.filter(([, operation]) => operation.responses['200']?.content?.['application/json']?.schema.$ref === '#/components/schemas/BrowseResponse')
+  const listOperations = operations.filter(([, operation]) => operation.operationId !== 'readPostReplies' && operation.responses['200']?.content?.['application/json']?.schema.$ref === '#/components/schemas/BrowseResponse')
 
   test('every list operation accepts cursor, page and limit', () => {
     expect(listOperations.length).toBeGreaterThan(4)

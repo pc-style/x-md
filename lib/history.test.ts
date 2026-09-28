@@ -210,3 +210,11 @@ describe('importWithHistory', () => {
   })
 
 })
+
+test('JSON and NDJSON select the same posts after a newer top-up evicts archived entries', async () => {
+  await importWithHistory({ handle: 'ada', since: new Date(NOW - 10 * HOUR), until: new Date(NOW), maxPosts: 5 })
+  const streamed: string[] = []
+  const result = await importWithHistory({ handle: 'ada', until: new Date(NOW + 10 * HOUR), maxPosts: 5, onPost: p => streamed.push(p.id!) })
+  expect(streamed).toEqual(result.posts.map(p => p.id))
+  expect(streamed).toHaveLength(result.meta.count)
+})

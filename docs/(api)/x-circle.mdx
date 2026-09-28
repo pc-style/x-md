@@ -1,0 +1,49 @@
+---
+title: Build an interaction circle
+description: A server-side integration using public x.md routes, issued keys, and explicit coverage checks.
+sidebar:
+  order: 5
+  icon: users
+---
+
+A circle needs both directions of interaction. Reading someone’s own posts alone misses people replying to or mentioning them. This integration uses only the documented public API at `https://x.pcstyle.dev`.
+
+Run the [server-side reference and benchmark](https://github.com/pc-style/x-md/blob/main/scripts/circle-benchmark.ts) with Bun and your server environment. It reports stage coverage, missing profiles, retries and wall time; `--fresh` forces a fresh own-post import. Set `X_MD_UNTIL` to the same ISO datetime for fresh and repeat benchmark runs. It is not browser code.
+
+## Keep the key on your server
+
+Store the issued key as server-only `X_MD_API_KEY`. Send `Authorization: Bearer …` and `Accept: application/json` on each request. Do not use a public framework environment prefix, put keys in URLs, or embed them in JavaScript delivered to the browser. Your browser should call your own authenticated backend; validate handles there and queue work per user. CORS permits the API headers, but CORS does not protect a key embedded in a bundle.
+
+Check `X-Api-Key-Status: valid`. An invalid key returns 401; retrying it does not help. Customers need no upstream account, private endpoint, SSH access or service-owner environment variables.
+
+## Data contract
+
+| Need | Public request | Read |
+| --- | --- | --- |
+| Identity and avatar | `/api/v1/profiles/{handle}?include_posts=false&format=json` | `profile.id`, `screen_name`, `name`, `avatar_url`, `protected` |
+| Own posts, replies, reposts | `/api/v1/profiles/{handle}/posts?since={ISO}&max_posts=1000&format=json` | `posts`, `meta`; replies and reposts default to true |
+| Timeline-position pagination | `/api/v1/profiles/{handle}?with_replies=true&with_reposts=true&limit=100&format=json` | `posts`, opaque `nextCursor` |
+| Incoming mentions | `/api/v1/search?q=%40{handle}&feed=latest&since={ISO}&limit=100&require_live=true&format=json` | `posts`, `nextCursor`; the live fallback can return at most 20 per request |
+| Direct reply fallback | `/api/v1/posts/{id}/replies?limit=100&format=json` | `posts`; a bounded recent sample, without pagination or exhaustive coverage |
+| Parent/thread context | `/api/v1/posts?url={encodedStatusURL}&context=full&replies=recent&format=json` | `posts` with `context` of `parent`, `post`, `thread` or `reply` |
+| Missing member avatars | identity-only route above for each missing handle | `profile`; use at most four concurrent lookups |
+
+For a 120-day circle, freeze `until` once and compute `since = until - 120 days`. Run own posts and incoming search concurrently. Follow every returned search cursor, keeping the same query, feed and dates. Stop at your explicit page budget, repeated cursor, or absent cursor; a short page alone is **not** completion. Deduplicate post IDs within each direction. A capped search is a sample, not a full 120-day mention history.
+
+## Build interactions
+
+Use `author.screen_name` to distinguish outgoing from incoming posts, case-insensitively. Outgoing reposts have `reposted_by.screen_name` matching the owner and their original author is the recipient. Their timestamp is the original publication time; exact repost event times are unavailable.
+
+For replies, `replying_to` is normally an object with `screen_name` and `status`; older data may instead contain an array of handles and `replying_to_status`. Preserve that distinction. For quotes use `quote.author.screen_name`. Visible mentions are `raw_text.facets` with `type: "mention"`, `original: "@handle"`, and an index at or after `raw_text.display_text_range[0]`. This avoids counting implicit reply prefixes as explicit mentions. If an entity field is absent, report unknown coverage rather than inventing it from arbitrary text.
+
+Exclude self-interactions and deduplicate `(post ID, other handle, direction, kind)`. One compatible scoring rule weights reply 3, quote 2.5, mention 1.5 and repost 1, halves weight every 30 days, and combines outgoing score `a` and incoming score `b` as `a + b + 2 * sqrt(a * b)`. Keep source and coverage alongside scores: a larger score from a larger sample is not evidence of a closer relationship.
+
+If live mentions fail, use the direct-replies route for a bounded selection of the owner’s posts with replies. Deduplicate those post IDs before fetching. These samples omit unmentioned quotes and other incoming activity; label the result “reply sample” rather than “mentions complete”. Do not score degraded web search snippets.
+
+## Recovery and capacity
+
+For retryable 429/502/503 responses, parse the problem document and `Retry-After`, wait at least that long plus jitter, and retry at most twice. `search_unavailable` without an explicit wait can use a 30-second delay. Keep successfully collected pages when a later page fails and label the circle partial; retry the failed cursor later. For imports with `meta.warnings`, retry the same range. For count-limited imports use `meta.next_until`, deduplicating boundary posts. See [bulk import](/docs/bulk-import).
+
+The issued key’s response headers are authoritative. A key advertising 50 imports per 900 seconds is a valid override of the default 60. Search has separate burst and window allowances; ten mention pages can spend ten account-backed searches. These quotas are budgets, not reserved throughput. The service admits two fresh import walks at once and rejects excess work with `503 import_busy`; queue those requests and honor the delay.
+
+Expose useful completion data to your user: own posts read, incoming interactions read, date bounds, search/reply source, missing profiles, and whether any stage was capped or failed. Do not label a partial circle complete because one HTTP request returned 200.

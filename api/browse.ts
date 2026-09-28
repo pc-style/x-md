@@ -92,13 +92,13 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await browse({ resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller })
+    const result = await browse({ id: param('id'), resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), require_live: param('require_live'), include_posts: param('include_posts'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller })
     trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
     // Keyed responses stay private even if the browse layer marked them cacheable.
     for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
-    if (response.status === 200) captureArchive(req, res, result, identity)
+    if (response.status === 200 && result.resource !== 'replies') captureArchive(req, res, { ...result, resource: result.resource }, identity)
     return req.method === 'HEAD' ? res.status(response.status).end() : res.status(response.status).send(response.body)
   } catch (error) {
     // A miss on a profile, follower list, or search is a routing dead end for an

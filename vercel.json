@@ -91,6 +91,10 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/api/v1/posts/:id([0-9]+)/replies",
+      "destination": "/api/browse?resource=replies&id=:id&via=route"
+    },
+    {
       "source": "/api/v1/posts",
       "destination": "/api/convert?via=route"
     },
@@ -295,7 +299,7 @@
         },
         {
           "key": "Access-Control-Expose-Headers",
-          "value": "Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link, Mcp-Session-Id"
+          "value": "Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link, Mcp-Session-Id, X-Source, X-Cache, X-Result-Count, X-Search-Degraded, X-Archive-Served, X-Archive-Store"
         }
       ]
     }

@@ -85,3 +85,5 @@ Docs-only index: https://x.pcstyle.dev/docs/llms.txt
 - [Authentication](https://x.pcstyle.dev/auth.md) — none required; what the optional bearer key does
 - [Pricing](https://x.pcstyle.dev/pricing.md) — free, with the rate limits that stand in for cost
 - [Full documentation](https://x.pcstyle.dev/llms-full.txt)
+
+- [Build an interaction circle](https://x.pcstyle.dev/docs/x-circle)

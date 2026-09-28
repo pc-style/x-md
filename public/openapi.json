@@ -4,7 +4,7 @@
     "title": "x.md API",
     "version": "1.1.0",
     "summary": "Read public X posts, threads, profiles, connections and search results as Markdown or JSON.",
-    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, none of them needs credentials, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 100.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
+    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, issued keys authenticate with an Authorization bearer header, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 100.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
     "termsOfService": "https://x.pcstyle.dev/terms",
     "license": {
       "name": "MIT",
@@ -151,6 +151,12 @@
     "schema": "#/components/schemas/Problem",
     "note": "A 502 or 503 may also carry a provider-specific code such as `fxtwitter_error`, `contextdev_empty`, `firecrawl_network` or `all_providers_failed`. Those share the resolution of `upstream_error`.",
     "codes": {
+      "import_busy": {
+        "status": 503,
+        "title": "Fresh import capacity is busy",
+        "resolution": "Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
+        "type": "https://x.pcstyle.dev/docs/reliability#import-busy"
+      },
       "missing_url": {
         "status": 400,
         "title": "Missing url parameter",
@@ -875,7 +881,7 @@
       "get": {
         "operationId": "getProfile",
         "summary": "Read a profile and its latest posts",
-        "description": "Read a public X account: its bio, counts, and its most recent posts. Original posts only unless `with_replies` or `with_reposts` is set.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "Read a public X account: its bio, counts, and its most recent posts. Original posts only unless `with_replies` or `with_reposts` is set.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -890,6 +896,22 @@
               "pattern": "^[A-Za-z0-9_]{1,15}$"
             },
             "example": "jack"
+          },
+          {
+            "name": "include_posts",
+            "in": "query",
+            "description": "Default true. Set false for identity and avatar enrichment without reading a timeline.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false",
+                "1",
+                "0"
+              ],
+              "default": "true"
+            }
           },
           {
             "name": "cursor",
@@ -915,7 +937,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum posts in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; its `nextCursor` continues right after the last post.",
+            "description": "Maximum posts in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; its `nextCursor` continues right after the last post.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1075,7 +1097,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1105,8 +1127,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -1115,8 +1137,548 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or disabled API key. Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found. Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_found": {
+                    "$ref": "#/components/examples/not_found"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_found": {
+                    "$ref": "#/components/examples/not_found"
+                  }
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string",
+                  "description": "The same recovery document as Markdown: what is missing, where to look next, and the valid URL shapes."
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string",
+                  "description": "The Markdown recovery document wrapped in a minimal HTML page."
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "Method not allowed. x.md is read-only. Use GET, HEAD, or OPTIONS; the `Allow` response header lists what this route accepts.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Allow": {
+                "$ref": "#/components/headers/Allow"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "method_not_allowed": {
+                    "$ref": "#/components/examples/method_not_allowed"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "method_not_allowed": {
+                    "$ref": "#/components/examples/method_not_allowed"
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "$ref": "#/components/examples/rate_limited"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "rate_limited": {
+                    "$ref": "#/components/examples/rate_limited"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected error. Retry with exponential backoff. If it persists, open an issue at https://github.com/pc-style/x-md/issues.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "internal_error": {
+                    "$ref": "#/components/examples/internal_error"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "internal_error": {
+                    "$ref": "#/components/examples/internal_error"
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Upstream provider error. Retry with backoff. x.md reads a third-party provider that can fail independently.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_error": {
+                    "$ref": "#/components/examples/upstream_error"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_error": {
+                    "$ref": "#/components/examples/upstream_error"
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "upstream_unavailable": {
+                    "$ref": "#/components/examples/upstream_unavailable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "externalDocs": {
+          "description": "Endpoint documentation",
+          "url": "https://x.pcstyle.dev/docs/profiles"
+        },
+        "security": [
+          {},
+          {
+            "bearerApiKey": []
+          }
+        ]
+      }
+    },
+    "/api/v1/posts/{id}/replies": {
+      "get": {
+        "operationId": "readPostReplies",
+        "summary": "Read a sample of direct replies",
+        "description": "Returns up to 100 direct replies, newest first. This is a provider-limited sample, not exhaustive or cursor-paginated. Use search for broader incoming mentions.\n\nNo cursor is returned; this sample does not establish complete conversation coverage. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "tags": [
+          "Posts"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Numeric id of the X post whose direct replies are requested.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,25}$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "Output representation. Overrides `Accept` negotiation. Browse routes do not support `obsidian`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "json"
+              ],
+              "default": "markdown"
+            }
+          },
+          {
+            "name": "nocache",
+            "in": "query",
+            "description": "Bypass the application cache and fetch from the upstream provider. Charged against the live-lookup quota.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "1",
+                "false",
+                "0"
+              ],
+              "default": "false"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile and its most recent original posts, or a page of connections.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Vary": {
+                "$ref": "#/components/headers/Vary"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "X-Source": {
+                "$ref": "#/components/headers/XSource"
+              },
+              "X-Cache": {
+                "$ref": "#/components/headers/XCache"
+              },
+              "X-Browse-Resource": {
+                "$ref": "#/components/headers/XBrowseResource"
+              },
+              "X-Result-Count": {
+                "$ref": "#/components/headers/XResultCount"
+              },
+              "X-Api-Key-Status": {
+                "$ref": "#/components/headers/XApiKeyStatus"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowseResponse"
+                },
+                "examples": {
+                  "profile": {
+                    "$ref": "#/components/examples/profileResponse"
+                  }
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string",
+                  "description": "Rendered Markdown list. The default representation. Ends with a `Continue →` link whenever `nextCursor` is set."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -1496,7 +2058,7 @@
       "get": {
         "operationId": "importProfilePosts",
         "summary": "Import a profile's post history in bulk",
-        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key's own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).",
+        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks timeline windows in parallel and reuses archived results. Duration depends on account activity and data-source availability. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key's own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).",
         "tags": [
           "Profiles"
         ],
@@ -1531,7 +2093,7 @@
               "type": "string",
               "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
             },
-            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here."
+            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs."
           },
           {
             "name": "max_posts",
@@ -1543,7 +2105,7 @@
               "maximum": 5000,
               "default": 500
             },
-            "description": "Most posts to return, newest first. Values above 5000 are clamped. `meta.truncated` is true when the range held more."
+            "description": "Most posts to return, newest first. Values outside 1–5000 return 400. `meta.truncated` is true when the range held more."
           },
           {
             "name": "with_replies",
@@ -1603,7 +2165,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`."
+            "description": "Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
           },
           {
             "name": "format",
@@ -1617,7 +2179,7 @@
               ],
               "default": "json"
             },
-            "description": "`json` answers once with every post sorted newest first. `ndjson` streams one `{\"post\": …}` line per post as the parallel chains deliver them (unsorted), then a final `{\"meta\": …, \"profile\": …}` line, or `{\"error\": …}` if the walk failed."
+            "description": "`json` answers once with every post sorted newest first. `ndjson` emits the same selected posts as JSON after the walk completes, then a final `{\"meta\": …, \"profile\": …}` line, or `{\"error\": …}` if the walk failed."
           },
           {
             "name": "index",
@@ -2031,7 +2593,7 @@
             }
           },
           "503": {
-            "description": "Upstream provider is rate limiting x.md. Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.",
+            "description": "Fresh import capacity is busy. Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -2064,8 +2626,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_rate_limited": {
-                    "$ref": "#/components/examples/upstream_rate_limited"
+                  "import_busy": {
+                    "$ref": "#/components/examples/import_busy"
                   }
                 }
               },
@@ -2074,8 +2636,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_rate_limited": {
-                    "$ref": "#/components/examples/upstream_rate_limited"
+                  "import_busy": {
+                    "$ref": "#/components/examples/import_busy"
                   }
                 }
               }
@@ -2098,7 +2660,7 @@
       "get": {
         "operationId": "listFollowers",
         "summary": "List the accounts that follow a profile",
-        "description": "Page through the accounts that follow a public X account.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "Page through the accounts that follow a public X account.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -2138,7 +2700,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2255,7 +2817,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -2285,8 +2847,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -2295,8 +2857,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -2676,7 +3238,7 @@
       "get": {
         "operationId": "listFollowing",
         "summary": "List the accounts a profile follows",
-        "description": "Page through the accounts a public X account follows.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "Page through the accounts a public X account follows.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -2716,7 +3278,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2833,7 +3395,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -2863,8 +3425,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -2873,8 +3435,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -3333,7 +3895,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -3376,6 +3938,22 @@
             "name": "nocache",
             "in": "query",
             "description": "Bypass the application cache and fetch from the upstream provider. Charged against the live-lookup quota.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "1",
+                "false",
+                "0"
+              ],
+              "default": "false"
+            }
+          },
+          {
+            "name": "require_live",
+            "in": "query",
+            "description": "Reject degraded web snippets with 503 instead of treating them as a mention timeline.",
             "required": false,
             "schema": {
               "type": "string",
@@ -4570,7 +5148,7 @@
       "get": {
         "operationId": "getProfileByHandle",
         "summary": "Read a profile from its x.com handle shape",
-        "description": "The permalink surface for accounts: `https://x.pcstyle.dev/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for accounts: `https://x.pcstyle.dev/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -4585,6 +5163,22 @@
               "pattern": "^[A-Za-z0-9_]{1,15}$"
             },
             "example": "jack"
+          },
+          {
+            "name": "include_posts",
+            "in": "query",
+            "description": "Default true. Set false for identity and avatar enrichment without reading a timeline.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false",
+                "1",
+                "0"
+              ],
+              "default": "true"
+            }
           },
           {
             "name": "cursor",
@@ -4610,7 +5204,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum posts in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; its `nextCursor` continues right after the last post.",
+            "description": "Maximum posts in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; its `nextCursor` continues right after the last post.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -4770,7 +5364,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -4800,8 +5394,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -4810,8 +5404,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -5191,7 +5785,7 @@
       "get": {
         "operationId": "importProfilePostsByHandle",
         "summary": "Import a profile's post history from its permalink shape",
-        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks the timeline upstream in parallel instead of one cursor at a time, so a 2000-post history takes seconds rather than minutes. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key's own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).",
+        "description": "Bulk history for onboarding and memory: the whole requested range in one request, as raw JSON that preserves every upstream field (`id`, `text`, `created_at`, `author`, `replying_to`, `quote`, `reposted_by`, `media`, `likes`, `replies`, `retweets`, `quotes`, `views`, `bookmarks`, `url`). x.md walks timeline windows in parallel and reuses archived results. Duration depends on account activity and data-source availability. No Markdown representation: this route is JSON only. Metered separately from ordinary reads: 10 imports per 15 minutes per IP, 60 per API key by default (a key's own allowance is the `import-key` value in `RateLimit-Policy`; `import-ip` is the anonymous one).",
         "tags": [
           "Profiles"
         ],
@@ -5226,7 +5820,7 @@
               "type": "string",
               "description": "ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds."
             },
-            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.oldest` here."
+            "description": "Newest post to include. Defaults to now. To continue past a truncated result, send its `meta.next_until` here, preserve `since`, and deduplicate IDs."
           },
           {
             "name": "max_posts",
@@ -5238,7 +5832,7 @@
               "maximum": 5000,
               "default": 500
             },
-            "description": "Most posts to return, newest first. Values above 5000 are clamped. `meta.truncated` is true when the range held more."
+            "description": "Most posts to return, newest first. Values outside 1–5000 return 400. `meta.truncated` is true when the range held more."
           },
           {
             "name": "with_replies",
@@ -5298,7 +5892,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once, up to 32 per configured upstream (a deployment with a pool of N upstreams accepts N × 32). Higher is faster until the upstream throttles; lower it if imports answer 503 `upstream_rate_limited`."
+            "description": "Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
           },
           {
             "name": "format",
@@ -5312,7 +5906,7 @@
               ],
               "default": "json"
             },
-            "description": "`json` answers once with every post sorted newest first. `ndjson` streams one `{\"post\": …}` line per post as the parallel chains deliver them (unsorted), then a final `{\"meta\": …, \"profile\": …}` line, or `{\"error\": …}` if the walk failed."
+            "description": "`json` answers once with every post sorted newest first. `ndjson` emits the same selected posts as JSON after the walk completes, then a final `{\"meta\": …, \"profile\": …}` line, or `{\"error\": …}` if the walk failed."
           },
           {
             "name": "index",
@@ -5726,7 +6320,7 @@
             }
           },
           "503": {
-            "description": "Upstream provider is rate limiting x.md. Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.",
+            "description": "Fresh import capacity is busy. Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5759,8 +6353,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_rate_limited": {
-                    "$ref": "#/components/examples/upstream_rate_limited"
+                  "import_busy": {
+                    "$ref": "#/components/examples/import_busy"
                   }
                 }
               },
@@ -5769,8 +6363,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "upstream_rate_limited": {
-                    "$ref": "#/components/examples/upstream_rate_limited"
+                  "import_busy": {
+                    "$ref": "#/components/examples/import_busy"
                   }
                 }
               }
@@ -5793,7 +6387,7 @@
       "get": {
         "operationId": "listFollowersByHandle",
         "summary": "List a profile's followers from its permalink shape",
-        "description": "The permalink surface for followers: `https://x.pcstyle.dev/{handle}/followers`.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for followers: `https://x.pcstyle.dev/{handle}/followers`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -5833,7 +6427,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -5950,7 +6544,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5980,8 +6574,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -5990,8 +6584,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -6371,7 +6965,7 @@
       "get": {
         "operationId": "listFollowingByHandle",
         "summary": "List who a profile follows from its permalink shape",
-        "description": "The permalink surface for following: `https://x.pcstyle.dev/{handle}/following`.\n\nResults are paged: prefer the opaque `nextCursor` from the previous response over the ordinal `page`. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for following: `https://x.pcstyle.dev/{handle}/following`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -6411,7 +7005,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -6528,7 +7122,7 @@
             }
           },
           "400": {
-            "description": "Invalid X handle. Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
+            "description": "Invalid query option. Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -6558,8 +7152,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               },
@@ -6568,8 +7162,8 @@
                   "$ref": "#/components/schemas/Problem"
                 },
                 "examples": {
-                  "invalid_handle": {
-                    "$ref": "#/components/examples/invalid_handle"
+                  "invalid_option": {
+                    "$ref": "#/components/examples/invalid_option"
                   }
                 }
               }
@@ -7028,7 +7622,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -7071,6 +7665,22 @@
             "name": "nocache",
             "in": "query",
             "description": "Bypass the application cache and fetch from the upstream provider. Charged against the live-lookup quota.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "1",
+                "false",
+                "0"
+              ],
+              "default": "false"
+            }
+          },
+          {
+            "name": "require_live",
+            "in": "query",
+            "description": "Reject degraded web snippets with 503 instead of treating them as a mention timeline.",
             "required": false,
             "schema": {
               "type": "string",
@@ -8619,7 +9229,7 @@
           {
             "name": "limit",
             "in": "query",
-            "description": "Maximum results in the page. Values above 100 are clamped to 100. A page is assembled from as many upstream pages as it takes and cut exactly at `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
+            "description": "Maximum results in the page. Values above 100 are clamped to 100. A bounded upstream walk returns at most `limit`; when the cut falls inside an upstream page the `nextCursor` carries an offset (`…@15`), so nothing is lost or repeated. Searches served by own accounts (`photos`, `videos`, `users`, or a fallback) answer at most 20 per request and report that in `limit`.",
             "required": false,
             "schema": {
               "type": "integer",
@@ -9390,7 +10000,8 @@
             "profile",
             "search",
             "followers",
-            "following"
+            "following",
+            "replies"
           ]
         }
       },
@@ -9629,6 +10240,34 @@
           "error": "A valid X handle is required."
         }
       },
+      "invalid_params": {
+        "summary": "Invalid handle or status id",
+        "value": {
+          "type": "https://x.pcstyle.dev/docs/reliability#invalid-params",
+          "title": "Invalid handle or status id",
+          "status": 400,
+          "detail": "Invalid handle or status id",
+          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "code": "invalid_params",
+          "resolution": "Provide `handle` (1-15 word characters) and a numeric `id`.",
+          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "error": "Invalid handle or status id"
+        }
+      },
+      "invalid_option": {
+        "summary": "Invalid query option",
+        "value": {
+          "type": "https://x.pcstyle.dev/docs/reliability#invalid-option",
+          "title": "Invalid query option",
+          "status": 400,
+          "detail": "Invalid query option",
+          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "code": "invalid_option",
+          "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
+          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "error": "Invalid query option"
+        }
+      },
       "invalid_key": {
         "summary": "Invalid or disabled API key",
         "value": {
@@ -9658,20 +10297,6 @@
           "retry_after": 30
         }
       },
-      "invalid_option": {
-        "summary": "Invalid query option",
-        "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-option",
-          "title": "Invalid query option",
-          "status": 400,
-          "detail": "Invalid query option",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
-          "code": "invalid_option",
-          "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
-          "error": "Invalid query option"
-        }
-      },
       "partial_upstream_failure": {
         "summary": "Partial upstream failure",
         "value": {
@@ -9699,6 +10324,21 @@
           "resolution": "Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.",
           "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
           "error": "Upstream provider is rate limiting x.md",
+          "retry_after": 30
+        }
+      },
+      "import_busy": {
+        "summary": "Fresh import capacity is busy",
+        "value": {
+          "type": "https://x.pcstyle.dev/docs/reliability#import-busy",
+          "title": "Fresh import capacity is busy",
+          "status": 503,
+          "detail": "Fresh import capacity is busy",
+          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "code": "import_busy",
+          "resolution": "Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
+          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "error": "Fresh import capacity is busy",
           "retry_after": 30
         }
       },
@@ -10134,6 +10774,17 @@
             "type": "string",
             "description": "Numeric status id as a string."
           },
+          "type": {
+            "type": "string",
+            "enum": [
+              "status"
+            ]
+          },
+          "raw_text": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Original text entities. facets contains mention entries with type=mention, original=@handle and UTF-16 indices; display_text_range excludes implicit reply prefixes."
+          },
           "text": {
             "type": "string",
             "description": "Post text with entities already expanded."
@@ -10344,7 +10995,8 @@
               "profile",
               "search",
               "followers",
-              "following"
+              "following",
+              "replies"
             ],
             "description": "Which resource this body answers."
           },
@@ -10467,7 +11119,15 @@
           },
           "oldest": {
             "type": "string",
-            "description": "ISO 8601 time of the oldest original post returned. Send it as `until` to continue past a truncated result."
+            "description": "ISO 8601 time of the oldest original post returned."
+          },
+          "next_until": {
+            "type": "string",
+            "description": "Continuation upper bound for a capped import. Preserve since, deduplicate IDs; warnings require retrying the original range."
+          },
+          "covered_since": {
+            "type": "string",
+            "description": "Lower bound of the conservatively covered interval."
           },
           "newest": {
             "type": "string",
@@ -11031,6 +11691,7 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9_]*$",
             "examples": [
+              "import_busy",
               "missing_url",
               "invalid_url",
               "unsupported_host",

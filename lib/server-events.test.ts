@@ -189,7 +189,7 @@ test('a valid empty provider list is not an upstream error; a missing list is', 
     expect((await fetchFxProfileStatuses('private-handle')).results).toEqual([])
     expect(events('upstream_error')).toHaveLength(0)
     upstream = async () => new Response('{"code":200}')
-    await fetchFxProfileStatuses('private-handle')
+    await expect(fetchFxProfileStatuses('private-handle')).rejects.toMatchObject({ code: 'partial_upstream_failure' })
     res.emit('finish')
   })(req, res)
   await flush()
