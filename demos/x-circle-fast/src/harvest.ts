@@ -127,18 +127,29 @@ export async function harvest(handle: string, options: HarvestOptions, emit: (ev
     timer ??= setTimeout(flush, 80)
   }
 
-  const profileTask = (async () => {
-    const response = await get(`/api/v1/profiles/${encodeURIComponent(handle)}`, { format: 'json', limit: 1 })
-    if (response.status === 404) throw new HttpError(404, 'not_found')
-    if (!response.ok) throw new HttpError(response.status, `profile ${response.status}`)
-    const body = await response.json() as { profile?: RawUser }
-    const person = toPerson(body.profile)
-    if (!person) throw new HttpError(502, 'profile missing')
+  // The owner's name and photo. Only a 404 is fatal: any other failure leaves the
+  // owner to be taken from the first of their own posts in the import.
+  let ownerKnown = false
+  const announce = (user: RawUser | undefined) => {
+    const person = toPerson(user)
+    if (ownerKnown || !person) return
+    ownerKnown = true
     mark('profile')
-    const isPrivate = Boolean(body.profile?.protected)
-    emit({ type: 'profile', profile: { ...person, protected: isPrivate }, t: t() })
-    if (isPrivate) throw new HttpError(403, 'private')
-    return person
+    emit({ type: 'profile', profile: { ...person, protected: Boolean(user?.protected) }, t: t() })
+  }
+  const profileTask = (async () => {
+    for (let attempt = 0; attempt < 2 && !ownerKnown; attempt++) {
+      try {
+        const response = await get(`/api/v1/profiles/${encodeURIComponent(handle)}`, { format: 'json', limit: 1 }, AbortSignal.any([signal, AbortSignal.timeout(PROFILE_TIMEOUT_MS)]))
+        if (response.status === 404) throw new HttpError(404, 'not_found')
+        if (!response.ok) continue
+        const body = await response.json() as { profile?: RawUser }
+        if (body.profile?.protected) { announce(body.profile); throw new HttpError(403, 'private') }
+        announce(body.profile)
+      } catch (error) {
+        if (error instanceof HttpError || signal.aborted) throw error
+      }
+    }
   })()
 
   const postsTask = (async () => {
@@ -168,6 +179,7 @@ export async function harvest(handle: string, options: HarvestOptions, emit: (ev
       const at = post.created_timestamp ?? 0
       if (at && at < floor) { if (last) { cap.abort(); break } continue }
       mark('firstPost')
+      if (!ownerKnown && !post.reposted_by && post.author?.screen_name?.toLowerCase() === handle.toLowerCase()) announce(post.author)
       posts += 1
       if (at && (postsOldest === null || at < postsOldest)) postsOldest = at
       if (post.id && (post.replies ?? 0) > 0 && !post.reposted_by && post.author?.screen_name?.toLowerCase() === handle.toLowerCase() && threadsQueued < options.threadBudget) {

@@ -158,8 +158,10 @@ const browser = await puppeteer.launch({
 })
 const results: Measure[] = []
 try {
-  for (const handle of handles) {
-    for (const target of targets) {
+  // All demo runs first, back to back: the key's search allowance is shared and
+  // refills in 15-minute windows, so this keeps every demo run inside one window.
+  for (const target of targets) {
+    for (const handle of handles) {
       process.stdout.write(`${target.padEnd(8)} @${handle} … `)
       const m = await measure(browser, target, handle)
       results.push(m)

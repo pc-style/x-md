@@ -43,7 +43,7 @@ const cell = (m: Measure | undefined, f: (m: Measure) => string) => (m ? (m.erro
 
 const md: string[] = []
 md.push('# X Circle: original vs fast demo', '')
-md.push(`Run ${data.results[0]?.startedAt ?? ''} from one VM, one fresh headless Chrome context per run (cache disabled). Each account was checked with \`index=true\` before its run and had no x.md archive, so every post was walked fresh. The fast demo ran first on each account, so any upstream warm-up would have helped the original, not the demo.`, '')
+md.push(`Run ${data.results[0]?.startedAt ?? ''} from one VM, one fresh headless Chrome context per run (cache disabled). Each account was checked with \`index=true\` before its run and had no x.md archive, so every post was walked fresh. All demo runs came first, then the original on the same accounts, so any upstream warm-up would have helped the original, not the demo.`, '')
 md.push('| Account | Metric | Original (before) | Fast demo (after) | Change |', '| --- | --- | --- | --- | --- |')
 for (const { handle, before, after } of rows) {
   md.push(`| @${handle} | First visible progress | ${cell(before, (m) => s(m.firstProgressMs))} | ${cell(after, (m) => s(m.firstProgressMs))} | ${x(before?.firstProgressMs ?? null, after?.firstProgressMs ?? null)} faster |`)
