@@ -244,7 +244,7 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
       : { ip: resolved.ip }
   if (await enforceQuota(req, res, scope, quotaCaller)) return true
   try {
-    const result = await browse({ resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
+    const result = await browse({ id: url.searchParams.get('id'), require_live: url.searchParams.get('require_live'), include_posts: url.searchParams.get('include_posts'), with_replies: url.searchParams.get('with_replies'), with_reposts: url.searchParams.get('with_reposts'), since: url.searchParams.get('since'), until: url.searchParams.get('until'), resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
     res.statusCode = response.status
     for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)
@@ -336,6 +336,8 @@ function applyVersionedRoutes(url: URL): URL {
     next.searchParams.set('via', 'route')
     return next
   }
+  const replies = path.match(/^\/api\/v1\/posts\/(\d+)\/replies$/)
+  if (replies) return routed('/api/browse', { resource: 'replies', id: replies[1] })
   if (path === '/api/v1/posts') return routed('/api/convert')
   if (path === '/api/v1/search') return routed('/api/browse', { resource: 'search' })
   if (path === '/api/v1/oembed') return routed('/api/oembed')

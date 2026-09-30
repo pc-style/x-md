@@ -61,6 +61,7 @@ Feed names are case-insensitive. `media` is an alias for `photos`; unknown value
 
 | Parameter | Default | Behavior |
 | --- | --- | --- |
+| `require_live` | `false` | `true` returns 503 when live search is unavailable instead of substituting web snippets. Use it for circle scoring. |
 | `q` | Required | Nonempty search query. |
 | `feed` | `latest` | One of the five feeds above. |
 | `limit` | `20` | Results per response, maximum **100** on `latest` and `top`. Feeds served by own accounts (`photos`, `videos`, `users`, or a fallback when the primary provider is down) answer at most 20 per request and report that in `limit`. |
@@ -89,7 +90,7 @@ for (const user of users) console.log(user.screen_name, user.name)
 
 ## Availability and limits
 
-Search is the one route with a tight allowance: **5 uncached requests per minute per IP** (`search-ip`), plus **10 account-backed lookups per IP per 15-minute window** (`account-ip`) for Photos, Videos, Users, and the Latest/Top live fallback. Cache hits are free. Each page of a numbered page walk counts as one request; a cursor costs one.
+Search is the one route with a tight allowance: **5 uncached requests per minute per IP** (`search-ip`), plus **10 account-backed lookups per IP per 15-minute window** (`account-ip`) for Photos, Videos, Users, and the Latest/Top live fallback. Issued keys instead have a burst allowance of 30 uncached requests per minute and their own account-backed allowance shown in `RateLimit-Policy`. Cache hits do not spend search quota, but still use the general API allowance. Each page of a numbered page walk counts as one request; a cursor costs one.
 
 Every response reports what is left in its `RateLimit` headers, so a client can pace itself rather than discover the limit:
 
@@ -107,3 +108,5 @@ Photos, Videos, and Users return `503` when their live source is unavailable. Th
 :::
 
 See [errors, limits, and caching](/reliability) and the [error catalogue](/errors).
+
+An upstream empty page with a continuation or a repeated cursor returns `warnings` (`empty_page` or `repeated_cursor`). Retain the current cursor and retry later; neither an empty page nor an absent continuation with warnings proves complete coverage. Search indexing can omit replies; use `(@handle OR to:handle)` and supplement with direct reply samples for interaction circles.

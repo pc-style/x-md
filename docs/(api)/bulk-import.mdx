@@ -1,6 +1,6 @@
 ---
 title: Import a post history
-description: An account's whole history in one request — replies included, raw JSON, seconds not minutes.
+description: Import accessible account history with explicit limits, coverage, and retry handling.
 sidebar:
   order: 4
   icon: download
@@ -15,7 +15,7 @@ curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
   'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
-Built for onboarding importers and memory builders: the kind of client that needs 500–2000 posts, replies included, before a user finishes reading the welcome screen.
+For a complete interaction graph, combine this route with [the circle integration guide](/docs/x-circle). Imports contain the account’s own posts, replies and reposts; incoming mentions use search.
 
 ## Authentication
 
@@ -99,7 +99,7 @@ The same header applies to JSON imports, NDJSON streams and `index=true` request
     {"meta":{"count":787,"…":"…"},"profile":{"…":"…"}}
     ```
 
-    One JSON object per line. Posts arrive in the order the parallel chains deliver them (not sorted); the trailing `meta` line means the walk finished. If it fails part-way the last line is `{"error": <problem document>}`. Archived posts stream first, instantly; fresh ones follow as they land. The first line is on the wire in well under a second.
+    One JSON object per line. Posts arrive newest first; the trailing `meta` line means the walk finished. If it fails part-way the last line is `{"error": <problem document>}`. The selected posts are emitted after the walk completes, so JSON and NDJSON contain the same set. Headers are sent immediately. Do not assume the first post arrives immediately.
   </Step>
 </Steps>
 
@@ -109,11 +109,11 @@ The same header applies to JSON imports, NDJSON streams and `index=true` request
 | --- | --- | --- |
 | `since` | — | Oldest post to include. Omit to go as far back as upstream allows. |
 | `until` | now | Newest post to include, inclusive. |
-| `max_posts` | `500` | Most posts to return, newest first, maximum **5000**. `meta.truncated` is `true` when the range held more; continue with `until=<meta.oldest>` and drop the one boundary post you already have. |
+| `max_posts` | `500` | Most posts to return, newest first, maximum **5000**. `meta.truncated` is `true` when the range held more; continue with `until=<meta.next_until>` and drop the one boundary post you already have. |
 | `with_replies` | `true` | Include the account's replies. Replies are where tone, opinions and short-form style live; that is why they are on by default here and off on the paged profile read. |
 | `with_reposts` | `true` | Include reposts. A repost is returned as the **original** post with `reposted_by` set, so it carries the original's `id` and `created_at`. |
 | `only_replies` | `false` | Replies only. |
-| `concurrency` | `16` | Parallel upstream chains, maximum **32 per upstream** (see [self-hosting](/self-hosting)). Lower it if you see `503 upstream_rate_limited`. |
+| `concurrency` | `16` | Parallel upstream chains, maximum **32** on the public contract. Higher values are not a speed guarantee. Queue requests when `503 import_busy` is returned. |
 | `format` | `json` | `json` or `ndjson`. |
 | `refresh` | `false` | Re-walk the whole range instead of serving what the archive already holds. Use it when you need current engagement counts. |
 | `index` | `false` | `true` answers with the archive index only — no walk, no import quota spent. |
@@ -148,40 +148,29 @@ curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
 }
 ```
 
-Every import response carries the same block as `meta.archive`, plus `served` (posts that came from the archive), `added` (fetched by this request) and `walked` (which gaps were walked). On the hosted service the archive lives in a shared Redis and survives deploys; `persistent: false` means an in-memory fallback that lasts for the life of the process.
+Every import response carries the same block as `meta.archive`, plus `served` (posts that came from the archive), `added` (entries fetched and written by this request, including updates and overlap; not newly unique archive IDs) and `walked` (which gaps were walked). On the hosted service the archive lives in a shared Redis and survives deploys; `persistent: false` means an in-memory fallback that lasts for the life of the process.
 
 :::note
 Archived posts keep the engagement counts from the walk that stored them. Text and metadata do not change; likes and views do. Pass `refresh=true` when those numbers matter.
 :::
 
-## How it is fast
+## Coverage and completion
 
-X hands out a timeline one cursor at a time: about 30 entries per page, a second or more per page, strictly in sequence. A client walking cursors manages 15–20 posts a second and a 2000-post history takes over a minute — when it works at all (see below).
+`count` is the number of posts in this response. `archive.count` is the total number of unique post IDs stored for the account; it can be larger than the response. `archive.served` counts returned IDs not fetched again by this request. `archive.added` counts entries fetched by its walks, including overlap and existing IDs updated. These counters do not necessarily add up to `count`.
 
-x.md does not walk one cursor. An X timeline cursor is a small binary structure whose key field is a plain timestamp, so x.md can **mint a cursor for any instant**. The requested range is cut into windows sized from the account's posting rate, an independent chain starts at each window, all chains run at once, and the results are merged and de-duplicated.
+`truncated=true` means the limit or an incomplete walk prevented full coverage. Follow `next_until` when present, preserving the same `since` and deduplicating IDs. A `warnings` array requires a retry of the **same range**, not merely pagination past the gap. `floor_reached=true` means the walk exhausted accessible history, including reaching the account’s creation date. It does not prove all posts ever published are available. Both flags may be false when the requested `since` was reached without exhaustion.
 
-Measured against the public upstream from one machine (`bench/RESULTS-scale.md` in the repository):
+Reposts carry the original post’s time, not the repost event’s time. Date-filtered archive responses use the original timestamp. An exact repost-time history cannot be reconstructed from this data. `next_until` paginates original-post time; use profile `nextCursor` pagination when timeline position and repost coverage matter. An archive-only response may omit `profile`; use `include_posts=false` on the profile route for identity and avatar enrichment.
 
-| | 1379 posts (`paulg`) | 907 posts (`levelsio`) | completeness |
-| --- | --- | --- | --- |
-| sequential cursor walk with retries | 79 s · 17/s | 56 s · 16/s | 99.3% |
-| x.md, `concurrency=16` (default) | 11.3 s · **122/s** | 12.1 s · 75/s | 99.5% |
-| x.md, `concurrency=32` | 7.8 s · **176/s** | 8.7 s · 104/s | 99.2% |
+Filtered imports may need to inspect up to 5000 unfiltered entries to fill the requested count. They can return fewer matching posts with `truncated=true`. Previously collected posts retain their engagement values until refreshed. The archive is a collected snapshot, not proof that an old post remains public or unchanged.
 
-Three upstream behaviours a plain walker gets wrong, and x.md handles:
+## Limits and recovery
 
-1. **Short pages.** The same cursor answers with a full page or with 0–1 items, at random. A naive walk takes the short answer as the end of the timeline and stops; in the benchmark it returned as little as **13%** of a range. x.md retries a short page before believing it.
-2. **Reposts.** Upstream returns a repost as the original post, with the original's old date, positioned by repost time. A walker that stops at "the first post older than my range" stops early. Reposts never decide where x.md stops.
-3. **Conversation order.** The with-replies timeline is ordered by conversation, not by time: an older thread root sits right above the newer reply that pulled it in. x.md decides where a page ends from its tail, and keeps everything a page returns.
+- **Metering:** 10 imports per IP per 15 minutes; 60 per issued key by default, with per-key overrides advertised in `RateLimit-Policy`. `index=true` and HEAD spend only the general request allowance.
+- **Depth:** X exposes a limited recent timeline, often around 3200 entries. Counts include replies, reposts and conversation context upstream; the number of returned own posts may be smaller.
+- **Concurrency:** the hosted service admits two fresh walks at once across instances. Excess demand returns `503 import_busy` with `Retry-After: 5`. Busy rejections refund the import allowance; the ordinary request limit still applies. Archive-only reads do not use a fresh-walk slot. This is an admission limit, not a throughput guarantee.
+- **Time:** the route allows 120 seconds. Actual duration depends on activity, range, cache state and provider availability. Give JSON imports a 125-second client timeout. NDJSON can end with a problem line despite HTTP 200.
+- **Retry:** on 429, `import_busy`, `upstream_unavailable` or `upstream_rate_limited`, wait at least `Retry-After`, then add jitter. Retry the identical request at most twice before reporting a recoverable failure. Do not reduce the specified wait or retry 400/401 errors.
+- **Parameters:** booleans accept only `true`, `false`, `1`, or `0`; invalid counts and conflicting aliases return 400. `only_replies=true` conflicts with `with_replies=false`.
 
-## Limits
-
-- **Metering.** An import is one unit of its own allowance however many posts it returns: **10 per 15 minutes per IP**, **60 per API key** (`import-ip` / `import-key` in `RateLimit-Policy`). `index=true` is free.
-- **Depth.** X serves roughly its 3200 most recent timeline entries per account. Older history is not reachable through the timeline; `floor_reached` tells you when you hit it.
-- **Time.** A 5000-post walk to the floor takes 10–30 s depending on upstream headroom; the route allows 120 s.
-- **Ordering.** `posts` sort by id, newest first. A repost sorts by the original's id.
-- **Errors.** `400 invalid_option` for bad dates, ranges or counts; `404 not_found` for an unknown or protected account; `503 upstream_rate_limited` when every upstream is throttling — retry after `Retry-After`, or lower `concurrency`.
-
-## Running it against your own upstream
-
-The hosted service reads the public FxTwitter instance, which allows about 1000 requests a minute per IP. That caps sustained fan-out around 16 chains. Point x.md at your own FxEmbed deployment — or a pool of them — with `FXTWITTER_BASE_URL`, and `concurrency=32` per upstream is safe all day. [Self-hosting](/self-hosting) has the recipe.
+A successful HTTP response is not a completeness guarantee: inspect `meta.truncated`, `meta.warnings`, `meta.floor_reached`, and the returned date bounds before labeling an import complete.

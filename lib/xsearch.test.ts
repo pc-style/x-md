@@ -242,3 +242,11 @@ test.each(['caller', 'timeout'])('scraper transport preserves %s cancellation', 
     timer.mockRestore(); fetcher.mockRestore()
   }
 })
+
+test('preserves circle reply targets and display mentions from search', () => {
+  const fx = tweetToFx(tweet({ id: '2', username: 'bob', inReplyToStatusId: '1', text: '@ada hi @carol',
+    __raw_UNSTABLE: { in_reply_to_screen_name: 'ada', display_text_range: [5, 14], entities: { user_mentions: [{ screen_name: 'ada', indices: [0, 4] }, { screen_name: 'carol', indices: [8, 14] }] } },
+  }))
+  expect(fx.replying_to).toEqual({ screen_name: 'ada', status: '1' })
+  expect(fx.raw_text).toMatchObject({ display_text_range: [5, 14], facets: [{ type: 'mention', original: '@ada', indices: [0, 4] }, { type: 'mention', original: '@carol', indices: [8, 14] }] })
+})

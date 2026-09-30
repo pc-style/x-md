@@ -34,3 +34,5 @@ Every page here is available as Markdown: append `.md` to the URL, or send `Acce
 - OpenAPI 3.1 description: https://x.pcstyle.dev/openapi.json
 - MCP server: https://x.pcstyle.dev/mcp
 - Everything above concatenated: https://x.pcstyle.dev/llms-full.txt
+
+- [Build an interaction circle](https://x.pcstyle.dev/docs/x-circle.md)

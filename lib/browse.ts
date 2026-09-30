@@ -12,10 +12,11 @@ import { kv } from './kv.js'
 import { SEARCH_IP, SEARCH_KEY, searchIpKey, searchKeyKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
-import { cursorAt, decodeTimelineCursor, encodeTimelineCursor, parseDateInput } from './fx-cursor.js'
+import { cursorAt, parseDateInput } from './fx-cursor.js'
 import { isReply, isRepost, ownPost } from './import.js'
 import {
   fetchFxConnections,
+  fetchFxConversationReplies,
   fetchFxProfile,
   fetchFxProfileStatuses,
   searchFxStatuses,
@@ -38,7 +39,7 @@ const MAX_PAGE = 10
 const DEGRADED_TTL_MS = 60_000
 const DEGRADED_NOTE = 'Live X search is unavailable right now. These are web-indexed snippets of x.com posts, not a live timeline: ordering and coverage differ, snippet text may be truncated, and no metrics are available.'
 
-export type BrowseResource = 'profile' | 'search' | 'followers' | 'following'
+export type BrowseResource = 'profile' | 'search' | 'followers' | 'following' | 'replies'
 export type BrowseSource = 'fxtwitter' | 'xsearch' | 'firecrawl'
 
 /** After FxTwitter search fails, skip it for this long so requests go straight to the next tier. */
@@ -166,7 +167,8 @@ async function collectList<T>(
   limit: number,
   fetchPage: (cursor?: string) => Promise<FxListResponse<T>>,
   maxUpstreamPages = LIST_MAX_UPSTREAM_PAGES,
-): Promise<{ results: T[]; next?: ListPosition }> {
+  reportStalls = false,
+): Promise<{ results: T[]; next?: ListPosition; warnings?: string[] }> {
   const blocks = start ? 1 : page
   let position: ListPosition | undefined = start ?? { offset: 0 }
   let results: T[] = []
@@ -177,6 +179,9 @@ async function collectList<T>(
     while (position && budget > 0 && results.length < limit) {
       budget -= 1
       const upstream = await fetchPage(position.cursor)
+      if (reportStalls && upstream.results.length === 0 && upstream.cursor?.bottom) {
+        return { results, next: position, warnings: ['empty_page'] }
+      }
       const items = upstream.results.slice(position.offset)
       const take = Math.min(items.length, limit - results.length)
       results.push(...items.slice(0, take))
@@ -185,7 +190,10 @@ async function collectList<T>(
         next = { cursor: position.cursor, offset: consumed }
         break
       }
-      next = upstream.cursor?.bottom && upstream.results.length > 0 ? { cursor: upstream.cursor.bottom, offset: 0 } : undefined
+      if (reportStalls && upstream.cursor?.bottom === position.cursor && position.cursor !== undefined) {
+        return { results, warnings: ['repeated_cursor'] }
+      }
+      next = upstream.cursor?.bottom && upstream.cursor.bottom !== position.cursor ? { cursor: upstream.cursor.bottom, offset: 0 } : undefined
       position = next
     }
     position = next
@@ -195,6 +203,7 @@ async function collectList<T>(
 }
 
 export interface BrowseInput {
+  id?: string | null
   resource?: string | null
   handle?: string | null
   q?: string | null
@@ -206,6 +215,8 @@ export interface BrowseInput {
   format?: string | null
   nocache?: string | boolean | null
   /** Profile only: include the account's replies (default false). */
+  require_live?: string | boolean | null
+  include_posts?: string | boolean | null
   with_replies?: string | boolean | null
   /** Profile only: include reposts (default false). */
   with_reposts?: string | boolean | null
@@ -230,6 +241,8 @@ export interface BrowseResult {
   page: number
   limit: number
   nextCursor?: string
+  /** An upstream page did not make progress; retry the same cursor, never infer full coverage. */
+  warnings?: string[]
   /** Profile only: which timeline entries were kept. */
   with_replies?: boolean
   with_reposts?: boolean
@@ -282,55 +295,15 @@ async function collectProfilePosts(
     if (isReply(post)) return withReplies
     return true
   }
-  const blocks = cursor ? 1 : page
-  let current = cursor
-  let block: FxTweet[] = []
-  let next: string | undefined
-  // One upstream budget for the whole request: page mode walks earlier blocks
-  // too, and must not turn `page=10&limit=100` into dozens of sequential calls.
-  let budget = PROFILE_MAX_UPSTREAM_PAGES + (blocks - 1) * 2
-  for (let index = 0; index < blocks; index += 1) {
-    block = []
-    next = undefined
-    const seen = new Set<string>()
-    /** Where each upstream page ended in `block`, with the real cursor that follows it. */
-    const pageEnds: Array<{ count: number; cursor?: string }> = []
-    for (; budget > 0 && block.length < limit; budget -= 1) {
-      const upstream = await fetchFxProfileStatuses(handle, current, limit, { withReplies, retries: 2 })
-      for (const post of upstream.results) {
-        if (!post.id || seen.has(post.id) || !keep(post)) continue
-        seen.add(post.id)
-        block.push(post)
-      }
-      next = upstream.cursor?.bottom
-      pageEnds.push({ count: block.length, cursor: next })
-      if (!next || upstream.results.length === 0) break
-      current = next
-    }
-    if (block.length > limit) {
-      // Cut at the last original inside the limit and forge the continuation
-      // there: reposts carry the original's id, not their timeline position, so
-      // a block never ends on one. When the whole overfull stretch is reposts,
-      // fall back to the last complete upstream page and its real cursor.
-      let cut = limit
-      while (cut > 0 && isRepost(block[cut - 1])) cut -= 1
-      const lastPageStart = pageEnds.length > 1 ? pageEnds[pageEnds.length - 2].count : 0
-      if (cut > lastPageStart) {
-        block = block.slice(0, cut)
-        const last = block[block.length - 1]
-        const decoded = next ? decodeTimelineCursor(next) : undefined
-        next = encodeTimelineCursor({ issuedAt: decoded?.issuedAt ?? decodeTimelineCursor(cursorAt(Date.now()))!.issuedAt, sortIndex: BigInt(last.id!), direction: 2 })
-      } else if (lastPageStart > 0) {
-        block = block.slice(0, lastPageStart)
-        next = pageEnds[pageEnds.length - 2].cursor
-      }
-    }
-    if (index < blocks - 1) {
-      current = next
-      if (!current) return { results: [] }
-    }
-  }
-  return { results: block, cursor: next ? { bottom: next } : undefined }
+  const raw = cursor?.startsWith('profile:') ? cursor.slice(8) : cursor
+  const position = raw ? splitOffset(raw) : undefined
+  const list = await collectList(page, position ? { cursor: position.raw, offset: position.offset } : undefined, limit,
+    async next => {
+      const result = await fetchFxProfileStatuses(handle, next, 100, { withReplies, retries: 2 })
+      return { ...result, results: result.results.filter(keep) }
+    }, PROFILE_MAX_UPSTREAM_PAGES)
+  const next = joinOffset(list.next)
+  return { results: [...new Map(list.results.map(post => [post.id, post])).values()], cursor: next ? { bottom: `profile:${next}` } : undefined }
 }
 
 function postLine(post: FxTweet, full: boolean): string {
@@ -391,6 +364,7 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
   } else {
     lines.push(`# @${result.handle} ${result.resource}`, '', ...(result.users ?? []).map((user) => userLine(user, full)))
   }
+  if (result.warnings?.length) lines.push('', `> Incomplete pagination (${result.warnings.join(', ')}). Retry the same cursor later; this is not complete coverage.`)
   const next = continuation(input, result)
   if (next) lines.push('', next)
   return `${lines.join('\n').trim()}\n`
@@ -437,8 +411,8 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       }
       // Own-account searches spend a scarce per-account budget: one upstream page per request.
       const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
-      const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, accountLimit, (cursor) => searchXUsers(query, cursor, accountLimit, caller), 1)
-      return render({ resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), source: 'xsearch' })
+      const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, accountLimit, (cursor) => searchXUsers(query, cursor, accountLimit, caller), 1, true)
+      return render({ resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), warnings: list.warnings, source: 'xsearch' })
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
@@ -456,11 +430,11 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     for (const provider of providers) {
       const isFallback = outage || (provider.source === 'xsearch' && !tagged && fxDown)
       try {
-        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages)
+        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages, true)
         if (provider.source === 'fxtwitter') await clearSearchBreaker()
         // Report only once the fallback has served the request.
         if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
-        return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), source: provider.source })
+        return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), warnings: list.warnings, source: provider.source })
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
         if (provider.source === 'fxtwitter') await tripSearchBreaker()
@@ -469,7 +443,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
-    if (['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
+    if (!truthy(input.require_live) && ['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
       const posts = await searchFirecrawlStatuses(query, feed, limit)
       trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
       return render({ resource, posts, query: typed, feed, page, limit, source: 'firecrawl', degraded: true })
@@ -477,6 +451,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
+  if (resource === 'replies') {
+    if (!input.id || !/^\d{1,25}$/.test(input.id)) throw new ConvertError(400, '`id` must be a numeric post id.', 'invalid_option')
+    if (input.cursor || page !== 1) throw new ConvertError(400, 'Replies are a bounded sample and do not support pagination.', 'invalid_option')
+    const posts = await fetchFxConversationReplies(input.id, 'recency', limit)
+    const base = { resource, posts, page, limit, source: 'fxtwitter' as const }
+    return { ...base, markdown: [`# Replies to ${input.id}`, '', ...posts.map(post => postLine(post, full))].join('\n').trim() + '\n' }
+  }
   const handle = validHandle(input.handle)
   if (resource === 'profile') {
     const withReplies = truthy(input.with_replies)
@@ -485,7 +466,9 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_option')
     const [profile, list] = await Promise.all([
       fetchFxProfile(handle),
-      collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts),
+      input.include_posts === false || input.include_posts === 'false' || input.include_posts === '0'
+        ? Promise.resolve({ results: [] } as FxListResponse<FxTweet>)
+        : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts),
     ])
     const base = { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
     return { ...base, markdown: renderMarkdown(input, base, full) }
@@ -499,7 +482,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 
 export async function browse(input: BrowseInput): Promise<BrowseResult> {
   const resource = input.resource as BrowseResource
-  if (!['profile', 'search', 'followers', 'following'].includes(resource)) {
+  if (!['profile', 'search', 'followers', 'following', 'replies'].includes(resource)) {
     throw new ConvertError(400, 'Unsupported browse resource.', 'invalid_resource')
   }
   if (input.format && input.format !== 'markdown' && input.format !== 'json') {
@@ -509,14 +492,22 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
       'invalid_format',
     )
   }
+  for (const name of ['include_posts', 'require_live', 'with_replies', 'with_reposts', 'full', 'nocache'] as const) {
+    const value = input[name]
+    if (value != null && ![true, false, 'true', 'false', '1', '0'].includes(value)) throw new ConvertError(400, `\`${name}\` must be true, false, 1, or 0.`, 'invalid_option')
+  }
+  for (const name of ['limit', 'page'] as const) {
+    const value = input[name]
+    if (value != null && !/^[1-9]\d{0,8}$/.test(String(value))) throw new ConvertError(400, `\`${name}\` must be a positive whole number.`, 'invalid_option')
+  }
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
   const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), resource === 'profile' ? PROFILE_MAX_LIMIT : MAX_LIMIT)
-  const key = buildCacheKey({ v: 5, resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
+  const key = buildCacheKey({ v: 7, id: input.id ?? '', require_live: truthy(input.require_live) ? 1 : 0, include_posts: String(input.include_posts ?? true), resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
   const cached = await withCache(
     key,
     truthy(input.nocache),
     () => browseUncached(input, resource, page, limit),
-    (value) => (value.degraded ? DEGRADED_TTL_MS : undefined),
+    (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
   )
   return { ...cached.value, cache: cached.status }
 }
@@ -533,7 +524,7 @@ export function browseResponse(result: BrowseResult, asJson: boolean): { status:
   if (result.degraded) headers['X-Search-Degraded'] = 'true'
   if (result.cache !== 'bypass') {
     headers['Cache-Control'] = cacheControlHeader()
-    headers['Vercel-CDN-Cache-Control'] = result.degraded
+    headers['Vercel-CDN-Cache-Control'] = result.degraded || result.warnings?.length
       ? vercelCacheControlHeader(DEGRADED_TTL_MS / 1000)
       : vercelCacheControlHeader()
   }
