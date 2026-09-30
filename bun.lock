@@ -17,7 +17,7 @@
       },
       "devDependencies": {
         "@types/node": "^26.6.2",
-        "@vercel/build-utils": "14.12.0",
+        "@vercel/build-utils": "14.13.1",
         "@vercel/node": "16.0.1",
         "blume": "^1.7.0",
         "typescript": "~7.0.2",
@@ -754,7 +754,7 @@
 
     "@vercel/analytics": ["@vercel/analytics@2.0.1", "", { "peerDependencies": { "@remix-run/react": "^2", "@sveltejs/kit": "^1 || ^2", "next": ">= 13", "nuxt": ">= 3", "react": "^18 || ^19 || ^19.0.0-rc", "svelte": ">= 4", "vue": "^3", "vue-router": "^4" }, "optionalPeers": ["@remix-run/react", "@sveltejs/kit", "next", "nuxt", "react", "svelte", "vue", "vue-router"] }, "sha512-MTQG6V9qQrt1tsDeF+2Uoo5aPjqbVPys1xvnIftXSJYG2SrwXRHnqEvVoYID7BTruDz4lCd2Z7rM1BdkUehk2g=="],
 
-    "@vercel/build-utils": ["@vercel/build-utils@14.12.0", "", { "dependencies": { "cjs-module-lexer": "1.2.3", "es-module-lexer": "1.5.0" } }, "sha512-/LTrYIttP+UKpgT4K0mSXHLxC9W4c+f0Yt5acBooV27wZ9QUmTiVgp5Vh0NIqo7q3frlzJnTbrS9h2TORTd8xQ=="],
+    "@vercel/build-utils": ["@vercel/build-utils@14.13.1", "", { "dependencies": { "cjs-module-lexer": "1.2.3", "es-module-lexer": "1.5.0" } }, "sha512-O2wh5N/8mWLTc8oKuoCQKU4h8EHAL1dZDw11YHmu25pT0b54txEkLhkIFyW5h1lXD6gNMW4YpCSrtVw9QUNfxw=="],
 
     "@vercel/cli-config": ["@vercel/cli-config@0.3.0", "", { "dependencies": { "xdg-app-paths": "5", "zod": "4.1.11" } }, "sha512-kQLt5Pm8wKd7/imzDY9/9u0tf8OuRkAuXI+s7j057FSUrXapAmumJSKwDqnR4ZZqdWoUcNLlFAgVIAdiwcGTcw=="],
 
