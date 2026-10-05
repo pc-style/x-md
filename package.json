@@ -37,13 +37,13 @@
     "skills:publish": "bun scripts/patch-agent-skills.ts"
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
-    "@vercel/build-utils": "14.12.0",
+    "@types/node": "^26.6.4",
+    "@vercel/build-utils": "14.14.0",
     "@vercel/node": "12.0.0",
     "blume": "^1.7.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
@@ -52,7 +52,7 @@
     "@vercel/analytics": "^2.0.1",
     "@vercel/functions": "^3.9.9",
     "gsap": "^3.15.0",
-    "posthog-js": "^1.434.13",
+    "posthog-js": "^1.435.6",
     "tailwindcss": "^4.3.3",
     "zod": "^4.6.5"
   },
