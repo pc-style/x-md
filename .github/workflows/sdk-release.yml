@@ -1,49 +1,132 @@
 name: SDK release
 
-# Publishes packages/sdk to npm as `mdfromx` when a tag like sdk-v0.1.0 is pushed.
-# Uses npm trusted publishing (OIDC), so no token is stored. npm only lets a trusted
-# publisher be configured on a package that already exists: publish 0.1.0 by hand once,
-# then add this workflow as the trusted publisher on npmjs.com.
+# Changesets for packages/sdk (`mdfromx` on npm). On every push to main:
+# - pending .changeset/*.md files: open or update the "Version Packages" PR, which bumps
+#   the version and writes packages/sdk/CHANGELOG.md. Its commits go through the GitHub API,
+#   so they are signed, as main requires. That PR is opened with the workflow token, and GitHub
+#   starts no workflow for it, so the required `build` check never reports on its own: close
+#   and reopen the PR to start CI before merging, or merge with the admin bypass.
+# - no changesets and a version not yet on npm (the Version Packages PR was merged):
+#   check, test, build, pack, then publish.
+# Publishing uses npm trusted publishing (OIDC), so no token is stored. npm only lets a
+# trusted publisher be configured on a package that already exists: publish 0.1.0 by hand
+# once, then add this workflow as the trusted publisher on npmjs.com, with `npm publish`
+# ticked under Allowed actions: a trusted publisher created after Sep 3, 2026 allows only
+# `npm stage publish` by default, and Changesets runs `npm publish`. A connection can't be
+# edited later; fixing it means deleting it and adding a new one.
 
 on:
   push:
-    tags: ['sdk-v*']
+    branches: [main]
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  publish:
+  select-mode:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      mode: ${{ steps.select-mode.outputs.mode }}
+      publish-plan-artifact-id: ${{ steps.select-mode.outputs.publish-plan-artifact-id }}
     permissions:
       contents: read
-      id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # No dependency caches: a poisoned cache must not reach a job that can publish.
-      - uses: oven-sh/setup-bun@v2
+      # No dependency caches in this workflow: a poisoned cache must not reach a job that can publish.
+      # Node 24: the Changesets CLI needs Node 22.11+, and trusted publishing needs npm 11.5.1+.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
           no-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: bun install --frozen-lockfile
-      - name: Tag matches package version
-        run: |
-          version=$(node -p "require('./packages/sdk/package.json').version")
-          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match packages/sdk version $version" >&2
-            exit 1
-          fi
+      - id: select-mode
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
+  version:
+    if: needs.select-mode.outputs.mode == 'version'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+          no-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: bun install --frozen-lockfile
+      - uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+
+  pack:
+    if: needs.select-mode.outputs.mode == 'publish'
+    needs: select-mode
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      pack-dir-artifact-id: ${{ steps.pack.outputs.pack-dir-artifact-id }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+          no-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: bun install --frozen-lockfile
+      # The Version Packages PR is opened with the workflow token, which starts no CI run on it,
+      # so the release checks run here.
       - run: bun run sdk:check
       - run: bun --bun vitest --run packages/sdk
       - run: bun run --cwd packages/sdk build
-      - name: Publish
-        working-directory: packages/sdk
-        run: npm publish --provenance --access public
+      - id: pack
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # git tag and GitHub release
+      id-token: write # npm trusted publishing
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: .bun-version
+          no-cache: true
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: bun install --frozen-lockfile
+      - uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
+        with:
+          pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
+          create-github-releases: true
