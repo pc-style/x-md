@@ -10,7 +10,10 @@ name: SDK release
 #   check, test, build, pack, then publish.
 # Publishing uses npm trusted publishing (OIDC), so no token is stored. npm only lets a
 # trusted publisher be configured on a package that already exists: publish 0.1.0 by hand
-# once, then add this workflow as the trusted publisher on npmjs.com.
+# once, then add this workflow as the trusted publisher on npmjs.com, with `npm publish`
+# ticked under Allowed actions: a trusted publisher created after Sep 3, 2026 allows only
+# `npm stage publish` by default, and Changesets runs `npm publish`. A connection can't be
+# edited later; fixing it means deleting it and adding a new one.
 
 on:
   push:
