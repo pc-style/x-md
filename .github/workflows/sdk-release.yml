@@ -3,7 +3,9 @@ name: SDK release
 # Changesets for packages/sdk (`mdfromx` on npm). On every push to main:
 # - pending .changeset/*.md files: open or update the "Version Packages" PR, which bumps
 #   the version and writes packages/sdk/CHANGELOG.md. Its commits go through the GitHub API,
-#   so they are signed, as main requires.
+#   so they are signed, as main requires. That PR is opened with the workflow token, and GitHub
+#   starts no workflow for it, so the required `build` check never reports on its own: close
+#   and reopen the PR to start CI before merging, or merge with the admin bypass.
 # - no changesets and a version not yet on npm (the Version Packages PR was merged):
 #   check, test, build, pack, then publish.
 # Publishing uses npm trusted publishing (OIDC), so no token is stored. npm only lets a
@@ -29,22 +31,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       # No dependency caches in this workflow: a poisoned cache must not reach a job that can publish.
       # Node 24: the Changesets CLI needs Node 22.11+, and trusted publishing needs npm 11.5.1+.
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
           no-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           package-manager-cache: false
       - run: bun install --frozen-lockfile
       - id: select-mode
-        uses: changesets/action/select-mode@v2.1.2
+        uses: changesets/action/select-mode@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
 
   version:
     if: needs.select-mode.outputs.mode == 'version'
@@ -55,19 +57,19 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
           no-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           package-manager-cache: false
       - run: bun install --frozen-lockfile
-      - uses: changesets/action/version@v2.1.2
+      - uses: changesets/action/version@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
 
   pack:
     if: needs.select-mode.outputs.mode == 'publish'
@@ -79,14 +81,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
           no-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           package-manager-cache: false
@@ -97,7 +99,7 @@ jobs:
       - run: bun --bun vitest --run packages/sdk
       - run: bun run --cwd packages/sdk build
       - id: pack
-        uses: changesets/action/pack@v2.1.2
+        uses: changesets/action/pack@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           publish-plan-artifact-id: ${{ needs.select-mode.outputs.publish-plan-artifact-id }}
 
@@ -109,19 +111,19 @@ jobs:
       contents: write # git tag and GitHub release
       id-token: write # npm trusted publishing
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: .bun-version
           no-cache: true
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           package-manager-cache: false
       - run: bun install --frozen-lockfile
-      - uses: changesets/action/publish@v2.1.2
+      - uses: changesets/action/publish@ae32849d5ba541f9ae29e40e22a623bc13562f51 # v2.1.2
         with:
           pack-dir-artifact-id: ${{ needs.pack.outputs.pack-dir-artifact-id }}
           create-github-releases: true
