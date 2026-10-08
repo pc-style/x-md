@@ -5,8 +5,8 @@ landing copy frame, the error module, versioned routes, quotas, discovery docume
 before pushing). This file only adds what is specific to working here with Claude Code.
 
 - Checks before pushing: `bun run test` and `bun run build` (the build starts with `tsc`, so a separate run is
-  redundant). After touching `lib/openapi.ts`, run `bun run openapi:build` and **commit** the regenerated
-  `public/openapi.json` — `bun run build` rewrites that file in place, so `openapi:check` can never fail
+  redundant). After touching `lib/openapi.ts`, run `bun run openapi:build` then `bun run sdk:build` and **commit** the
+  regenerated `public/openapi.json` and SDK `generated/` files — `bun run build` rewrites that file in place, so `openapi:check` can never fail
   straight after a build; it is the CI guard against a stale committed copy.
 - `main` takes a PR. Its ruleset requires the `build` and `CodeRabbit` checks, a deployment to the `Preview`
   environment, **signed commits**, and the branch up to date with `main`. No approvals are required, and

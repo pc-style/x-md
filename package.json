@@ -4,6 +4,9 @@
   "description": "Agent-friendly, read-only X browser with compact Markdown and JSON output",
   "license": "MIT",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pc-style/x-md.git"
@@ -26,7 +29,7 @@
   ],
   "scripts": {
     "dev": "bun --bun vite",
-    "build": "bun scripts/build-og-renderer.mjs && bun --bun tsc && bun run docs:build && bun run openapi:build && bun --bun vite build && bun run skills:publish",
+    "build": "bun scripts/build-og-renderer.mjs && bun --bun tsc && bun run docs:build && bun run openapi:build && bun run sdk:build && bun --bun vite build && bun run skills:publish",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run",
@@ -34,6 +37,8 @@
     "docs:build": "bun --bun blume build",
     "openapi:build": "bun scripts/build-openapi.ts",
     "openapi:check": "bun scripts/build-openapi.ts --check",
+    "sdk:build": "bun scripts/build-sdk.ts",
+    "sdk:check": "bun scripts/build-sdk.ts --check",
     "skills:publish": "bun scripts/patch-agent-skills.ts"
   },
   "devDependencies": {

@@ -1,0 +1,49 @@
+name: SDK release
+
+# Publishes packages/sdk to npm as `mdfromx` when a tag like sdk-v0.1.0 is pushed.
+# Uses npm trusted publishing (OIDC), so no token is stored. npm only lets a trusted
+# publisher be configured on a package that already exists: publish 0.1.0 by hand once,
+# then add this workflow as the trusted publisher on npmjs.com.
+
+on:
+  push:
+    tags: ['sdk-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # No dependency caches: a poisoned cache must not reach a job that can publish.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+          no-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: bun install --frozen-lockfile
+      - name: Tag matches package version
+        run: |
+          version=$(node -p "require('./packages/sdk/package.json').version")
+          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match packages/sdk version $version" >&2
+            exit 1
+          fi
+      - run: bun run sdk:check
+      - run: bun --bun vitest --run packages/sdk
+      - run: bun run --cwd packages/sdk build
+      - name: Publish
+        working-directory: packages/sdk
+        run: npm publish --provenance --access public

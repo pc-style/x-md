@@ -1,0 +1,129 @@
+---
+title: TypeScript SDK
+description: The mdfromx package, a typed client for the /api/v1 post, profile and search routes, in plain TypeScript and as an Effect service.
+sidebar:
+  label: TypeScript SDK
+  order: 6
+  icon: package
+---
+
+`mdfromx` is a typed client for the `/api/v1` post, profile and search routes. (`/api/v1/oembed` is left out: it only serves x.md's own link previews.) Its types are generated from the [OpenAPI document](https://x.pcstyle.dev/openapi.json), so they match the API at the version you installed. It comes in two flavors in one package:
+
+- `mdfromx` runs on `fetch` with no runtime dependencies, in Node 18+, Bun, Deno, browsers and Workers.
+- `mdfromx/effect` is an Effect service whose calls return `Effect` and `Stream`, with one tagged error per problem code and every response decoded with Effect Schema.
+
+```bash
+npm install mdfromx
+# Effect flavor only: effect is an optional peer dependency
+npm install mdfromx effect
+```
+
+## Plain TypeScript
+
+```ts
+import { Mdfromx } from 'mdfromx'
+
+const x = new Mdfromx()
+
+const { posts, markdown } = await x.posts.get('https://x.com/jack/status/20')
+const profile = await x.profiles.get('jack', { limit: 5 })
+const results = await x.search.get('bun lang:en', { feed: 'top' })
+```
+
+Options use camelCase and map to the documented query parameters (`requireLive` is `require_live`, `maxPosts` is `max_posts`). Flags such as `full` and `nocache` are booleans.
+
+| Call | Route | Returns |
+| --- | --- | --- |
+| `posts.get(post)` / `posts.markdown(post)` | [Posts](/posts) | `ConvertResponse` / `string` |
+| `posts.replies(id)` | Replies | `BrowseResponse` |
+| `profiles.get(handle)` / `profiles.markdown(handle)` | [Profiles](/profiles) | `BrowseResponse` / `string` |
+| `profiles.followers(handle)` / `profiles.following(handle)` | Connections | `BrowseResponse` |
+| `profiles.importPosts(handle)` | [Bulk import](/bulk-import) | `ImportSuccessResponse` |
+| `profiles.streamPosts(handle)` | Bulk import as NDJSON | `AsyncIterable<ImportStreamEvent>` |
+| `search.get(query)` / `search.markdown(query)` | [Search](/search) | `BrowseResponse` / `string` |
+
+A post can be a status URL, a numeric id, or `{ handle, id }`. Every JSON response already carries the rendered `markdown`; the `markdown()` calls skip the JSON when the text is all you need.
+
+### Options
+
+```ts
+const x = new Mdfromx({
+  apiKey: 'xmd_…',                // optional; falls back to MDFROMX_API_KEY on Node, Bun and Deno
+  baseUrl: 'https://mdfromx.com',  // the default; every x.md host serves the same API
+  retry: { maxRetries: 2, maxDelayMs: 30_000 }, // the default; `false` turns retries off
+  fetch: customFetch,              // optional
+})
+```
+
+Keys are optional. They raise the live-search allowance ([Rate limits](/reliability#rate-limits)) and are handed out by the maintainer through [GitHub issues](https://github.com/pc-style/x-md/issues). In a browser, an API key is visible to anyone who opens the page, so call the API from a server when you use one.
+
+### Pagination
+
+`profiles.pages`, `profiles.followersPages`, `profiles.followingPages` and `search.pages` follow `nextCursor` until it stops coming, as [Pagination](/pagination) describes. A short page is not the end of the list.
+
+```ts
+for await (const page of x.search.pages('bun', { limit: 50, maxPages: 4 })) {
+  for (const post of page.posts ?? []) console.log(post.url)
+}
+```
+
+### Streaming a bulk import
+
+```ts
+for await (const event of x.profiles.streamPosts('jack', { since: '2026-01-01', maxPosts: 2000 })) {
+  if ('post' in event) save(event.post)
+  else console.log(`imported ${event.meta.count}, truncated: ${event.meta.truncated}`)
+}
+```
+
+Breaking out of the loop cancels the download. When the walk fails part-way, the loop throws after the posts that did arrive. A stream that ends without its final `meta` line was cut off, so the loop throws `stream_incomplete` rather than ending as if the import were done.
+
+### Errors and retries
+
+Every non-2xx answer throws `MdfromxError` with the [problem details](/errors): `status`, `code`, `problem` and `retryAfter`. `code` is typed with every documented code. Empty input, such as a blank handle or post, is rejected before any request with the code the API uses for it (`invalid_handle`, `invalid_option` or `missing_url`).
+
+```ts
+import { MdfromxError } from 'mdfromx'
+
+try {
+  await x.profiles.get('jack')
+} catch (error) {
+  if (error instanceof MdfromxError && error.code === 'rate_limited') {
+    console.log(`try again in ${error.retryAfter}s`)
+  }
+}
+```
+
+A `429` or `503` is retried up to twice, waiting the `Retry-After` the API sent (1s and then 2s when it sent none). The client gives up instead of waiting longer than `maxDelayMs`, so an import quota that resets in fifteen minutes fails fast with `retryAfter` set. Other statuses are never retried.
+
+## Effect
+
+```ts
+import { Effect, Stream } from 'effect'
+import { FetchHttpClient } from 'effect/http'
+import { Mdfromx } from 'mdfromx/effect'
+
+const program = Effect.gen(function* () {
+  const x = yield* Mdfromx
+  const post = yield* x.posts.get('https://x.com/jack/status/20')
+  const pages = yield* Stream.runCollect(x.search.pages('bun', { maxPages: 3 }))
+  return { post, pages }
+}).pipe(
+  Effect.catchTag('RateLimited', error => Effect.fail(`retry in ${error.retryAfter}s`)),
+)
+
+program.pipe(
+  Effect.provide(Mdfromx.layer()),
+  Effect.provide(FetchHttpClient.layer),
+  Effect.runPromise,
+)
+```
+
+- `Mdfromx.layer(config)` needs an `HttpClient`, so you choose the transport and can swap it in tests. Its config takes the same `apiKey`, `baseUrl` and `retry` as the plain client, and the key falls back to the `MDFROMX_API_KEY` config value.
+- The error channel is `MdfromxFailure`: one tagged class per [error code](/errors) (`RateLimited`, `NotFound`, `ImportBusy`, ...), `UnknownApiError` for an unlisted provider code, Effect's `HttpClientError` for transport failures, and `SchemaError` when a response does not match the contract.
+- Paginated lists and `profiles.streamPosts` are `Stream`s. They pull pages lazily, so `Stream.take` stops the requests too.
+- Responses are decoded with the generated schemas, exported as `Schemas` (`Schemas.Post`, `Schemas.BrowseResponse`, ...). Fields the API adds later are kept, not stripped.
+
+## Versions
+
+The SDK has its own semver, starting at `0.1.0`, independent of the API's `/api/v1`. A new SDK release follows API changes; [Versioning](/versioning) covers what `/api/v1` itself promises. Source: [`packages/sdk`](https://github.com/pc-style/x-md/tree/main/packages/sdk).

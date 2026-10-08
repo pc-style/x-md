@@ -30,5 +30,12 @@ jobs:
         run: bun run test
       - name: Skill CLI smoke
         run: bun skills/browse-x/scripts/browse-x.ts --help
+      # Before Build, which regenerates both files in place: these catch a stale committed copy.
+      - name: openapi.json matches lib/openapi.ts
+        run: bun run openapi:check
+      - name: SDK matches openapi.json
+        run: bun run sdk:check
+      - name: SDK type-check and build
+        run: bun --bun tsc -p packages/sdk && bun run --cwd packages/sdk build
       - name: Build
         run: bun run build
