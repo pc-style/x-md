@@ -42,6 +42,7 @@
     "skills:publish": "bun scripts/patch-agent-skills.ts"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.4",
     "@vercel/build-utils": "14.14.0",
     "@vercel/node": "12.0.0",
