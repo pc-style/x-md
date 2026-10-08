@@ -73,7 +73,8 @@ export function operationUrl(
   let path: string = op.path
   for (const name of op.pathParams) {
     const value = pathValues[name]
-    if (!value?.trim()) throw new InputError(name === 'handle' ? 'invalid_handle' : 'invalid_params', `mdfromx: missing ${name}`)
+    // The codes the API itself answers with: invalid_handle for a handle, invalid_option for a replies id.
+    if (!value?.trim()) throw new InputError(name === 'handle' ? 'invalid_handle' : 'invalid_option', `mdfromx: missing ${name}`)
     path = path.replace(`{${name}}`, encodeURIComponent(value))
   }
   const url = new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`)

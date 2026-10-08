@@ -105,7 +105,7 @@ describe('errors', () => {
     await expect(x.profiles.get('')).rejects.toMatchObject({ code: 'invalid_handle' })
     // `/profiles//followers` would redirect to the profile of an account named followers.
     await expect(x.profiles.followers(' ')).rejects.toMatchObject({ code: 'invalid_handle' })
-    await expect(x.posts.replies('')).rejects.toMatchObject({ code: 'invalid_params' })
+    await expect(x.posts.replies('')).rejects.toMatchObject({ code: 'invalid_option' })
     expect(calls).toHaveLength(0)
   })
 

@@ -61,10 +61,10 @@ describe('Effect client', () => {
       return Effect.all([
         x.profiles.followers(' ').pipe(Effect.catchTag('InvalidHandle', e => Effect.succeed(`${e._tag} ${e.status}`))),
         x.posts.get('').pipe(Effect.catchTag('MissingUrl', e => Effect.succeed(e._tag))),
-        x.posts.replies('').pipe(Effect.catchTag('InvalidParams', e => Effect.succeed(e._tag))),
+        x.posts.replies('').pipe(Effect.catchTag('InvalidOption', e => Effect.succeed(e._tag))),
       ])
     })
-    expect(await exit).toEqual(Exit.succeed(['InvalidHandle 400', 'MissingUrl', 'InvalidParams']))
+    expect(await exit).toEqual(Exit.succeed(['InvalidHandle 400', 'MissingUrl', 'InvalidOption']))
     expect(urls).toHaveLength(0)
   })
 
