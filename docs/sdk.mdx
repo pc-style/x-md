@@ -1,13 +1,13 @@
 ---
 title: TypeScript SDK
-description: The mdfromx package, a typed client for every /api/v1 route, in plain TypeScript and as an Effect service.
+description: The mdfromx package, a typed client for the /api/v1 post, profile and search routes, in plain TypeScript and as an Effect service.
 sidebar:
   label: TypeScript SDK
   order: 6
   icon: package
 ---
 
-`mdfromx` is a typed client for the `/api/v1` routes. Its types are generated from the [OpenAPI document](https://x.pcstyle.dev/openapi.json), so they match the API at the version you installed. It comes in two flavors in one package:
+`mdfromx` is a typed client for the `/api/v1` post, profile and search routes. (`/api/v1/oembed` is left out: it only serves x.md's own link previews.) Its types are generated from the [OpenAPI document](https://x.pcstyle.dev/openapi.json), so they match the API at the version you installed. It comes in two flavors in one package:
 
 - `mdfromx` runs on `fetch` with no runtime dependencies, in Node 18+, Bun, Deno, browsers and Workers.
 - `mdfromx/effect` is an Effect service whose calls return `Effect` and `Stream`, with one tagged error per problem code and every response decoded with Effect Schema.
@@ -49,7 +49,7 @@ A post can be a status URL, a numeric id, or `{ handle, id }`. Every JSON respon
 ```ts
 const x = new Mdfromx({
   apiKey: 'xmd_…',                // optional; falls back to MDFROMX_API_KEY on Node, Bun and Deno
-  baseUrl: 'https://mdfromx.com',  // the default; x.pcstyle.dev serves the same API
+  baseUrl: 'https://mdfromx.com',  // the default; every x.md host serves the same API
   retry: { maxRetries: 2, maxDelayMs: 30_000 }, // the default; `false` turns retries off
   fetch: customFetch,              // optional
 })
@@ -76,7 +76,7 @@ for await (const event of x.profiles.streamPosts('jack', { since: '2026-01-01', 
 }
 ```
 
-Breaking out of the loop cancels the download. When the walk fails part-way, the loop throws after the posts that did arrive.
+Breaking out of the loop cancels the download. When the walk fails part-way, the loop throws after the posts that did arrive. A stream that ends without its final `meta` line was cut off, so the loop throws `stream_incomplete` rather than ending as if the import were done.
 
 ### Errors and retries
 

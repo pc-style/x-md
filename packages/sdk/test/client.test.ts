@@ -77,6 +77,10 @@ describe('requests', () => {
     await explicit.x.search.get('a')
     expect(explicit.calls[0].headers.get('authorization')).toBe('Bearer xmd_explicit')
 
+    const blank = client(() => json(page()), { apiKey: '   ' })
+    await blank.x.search.get('a')
+    expect(blank.calls[0].headers.has('authorization')).toBe(false)
+
     vi.stubEnv('MDFROMX_API_KEY', 'xmd_env')
     const calls: Headers[] = []
     const x = new Mdfromx({ fetch: async (_input, init) => { calls.push(new Headers(init?.headers)); return json(page()) } })
@@ -92,6 +96,15 @@ describe('requests', () => {
 })
 
 describe('errors', () => {
+  it('rejects invalid input instead of throwing at the call site', async () => {
+    const { x, calls } = client(() => json(page()))
+    let pending: Promise<unknown> | undefined
+    expect(() => { pending = x.posts.get('  ') }).not.toThrow()
+    await expect(pending).rejects.toThrow(TypeError)
+    await expect(x.profiles.get('')).rejects.toThrow(TypeError)
+    expect(calls).toHaveLength(0)
+  })
+
   it('throws MdfromxError with the problem code', async () => {
     const { x } = client(() => problem('invalid_handle', 400))
     const error = await x.profiles.get('bad-handle').catch((e: unknown) => e)
@@ -196,6 +209,16 @@ describe('streamPosts', () => {
     ])
     expect(calls[0].url.searchParams.get('format')).toBe('ndjson')
     expect(calls[0].headers.get('accept')).toBe('application/x-ndjson')
+  })
+
+  it('throws when the stream ends without its final meta line', async () => {
+    const { x } = client(() => ndjson('{"post":{"id":"1"}}\n{"post":{"id":"2"}}\n'))
+    const seen: unknown[] = []
+    const error = await (async () => {
+      for await (const event of x.profiles.streamPosts('jack')) seen.push(event)
+    })().catch((e: unknown) => e)
+    expect(seen).toHaveLength(2)
+    expect(error).toMatchObject({ code: 'stream_incomplete', status: 200 })
   })
 
   it('throws when the walk fails part-way', async () => {

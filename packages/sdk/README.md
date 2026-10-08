@@ -19,7 +19,7 @@ for await (const page of x.search.pages('bun', { maxPages: 3 })) {
 }
 ```
 
-- Every `/api/v1` route: `posts.get`, `posts.replies`, `profiles.get`, `profiles.followers`, `profiles.following`, `profiles.importPosts`, `profiles.streamPosts` (NDJSON), `search.get`, plus `markdown()` and `pages()` variants.
+- The `/api/v1` post, profile and search routes: `posts.get`, `posts.replies`, `profiles.get`, `profiles.followers`, `profiles.following`, `profiles.importPosts`, `profiles.streamPosts` (NDJSON), `search.get`, plus `markdown()` and `pages()` variants.
 - Types generated from the API's OpenAPI document.
 - Throws `MdfromxError` with a typed `code` for every documented problem.
 - Retries `429` and `503`, waiting the `Retry-After` the API sends.

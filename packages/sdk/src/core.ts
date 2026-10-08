@@ -36,11 +36,13 @@ export function resolveRetry(retry: RetryOptions | undefined): ResolvedRetry {
   }
 }
 
+/** A blank key means no key: never send `Authorization: Bearer ` with nothing after it. */
+export const normalizeApiKey = (key: string | undefined): string | undefined => key?.trim() || undefined
+
 /** The key from `MDFROMX_API_KEY` on Node, Bun and Deno; undefined in browsers. */
 export function envApiKey(): string | undefined {
   const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
-  const value = env?.[API_KEY_ENV]?.trim()
-  return value || undefined
+  return normalizeApiKey(env?.[API_KEY_ENV])
 }
 
 type QueryValue = string | number | boolean | undefined | null
@@ -100,6 +102,10 @@ export function retryAfterSeconds(header: string | null | undefined, body?: numb
 }
 
 export const RETRYABLE_STATUS = new Set([429, 503])
+
+/** SDK-side code for an import stream that ended before its final meta line. */
+export const STREAM_INCOMPLETE = 'stream_incomplete'
+export const STREAM_INCOMPLETE_MESSAGE = 'The import stream ended before its final meta line, so the connection was cut. Retry the import.'
 
 /**
  * How long to sleep before retry `attempt` (0-based), or undefined to stop.

@@ -22,6 +22,15 @@
     "effect",
     "mdfromx"
   ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "effect": [
+        "./dist/effect/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -41,8 +50,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepublishOnly": "bun run build"
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "effect": "^4.0.0"

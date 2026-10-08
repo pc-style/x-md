@@ -9,13 +9,15 @@ type Handler = (url: URL) => Response
 
 function run<A, E>(handler: Handler, program: (x: MdfromxService) => Effect.Effect<A, E>, config: MdfromxConfig = {}) {
   const urls: URL[] = []
+  const auth: (string | undefined)[] = []
   const http = HttpClient.make((request, url) => {
     urls.push(url)
+    auth.push(request.headers['authorization'])
     return Effect.succeed(HttpClientResponse.fromWeb(request, handler(url)))
   })
   const layer = Mdfromx.layer({ apiKey: '', ...config }).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient)(http)))
   const exit = Effect.runPromiseExit(Mdfromx.use(program).pipe(Effect.provide(layer)))
-  return { exit, urls }
+  return { exit, urls, auth }
 }
 
 const json = (body: unknown, status = 200) =>
@@ -39,6 +41,28 @@ describe('Effect client', () => {
     if (Exit.isSuccess(result)) expect(result.value).toMatchObject({ resource: 'search', brand_new_field: 1 })
     expect(urls[0].searchParams.get('limit')).toBe('3')
     expect(urls[0].searchParams.get('format')).toBe('json')
+  })
+
+  it('sends a bearer key, and no Authorization header for a blank one', async () => {
+    const keyed = run(() => json(browse()), x => x.search.get('a'), { apiKey: ' xmd_key ' })
+    await keyed.exit
+    expect(keyed.auth).toEqual(['Bearer xmd_key'])
+
+    for (const apiKey of ['', '   ']) {
+      const blank = run(() => json(browse()), x => x.search.get('a'), { apiKey })
+      await blank.exit
+      expect(blank.auth).toEqual([undefined])
+    }
+  })
+
+  it('turns invalid input into a failed Effect, not a throw at the call site', async () => {
+    const { exit, urls } = run(() => json(browse()), x => {
+      expect(() => x.profiles.get('')).not.toThrow()
+      expect(() => x.posts.get('')).not.toThrow()
+      return x.profiles.get('')
+    })
+    expect(Exit.isFailure(await exit)).toBe(true)
+    expect(urls).toHaveLength(0)
   })
 
   it('fails with one tag per problem code', async () => {
@@ -81,6 +105,9 @@ describe('Effect client', () => {
     const ok = '{"post":{"id":"1"}}\n{"meta":{"handle":"jack","count":1,"until":"2026-01-01","truncated":false,"floor_reached":true,"with_replies":true,"with_reposts":true,"only_replies":false,"concurrency":16,"windows":1,"pages":1,"duration_ms":5,"source":"fxtwitter"}}\n'
     const done = await run(() => new Response(ok), x => Stream.runCollect(x.profiles.streamPosts('jack'))).exit
     expect(Exit.isSuccess(done) && done.value.map(e => ('post' in e ? 'post' : 'meta'))).toEqual(['post', 'meta'])
+
+    const cut = await run(() => new Response('{"post":{"id":"1"}}\n'), x => Effect.flip(Stream.runCollect(x.profiles.streamPosts('jack')))).exit
+    expect(Exit.isSuccess(cut) && cut.value).toMatchObject({ _tag: 'UnknownApiError', code: 'stream_incomplete' })
 
     const bad = '{"post":{"id":"1"}}\n{"error":{"type":"https://mdfromx.com/docs/reliability#upstream-error","title":"Upstream failed","status":502,"detail":"walk failed","instance":"https://mdfromx.com/api/v1/x","code":"upstream_error","resolution":"retry","documentation_url":"https://mdfromx.com/docs"}}\n'
     const failed = await run(() => new Response(bad), x => Effect.flip(Stream.runCollect(x.profiles.streamPosts('jack')))).exit

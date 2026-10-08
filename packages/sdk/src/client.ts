@@ -2,11 +2,14 @@ import {
   ACCEPT,
   DEFAULT_BASE_URL,
   envApiKey,
+  normalizeApiKey,
   operationUrl,
   postRefParams,
   resolveRetry,
   retryAfterSeconds,
   retryDelayMs,
+  STREAM_INCOMPLETE,
+  STREAM_INCOMPLETE_MESSAGE,
   type Format,
   type PostRef,
   type ResolvedRetry,
@@ -126,7 +129,7 @@ export class Mdfromx {
   readonly #headers: Record<string, string>
 
   constructor(options: MdfromxOptions = {}) {
-    this.#apiKey = options.apiKey ?? envApiKey()
+    this.#apiKey = options.apiKey === undefined ? envApiKey() : normalizeApiKey(options.apiKey)
     this.#baseUrl = options.baseUrl ?? DEFAULT_BASE_URL
     this.#fetch = options.fetch ?? ((input, init) => globalThis.fetch(input, init))
     this.#retry = resolveRetry(options.retry)
@@ -138,8 +141,8 @@ export class Mdfromx {
       this.#send(id, path, opts, 'markdown').then(response => response.text())
 
     this.posts = {
-      get: (post, opts) => json<ConvertResponse>('getPost', {}, { ...opts, ...postRefParams(post) }),
-      markdown: (post, opts) => text('getPost', {}, { ...opts, ...postRefParams(post) }),
+      get: async (post, opts) => json<ConvertResponse>('getPost', {}, { ...opts, ...postRefParams(post) }),
+      markdown: async (post, opts) => text('getPost', {}, { ...opts, ...postRefParams(post) }),
       replies: (id, opts) => json<BrowseResponse>('readPostReplies', { id }, opts),
     }
 
@@ -185,14 +188,18 @@ export class Mdfromx {
   async *#stream(handle: string, opts: StreamPostsOptions | undefined): AsyncGenerator<ImportStreamEvent> {
     const response = await this.#send('importProfilePosts', { handle }, opts, 'ndjson')
     if (!response.body) throw new TypeError('mdfromx: this runtime returned no response body to stream')
+    let complete = false
     for await (const line of lines(response.body)) {
       const event = JSON.parse(line) as ImportStreamEvent | { error: Problem }
       if ('error' in event) {
         const problem = event.error
         throw new MdfromxError({ status: problem.status, code: problem.code, message: problem.detail || problem.title, problem })
       }
+      if ('meta' in event) complete = true
       yield event
     }
+    // The trailing meta line is the API's completion signal; without it the connection was cut.
+    if (!complete) throw new MdfromxError({ status: response.status, code: STREAM_INCOMPLETE, message: STREAM_INCOMPLETE_MESSAGE })
   }
 }
 

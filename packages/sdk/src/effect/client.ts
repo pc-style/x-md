@@ -19,11 +19,14 @@ import {
   ACCEPT,
   API_KEY_ENV,
   DEFAULT_BASE_URL,
+  normalizeApiKey,
   operationUrl,
   postRefParams,
   resolveRetry,
   retryAfterSeconds,
   retryDelayMs,
+  STREAM_INCOMPLETE,
+  STREAM_INCOMPLETE_MESSAGE,
   type Format,
   type PostRef,
   type RetryOptions,
@@ -85,14 +88,16 @@ const ImportLine = Schema.fromJsonString(Schema.Union([
 
 const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient
-  const configured = config.apiKey === undefined
-    ? yield* Config.option(Config.Redacted(API_KEY_ENV)).pipe(Effect.orElseSucceed(() => Option.none()))
-    : Option.some(typeof config.apiKey === 'string' ? Redacted.make(config.apiKey) : config.apiKey)
-  const apiKey = Option.getOrUndefined(configured)
+  const raw = config.apiKey === undefined
+    ? Option.getOrUndefined(yield* Config.option(Config.Redacted(API_KEY_ENV)).pipe(Effect.orElseSucceed(() => Option.none())))
+    : config.apiKey
+  const key = normalizeApiKey(raw === undefined || typeof raw === 'string' ? raw : Redacted.value(raw))
+  const apiKey = key === undefined ? undefined : Redacted.make(key)
   const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
   const retry = resolveRetry(config.retry)
 
-  const send = (id: T.OperationId, path: Record<string, string>, opts: object | undefined, format: Format) => {
+  // Suspended, so invalid input (an empty handle) fails the Effect instead of throwing at the call site.
+  const send = (id: T.OperationId, path: Record<string, string>, opts: object | undefined, format: Format) => Effect.suspend(() => {
     const url = operationUrl(baseUrl, id, path, opts, format)
     let request = HttpClientRequest.get(url).pipe(HttpClientRequest.accept(ACCEPT[format]))
     if (apiKey) request = request.pipe(HttpClientRequest.bearerToken(apiKey))
@@ -110,7 +115,7 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
         }))
       }))
     return attempt(0)
-  }
+  })
 
   const json = <A>(schema: Schema.Codec<A>, id: T.OperationId, path: Record<string, string>, opts: object | undefined): Call<A> =>
     send(id, path, opts, 'json').pipe(
@@ -137,8 +142,9 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
     return opts?.maxPages === undefined ? pages : pages.pipe(Stream.take(opts.maxPages))
   }
 
-  const streamPosts = (handle: string, opts: object | undefined): Pages<ImportStreamEvent> =>
-    send('importProfilePosts', { handle }, opts, 'ndjson').pipe(
+  const streamPosts = (handle: string, opts: object | undefined): Pages<ImportStreamEvent> => Stream.suspend(() => {
+    let complete = false
+    return send('importProfilePosts', { handle }, opts, 'ndjson').pipe(
       Effect.map(response => response.stream),
       Stream.unwrap,
       Stream.decodeText(),
@@ -147,13 +153,21 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
       Stream.mapEffect(line => Schema.decodeUnknownEffect(ImportLine)(line).pipe(Effect.flatMap(event =>
         'error' in event
           ? Effect.fail(apiError({ status: event.error.status, code: event.error.code, message: event.error.detail || event.error.title, problem: event.error }))
-          : Effect.succeed(event as ImportStreamEvent)))),
+          : Effect.sync(() => {
+            if ('meta' in event) complete = true
+            return event as ImportStreamEvent
+          })))),
+      // The trailing meta line is the API's completion signal; without it the connection was cut.
+      Stream.concat(Stream.suspend(() => complete
+        ? Stream.empty
+        : Stream.fail(apiError({ status: 200, code: STREAM_INCOMPLETE, message: STREAM_INCOMPLETE_MESSAGE })))),
     )
+  })
 
   const service: MdfromxService = {
     posts: {
-      get: (post, opts) => json(S.ConvertResponse, 'getPost', {}, { ...opts, ...postRefParams(post) }),
-      markdown: (post, opts) => text('getPost', {}, { ...opts, ...postRefParams(post) }),
+      get: (post, opts) => Effect.suspend(() => json(S.ConvertResponse, 'getPost', {}, { ...opts, ...postRefParams(post) })),
+      markdown: (post, opts) => Effect.suspend(() => text('getPost', {}, { ...opts, ...postRefParams(post) })),
       replies: (id, opts) => json(S.BrowseResponse, 'readPostReplies', { id }, opts),
     },
     profiles: {
