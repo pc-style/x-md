@@ -55,13 +55,16 @@ describe('Effect client', () => {
     }
   })
 
-  it('turns invalid input into a failed Effect, not a throw at the call site', async () => {
+  it('fails empty input with a recoverable tag, without a request', async () => {
     const { exit, urls } = run(() => json(browse()), x => {
       expect(() => x.profiles.get('')).not.toThrow()
-      expect(() => x.posts.get('')).not.toThrow()
-      return x.profiles.get('')
+      return Effect.all([
+        x.profiles.followers(' ').pipe(Effect.catchTag('InvalidHandle', e => Effect.succeed(`${e._tag} ${e.status}`))),
+        x.posts.get('').pipe(Effect.catchTag('MissingUrl', e => Effect.succeed(e._tag))),
+        x.posts.replies('').pipe(Effect.catchTag('InvalidParams', e => Effect.succeed(e._tag))),
+      ])
     })
-    expect(Exit.isFailure(await exit)).toBe(true)
+    expect(await exit).toEqual(Exit.succeed(['InvalidHandle 400', 'MissingUrl', 'InvalidParams']))
     expect(urls).toHaveLength(0)
   })
 
@@ -106,8 +109,10 @@ describe('Effect client', () => {
     const done = await run(() => new Response(ok), x => Stream.runCollect(x.profiles.streamPosts('jack'))).exit
     expect(Exit.isSuccess(done) && done.value.map(e => ('post' in e ? 'post' : 'meta'))).toEqual(['post', 'meta'])
 
-    const cut = await run(() => new Response('{"post":{"id":"1"}}\n'), x => Effect.flip(Stream.runCollect(x.profiles.streamPosts('jack')))).exit
-    expect(Exit.isSuccess(cut) && cut.value).toMatchObject({ _tag: 'UnknownApiError', code: 'stream_incomplete' })
+    for (const body of ['{"post":{"id":"1"}}\n', '{"post":{"id":"1"}}\n{"meta":{"hand']) {
+      const cut = await run(() => new Response(body), x => Effect.flip(Stream.runCollect(x.profiles.streamPosts('jack')))).exit
+      expect(Exit.isSuccess(cut) && cut.value).toMatchObject({ _tag: 'UnknownApiError', code: 'stream_incomplete' })
+    }
 
     const bad = '{"post":{"id":"1"}}\n{"error":{"type":"https://mdfromx.com/docs/reliability#upstream-error","title":"Upstream failed","status":502,"detail":"walk failed","instance":"https://mdfromx.com/api/v1/x","code":"upstream_error","resolution":"retry","documentation_url":"https://mdfromx.com/docs"}}\n'
     const failed = await run(() => new Response(bad), x => Effect.flip(Stream.runCollect(x.profiles.streamPosts('jack')))).exit

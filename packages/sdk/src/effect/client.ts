@@ -19,6 +19,7 @@ import {
   ACCEPT,
   API_KEY_ENV,
   DEFAULT_BASE_URL,
+  InputError,
   normalizeApiKey,
   operationUrl,
   postRefParams,
@@ -86,6 +87,20 @@ const ImportLine = Schema.fromJsonString(Schema.Union([
   Schema.Struct({ error: S.Problem }),
 ]))
 
+// Rejected input fails with the tag the API would have answered with (InvalidHandle, MissingUrl, ...).
+const guard = <A>(f: () => A): Effect.Effect<A, ApiError> => Effect.suspend(() => {
+  try {
+    return Effect.succeed(f())
+  } catch (error) {
+    if (error instanceof InputError) return Effect.fail(apiError({ status: 400, code: error.code, message: error.message }))
+    throw error
+  }
+})
+
+// Every line the API writes ends with a newline; END marks the end of the body so a final
+// fragment without one (a line the connection cut) can be dropped. JSON never contains a raw NUL.
+const END = '\u0000'
+
 const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
   const client = yield* HttpClient.HttpClient
   const raw = config.apiKey === undefined
@@ -96,9 +111,7 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
   const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL
   const retry = resolveRetry(config.retry)
 
-  // Suspended, so invalid input (an empty handle) fails the Effect instead of throwing at the call site.
-  const send = (id: T.OperationId, path: Record<string, string>, opts: object | undefined, format: Format) => Effect.suspend(() => {
-    const url = operationUrl(baseUrl, id, path, opts, format)
+  const send = (id: T.OperationId, path: Record<string, string>, opts: object | undefined, format: Format) => guard(() => operationUrl(baseUrl, id, path, opts, format)).pipe(Effect.flatMap(url => {
     let request = HttpClientRequest.get(url).pipe(HttpClientRequest.accept(ACCEPT[format]))
     if (apiKey) request = request.pipe(HttpClientRequest.bearerToken(apiKey))
 
@@ -115,7 +128,7 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
         }))
       }))
     return attempt(0)
-  })
+  }))
 
   const json = <A>(schema: Schema.Codec<A>, id: T.OperationId, path: Record<string, string>, opts: object | undefined): Call<A> =>
     send(id, path, opts, 'json').pipe(
@@ -148,8 +161,9 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
       Effect.map(response => response.stream),
       Stream.unwrap,
       Stream.decodeText(),
+      Stream.concat(Stream.succeed(END)),
       Stream.splitLines,
-      Stream.filter(line => line.trim() !== ''),
+      Stream.filter(line => !line.endsWith(END) && line.trim() !== ''),
       Stream.mapEffect(line => Schema.decodeUnknownEffect(ImportLine)(line).pipe(Effect.flatMap(event =>
         'error' in event
           ? Effect.fail(apiError({ status: event.error.status, code: event.error.code, message: event.error.detail || event.error.title, problem: event.error }))
@@ -166,8 +180,8 @@ const make = (config: MdfromxConfig = {}) => Effect.gen(function* () {
 
   const service: MdfromxService = {
     posts: {
-      get: (post, opts) => Effect.suspend(() => json(S.ConvertResponse, 'getPost', {}, { ...opts, ...postRefParams(post) })),
-      markdown: (post, opts) => Effect.suspend(() => text('getPost', {}, { ...opts, ...postRefParams(post) })),
+      get: (post, opts) => guard(() => postRefParams(post)).pipe(Effect.flatMap(ref => json(S.ConvertResponse, 'getPost', {}, { ...opts, ...ref }))),
+      markdown: (post, opts) => guard(() => postRefParams(post)).pipe(Effect.flatMap(ref => text('getPost', {}, { ...opts, ...ref }))),
       replies: (id, opts) => json(S.BrowseResponse, 'readPostReplies', { id }, opts),
     },
     profiles: {

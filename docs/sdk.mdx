@@ -80,7 +80,7 @@ Breaking out of the loop cancels the download. When the walk fails part-way, the
 
 ### Errors and retries
 
-Every non-2xx answer throws `MdfromxError` with the [problem details](/errors): `status`, `code`, `problem` and `retryAfter`. `code` is typed with every documented code.
+Every non-2xx answer throws `MdfromxError` with the [problem details](/errors): `status`, `code`, `problem` and `retryAfter`. `code` is typed with every documented code. Empty input, such as a blank handle or post, is rejected before any request with the code the API uses for it (`invalid_handle`, `invalid_params` or `missing_url`).
 
 ```ts
 import { MdfromxError } from 'mdfromx'

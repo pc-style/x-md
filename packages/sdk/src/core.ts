@@ -1,6 +1,20 @@
 // Shared by the plain and Effect clients: request building, retry timing and input parsing.
 
-import { operations, type OperationId } from './generated/types.js'
+import { operations, type ErrorCode, type OperationId } from './generated/types.js'
+
+/**
+ * Input the SDK rejects before sending, with the problem code the API uses for it.
+ * An empty path segment cannot go to the API: `/profiles//followers` is normalized
+ * by a redirect to `/profiles/followers`, the profile of an account named followers.
+ */
+export class InputError extends Error {
+  readonly code: ErrorCode
+
+  constructor(code: ErrorCode, message: string) {
+    super(message)
+    this.code = code
+  }
+}
 
 export const DEFAULT_BASE_URL = 'https://mdfromx.com'
 export const API_KEY_ENV = 'MDFROMX_API_KEY'
@@ -59,7 +73,7 @@ export function operationUrl(
   let path: string = op.path
   for (const name of op.pathParams) {
     const value = pathValues[name]
-    if (!value) throw new TypeError(`mdfromx: missing ${name}`)
+    if (!value?.trim()) throw new InputError(name === 'handle' ? 'invalid_handle' : 'invalid_params', `mdfromx: missing ${name}`)
     path = path.replace(`{${name}}`, encodeURIComponent(value))
   }
   const url = new URL(path, baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`)
@@ -81,9 +95,11 @@ const ANY_HANDLE = 'i'
 export function postRefParams(post: PostRef): { url?: string, id?: string, handle?: string } {
   if (typeof post === 'string') {
     const value = post.trim()
-    if (!value) throw new TypeError('mdfromx: empty post reference')
+    if (!value) throw new InputError('missing_url', 'mdfromx: empty post reference')
     return /^\d+$/.test(value) ? { handle: ANY_HANDLE, id: value } : { url: value }
   }
+  const value = 'url' in post ? post.url : post.id
+  if (!value?.trim()) throw new InputError('missing_url', 'mdfromx: empty post reference')
   return 'url' in post ? { url: post.url } : { handle: post.handle || ANY_HANDLE, id: post.id }
 }
 

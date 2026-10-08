@@ -15,7 +15,7 @@ import {
   type ResolvedRetry,
   type RetryOptions,
 } from './core.js'
-import { MdfromxError, problemFrom } from './errors.js'
+import { MdfromxError, inputGuard, problemFrom } from './errors.js'
 import type {
   Author,
   BrowseResponse,
@@ -141,8 +141,8 @@ export class Mdfromx {
       this.#send(id, path, opts, 'markdown').then(response => response.text())
 
     this.posts = {
-      get: async (post, opts) => json<ConvertResponse>('getPost', {}, { ...opts, ...postRefParams(post) }),
-      markdown: async (post, opts) => text('getPost', {}, { ...opts, ...postRefParams(post) }),
+      get: async (post, opts) => json<ConvertResponse>('getPost', {}, { ...opts, ...inputGuard(() => postRefParams(post)) }),
+      markdown: async (post, opts) => text('getPost', {}, { ...opts, ...inputGuard(() => postRefParams(post)) }),
       replies: (id, opts) => json<BrowseResponse>('readPostReplies', { id }, opts),
     }
 
@@ -167,7 +167,7 @@ export class Mdfromx {
 
   async #send(id: OperationId, path: Record<string, string>, opts: (CallOptions & object) | undefined, format: Format): Promise<Response> {
     const { signal, ...query } = opts ?? {}
-    const url = operationUrl(this.#baseUrl, id, path, query, format)
+    const url = inputGuard(() => operationUrl(this.#baseUrl, id, path, query, format))
     const headers = new Headers(this.#headers)
     headers.set('Accept', ACCEPT[format])
     if (this.#apiKey) headers.set('Authorization', `Bearer ${this.#apiKey}`)
@@ -237,7 +237,8 @@ async function* lines(body: ReadableStream<Uint8Array>): AsyncGenerator<string> 
       }
       if (done) break
     }
-    if (buffer.trim()) yield buffer.trim()
+    // The API ends every line with a newline. A trailing fragment without one is a line the
+    // connection cut, so it is dropped and the missing meta line reports the stream incomplete.
   } finally {
     // Stops the download when the caller breaks out of the loop early.
     await reader.cancel().catch(() => {})

@@ -96,12 +96,16 @@ describe('requests', () => {
 })
 
 describe('errors', () => {
-  it('rejects invalid input instead of throwing at the call site', async () => {
+  it('rejects empty input with the API\'s own code, without a request', async () => {
     const { x, calls } = client(() => json(page()))
     let pending: Promise<unknown> | undefined
     expect(() => { pending = x.posts.get('  ') }).not.toThrow()
-    await expect(pending).rejects.toThrow(TypeError)
-    await expect(x.profiles.get('')).rejects.toThrow(TypeError)
+    await expect(pending).rejects.toMatchObject({ name: 'MdfromxError', status: 400, code: 'missing_url' })
+    await expect(x.posts.get({ id: '' })).rejects.toMatchObject({ code: 'missing_url' })
+    await expect(x.profiles.get('')).rejects.toMatchObject({ code: 'invalid_handle' })
+    // `/profiles//followers` would redirect to the profile of an account named followers.
+    await expect(x.profiles.followers(' ')).rejects.toMatchObject({ code: 'invalid_handle' })
+    await expect(x.posts.replies('')).rejects.toMatchObject({ code: 'invalid_params' })
     expect(calls).toHaveLength(0)
   })
 
@@ -211,8 +215,11 @@ describe('streamPosts', () => {
     expect(calls[0].headers.get('accept')).toBe('application/x-ndjson')
   })
 
-  it('throws when the stream ends without its final meta line', async () => {
-    const { x } = client(() => ndjson('{"post":{"id":"1"}}\n{"post":{"id":"2"}}\n'))
+  it.each([
+    ['ends after a whole line', '{"post":{"id":"1"}}\n{"post":{"id":"2"}}\n'],
+    ['is cut inside the meta line', '{"post":{"id":"1"}}\n{"post":{"id":"2"}}\n{"meta":{"hand'],
+  ])('throws stream_incomplete when the stream %s', async (_, body) => {
+    const { x } = client(() => ndjson(body))
     const seen: unknown[] = []
     const error = await (async () => {
       for await (const event of x.profiles.streamPosts('jack')) seen.push(event)

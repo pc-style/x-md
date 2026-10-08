@@ -1,3 +1,4 @@
+import { InputError } from './core.js'
 import type { ErrorCode, Problem } from './generated/types.js'
 
 /**
@@ -47,5 +48,15 @@ export function problemFrom(status: number, body: string): { code: string, messa
     // Not JSON: a Markdown recovery page (404 to a Markdown request) or a proxy error page.
   }
   if (status === 404) return { code: 'not_found', message: 'Not found' }
-  return { code: `http_${status}`, message:`HTTP ${status}${body ? `: ${body.slice(0, 200)}` : ''}` }
+  return { code: `http_${status}`, message: `HTTP ${status}${body ? `: ${body.slice(0, 200)}` : ''}` }
+}
+
+/** Run `f`, turning rejected input into the MdfromxError the API would have answered with. */
+export function inputGuard<A>(f: () => A): A {
+  try {
+    return f()
+  } catch (error) {
+    if (error instanceof InputError) throw new MdfromxError({ status: 400, code: error.code, message: error.message })
+    throw error
+  }
 }
