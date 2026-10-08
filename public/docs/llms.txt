@@ -9,6 +9,7 @@ Every page here is available as Markdown: append `.md` to the URL, or send `Acce
 - [Start reading X](https://x.pcstyle.dev/docs.md): the one-request quick start and the route table.
 - [Agent skill](https://x.pcstyle.dev/docs/agents.md): install `browse-x`, the CLI options, and the exit codes an agent should branch on.
 - [MCP server](https://x.pcstyle.dev/docs/mcp.md): the Streamable HTTP endpoint, the tools it exposes, and how to connect without a key.
+- [TypeScript SDK](https://x.pcstyle.dev/docs/sdk.md): the `mdfromx` npm package, a typed client for every `/api/v1` route in plain TypeScript and as an Effect service.
 
 ## Read routes
 

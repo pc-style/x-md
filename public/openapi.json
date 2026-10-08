@@ -10457,8 +10457,11 @@
             "description": "True when the account is private. x.md cannot read protected content."
           },
           "website": {
-            "type": "object",
-            "description": "Link in the profile header.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Link in the profile header, or null when the account has none.",
             "additionalProperties": true,
             "properties": {
               "url": {
@@ -10480,8 +10483,11 @@
                 "type": "boolean"
               },
               "type": {
-                "type": "string",
-                "description": "Badge type, for example `blue` or `business`."
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Badge type, for example `blue` or `business`, or null."
               }
             }
           }
@@ -10777,8 +10783,10 @@
           "type": {
             "type": "string",
             "enum": [
-              "status"
-            ]
+              "status",
+              "tombstone"
+            ],
+            "description": "`tombstone` marks a post X no longer serves, such as a deleted quoted post; it carries only `id`, `url` and an upstream `reason` and `message`."
           },
           "raw_text": {
             "type": "object",
@@ -10832,8 +10840,11 @@
             "description": "Quote count."
           },
           "lang": {
-            "type": "string",
-            "description": "BCP 47 language tag detected by X."
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "BCP 47 language tag detected by X, or null when it detected none."
           },
           "source": {
             "type": "string",
@@ -10869,7 +10880,15 @@
             "$ref": "#/components/schemas/Post"
           },
           "reposted_by": {
-            "$ref": "#/components/schemas/Author"
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Author"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The account that reposted this post, or null when it is not a repost."
           },
           "article": {
             "$ref": "#/components/schemas/Article"

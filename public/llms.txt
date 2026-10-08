@@ -57,6 +57,7 @@ x.md only reads public content and does not post, follow, or like on your behalf
 - [Agent skill](https://x.pcstyle.dev/docs/agents)
 - [Start reading X](https://x.pcstyle.dev/docs)
 - [MCP server](https://x.pcstyle.dev/docs/mcp)
+- [TypeScript SDK](https://x.pcstyle.dev/docs/sdk)
 - [Pagination](https://x.pcstyle.dev/docs/pagination)
 - [Posts and threads](https://x.pcstyle.dev/docs/posts)
 - [Profiles and connections](https://x.pcstyle.dev/docs/profiles)

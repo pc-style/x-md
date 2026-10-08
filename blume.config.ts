@@ -37,6 +37,7 @@ export default defineConfig({
           '/versioning',
         ],
       },
+      '/sdk',
       '/agents',
       '/mcp',
       '/self-hosting',

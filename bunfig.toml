@@ -1,0 +1,4 @@
+[install]
+# Keep the flat node_modules the app had before packages/sdk became a workspace: tests and
+# Vercel builds import transitive packages such as @vercel/routing-utils from the root.
+linker = "hoisted"

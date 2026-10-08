@@ -1,0 +1,59 @@
+{
+  "name": "mdfromx",
+  "version": "0.1.0",
+  "description": "Typed TypeScript and Effect client for the mdfromx (x.md) API: X posts, profiles and search as JSON or Markdown",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pc-style/x-md.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://mdfromx.com/docs/sdk",
+  "bugs": {
+    "url": "https://github.com/pc-style/x-md/issues"
+  },
+  "keywords": [
+    "x",
+    "twitter",
+    "markdown",
+    "sdk",
+    "effect",
+    "mdfromx"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./effect": {
+      "types": "./dist/effect/index.d.ts",
+      "default": "./dist/effect/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "prepublishOnly": "bun run build"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "effect": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "effect": "^4.0.2",
+    "typescript": "~7.0.2"
+  }
+}
