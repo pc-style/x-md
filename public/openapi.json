@@ -4,24 +4,24 @@
     "title": "x.md API",
     "version": "1.1.0",
     "summary": "Read public X posts, threads, profiles, connections and search results as Markdown or JSON.",
-    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, issued keys authenticate with an Authorization bearer header, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 100.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
-    "termsOfService": "https://x.pcstyle.dev/terms",
+    "description": "x.md is a read-only HTTP API over public X (Twitter) content. Every operation is a `GET`, issued keys authenticate with an Authorization bearer header, and each returns compact Markdown by default, expanded Markdown with `full=true`, or structured JSON with `format=json` or `Accept: application/json`.\n\nx.md never posts, replies, follows, likes or writes anything to X, and it cannot read protected or deleted content.\n\nUse it when an agent needs the text of a post, a thread, a profile, a follower list or a search result in a form it can parse, without running a browser or holding X credentials.\n\nErrors are RFC 9457 problem documents (`application/problem+json`, or `application/json` when the request asks for it) carrying a stable machine `code`, a human `detail`, a `resolution` telling the caller what to do next, and a `documentation_url`.\n\nPagination is cursor-first: list responses return an opaque `nextCursor`; send it back as `cursor` with the same query and options. An ordinal `page` (1-10) exists as a fallback and is slower. `limit` defaults to 20 and is capped at 100.\n\nQuotas are advertised on every response with the IETF `RateLimit` and `RateLimit-Policy` structured fields, plus the `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset` compatibility triple; a 429 also carries `Retry-After`. Cached reads do not consume the live-lookup quota.\n\nVersioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://mdfromx.com/docs/versioning. Machine description: https://mdfromx.com/openapi.json.",
+    "termsOfService": "https://mdfromx.com/terms",
     "license": {
       "name": "MIT",
       "identifier": "MIT"
     },
     "contact": {
       "name": "x.md maintainer",
-      "url": "https://x.pcstyle.dev/contact"
+      "url": "https://mdfromx.com/contact"
     }
   },
   "externalDocs": {
     "description": "x.md documentation: endpoints, pagination, response shapes, error codes and quotas",
-    "url": "https://x.pcstyle.dev/docs"
+    "url": "https://mdfromx.com/docs"
   },
   "servers": [
     {
-      "url": "https://x.pcstyle.dev",
+      "url": "https://mdfromx.com",
       "description": "x.md production"
     },
     {
@@ -64,8 +64,8 @@
       "Sunset",
       "Link; rel=\"successor-version\""
     ],
-    "deprecation_policy_url": "https://x.pcstyle.dev/docs/versioning",
-    "policy": "Versioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://x.pcstyle.dev/docs/versioning. Machine description: https://x.pcstyle.dev/openapi.json.",
+    "deprecation_policy_url": "https://mdfromx.com/docs/versioning",
+    "policy": "Versioning and deprecation.\n\nThe stable machine surface is `/api/v1/*`, and `v1` is the current major version. Additive changes — new optional query parameters, new response fields — ship inside `v1` without a version bump, so ignore response fields you do not recognise. Breaking changes ship under a new path prefix (`/api/v2/*`), and `/api/v1/*` keeps working for at least 12 months after its successor is published.\n\nThe permalink routes (`/{handle}`, `/{handle}/status/{id}`, `/{handle}/followers`, `/{handle}/following`, `/search`, `/oembed`) are the unversioned product surface. They mirror x.com URLs, they are stable, and they are not deprecated.\n\nScheduled for deprecation on 2026-09-15: `GET /api/convert` (successor `GET /api/v1/posts`) and `GET /api/browse`, whose successor depends on its `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`). Both aliases keep working unchanged until the sunset date, and they announce the schedule now, ahead of the date the `Deprecation` field names: every response from them carries `Deprecation: @1789430400` (RFC 9745, an `@`-prefixed Unix timestamp for 2026-09-15T00:00:00Z), `Sunset: Wed, 15 Sep 2027 00:00:00 GMT` (RFC 8594, an HTTP-date, never earlier than the deprecation date), and a `Link` header carrying `rel=\"deprecation\"` and `rel=\"sunset\"`. `rel=\"successor-version\"` joins them whenever the request names a route that replaces it, which for `/api/browse` means a `resource` that resolves; a browse call that names none is answered without it. Read `Deprecation` and `Sunset` on every response, follow `rel=\"successor-version\"` when it is present, and stop calling the alias before the sunset date.\n\nWritten policy: https://mdfromx.com/docs/versioning. Machine description: https://mdfromx.com/openapi.json.",
     "deprecated_operations": [
       {
         "operationId": "getPostLegacy",
@@ -147,7 +147,7 @@
   "x-error-catalog": {
     "media_type": "application/problem+json",
     "specification": "https://www.rfc-editor.org/rfc/rfc9457",
-    "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+    "documentation_url": "https://mdfromx.com/docs/reliability#errors",
     "schema": "#/components/schemas/Problem",
     "note": "A 502 or 503 may also carry a provider-specific code such as `fxtwitter_error`, `contextdev_empty`, `firecrawl_network` or `all_providers_failed`. Those share the resolution of `upstream_error`.",
     "codes": {
@@ -155,187 +155,187 @@
         "status": 503,
         "title": "Fresh import capacity is busy",
         "resolution": "Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
-        "type": "https://x.pcstyle.dev/docs/reliability#import-busy"
+        "type": "https://mdfromx.com/docs/reliability#import-busy"
       },
       "missing_url": {
         "status": 400,
         "title": "Missing url parameter",
         "resolution": "Add `?url=<public X status URL>`, or call `/{handle}/status/{id}` directly.",
-        "type": "https://x.pcstyle.dev/docs/reliability#missing-url"
+        "type": "https://mdfromx.com/docs/reliability#missing-url"
       },
       "invalid_url": {
         "status": 400,
         "title": "Invalid X status URL",
         "resolution": "Pass a public x.com or twitter.com status URL in `url`, for example `?url=https://x.com/jack/status/20`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-url"
+        "type": "https://mdfromx.com/docs/reliability#invalid-url"
       },
       "unsupported_host": {
         "status": 400,
         "title": "Unsupported host",
         "resolution": "Only x.com and twitter.com status URLs are supported. Rewrite the host and retry.",
-        "type": "https://x.pcstyle.dev/docs/reliability#unsupported-host"
+        "type": "https://mdfromx.com/docs/reliability#unsupported-host"
       },
       "invalid_path": {
         "status": 400,
         "title": "Not a status permalink",
         "resolution": "Use a permalink shaped like https://x.com/{handle}/status/{id}.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-path"
+        "type": "https://mdfromx.com/docs/reliability#invalid-path"
       },
       "invalid_params": {
         "status": 400,
         "title": "Invalid handle or status id",
         "resolution": "Provide `handle` (1-15 word characters) and a numeric `id`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-params"
+        "type": "https://mdfromx.com/docs/reliability#invalid-params"
       },
       "invalid_option": {
         "status": 400,
         "title": "Invalid query option",
         "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-option"
+        "type": "https://mdfromx.com/docs/reliability#invalid-option"
       },
       "invalid_handle": {
         "status": 400,
         "title": "Invalid X handle",
         "resolution": "Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-handle"
+        "type": "https://mdfromx.com/docs/reliability#invalid-handle"
       },
       "invalid_resource": {
         "status": 400,
         "title": "Unsupported browse resource",
         "resolution": "Use `resource=profile`, `search`, `followers`, or `following`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-resource"
+        "type": "https://mdfromx.com/docs/reliability#invalid-resource"
       },
       "invalid_format": {
         "status": 400,
         "title": "Unsupported format",
         "resolution": "Use `format=markdown`, `format=obsidian`, or `format=json`. Browse accepts markdown or json.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-format"
+        "type": "https://mdfromx.com/docs/reliability#invalid-format"
       },
       "invalid_thread": {
         "status": 400,
         "title": "Invalid thread parameter",
         "resolution": "Use `thread=off`, `full`, `conversation`, or a number from 2 to 100.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-thread"
+        "type": "https://mdfromx.com/docs/reliability#invalid-thread"
       },
       "invalid_userinfo": {
         "status": 400,
         "title": "Invalid userinfo parameter",
         "resolution": "Use `userinfo=off`, `author`, or `all`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-userinfo"
+        "type": "https://mdfromx.com/docs/reliability#invalid-userinfo"
       },
       "invalid_context": {
         "status": 400,
         "title": "Invalid context parameter",
         "resolution": "Use `context=full` or `context=thread`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-context"
+        "type": "https://mdfromx.com/docs/reliability#invalid-context"
       },
       "invalid_replies": {
         "status": 400,
         "title": "Invalid replies parameter",
         "resolution": "Use `replies=top`, `recent`, or `off`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-replies"
+        "type": "https://mdfromx.com/docs/reliability#invalid-replies"
       },
       "invalid_mode": {
         "status": 400,
         "title": "Invalid mode parameter",
-        "resolution": "See the parameter tables at https://x.pcstyle.dev/docs/responses.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-mode"
+        "resolution": "See the parameter tables at https://mdfromx.com/docs/responses.",
+        "type": "https://mdfromx.com/docs/reliability#invalid-mode"
       },
       "missing_query": {
         "status": 400,
         "title": "Missing search query",
         "resolution": "Add `?q=<search terms>`, for example `/search?q=vercel`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#missing-query"
+        "type": "https://mdfromx.com/docs/reliability#missing-query"
       },
       "invalid_body": {
         "status": 400,
         "title": "Invalid JSON body",
         "resolution": "Send a well-formed JSON object, or omit the body entirely.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-body"
+        "type": "https://mdfromx.com/docs/reliability#invalid-body"
       },
       "invalid_key": {
         "status": 401,
         "title": "Invalid or disabled API key",
         "resolution": "Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
-        "type": "https://x.pcstyle.dev/docs/reliability#invalid-key"
+        "type": "https://mdfromx.com/docs/reliability#invalid-key"
       },
       "unauthorized": {
         "status": 401,
         "title": "Unauthorized",
-        "resolution": "This route needs credentials: send `Authorization: Bearer <key>`. On the public x.md the read API needs none; see https://x.pcstyle.dev/openapi.json.",
-        "type": "https://x.pcstyle.dev/docs/reliability#unauthorized"
+        "resolution": "This route needs credentials: send `Authorization: Bearer <key>`. On the public x.md the read API needs none; see https://mdfromx.com/openapi.json.",
+        "type": "https://mdfromx.com/docs/reliability#unauthorized"
       },
       "not_found": {
         "status": 404,
         "title": "Not found",
         "resolution": "Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
-        "type": "https://x.pcstyle.dev/docs/reliability#not-found"
+        "type": "https://mdfromx.com/docs/reliability#not-found"
       },
       "route_not_found": {
         "status": 404,
         "title": "API route not found",
-        "resolution": "Discover the public API through https://x.pcstyle.dev/api, https://x.pcstyle.dev/openapi.json, or https://x.pcstyle.dev/.well-known/api-catalog.",
-        "type": "https://x.pcstyle.dev/docs/reliability#route-not-found"
+        "resolution": "Discover the public API through https://mdfromx.com/api, https://mdfromx.com/openapi.json, or https://mdfromx.com/.well-known/api-catalog.",
+        "type": "https://mdfromx.com/docs/reliability#route-not-found"
       },
       "method_not_allowed": {
         "status": 405,
         "title": "Method not allowed",
         "resolution": "x.md is read-only. Use GET, HEAD, or OPTIONS; the `Allow` response header lists what this route accepts.",
-        "type": "https://x.pcstyle.dev/docs/reliability#method-not-allowed"
+        "type": "https://mdfromx.com/docs/reliability#method-not-allowed"
       },
       "not_acceptable": {
         "status": 406,
         "title": "No acceptable representation",
         "resolution": "Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header.",
-        "type": "https://x.pcstyle.dev/docs/reliability#not-acceptable"
+        "type": "https://mdfromx.com/docs/reliability#not-acceptable"
       },
       "rate_limited": {
         "status": 429,
         "title": "Rate limit exceeded",
         "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
-        "type": "https://x.pcstyle.dev/docs/reliability#rate-limited"
+        "type": "https://mdfromx.com/docs/reliability#rate-limited"
       },
       "internal_error": {
         "status": 500,
         "title": "Unexpected error",
         "resolution": "Retry with exponential backoff. If it persists, open an issue at https://github.com/pc-style/x-md/issues.",
-        "type": "https://x.pcstyle.dev/docs/reliability#internal-error"
+        "type": "https://mdfromx.com/docs/reliability#internal-error"
       },
       "upstream_error": {
         "status": 502,
         "title": "Upstream provider error",
         "resolution": "Retry with backoff. x.md reads a third-party provider that can fail independently.",
-        "type": "https://x.pcstyle.dev/docs/reliability#upstream-error"
+        "type": "https://mdfromx.com/docs/reliability#upstream-error"
       },
       "partial_upstream_failure": {
         "status": 502,
         "title": "Partial upstream failure",
         "resolution": "Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
-        "type": "https://x.pcstyle.dev/docs/reliability#partial-upstream-failure"
+        "type": "https://mdfromx.com/docs/reliability#partial-upstream-failure"
       },
       "upstream_unavailable": {
         "status": 503,
         "title": "Upstream profile unavailable",
         "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
-        "type": "https://x.pcstyle.dev/docs/reliability#upstream-unavailable"
+        "type": "https://mdfromx.com/docs/reliability#upstream-unavailable"
       },
       "upstream_rate_limited": {
         "status": 503,
         "title": "Upstream provider is rate limiting x.md",
         "resolution": "Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.",
-        "type": "https://x.pcstyle.dev/docs/reliability#upstream-rate-limited"
+        "type": "https://mdfromx.com/docs/reliability#upstream-rate-limited"
       },
       "search_unavailable": {
         "status": 503,
         "title": "Search temporarily unavailable",
         "resolution": "Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions.",
-        "type": "https://x.pcstyle.dev/docs/reliability#search-unavailable"
+        "type": "https://mdfromx.com/docs/reliability#search-unavailable"
       },
       "admin_unconfigured": {
         "status": 503,
         "title": "Admin is not configured",
         "resolution": "Set X_MD_ADMIN_TOKEN on the deployment. This route is not part of the public API.",
-        "type": "https://x.pcstyle.dev/docs/reliability#admin-unconfigured"
+        "type": "https://mdfromx.com/docs/reliability#admin-unconfigured"
       }
     }
   },
@@ -873,7 +873,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/posts"
+          "url": "https://mdfromx.com/docs/posts"
         }
       }
     },
@@ -1504,7 +1504,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -2044,7 +2044,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -2646,7 +2646,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -3224,7 +3224,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -3802,7 +3802,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -4378,7 +4378,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/search"
+          "url": "https://mdfromx.com/docs/search"
         },
         "security": [
           {},
@@ -4637,7 +4637,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/responses"
+          "url": "https://mdfromx.com/docs/responses"
         }
       }
     },
@@ -4645,7 +4645,7 @@
       "get": {
         "operationId": "getPostByPermalink",
         "summary": "Read a post from its x.com permalink shape",
-        "description": "The permalink surface: swap `x.com` for `x.pcstyle.dev` in any status URL and read the same post. Media permalinks (`/photo/1`, `/video/1`) resolve to the same post.\n\nA post is returned with whatever thread and conversation context the upstream provider exposes; use `thread` and `replies` to widen or narrow it. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given. Nothing is ever written back to X.",
+        "description": "The permalink surface: swap `x.com` for `mdfromx.com` in any status URL and read the same post. Media permalinks (`/photo/1`, `/video/1`) resolve to the same post.\n\nA post is returned with whatever thread and conversation context the upstream provider exposes; use `thread` and `replies` to widen or narrow it. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given. Nothing is ever written back to X.",
         "tags": [
           "Posts"
         ],
@@ -5140,7 +5140,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/posts"
+          "url": "https://mdfromx.com/docs/posts"
         }
       }
     },
@@ -5148,7 +5148,7 @@
       "get": {
         "operationId": "getProfileByHandle",
         "summary": "Read a profile from its x.com handle shape",
-        "description": "The permalink surface for accounts: `https://x.pcstyle.dev/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for accounts: `https://mdfromx.com/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -5771,7 +5771,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -6373,7 +6373,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -6387,7 +6387,7 @@
       "get": {
         "operationId": "listFollowersByHandle",
         "summary": "List a profile's followers from its permalink shape",
-        "description": "The permalink surface for followers: `https://x.pcstyle.dev/{handle}/followers`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for followers: `https://mdfromx.com/{handle}/followers`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -6951,7 +6951,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -6965,7 +6965,7 @@
       "get": {
         "operationId": "listFollowingByHandle",
         "summary": "List who a profile follows from its permalink shape",
-        "description": "The permalink surface for following: `https://x.pcstyle.dev/{handle}/following`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for following: `https://mdfromx.com/{handle}/following`.\n\nResults are paged: prefer nextCursor from the previous response over page. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Profiles"
         ],
@@ -7529,7 +7529,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -7543,7 +7543,7 @@
       "get": {
         "operationId": "searchPostsByPath",
         "summary": "Search public posts from the permalink shape",
-        "description": "The permalink surface for search: `https://x.pcstyle.dev/search?q=...` mirrors `https://x.com/search?q=...`.\n\nResults are paged: prefer the opaque `nextCursor` over the ordinal `page`, and send a cursor back only to the feed that issued it. When live X search is unavailable, x.md may answer with web-indexed snippets marked `degraded: true` and no cursor. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
+        "description": "The permalink surface for search: `https://mdfromx.com/search?q=...` mirrors `https://x.com/search?q=...`.\n\nResults are paged: prefer the opaque `nextCursor` over the ordinal `page`, and send a cursor back only to the feed that issued it. When live X search is unavailable, x.md may answer with web-indexed snippets marked `degraded: true` and no cursor. Send `Accept: application/json` (or `format=json`) for the structured body, `Accept: text/markdown` for Markdown. Markdown is the default when neither is given.",
         "tags": [
           "Search"
         ],
@@ -8105,7 +8105,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/search"
+          "url": "https://mdfromx.com/docs/search"
         },
         "security": [
           {},
@@ -8364,7 +8364,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/responses"
+          "url": "https://mdfromx.com/docs/responses"
         }
       }
     },
@@ -8573,7 +8573,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/agents"
+          "url": "https://mdfromx.com/docs/agents"
         }
       }
     },
@@ -9132,12 +9132,12 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/posts"
+          "url": "https://mdfromx.com/docs/posts"
         },
         "deprecated": true,
         "x-deprecation": "2026-09-15T00:00:00Z",
         "x-sunset": "2027-09-15T00:00:00Z",
-        "x-successor-version": "https://x.pcstyle.dev/api/v1/posts"
+        "x-successor-version": "https://mdfromx.com/api/v1/posts"
       }
     },
     "/api/browse": {
@@ -9813,7 +9813,7 @@
         },
         "externalDocs": {
           "description": "Endpoint documentation",
-          "url": "https://x.pcstyle.dev/docs/profiles"
+          "url": "https://mdfromx.com/docs/profiles"
         },
         "security": [
           {},
@@ -9827,10 +9827,10 @@
         "x-successor-version-map": {
           "parameter": "resource",
           "routes": {
-            "profile": "https://x.pcstyle.dev/api/v1/profiles/{handle}",
-            "followers": "https://x.pcstyle.dev/api/v1/profiles/{handle}/followers",
-            "following": "https://x.pcstyle.dev/api/v1/profiles/{handle}/following",
-            "search": "https://x.pcstyle.dev/api/v1/search"
+            "profile": "https://mdfromx.com/api/v1/profiles/{handle}",
+            "followers": "https://mdfromx.com/api/v1/profiles/{handle}/followers",
+            "following": "https://mdfromx.com/api/v1/profiles/{handle}/following",
+            "search": "https://mdfromx.com/api/v1/search"
           }
         }
       }
@@ -9910,28 +9910,28 @@
         "schema": {
           "type": "string"
         },
-        "example": "<https://x.pcstyle.dev/api/v1/posts>; rel=\"successor-version\", <https://x.pcstyle.dev/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://x.pcstyle.dev/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
+        "example": "<https://mdfromx.com/api/v1/posts>; rel=\"successor-version\", <https://mdfromx.com/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://mdfromx.com/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
       },
       "BrowseDeprecationLink": {
         "description": "RFC 8288 links for the retirement. `rel=\"successor-version\"` names the replacement for this exact call, chosen by `resource` (`resource=profile` → `/api/v1/profiles/{handle}`, `resource=followers` → `/api/v1/profiles/{handle}/followers`, `resource=following` → `/api/v1/profiles/{handle}/following`, `resource=search` → `/api/v1/search`), and is absent when the request names no resolvable resource, because a Link target is a URI and never a URI Template. `rel=\"deprecation\"` and `rel=\"sunset\"` point at the written policy.",
         "schema": {
           "type": "string"
         },
-        "example": "<https://x.pcstyle.dev/api/v1/profiles/jack/followers>; rel=\"successor-version\", <https://x.pcstyle.dev/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://x.pcstyle.dev/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
+        "example": "<https://mdfromx.com/api/v1/profiles/jack/followers>; rel=\"successor-version\", <https://mdfromx.com/docs/versioning>; rel=\"deprecation\"; type=\"text/html\", <https://mdfromx.com/docs/versioning>; rel=\"sunset\"; type=\"text/html\""
       },
       "DiscoveryLink": {
         "description": "RFC 8288 links to this OpenAPI description, the human docs, the API catalog, the llms.txt manifest and the versioning policy.",
         "schema": {
           "type": "string"
         },
-        "example": "<https://x.pcstyle.dev/openapi.json>; rel=\"service-desc\"; type=\"application/vnd.oai.openapi+json\", <https://x.pcstyle.dev/docs>; rel=\"service-doc\"; type=\"text/html\", <https://x.pcstyle.dev/.well-known/api-catalog>; rel=\"api-catalog\"; type=\"application/linkset+json\""
+        "example": "<https://mdfromx.com/openapi.json>; rel=\"service-desc\"; type=\"application/vnd.oai.openapi+json\", <https://mdfromx.com/docs>; rel=\"service-doc\"; type=\"text/html\", <https://mdfromx.com/.well-known/api-catalog>; rel=\"api-catalog\"; type=\"application/linkset+json\""
       },
       "ProblemLink": {
         "description": "RFC 8288 links to the error reference and to this OpenAPI description.",
         "schema": {
           "type": "string"
         },
-        "example": "<https://x.pcstyle.dev/docs/reliability#errors>; rel=\"help\", <https://x.pcstyle.dev/openapi.json>; rel=\"service-desc\""
+        "example": "<https://mdfromx.com/docs/reliability#errors>; rel=\"help\", <https://mdfromx.com/openapi.json>; rel=\"service-desc\""
       },
       "Vary": {
         "description": "Representation-selecting request headers, so shared caches keep the Markdown, JSON and HTML variants apart.",
@@ -10135,7 +10135,7 @@
           "author_name": "💬 22.0K   🔁 130.0K   ❤️ 190.0K",
           "author_url": "https://x.com/jack/status/20",
           "provider_name": "x.md",
-          "provider_url": "https://x.pcstyle.dev",
+          "provider_url": "https://mdfromx.com",
           "title": "Embed",
           "type": "link",
           "version": "1.0"
@@ -10144,56 +10144,56 @@
       "missing_url": {
         "summary": "Missing url parameter",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#missing-url",
+          "type": "https://mdfromx.com/docs/reliability#missing-url",
           "title": "Missing url parameter",
           "status": 400,
           "detail": "Missing required `url` query parameter.",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "missing_url",
           "resolution": "Add `?url=<public X status URL>`, or call `/{handle}/status/{id}` directly.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Missing required `url` query parameter."
         }
       },
       "not_found": {
         "summary": "Not found",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#not-found",
+          "type": "https://mdfromx.com/docs/reliability#not-found",
           "title": "Not found",
           "status": 404,
           "detail": "Post not found or unavailable.",
-          "instance": "https://x.pcstyle.dev/api/v1/posts?url=https://x.com/jack/status/20",
+          "instance": "https://mdfromx.com/api/v1/posts?url=https://x.com/jack/status/20",
           "code": "not_found",
           "resolution": "Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Post not found or unavailable."
         }
       },
       "method_not_allowed": {
         "summary": "Method not allowed",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#method-not-allowed",
+          "type": "https://mdfromx.com/docs/reliability#method-not-allowed",
           "title": "Method not allowed",
           "status": 405,
           "detail": "POST is not supported on this route. x.md only reads public X content.",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "method_not_allowed",
           "resolution": "x.md is read-only. Use GET, HEAD, or OPTIONS; the `Allow` response header lists what this route accepts.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "POST is not supported on this route. x.md only reads public X content."
         }
       },
       "rate_limited": {
         "summary": "Rate limit exceeded",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#rate-limited",
+          "type": "https://mdfromx.com/docs/reliability#rate-limited",
           "title": "Rate limit exceeded",
           "status": 429,
           "detail": "Too many live search lookups from this IP. Slow down and retry shortly.",
-          "instance": "https://x.pcstyle.dev/api/v1/search?q=vercel",
+          "instance": "https://mdfromx.com/api/v1/search?q=vercel",
           "code": "rate_limited",
           "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Too many live search lookups from this IP. Slow down and retry shortly.",
           "retry_after": 41
         }
@@ -10201,98 +10201,98 @@
       "internal_error": {
         "summary": "Unexpected error",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#internal-error",
+          "type": "https://mdfromx.com/docs/reliability#internal-error",
           "title": "Unexpected error",
           "status": 500,
           "detail": "Unexpected error",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "internal_error",
           "resolution": "Retry with exponential backoff. If it persists, open an issue at https://github.com/pc-style/x-md/issues.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Unexpected error"
         }
       },
       "upstream_error": {
         "summary": "Upstream provider error",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#upstream-error",
+          "type": "https://mdfromx.com/docs/reliability#upstream-error",
           "title": "Upstream provider error",
           "status": 502,
           "detail": "All fetch providers failed.",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "upstream_error",
           "resolution": "Retry with backoff. x.md reads a third-party provider that can fail independently.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "All fetch providers failed."
         }
       },
       "invalid_handle": {
         "summary": "Invalid X handle",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-handle",
+          "type": "https://mdfromx.com/docs/reliability#invalid-handle",
           "title": "Invalid X handle",
           "status": 400,
           "detail": "A valid X handle is required.",
-          "instance": "https://x.pcstyle.dev/api/v1/profiles/not%20a%20handle",
+          "instance": "https://mdfromx.com/api/v1/profiles/not%20a%20handle",
           "code": "invalid_handle",
           "resolution": "Handles are 1-15 characters of letters, digits, or underscores, with no leading @.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "A valid X handle is required."
         }
       },
       "invalid_params": {
         "summary": "Invalid handle or status id",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-params",
+          "type": "https://mdfromx.com/docs/reliability#invalid-params",
           "title": "Invalid handle or status id",
           "status": 400,
           "detail": "Invalid handle or status id",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "invalid_params",
           "resolution": "Provide `handle` (1-15 word characters) and a numeric `id`.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Invalid handle or status id"
         }
       },
       "invalid_option": {
         "summary": "Invalid query option",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-option",
+          "type": "https://mdfromx.com/docs/reliability#invalid-option",
           "title": "Invalid query option",
           "status": 400,
           "detail": "Invalid query option",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "invalid_option",
           "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Invalid query option"
         }
       },
       "invalid_key": {
         "summary": "Invalid or disabled API key",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-key",
+          "type": "https://mdfromx.com/docs/reliability#invalid-key",
           "title": "Invalid or disabled API key",
           "status": 401,
           "detail": "Invalid or disabled API key.",
-          "instance": "https://x.pcstyle.dev/api/v1/search?q=vercel",
+          "instance": "https://mdfromx.com/api/v1/search?q=vercel",
           "code": "invalid_key",
           "resolution": "Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Invalid or disabled API key."
         }
       },
       "upstream_unavailable": {
         "summary": "Upstream profile unavailable",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#upstream-unavailable",
+          "type": "https://mdfromx.com/docs/reliability#upstream-unavailable",
           "title": "Upstream profile unavailable",
           "status": 503,
           "detail": "Upstream profile unavailable",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "upstream_unavailable",
           "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Upstream profile unavailable",
           "retry_after": 30
         }
@@ -10300,14 +10300,14 @@
       "partial_upstream_failure": {
         "summary": "Partial upstream failure",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#partial-upstream-failure",
+          "type": "https://mdfromx.com/docs/reliability#partial-upstream-failure",
           "title": "Partial upstream failure",
           "status": 502,
           "detail": "Partial upstream failure",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "partial_upstream_failure",
           "resolution": "Some posts may already have streamed. Discard or reconcile them, wait for Retry-After, then retry the import.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Partial upstream failure",
           "retry_after": 10
         }
@@ -10315,14 +10315,14 @@
       "upstream_rate_limited": {
         "summary": "Upstream provider is rate limiting x.md",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#upstream-rate-limited",
+          "type": "https://mdfromx.com/docs/reliability#upstream-rate-limited",
           "title": "Upstream provider is rate limiting x.md",
           "status": 503,
           "detail": "Upstream provider is rate limiting x.md",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "upstream_rate_limited",
           "resolution": "Wait the number of seconds in `Retry-After`, then retry. Bulk imports back off per page automatically; lower `concurrency` if this repeats.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Upstream provider is rate limiting x.md",
           "retry_after": 30
         }
@@ -10330,14 +10330,14 @@
       "import_busy": {
         "summary": "Fresh import capacity is busy",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#import-busy",
+          "type": "https://mdfromx.com/docs/reliability#import-busy",
           "title": "Fresh import capacity is busy",
           "status": 503,
           "detail": "Fresh import capacity is busy",
-          "instance": "https://x.pcstyle.dev/api/v1/posts",
+          "instance": "https://mdfromx.com/api/v1/posts",
           "code": "import_busy",
           "resolution": "Wait at least Retry-After seconds, add jitter, then retry the same request. Queue fresh imports rather than increasing concurrency.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Fresh import capacity is busy",
           "retry_after": 30
         }
@@ -10345,28 +10345,28 @@
       "missing_query": {
         "summary": "Missing search query",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#missing-query",
+          "type": "https://mdfromx.com/docs/reliability#missing-query",
           "title": "Missing search query",
           "status": 400,
           "detail": "Search query q is required.",
-          "instance": "https://x.pcstyle.dev/api/v1/search",
+          "instance": "https://mdfromx.com/api/v1/search",
           "code": "missing_query",
           "resolution": "Add `?q=<search terms>`, for example `/search?q=vercel`.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Search query q is required."
         }
       },
       "search_unavailable": {
         "summary": "Search temporarily unavailable",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#search-unavailable",
+          "type": "https://mdfromx.com/docs/reliability#search-unavailable",
           "title": "Search temporarily unavailable",
           "status": 503,
           "detail": "X search is temporarily unavailable upstream. Retry shortly.",
-          "instance": "https://x.pcstyle.dev/api/v1/search?q=vercel&feed=videos",
+          "instance": "https://mdfromx.com/api/v1/search?q=vercel&feed=videos",
           "code": "search_unavailable",
           "resolution": "Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "X search is temporarily unavailable upstream. Retry shortly.",
           "retry_after": 30
         }
@@ -10374,14 +10374,14 @@
       "invalid_resource": {
         "summary": "Unsupported browse resource",
         "value": {
-          "type": "https://x.pcstyle.dev/docs/reliability#invalid-resource",
+          "type": "https://mdfromx.com/docs/reliability#invalid-resource",
           "title": "Unsupported browse resource",
           "status": 400,
           "detail": "Unsupported browse resource.",
-          "instance": "https://x.pcstyle.dev/api/browse?handle=jack",
+          "instance": "https://mdfromx.com/api/browse?handle=jack",
           "code": "invalid_resource",
           "resolution": "Use `resource=profile`, `search`, `followers`, or `following`.",
-          "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Unsupported browse resource."
         }
       }

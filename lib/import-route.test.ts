@@ -22,7 +22,7 @@ test.each(['json', 'ndjson'])('reversed %s ranges return 400 before spending an 
   const req = new IncomingMessage(new Socket()) as VercelRequest
   req.method = 'GET'
   req.query = { handle: 'ada', since: '2026-09-10', until: '2026-09-09', format }
-  req.headers = { host: 'x.pcstyle.dev', accept: 'application/json' }
+  req.headers = { host: 'mdfromx.com', accept: 'application/json' }
   const res = new ServerResponse(req) as VercelResponse
   let body = ''
   res.status = code => { res.statusCode = code; return res }

@@ -11,7 +11,7 @@ import { ConvertError } from './errors.js'
 import { mediaQuality } from './negotiate.js'
 import { noteRequestError } from './server-events.js'
 
-const SITE = 'https://x.pcstyle.dev'
+const SITE = 'https://mdfromx.com'
 const REPO = 'https://github.com/pc-style/x-md'
 
 /** Every `documentation_url` anchors here; each `type` is a fragment on it. */

@@ -13,7 +13,7 @@ import { IMPORT_DEFAULT_CONCURRENCY, IMPORT_DEFAULT_MAX_POSTS, IMPORT_MAX_CONCUR
 import { ERROR_CATALOG, LEGACY_DEPRECATION, LEGACY_SUNSET, LEGACY_SUNSET_ISO, problemDetails } from './apierror.js'
 import type { ErrorCode, ProblemDetails } from './apierror.js'
 
-export const SITE = 'https://x.pcstyle.dev'
+export const SITE = 'https://mdfromx.com'
 export const SPEC_VERSION = '1.1.0'
 
 /**
@@ -922,14 +922,14 @@ function paths(): Record<string, { get: OperationObject }> {
       '/{handle}/status/{id}',
       'getPostByPermalink',
       'Read a post from its x.com permalink shape',
-      'The permalink surface: swap `x.com` for `x.pcstyle.dev` in any status URL and read the same post. Media permalinks (`/photo/1`, `/video/1`) resolve to the same post.',
+      'The permalink surface: swap `x.com` for `mdfromx.com` in any status URL and read the same post. Media permalinks (`/photo/1`, `/video/1`) resolve to the same post.',
       [handleParam('path'), idParam('path'), POST_FORMAT_PARAM, THREAD_PARAM, CONTEXT_PARAM, REPLIES_PARAM, USERINFO_PARAM, FULL_PARAM, NOCACHE_PARAM],
     ),
     profileOperation(
       '/{handle}',
       'getProfileByHandle',
       'Read a profile from its x.com handle shape',
-      'The permalink surface for accounts: `https://x.pcstyle.dev/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.',
+      'The permalink surface for accounts: `https://mdfromx.com/{handle}` mirrors `https://x.com/{handle}`. Reserved site paths such as `/docs`, `/about` and `/search` are not handles.',
       [handleParam('path'), ...PROFILE_PARAMS],
     ),
     importOperation('/{handle}/posts', 'importProfilePostsByHandle', 'Import a profile\'s post history from its permalink shape'),
@@ -937,21 +937,21 @@ function paths(): Record<string, { get: OperationObject }> {
       '/{handle}/followers',
       'listFollowersByHandle',
       'List a profile\'s followers from its permalink shape',
-      'The permalink surface for followers: `https://x.pcstyle.dev/{handle}/followers`.',
+      'The permalink surface for followers: `https://mdfromx.com/{handle}/followers`.',
       [handleParam('path'), ...LIST_PARAMS],
     ),
     profileOperation(
       '/{handle}/following',
       'listFollowingByHandle',
       'List who a profile follows from its permalink shape',
-      'The permalink surface for following: `https://x.pcstyle.dev/{handle}/following`.',
+      'The permalink surface for following: `https://mdfromx.com/{handle}/following`.',
       [handleParam('path'), ...LIST_PARAMS],
     ),
     searchOperation(
       '/search',
       'searchPostsByPath',
       'Search public posts from the permalink shape',
-      'The permalink surface for search: `https://x.pcstyle.dev/search?q=...` mirrors `https://x.com/search?q=...`.',
+      'The permalink surface for search: `https://mdfromx.com/search?q=...` mirrors `https://x.com/search?q=...`.',
       [Q_PARAM, FEED_PARAM, SEARCH_SINCE_PARAM, SEARCH_UNTIL_PARAM, ...LIST_PARAMS],
     ),
     oembedOperation('/oembed', 'getOEmbedByPath', 'The permalink surface for oEmbed, and the URL x.md advertises in its own preview HTML.'),

@@ -44,7 +44,7 @@ type Opts<O> = Omit<O, 'signal'>
 export interface MdfromxConfig {
   /** Bearer key. Optional: the public API needs none. Falls back to the `MDFROMX_API_KEY` config value. */
   readonly apiKey?: string | Redacted.Redacted<string>
-  /** Default `https://mdfromx.com`. `https://x.pcstyle.dev` serves the same API. */
+  /** Defaults to the hosted API. Set this to a proxy or self-hosted instance when needed. */
   readonly baseUrl?: string
   /** Retries for 429 and 503, honoring Retry-After. Default 2 retries, never waiting more than 30s. */
   readonly retry?: RetryOptions

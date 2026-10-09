@@ -10,8 +10,8 @@ import { describe, expect, test } from 'vitest'
 const read = (path: string) => readFileSync(fileURLToPath(new URL(`../public/${path}`, import.meta.url)), 'utf8')
 const json = (path: string) => JSON.parse(read(path)) as Record<string, unknown>
 
-const SITE = 'https://x.pcstyle.dev'
-const PUBLISHER = 'x.pcstyle.dev'
+const SITE = 'https://mdfromx.com'
+const PUBLISHER = 'mdfromx.com'
 const URN_AIR = /^urn:air:[a-zA-Z0-9.-]+(:[a-zA-Z0-9._-]+)+$/
 const MARKDOWN_DOCS = ['index.md', 'about.md', 'contact.md', 'privacy.md', 'terms.md', 'agents.md', 'auth.md', 'pricing.md']
 
@@ -169,7 +169,7 @@ describe('llms.txt', () => {
  */
 describe('retired docs pages', () => {
   test.each(['sitemap.xml', 'llms.txt', 'docs/llms.txt', 'feeds/x-md.jsonl'])('%s only links to pages that still exist under docs/', (path) => {
-    const linked = [...read(path).matchAll(/x\.pcstyle\.dev\/docs\/([a-z0-9-]+)/g)].map((match) => match[1]).filter((slug) => slug !== 'llms')
+    const linked = [...read(path).matchAll(/mdfromx\.com\/docs\/([a-z0-9-]+)/g)].map((match) => match[1]).filter((slug) => slug !== 'llms')
     for (const slug of linked) {
       expect(DOCS_SLUGS, `${path} still links /docs/${slug}`).toContain(slug)
     }
@@ -250,7 +250,7 @@ describe('sitemap.xml', () => {
   test('dates every entry so agents can tell what changed', () => {
     expect(blocks.length).toBeGreaterThan(10)
     for (const block of blocks) {
-      expect(block).toMatch(/<loc>https:\/\/x\.pcstyle\.dev\/[^<]*<\/loc>/)
+      expect(block).toMatch(/<loc>https:\/\/mdfromx\.com\/[^<]*<\/loc>/)
       const lastmod = block.match(/<lastmod>([^<]+)<\/lastmod>/)?.[1]
       expect(lastmod, `missing lastmod in ${block}`).toBeDefined()
       expect(lastmod).toMatch(/^\d{4}-\d{2}-\d{2}$/)
@@ -274,7 +274,7 @@ describe('security.txt', () => {
 
   test('carries an unexpired RFC 9116 contact', () => {
     expect(security).toMatch(/^Contact: https:\/\/github\.com\/pc-style\/x-md\/security\/advisories\/new$/m)
-    expect(security).toMatch(/^Canonical: https:\/\/x\.pcstyle\.dev\/\.well-known\/security\.txt$/m)
+    expect(security).toMatch(/^Canonical: https:\/\/mdfromx\.com\/\.well-known\/security\.txt$/m)
     expect(security).toMatch(/^Policy: https:/m)
     expect(security).toMatch(/^Preferred-Languages: en$/m)
     const expires = security.match(/^Expires: (.+)$/m)?.[1]

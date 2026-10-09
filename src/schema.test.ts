@@ -121,9 +121,9 @@ describe('homepage JSON-LD', () => {
   test('the read-only API node points at the published descriptions', () => {
     const api = nodeOf(graph, 'WebAPI')
     expect(api.documentation).toEqual(
-      expect.arrayContaining(['https://x.pcstyle.dev/docs', 'https://x.pcstyle.dev/openapi.json']),
+      expect.arrayContaining(['https://mdfromx.com/docs', 'https://mdfromx.com/openapi.json']),
     )
-    expect(api.termsOfService).toBe('https://x.pcstyle.dev/terms')
+    expect(api.termsOfService).toBe('https://mdfromx.com/terms')
   })
 
   test('every @id reference resolves inside the graph', () => {
@@ -212,7 +212,7 @@ describe.each(SLUGS)('/%s page', (slug) => {
   test('has a root HTML file with canonical and Markdown alternate', () => {
     const file = read(`${slug}.html`)
     expect(file).toContain(`<div id="app" data-page="${slug}"></div>`)
-    expect(file).toContain(`<link rel="canonical" href="https://x.pcstyle.dev/${slug}" />`)
+    expect(file).toContain(`<link rel="canonical" href="https://mdfromx.com/${slug}" />`)
     expect(file).toContain(`<link rel="alternate" type="text/markdown" href="/${slug}.md"`)
     expect(file).toContain('<script type="module" src="/src/page.ts"></script>')
 

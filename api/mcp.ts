@@ -38,7 +38,7 @@ function transportError(res: VercelResponse, status: number, code: number, messa
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'mcp')
   // Self-links name the domain the client connected to, so a card fetched on
-  // mdfromx.com does not send the client back to x.pcstyle.dev.
+  // mdfromx.com does not send the client back to mdfromx.com.
   const site = requestOrigin(req)
 
   // The vercel.json CORS block keys off the incoming path, which is /mcp, not

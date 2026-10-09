@@ -11,13 +11,13 @@ sidebar:
 `GET /{handle}` — the permalink form. It returns the profile and its recent posts: original posts only by default, up to 100 per page with `limit`. Add `with_replies=true` and `with_reposts=true` to get the account's replies and reposts too. The response contains at most `limit` posts. Filtering, deduplication, upstream depth and a bounded page budget can produce a shorter response; follow `nextCursor` even after a short page.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/vercel?full=true'
+curl -sS 'https://mdfromx.com/vercel?full=true'
 ```
 
 `GET /api/v1/profiles/{handle}` — the same read on the [versioned surface](/versioning).
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
+curl -sS 'https://mdfromx.com/api/v1/profiles/vercel?full=true'
 ```
 
 ## Read connections
@@ -25,13 +25,13 @@ curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel?full=true'
 `GET /{handle}/followers` and `GET /{handle}/following` list who follows an account and who it follows, up to 100 per page, raw JSON with `format=json`, and no ceiling on how far a cursor goes.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/vercel/followers'
+curl -sS 'https://mdfromx.com/vercel/followers'
 ```
 
 The same two lists sit under `/api/v1/profiles/{handle}`:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/vercel/following?format=json'
+curl -sS 'https://mdfromx.com/api/v1/profiles/vercel/following?format=json'
 ```
 
 | Permalink route | Versioned route | JSON fields |
@@ -64,7 +64,7 @@ Follow `nextCursor` to continue. [See pagination](/pagination).
 For hundreds or thousands of posts at once — replies included, raw JSON, streamed — use the bulk route instead of paging:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sS 'https://mdfromx.com/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
 It walks the timeline in parallel, remembers what it collected, and answers repeat imports from that archive. [Import a post history](/bulk-import) covers it end to end.

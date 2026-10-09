@@ -360,7 +360,7 @@ export function embedResponse(
  * Bound a caller-supplied string before it is echoed back.
  *
  * `/oembed` reflects its query into the response, so without a clamp anyone
- * could make x.pcstyle.dev serve arbitrary text under our own domain. Control
+ * could make mdfromx.com serve arbitrary text under our own domain. Control
  * characters and angle brackets are dropped outright — an unfurl label never
  * needs either — and the rest is capped at a length a preview card can show.
  */

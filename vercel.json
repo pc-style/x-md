@@ -153,7 +153,7 @@
           "value": "x-md.vercel.app"
         }
       ],
-      "destination": "https://x.pcstyle.dev/",
+      "destination": "https://mdfromx.com/",
       "permanent": true
     },
     {
@@ -164,7 +164,7 @@
           "value": "x-md.vercel.app"
         }
       ],
-      "destination": "https://x.pcstyle.dev/:path*",
+      "destination": "https://mdfromx.com/:path*",
       "permanent": true
     }
   ],

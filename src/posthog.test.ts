@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.stubEnv('VERCEL_ENV', 'production')
   vi.stubEnv('VITE_POSTHOG_KEY', 'phc_test')
   vi.stubEnv('VITE_POSTHOG_HOST', 'https://p.pcstyle.dev')
-  vi.stubGlobal('window', { location: { protocol: 'https:', pathname: '/', origin: 'https://x.pcstyle.dev', host: 'x.pcstyle.dev', href: 'https://x.pcstyle.dev/?secret=private-value' } })
+  vi.stubGlobal('window', { location: { protocol: 'https:', pathname: '/', origin: 'https://mdfromx.com', host: 'mdfromx.com', href: 'https://mdfromx.com/?secret=private-value' } })
 })
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
@@ -64,7 +64,7 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
   }, $set: { email: 'private-email' }, $set_once: { name: 'private-name' } })
   expect(result.properties).toMatchObject({ token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
     $lib_custom_api_host: 'https://p.pcstyle.dev',
-    $current_url: 'https://x.pcstyle.dev/', $host: 'x.pcstyle.dev', $pathname: '/', $ip: null, $process_person_profile: false })
+    $current_url: 'https://mdfromx.com/', $host: 'mdfromx.com', $pathname: '/', $ip: null, $process_person_profile: false })
   expect(JSON.stringify(result)).not.toContain('private-')
 
   const pageleave = beforeSend({ event: '$pageleave', properties: {

@@ -6,7 +6,7 @@ sidebar:
   icon: users
 ---
 
-A circle needs both directions of interaction. Reading someone’s own posts alone misses people replying to or mentioning them. This integration uses only the documented public API at `https://x.pcstyle.dev`.
+A circle needs both directions of interaction. Reading someone’s own posts alone misses people replying to or mentioning them. This integration uses only the documented public API at `https://mdfromx.com`.
 
 Run the [server-side reference and benchmark](https://github.com/pc-style/x-md/blob/main/scripts/circle-benchmark.ts) with Bun and your server environment. It reports stage coverage, missing profiles, retries and wall time; `--fresh` forces a fresh own-post import and bypasses x.md’s search, reply and profile caches. Upstream caches are outside the client’s control. Set `X_MD_UNTIL` to the same ISO datetime for fresh and repeat benchmark runs. It is not browser code.
 

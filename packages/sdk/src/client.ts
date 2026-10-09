@@ -37,7 +37,7 @@ import type {
 export interface MdfromxOptions {
   /** Bearer key. Optional: the public API needs none. Falls back to `MDFROMX_API_KEY` on Node, Bun and Deno. */
   readonly apiKey?: string
-  /** Default `https://mdfromx.com`. `https://x.pcstyle.dev` serves the same API. */
+  /** Defaults to the hosted API. Set this to a proxy or self-hosted instance when needed. */
   readonly baseUrl?: string
   /** Custom fetch, for tests, proxies or older runtimes. Default `globalThis.fetch`. */
   readonly fetch?: typeof globalThis.fetch

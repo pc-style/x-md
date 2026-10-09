@@ -16,7 +16,7 @@ function exchange(headers: Record<string, string>, query: Record<string, string>
   const req = new IncomingMessage(new Socket()) as any
   req.method = 'GET'
   req.query = { handle: 'user', id: '123', ...query }
-  req.headers = { host: 'x.pcstyle.dev', 'x-forwarded-proto': 'https', ...headers }
+  req.headers = { host: 'mdfromx.com', 'x-forwarded-proto': 'https', ...headers }
   const res = new ServerResponse(req) as any
   res.body = undefined
   res.status = (code: number) => { res.statusCode = code; return res }

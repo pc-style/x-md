@@ -7,9 +7,9 @@ const hosts = ['mdfromx.com', 'fast.mdfromx.com', 'www.elon-dont-c-and-d-me-plz.
 
 describe('host-aware pages and social cards', () => {
   test('leaves unrelated hostnames intact and handles sentence punctuation', () => {
-    const source = 'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path mdfromx.com.'
+    const source = 'https://notmdfromx.com/path https://mdfromx.com.evil.example https://other.mdfromx.com/path mdfromx.com.'
     expect(domainText(source, 'https://future.example')).toBe(
-      'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path future.example.',
+      'https://notmdfromx.com/path https://mdfromx.com.evil.example https://other.mdfromx.com/path future.example.',
     )
   })
   test.each(hosts)('uses %s throughout raw HTML metadata and copy', (host) => {
@@ -18,10 +18,9 @@ describe('host-aware pages and social cards', () => {
     expect(result).toContain(`property="og:image" content="https://${host}/og.png"`)
     expect(result).toContain(`name="twitter:image" content="https://${host}/og.png"`)
     expect(result).toContain(`rel="canonical" href="https://${host}/"`)
-    expect(result).not.toContain('x.pcstyle.dev')
   })
 
-  test.each(hosts)('routes %s docs, discovery and images through the host renderer', (host) => {
+  test.each(hosts.filter((host) => host !== 'mdfromx.com'))('routes %s docs, discovery and images through the host renderer', (host) => {
     const response = (path: string, accept = 'text/html') => middleware(new Request(`https://${host}${path}`, { headers: { Accept: accept } }))
     for (const path of ['/', '/docs', '/docs/posts', '/openapi.json', '/og.png', '/og/docs/posts.png', '/feeds/x-md.jsonl']) {
       const target = new URL(response(path).headers.get('x-middleware-rewrite')!)
@@ -35,6 +34,11 @@ describe('host-aware pages and social cards', () => {
     for (const path of ['/jack/status/20', '/api/v1/posts', '/assets/main.js', '/_astro/main.js']) {
       expect(response(path).headers.get('x-middleware-rewrite')).toBeNull()
     }
+  })
+
+  test('serves mdfromx.com from the canonical host without a rewrite', () => {
+    const response = middleware(new Request('https://mdfromx.com/docs', { headers: { Accept: 'text/html' } }))
+    expect(response.headers.get('x-middleware-rewrite')).toBeNull()
   })
 
   test('maps only safe public files', () => {

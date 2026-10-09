@@ -1,7 +1,7 @@
 ---
 title: "x.md privacy"
 description: "x.md has no sign-in and no user accounts. What happens to a request: IP used only for rate-limit counters, one-hour caching of public content, optional metadata-only analytics, one optional cookie, and an opt-in public-result archive that is disabled by default."
-canonical: https://x.pcstyle.dev/privacy
+canonical: https://mdfromx.com/privacy
 last-updated: 2026-09-08
 ---
 
@@ -91,7 +91,7 @@ protected authors are excluded entirely.
   the landing-page analytics do not initialise.
 - Use `?nocache=true` to bypass the application cache for a request.
 - Block the third-party requests listed below, or run the service yourself — a
-  [self-hosted deployment](https://x.pcstyle.dev/docs/self-hosting) with no
+  [self-hosted deployment](https://mdfromx.com/docs/self-hosting) with no
   analytics variables configured sends nothing anywhere unless an agent calls
   the MCP `submit_feedback` tool.
 
@@ -112,4 +112,4 @@ attached.
 This page describes the behaviour of the code in the public repository, which is
 the authoritative record — every claim above can be checked against
 [the source](https://github.com/pc-style/x-md). Questions and corrections go to
-[contact](https://x.pcstyle.dev/contact). Last reviewed 8 September 2026.
+[contact](https://mdfromx.com/contact). Last reviewed 8 September 2026.
