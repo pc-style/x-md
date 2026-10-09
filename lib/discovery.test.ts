@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
+import { MCP_SERVER_VERSION, MCP_TOOLS } from './mcp.js'
 
 /**
  * The static discovery surface — catalogs, robots, sitemap, and the Markdown
@@ -101,6 +102,57 @@ describe('RFC 9727 API catalog', () => {
   test('describes the REST API with the OpenAPI media type', () => {
     const api = linkset.find((link) => link.anchor === `${SITE}/api`)
     expect(api?.['service-desc']).toContainEqual({ href: `${SITE}/openapi.json`, type: 'application/vnd.oai.openapi+json' })
+  })
+})
+
+describe('integrations.sh owner declaration', () => {
+  const declaration = json('.well-known/integrations.json') as unknown as {
+    version: number
+    summary: string
+    surfaces: { slug: string; type: string; url: string; spec?: string; transports?: string[]; basis: unknown; auth: unknown }[]
+  }
+  const declared = { via: 'declared', source: `${SITE}/.well-known/integrations.json` }
+
+  test('is a v3 declaration of the REST API and the MCP server, both public', () => {
+    expect(declaration.version).toBe(3)
+    expect(declaration.summary).toBeTruthy()
+    expect(declaration.surfaces.map((surface) => surface.type).sort()).toEqual(['http', 'mcp'])
+    for (const surface of declaration.surfaces) {
+      expect(surface.basis).toEqual(declared)
+      // The optional bearer key only raises the search allowance; every surface works without it.
+      expect(surface.auth).toEqual({ status: 'none', basis: declared })
+    }
+  })
+
+  test('points at surfaces that exist', () => {
+    const http = declaration.surfaces.find((surface) => surface.type === 'http')
+    const mcp = declaration.surfaces.find((surface) => surface.type === 'mcp')
+    expect(http?.url).toBe(`${SITE}/api/v1`)
+    expect(http?.spec).toBe(`${SITE}/openapi.json`)
+    expect(mcp?.url).toBe(`${SITE}/mcp`)
+    expect(mcp?.transports).toEqual(['streamable-http'])
+  })
+})
+
+describe('A2A agent card', () => {
+  const card = json('.well-known/agent-card.json') as unknown as {
+    name: string; description: string; url: string; version: string; skills: { id: string; description: string }[]
+  }
+
+  test('names x.md, points at the MCP server, and says it is not an A2A endpoint', () => {
+    expect(card.name).toBe('x.md')
+    expect(card.url).toBe(`${SITE}/mcp`)
+    expect(card.description).toContain('does not speak the A2A task protocol')
+    expect(card.version).toBe(MCP_SERVER_VERSION)
+  })
+
+  test('every skill names MCP tools that exist', () => {
+    const tools = new Set(MCP_TOOLS.map((tool) => tool.name))
+    for (const skill of card.skills) {
+      const named = skill.description.match(/x_md_\w+/g) ?? []
+      expect(named.length, skill.id).toBeGreaterThan(0)
+      for (const name of named) expect(tools.has(name), name).toBe(true)
+    }
   })
 })
 

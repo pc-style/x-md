@@ -1,0 +1,50 @@
+{
+  "protocolVersion": "0.3.0",
+  "name": "x.md",
+  "description": "Reads public X posts, threads, profiles, connections, and search results as Markdown or JSON. x.md does not speak the A2A task protocol: call it as an MCP server at the url below, or over plain HTTP using https://x.pcstyle.dev/openapi.json. Read-only, and no credentials are required.",
+  "url": "https://x.pcstyle.dev/mcp",
+  "provider": {
+    "organization": "x.md",
+    "url": "https://x.pcstyle.dev/"
+  },
+  "iconUrl": "https://x.pcstyle.dev/logo.svg",
+  "version": "1.1.2",
+  "documentationUrl": "https://x.pcstyle.dev/docs/mcp",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text/plain"],
+  "defaultOutputModes": ["text/markdown", "application/json"],
+  "skills": [
+    {
+      "id": "read-post",
+      "name": "Read an X post or thread",
+      "description": "Read one public X post with its thread and conversation context. MCP tool x_md_get_post, or GET /{handle}/status/{id}.",
+      "tags": ["x", "twitter", "posts", "threads"],
+      "examples": ["Summarize the thread at this x.com status link."]
+    },
+    {
+      "id": "read-profile",
+      "name": "Read an X profile",
+      "description": "Read a public X profile and its latest original posts. MCP tool x_md_get_profile, or GET /{handle}.",
+      "tags": ["x", "twitter", "profiles"],
+      "examples": ["Who is @vercel and what have they posted lately?"]
+    },
+    {
+      "id": "search-posts",
+      "name": "Search public X posts and accounts",
+      "description": "Search public X posts or accounts, including X advanced-search operators. MCP tool x_md_search_posts, or GET /search?q=.",
+      "tags": ["x", "twitter", "search"],
+      "examples": ["Find recent posts from:vercel about deployments."]
+    },
+    {
+      "id": "read-connections",
+      "name": "List followers and following",
+      "description": "List who a public X account follows, or who follows it. MCP tools x_md_get_followers and x_md_get_following, or GET /{handle}/followers and /{handle}/following.",
+      "tags": ["x", "twitter", "followers", "following"],
+      "examples": ["Which accounts does @vercel follow?"]
+    }
+  ]
+}

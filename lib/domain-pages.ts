@@ -16,6 +16,7 @@ const FILES = new Set([
   'site.webmanifest', '.well-known/ard.json', '.well-known/ai-catalog.json',
   'blume-search.json', 'agent-readability.json',
   '.well-known/api-catalog', '.well-known/mcp/server-card.json',
+  '.well-known/integrations.json', '.well-known/agent-card.json',
 ])
 
 /** Only public build output is eligible; API and permalink routes pass through. */

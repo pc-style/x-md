@@ -650,9 +650,9 @@ export function serverDiscover(): Record<string, unknown> {
 const icons = (site: string) => [{ src: `${site}/logo.svg`, mimeType: 'image/svg+xml', sizes: ['any'] }]
 
 /**
- * The well-known server card. `serverUrl` and `tools` duplicate what `remotes`
- * and tools/list already say, because agents that read the card before opening
- * a transport look for those flatter fields.
+ * The well-known server card. `url`, `serverUrl` and `tools` duplicate what
+ * `remotes` and tools/list already say, because agents that read the card before
+ * opening a transport look for those flatter fields (integrations.sh reads only `url`).
  */
 export function serverCard(site: string = MCP_SITE): Record<string, unknown> {
   return {
@@ -665,6 +665,7 @@ export function serverCard(site: string = MCP_SITE): Record<string, unknown> {
     documentationUrl: `${site}/docs/mcp`,
     icons: icons(site),
     repository: { source: 'github', url: 'https://github.com/pc-style/x-md' },
+    url: `${site}/mcp`,
     serverUrl: `${site}/mcp`,
     transport: 'streamable-http',
     authentication: 'none',
