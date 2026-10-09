@@ -1,0 +1,62 @@
+{
+  "version": 3,
+  "summary": "x.md reads public X posts, threads, profiles, and search results as Markdown or JSON. The hosted API and MCP server work without credentials; an optional, privately issued bearer key raises the allowance on selected browse, search, and MCP requests.",
+  "surfaces": [
+    {
+      "type": "http",
+      "slug": "x-md-api",
+      "name": "x.md HTTP API",
+      "docs": "https://x.pcstyle.dev/docs/agents",
+      "url": "https://x.pcstyle.dev",
+      "spec": "https://x.pcstyle.dev/openapi.json",
+      "basis": {
+        "via": "declared",
+        "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+      },
+      "auth": {
+        "status": "none",
+        "basis": {
+          "via": "declared",
+          "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+        }
+      }
+    },
+    {
+      "type": "mcp",
+      "slug": "x-md-mcp",
+      "name": "x.md MCP server",
+      "docs": "https://x.pcstyle.dev/docs/mcp",
+      "url": "https://x.pcstyle.dev/mcp",
+      "transports": ["streamable-http"],
+      "basis": {
+        "via": "declared",
+        "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+      },
+      "auth": {
+        "status": "none",
+        "basis": {
+          "via": "declared",
+          "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+        }
+      }
+    },
+    {
+      "type": "cli",
+      "slug": "x-md-browse-x-cli",
+      "name": "browse-x CLI",
+      "docs": "https://x.pcstyle.dev/docs/agents",
+      "command": "bun run browse-x",
+      "basis": {
+        "via": "declared",
+        "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+      },
+      "auth": {
+        "status": "none",
+        "basis": {
+          "via": "declared",
+          "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+        }
+      }
+    }
+  ]
+}

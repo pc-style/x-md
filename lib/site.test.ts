@@ -16,6 +16,7 @@ beforeAll(async () => {
   await mkdir(join(root, 'dist/.well-known/agent-skills/import-x-history'))
   await writeFile(join(root, 'dist/index.html'), '<a href="https://x.pcstyle.dev/docs">x.pcstyle.dev</a>')
   await writeFile(join(root, 'dist/openapi.json'), JSON.stringify({ servers: [{ url: 'https://x.pcstyle.dev' }, { url: 'https://mdfromx.com' }] }))
+  await writeFile(join(root, 'dist/.well-known/integrations.json'), JSON.stringify({ source: 'https://x.pcstyle.dev/.well-known/integrations.json' }))
   await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.md'), '# Use https://x.pcstyle.dev')
   await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.tar.gz'), archive)
   await writeFile(join(root, 'dist/.well-known/agent-skills/index.json'), JSON.stringify({ skills: [
@@ -44,6 +45,12 @@ describe('host-aware public responses', () => {
     const binary = await siteResponse(index.skills[1].url, origin)
     expect(binary.headers.get('content-type')).toBe('application/gzip')
     expect(Buffer.from(await binary.arrayBuffer())).toEqual(archive)
+  })
+  test('serves integrations declarations at the current host with public caching', async () => {
+    const response = await siteResponse('/.well-known/integrations.json', 'https://mdfromx.com')
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(response.headers.get('cache-control')).toBe('public, max-age=3600')
+    expect(await response.json()).toEqual({ source: 'https://mdfromx.com/.well-known/integrations.json' })
   })
   test('missing pages and traversal return 404', async () => {
     for (const path of ['/docs/missing', '/docs/../../.env', '/api/convert', '/.well-known/agent-skills/import-x-history', '/.well-known/agent-skills/index.json/nope']) {

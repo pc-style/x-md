@@ -104,6 +104,50 @@ describe('RFC 9727 API catalog', () => {
   })
 })
 
+describe('integrations.sh declaration', () => {
+  const integrations = json('.well-known/integrations.json') as unknown as {
+    version: number
+    surfaces: {
+      type: string
+      slug: string
+      url?: string
+      spec?: string
+      transports?: string[]
+      command?: string
+      basis: { via: string; source: string }
+      auth: { status: string; basis?: { via: string; source: string } }
+    }[]
+  }
+
+  test('declares the hosted HTTP and MCP surfaces with matching public auth bases', () => {
+    const source = `${SITE}/.well-known/integrations.json`
+    expect(integrations.version).toBe(3)
+    expect(integrations.surfaces.map(({ type }) => type)).toEqual(['http', 'mcp', 'cli'])
+    for (const surface of integrations.surfaces) {
+      expect(surface.basis).toEqual({ via: 'declared', source })
+      expect(surface.auth).toEqual({ status: 'none', basis: { via: 'declared', source } })
+    }
+    expect(integrations.surfaces[0]).toMatchObject({
+      slug: 'x-md-api',
+      url: SITE,
+      spec: `${SITE}/openapi.json`,
+    })
+    expect(integrations.surfaces[1]).toMatchObject({
+      slug: 'x-md-mcp',
+      url: `${SITE}/mcp`,
+      transports: ['streamable-http'],
+    })
+    expect(integrations.surfaces[2]).toMatchObject({
+      slug: 'x-md-browse-x-cli',
+      command: 'bun run browse-x',
+    })
+  })
+
+  test('MCP server card exposes the transport URL integrations.sh expects', () => {
+    expect(json('.well-known/mcp/server-card.json')).toMatchObject({ url: `${SITE}/mcp` })
+  })
+})
+
 describe('served markdown', () => {
   test.each(MARKDOWN_DOCS)('%s opens with frontmatter carrying title, description, canonical, and last-updated', (file) => {
     const source = read(file)

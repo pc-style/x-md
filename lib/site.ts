@@ -48,7 +48,9 @@ export async function siteResponse(path: string, origin: string): Promise<Respon
       : TYPES[file.split('.').at(-1)!] ?? 'text/plain'
     return new Response(body as BodyInit, { headers: {
       'Content-Type': type + (typeof body !== 'string' ? '' : '; charset=utf-8'),
-      'Cache-Control': 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800',
+      'Cache-Control': file === '.well-known/integrations.json'
+        ? 'public, max-age=3600'
+        : 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800',
       'Access-Control-Allow-Origin': '*',
       'X-Content-Type-Options': 'nosniff',
     } })
