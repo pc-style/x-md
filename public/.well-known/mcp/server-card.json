@@ -19,6 +19,7 @@
     "source": "github",
     "url": "https://github.com/pc-style/x-md"
   },
+  "url": "https://x.pcstyle.dev/mcp",
   "serverUrl": "https://x.pcstyle.dev/mcp",
   "transport": "streamable-http",
   "authentication": "none",

@@ -15,7 +15,7 @@ const FILES = new Set([
   'robots.txt', 'sitemap.xml', 'schemamap.xml', 'openapi.json', 'server.json',
   'site.webmanifest', '.well-known/ard.json', '.well-known/ai-catalog.json',
   'blume-search.json', 'agent-readability.json',
-  '.well-known/api-catalog', '.well-known/mcp/server-card.json',
+  '.well-known/api-catalog', '.well-known/integrations.json', '.well-known/mcp/server-card.json',
 ])
 
 /** Only public build output is eligible; API and permalink routes pass through. */
