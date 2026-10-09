@@ -24,7 +24,7 @@ function exchange(options: { method?: string; url?: string; accept?: string; que
   req.method = options.method ?? 'GET'
   req.url = options.url ?? '/api/convert'
   req.query = options.query ?? {}
-  req.headers = { host: 'x.pcstyle.dev', 'x-forwarded-proto': 'https', accept: options.accept ?? '*/*' }
+  req.headers = { host: 'mdfromx.com', 'x-forwarded-proto': 'https', accept: options.accept ?? '*/*' }
   const res = new ServerResponse(req) as any
   res.body = undefined
   res.status = (code: number) => { res.statusCode = code; return res }
@@ -46,16 +46,16 @@ describe('problem documents', () => {
   test('a ConvertError becomes a complete problem document', () => {
     const problem = problemFrom(
       new ConvertError(400, 'Invalid URL. Provide a public X/Twitter status URL.', 'invalid_url'),
-      'https://x.pcstyle.dev/api/convert?url=notaurl',
+      'https://mdfromx.com/api/convert?url=notaurl',
     )
     expect(problem).toMatchObject({
-      type: 'https://x.pcstyle.dev/docs/reliability#invalid-url',
+      type: 'https://mdfromx.com/docs/reliability#invalid-url',
       title: 'Invalid X status URL',
       status: 400,
       detail: 'Invalid URL. Provide a public X/Twitter status URL.',
-      instance: 'https://x.pcstyle.dev/api/convert?url=notaurl',
+      instance: 'https://mdfromx.com/api/convert?url=notaurl',
       code: 'invalid_url',
-      documentation_url: 'https://x.pcstyle.dev/docs/reliability#errors',
+      documentation_url: 'https://mdfromx.com/docs/reliability#errors',
     })
     expect(problem.resolution).toContain('x.com')
     // The pre-9457 field stays in sync so existing clients keep working.
@@ -63,14 +63,14 @@ describe('problem documents', () => {
   })
 
   test('429 and 503 carry retry_after and a Retry-After header', () => {
-    const limited = problemFrom(new ConvertError(429, 'Too many searches.', 'rate_limited', 42), 'https://x.pcstyle.dev/search?q=a')
+    const limited = problemFrom(new ConvertError(429, 'Too many searches.', 'rate_limited', 42), 'https://mdfromx.com/search?q=a')
     const response = problemResponse(limited, '*/*')
     expect(response.status).toBe(429)
     expect(limited.retry_after).toBe(42)
     expect(response.headers['Retry-After']).toBe('42')
     expect(response.headers['Cache-Control']).toBe('no-store')
-    expect(problemFrom(new ConvertError(429, 'slow down', 'rate_limited'), 'https://x.pcstyle.dev/search').retry_after).toBe(60)
-    expect(problemFrom(new ConvertError(503, 'no sessions', 'search_unavailable'), 'https://x.pcstyle.dev/search').retry_after).toBe(30)
+    expect(problemFrom(new ConvertError(429, 'slow down', 'rate_limited'), 'https://mdfromx.com/search').retry_after).toBe(60)
+    expect(problemFrom(new ConvertError(503, 'no sessions', 'search_unavailable'), 'https://mdfromx.com/search').retry_after).toBe(30)
   })
 
   test('problem links use the serving host', () => {
@@ -94,23 +94,23 @@ describe('problem documents', () => {
   test('a provider code outside the catalogue is described by its status class', () => {
     // lib/fxtwitter.ts and the fallback providers raise codes the published
     // catalogue does not name; openapi.json promises they read as their class.
-    const priv = problemFrom(new ConvertError(404, 'Post is private and cannot be fetched.', 'private_tweet'), 'https://x.pcstyle.dev/jack/status/20')
+    const priv = problemFrom(new ConvertError(404, 'Post is private and cannot be fetched.', 'private_tweet'), 'https://mdfromx.com/jack/status/20')
     expect(priv.status).toBe(404)
     expect(priv.code).toBe('private_tweet')
     expect(priv.title).toBe(ERROR_CATALOG.not_found.title)
     expect(priv.resolution).toBe(ERROR_CATALOG.not_found.resolution)
-    expect(priv.type).toBe('https://x.pcstyle.dev/docs/reliability#not-found')
+    expect(priv.type).toBe('https://mdfromx.com/docs/reliability#not-found')
 
-    const upstream = problemFrom(new ConvertError(502, 'All fetch providers failed.', 'all_providers_failed'), 'https://x.pcstyle.dev/jack/status/20')
+    const upstream = problemFrom(new ConvertError(502, 'All fetch providers failed.', 'all_providers_failed'), 'https://mdfromx.com/jack/status/20')
     expect(upstream.title).toBe(ERROR_CATALOG.upstream_error.title)
     expect(upstream.resolution).toBe(ERROR_CATALOG.upstream_error.resolution)
 
     // A catalogued code still describes itself.
-    expect(problemFrom(new ConvertError(404, 'gone', 'not_found'), 'https://x.pcstyle.dev/x').title).toBe(ERROR_CATALOG.not_found.title)
+    expect(problemFrom(new ConvertError(404, 'gone', 'not_found'), 'https://mdfromx.com/x').title).toBe(ERROR_CATALOG.not_found.title)
   })
 
   test('an unknown throwable never leaks internals', () => {
-    const problem = problemFrom(new TypeError('fetch failed at 10.0.0.1'), 'https://x.pcstyle.dev/api/browse')
+    const problem = problemFrom(new TypeError('fetch failed at 10.0.0.1'), 'https://mdfromx.com/api/browse')
     expect(problem.status).toBe(500)
     expect(problem.code).toBe('internal_error')
     expect(JSON.stringify(problem)).not.toContain('10.0.0.1')
@@ -139,7 +139,7 @@ describe('problem documents', () => {
 
   test('a rejected problem+json still ships the problem body under the type asked for', () => {
     const { headers, body } = problemResponse(
-      problemDetails('not_found', { instance: 'https://x.pcstyle.dev/api/v1/nope' }),
+      problemDetails('not_found', { instance: 'https://mdfromx.com/api/v1/nope' }),
       'application/problem+json;q=0, application/json',
     )
     expect(headers['Content-Type']).toBe('application/json; charset=utf-8')
@@ -148,7 +148,7 @@ describe('problem documents', () => {
 
   test('the body is JSON and the response varies on Accept', () => {
     const { headers, body } = problemResponse(
-      problemDetails('route_not_found', { instance: 'https://x.pcstyle.dev/api/v1/anything' }),
+      problemDetails('route_not_found', { instance: 'https://mdfromx.com/api/v1/anything' }),
       '*/*',
     )
     expect(headers.Vary).toBe('Accept')
@@ -164,7 +164,7 @@ describe('deprecation signalling', () => {
     expect(res.getHeader('Deprecation')).toMatch(/^@\d{10}$/)
     expect(res.getHeader('Sunset')).toBe(LEGACY_SUNSET)
     expect(Date.parse(String(res.getHeader('Sunset')))).toBeGreaterThan(Number(LEGACY_DEPRECATION.slice(1)) * 1000)
-    expect(res.getHeader('Link')).toContain('<https://x.pcstyle.dev/api/v1/posts>; rel="successor-version"')
+    expect(res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/posts>; rel="successor-version"')
     expect(res.getHeader('Link')).toContain('rel="deprecation"')
   })
 
@@ -195,7 +195,7 @@ describe('handlers answer with problem details', () => {
     const problem = JSON.parse(res.body)
     expect(problem.code).toBe('invalid_url')
     expect(problem.error).toBe(problem.detail)
-    expect(problem.instance).toBe('https://x.pcstyle.dev/api/convert?url=notaurl')
+    expect(problem.instance).toBe('https://mdfromx.com/api/convert?url=notaurl')
   })
 
   test('the deprecated alias is signalled but the permalink route is not', async () => {
@@ -225,7 +225,7 @@ describe('handlers answer with problem details', () => {
     await browseHandler(direct.req, direct.res)
     expect(direct.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
     expect(direct.res.getHeader('Sunset')).toBe(LEGACY_SUNSET)
-    expect(direct.res.getHeader('Link')).toContain('<https://x.pcstyle.dev/api/v1/profiles/jack>; rel="successor-version"')
+    expect(direct.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/profiles/jack>; rel="successor-version"')
 
     const routed = exchange({
       method: 'POST',
@@ -252,8 +252,8 @@ describe('handlers answer with problem details', () => {
     expect(res.getHeader('Vary')).toBe('Accept')
     const index = JSON.parse(res.body)
     expect(index.name).toBe('x.md')
-    expect(index.openapi_url).toBe('https://x.pcstyle.dev/openapi.json')
-    expect(index.links.mcp).toBe('https://x.pcstyle.dev/mcp')
+    expect(index.openapi_url).toBe('https://mdfromx.com/openapi.json')
+    expect(index.links.mcp).toBe('https://mdfromx.com/mcp')
     expect(index.endpoints.map((endpoint: { path: string }) => endpoint.path)).toContain('/api/v1/posts')
     expect(index.endpoints.every((endpoint: { description: string }) => endpoint.description.length > 20)).toBe(true)
     expect(index.errors.codes).toHaveLength(Object.keys(ERROR_CATALOG).length)
@@ -278,7 +278,7 @@ describe('handlers answer with problem details', () => {
 
   test('sendProblem writes no body for HEAD', () => {
     const { res } = exchange({ method: 'HEAD' })
-    sendProblem(res, problemDetails('not_found', { instance: 'https://x.pcstyle.dev/api/convert' }), '*/*', 'HEAD')
+    sendProblem(res, problemDetails('not_found', { instance: 'https://mdfromx.com/api/convert' }), '*/*', 'HEAD')
     expect(res.statusCode).toBe(404)
     expect(res.body).toBeUndefined()
   })

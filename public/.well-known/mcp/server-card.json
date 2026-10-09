@@ -4,11 +4,11 @@
   "title": "x.md",
   "description": "Read public X posts, threads, profiles, and search results as Markdown or JSON.",
   "version": "1.1.2",
-  "websiteUrl": "https://x.pcstyle.dev/",
-  "documentationUrl": "https://x.pcstyle.dev/docs/mcp",
+  "websiteUrl": "https://mdfromx.com/",
+  "documentationUrl": "https://mdfromx.com/docs/mcp",
   "icons": [
     {
-      "src": "https://x.pcstyle.dev/logo.svg",
+      "src": "https://mdfromx.com/logo.svg",
       "mimeType": "image/svg+xml",
       "sizes": [
         "any"
@@ -19,13 +19,13 @@
     "source": "github",
     "url": "https://github.com/pc-style/x-md"
   },
-  "serverUrl": "https://x.pcstyle.dev/mcp",
+  "serverUrl": "https://mdfromx.com/mcp",
   "transport": "streamable-http",
   "authentication": "none",
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "https://x.pcstyle.dev/mcp",
+      "url": "https://mdfromx.com/mcp",
       "supportedProtocolVersions": [
         "2026-07-28",
         "2025-11-25",
@@ -76,27 +76,27 @@
   ],
   "resources": [
     {
-      "uri": "https://x.pcstyle.dev/llms.txt",
+      "uri": "https://mdfromx.com/llms.txt",
       "name": "x-md-llms-txt",
       "mimeType": "text/plain"
     },
     {
-      "uri": "https://x.pcstyle.dev/llms-full.txt",
+      "uri": "https://mdfromx.com/llms-full.txt",
       "name": "x-md-llms-full-txt",
       "mimeType": "text/plain"
     },
     {
-      "uri": "https://x.pcstyle.dev/openapi.json",
+      "uri": "https://mdfromx.com/openapi.json",
       "name": "x-md-openapi",
       "mimeType": "application/json"
     },
     {
-      "uri": "https://x.pcstyle.dev/index.md",
+      "uri": "https://mdfromx.com/index.md",
       "name": "x-md-overview",
       "mimeType": "text/markdown"
     },
     {
-      "uri": "https://x.pcstyle.dev/mcp/server-card",
+      "uri": "https://mdfromx.com/mcp/server-card",
       "name": "x-md-server-card",
       "mimeType": "application/mcp-server-card+json"
     }

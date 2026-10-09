@@ -1,20 +1,20 @@
 ---
 title: "x.md — read public X posts as Markdown"
 description: "Read public X posts, videos, threads, profiles, search results, followers, and following as compact Markdown or structured JSON. Read-only, no API key required, open source."
-canonical: https://x.pcstyle.dev/
+canonical: https://mdfromx.com/
 last-updated: 2026-09-08
 ---
 
 # x.md
 
 > x.md turns public X (Twitter) content into compact Markdown an agent can read.
-> Swap `x.com` for `x.pcstyle.dev` in any public post URL. No account and no API
+> Swap `x.com` for `mdfromx.com` in any public post URL. No account and no API
 > key required, read-only, MIT-licensed.
 
 ## Quick start
 
 ```sh
-curl https://x.pcstyle.dev/trq212/status/2052809885763747935
+curl https://mdfromx.com/trq212/status/2052809885763747935
 ```
 
 The same path you would open on x.com, answered as `text/markdown`.
@@ -37,13 +37,13 @@ The same path you would open on x.com, answered as `text/markdown`.
 
 ## Read routes
 
-- Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
-- Profile and latest original posts: `https://x.pcstyle.dev/{handle}`
-- Search public posts or users: `https://x.pcstyle.dev/search?q={query}`
-- Followers: `https://x.pcstyle.dev/{handle}/followers`
-- Following: `https://x.pcstyle.dev/{handle}/following`
+- Post, video, thread, or conversation: `https://mdfromx.com/{handle}/status/{id}`
+- Profile and latest original posts: `https://mdfromx.com/{handle}`
+- Search public posts or users: `https://mdfromx.com/search?q={query}`
+- Followers: `https://mdfromx.com/{handle}/followers`
+- Following: `https://mdfromx.com/{handle}/following`
 
-The versioned machine surface mirrors these at `https://x.pcstyle.dev/api/v1/*`.
+The versioned machine surface mirrors these at `https://mdfromx.com/api/v1/*`.
 
 ## Response formats
 
@@ -60,12 +60,12 @@ variants, X Articles with their headings and lists, and a source URL for every p
 
 ## Agent resources
 
-- [Documentation](https://x.pcstyle.dev/docs)
-- [OpenAPI description](https://x.pcstyle.dev/openapi.json)
-- [MCP server](https://x.pcstyle.dev/mcp)
-- [llms.txt](https://x.pcstyle.dev/llms.txt) and [llms-full.txt](https://x.pcstyle.dev/llms-full.txt)
-- [Agent skill](https://x.pcstyle.dev/.well-known/agent-skills/index.json)
-- [Resource catalog](https://x.pcstyle.dev/.well-known/ard.json)
+- [Documentation](https://mdfromx.com/docs)
+- [OpenAPI description](https://mdfromx.com/openapi.json)
+- [MCP server](https://mdfromx.com/mcp)
+- [llms.txt](https://mdfromx.com/llms.txt) and [llms-full.txt](https://mdfromx.com/llms-full.txt)
+- [Agent skill](https://mdfromx.com/.well-known/agent-skills/index.json)
+- [Resource catalog](https://mdfromx.com/.well-known/ard.json)
 - [Source](https://github.com/pc-style/x-md)
 
 ## Scope

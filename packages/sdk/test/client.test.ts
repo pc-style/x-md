@@ -89,9 +89,9 @@ describe('requests', () => {
   })
 
   it('honors a custom base URL', async () => {
-    const { x, calls } = client(() => json(page()), { baseUrl: 'https://x.pcstyle.dev/' })
+    const { x, calls } = client(() => json(page()), { baseUrl: 'https://mdfromx.com/' })
     await x.profiles.followers('jack')
-    expect(calls[0].url.href.startsWith('https://x.pcstyle.dev/api/v1/profiles/jack/followers?')).toBe(true)
+    expect(calls[0].url.href.startsWith('https://mdfromx.com/api/v1/profiles/jack/followers?')).toBe(true)
   })
 })
 

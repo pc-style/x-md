@@ -1,7 +1,7 @@
 ---
 title: "Authentication for x.md"
 description: "x.md's public read API needs no credentials. This is the agent walkthrough: what discovery returns, why every WorkOS auth.md step is a no-op here, and how the optional bearer key for a higher search allowance actually works."
-canonical: https://x.pcstyle.dev/auth.md
+canonical: https://mdfromx.com/auth.md
 last-updated: 2026-09-08
 ---
 
@@ -10,7 +10,7 @@ last-updated: 2026-09-08
 **No authentication is required. Send the request.**
 
 ```sh
-curl -H 'Accept: application/json' https://x.pcstyle.dev/api/v1/profiles/vercel
+curl -H 'Accept: application/json' https://mdfromx.com/api/v1/profiles/vercel
 ```
 
 x.md is a read-only browser for content that is already public on X. There is
@@ -22,7 +22,7 @@ This document follows the [WorkOS auth.md](https://github.com/workos/auth.md)
 walkthrough section by section, because an agent that knows that spec should be
 able to confirm, step by step, that each step is a no-op here rather than
 guessing. Everything below describes the hosted service at
-`https://x.pcstyle.dev`. Self-hosted deployments are configured by their own
+`https://mdfromx.com`. Self-hosted deployments are configured by their own
 operator.
 
 ## Discover
@@ -45,10 +45,10 @@ What discovery *does* return here is capability, not credentials:
 
 | Document | What it tells you |
 | --- | --- |
-| [`/.well-known/ard.json`](https://x.pcstyle.dev/.well-known/ard.json) | Every machine surface x.md publishes |
-| [`/.well-known/api-catalog`](https://x.pcstyle.dev/.well-known/api-catalog) | RFC 9727 linkset for the REST API |
-| [`/openapi.json`](https://x.pcstyle.dev/openapi.json) | Every route, parameter, and response schema |
-| [`/mcp`](https://x.pcstyle.dev/mcp) | The same reads as MCP tools |
+| [`/.well-known/ard.json`](https://mdfromx.com/.well-known/ard.json) | Every machine surface x.md publishes |
+| [`/.well-known/api-catalog`](https://mdfromx.com/.well-known/api-catalog) | RFC 9727 linkset for the REST API |
+| [`/openapi.json`](https://mdfromx.com/openapi.json) | Every route, parameter, and response schema |
+| [`/mcp`](https://mdfromx.com/mcp) | The same reads as MCP tools |
 
 Treat the absence of an authorization server as the answer, not as an error to
 retry.
@@ -112,7 +112,7 @@ one by hand, as described under [Revocation](#revocation).
 Anonymous callers send nothing:
 
 ```sh
-curl https://x.pcstyle.dev/search?q=typescript
+curl https://mdfromx.com/search?q=typescript
 ```
 
 A caller who was given a key presents it as an ordinary bearer credential:
@@ -120,7 +120,7 @@ A caller who was given a key presents it as an ordinary bearer credential:
 ```sh
 curl -H 'Authorization: Bearer xmd_<secret>' \
      -H 'Accept: application/json' \
-     'https://x.pcstyle.dev/api/v1/search?q=typescript&feed=latest'
+     'https://mdfromx.com/api/v1/search?q=typescript&feed=latest'
 ```
 
 Facts worth knowing before you wire it up:
@@ -177,6 +177,6 @@ or the route is not yours to call.
 
 ## Related
 
-- [Pricing and limits](https://x.pcstyle.dev/pricing.md)
-- [Agent guide](https://x.pcstyle.dev/agents.md)
-- [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
+- [Pricing and limits](https://mdfromx.com/pricing.md)
+- [Agent guide](https://mdfromx.com/agents.md)
+- [Errors, limits, and caching](https://mdfromx.com/docs/reliability)

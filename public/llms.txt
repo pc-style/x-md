@@ -2,8 +2,8 @@
 
 > x.md is an agent-friendly, read-only browser for public X content. It returns compact Markdown by default, full Markdown with `?full=true`, and structured JSON with `?format=json` or `Accept: application/json`.
 
-Canonical site: https://x.pcstyle.dev/
-Documentation: https://x.pcstyle.dev/docs
+Canonical site: https://mdfromx.com/
+Documentation: https://mdfromx.com/docs
 Source: https://github.com/pc-style/x-md
 
 ## When to use x.md
@@ -11,12 +11,12 @@ Source: https://github.com/pc-style/x-md
 Reach for x.md when the job is *reading one piece of public X content right now*:
 
 - An agent needs the text of a public X post, thread, or X Article and cannot run a browser or log into X.
-- You are resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log, and need its content inline. Swap the host for `x.pcstyle.dev` and keep the rest of the path.
+- You are resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log, and need its content inline. Swap the host for `mdfromx.com` and keep the rest of the path.
 - You want a public profile's bio and latest original posts (replies and reposts filtered out) without holding X credentials.
 - You are checking who a public account follows, or who follows it.
 - You need X search results as structured data rather than a rendered timeline: `GET /search?q=…&feed=latest|top|photos|videos|users`.
 - You are saving a post into notes or a vault; `?format=obsidian` emits YAML frontmatter.
-- You are building a tool call and want a JSON contract: `Accept: application/json` on any read route, described by https://x.pcstyle.dev/openapi.json, or the MCP server at https://x.pcstyle.dev/mcp.
+- You are building a tool call and want a JSON contract: `Accept: application/json` on any read route, described by https://mdfromx.com/openapi.json, or the MCP server at https://mdfromx.com/mcp.
 
 How to call it: one plain `GET`, no key, no OAuth. Send `Accept: text/markdown` for Markdown or `Accept: application/json` for JSON. Errors are RFC 9457 problem documents with a stable `code` and a `resolution` hint, so a failure tells the agent what to do next.
 
@@ -31,14 +31,14 @@ How to call it: one plain `GET`, no key, no OAuth. Send `Accept: text/markdown` 
 
 ## Read routes
 
-- Post, video, thread, or conversation: `https://x.pcstyle.dev/{handle}/status/{id}`
-- Profile and latest posts: `https://x.pcstyle.dev/{handle}`; add `with_replies=true`, `with_reposts=true`, `limit` up to 100, or `until={date}` to jump to a date
-- Bulk post history as raw JSON: `https://x.pcstyle.dev/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams, `index=true` reports what is already archived for the account
-- Search public posts or users: `https://x.pcstyle.dev/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
-- Followers: `https://x.pcstyle.dev/{handle}/followers`
-- Following: `https://x.pcstyle.dev/{handle}/following`
+- Post, video, thread, or conversation: `https://mdfromx.com/{handle}/status/{id}`
+- Profile and latest posts: `https://mdfromx.com/{handle}`; add `with_replies=true`, `with_reposts=true`, `limit` up to 100, or `until={date}` to jump to a date
+- Bulk post history as raw JSON: `https://mdfromx.com/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams, `index=true` reports what is already archived for the account
+- Search public posts or users: `https://mdfromx.com/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
+- Followers: `https://mdfromx.com/{handle}/followers`
+- Following: `https://mdfromx.com/{handle}/following`
 
-The versioned machine surface mirrors these at `https://x.pcstyle.dev/api/v1/*` and is described by https://x.pcstyle.dev/openapi.json.
+The versioned machine surface mirrors these at `https://mdfromx.com/api/v1/*` and is described by https://mdfromx.com/openapi.json.
 
 Search defaults to Latest; media aliases Photos. Users returns profiles in `users`; other feeds return `posts`. Default limit 20, maximum 100 (own-account search feeds answer 20); pages are cut exactly and cursors have no ceiling. Search takes `since` and `until`. Live search allows 5 uncached requests per minute per IP, or 30 with an API key; configured X accounts have a 40-call budget per 15 minutes. Photos, Videos, and Users require configured sessions.
 
@@ -54,37 +54,37 @@ x.md only reads public content and does not post, follow, or like on your behalf
 
 ## Documentation
 
-- [Agent skill](https://x.pcstyle.dev/docs/agents)
-- [Start reading X](https://x.pcstyle.dev/docs)
-- [MCP server](https://x.pcstyle.dev/docs/mcp)
-- [TypeScript SDK](https://x.pcstyle.dev/docs/sdk)
-- [Pagination](https://x.pcstyle.dev/docs/pagination)
-- [Posts and threads](https://x.pcstyle.dev/docs/posts)
-- [Profiles and connections](https://x.pcstyle.dev/docs/profiles)
-- [Import a post history](https://x.pcstyle.dev/docs/bulk-import)
-- [Errors, limits, and caching](https://x.pcstyle.dev/docs/reliability)
-- [Error catalogue](https://x.pcstyle.dev/docs/errors)
-- [Response formats](https://x.pcstyle.dev/docs/responses)
-- [Search X](https://x.pcstyle.dev/docs/search)
-- [Versioning and deprecation](https://x.pcstyle.dev/docs/versioning)
-- [Self-hosting](https://x.pcstyle.dev/docs/self-hosting)
+- [Agent skill](https://mdfromx.com/docs/agents)
+- [Start reading X](https://mdfromx.com/docs)
+- [MCP server](https://mdfromx.com/docs/mcp)
+- [TypeScript SDK](https://mdfromx.com/docs/sdk)
+- [Pagination](https://mdfromx.com/docs/pagination)
+- [Posts and threads](https://mdfromx.com/docs/posts)
+- [Profiles and connections](https://mdfromx.com/docs/profiles)
+- [Import a post history](https://mdfromx.com/docs/bulk-import)
+- [Errors, limits, and caching](https://mdfromx.com/docs/reliability)
+- [Error catalogue](https://mdfromx.com/docs/errors)
+- [Response formats](https://mdfromx.com/docs/responses)
+- [Search X](https://mdfromx.com/docs/search)
+- [Versioning and deprecation](https://mdfromx.com/docs/versioning)
+- [Self-hosting](https://mdfromx.com/docs/self-hosting)
 
-Full documentation: https://x.pcstyle.dev/llms-full.txt
-Docs-only index: https://x.pcstyle.dev/docs/llms.txt
+Full documentation: https://mdfromx.com/llms-full.txt
+Docs-only index: https://mdfromx.com/docs/llms.txt
 
 ## Agent resources
 
-- [OpenAPI 3.1 description](https://x.pcstyle.dev/openapi.json) — every read route, parameter, and response schema
-- [MCP server](https://x.pcstyle.dev/mcp) — the same reads as MCP tools, over Streamable HTTP
-- [MCP server card](https://x.pcstyle.dev/.well-known/mcp/server-card.json) — also at https://x.pcstyle.dev/mcp/server-card
-- [MCP registry manifest](https://x.pcstyle.dev/server.json) — name, version, and remotes
-- [Resource catalog](https://x.pcstyle.dev/.well-known/ard.json) — ARD catalog of every machine surface here
-- [API catalog](https://x.pcstyle.dev/.well-known/api-catalog) — RFC 9727 linkset
-- [Agent skill](https://x.pcstyle.dev/.well-known/agent-skills/browse-x.md) — `browse-x`, readable as Markdown: what it does, when to use it, and when not to
-- [Agent skill index](https://x.pcstyle.dev/.well-known/agent-skills/index.json) — the catalog, with the installable archive and its digest
-- [Agent landing document](https://x.pcstyle.dev/agents.md) — what to call, in order
-- [Authentication](https://x.pcstyle.dev/auth.md) — none required; what the optional bearer key does
-- [Pricing](https://x.pcstyle.dev/pricing.md) — free, with the rate limits that stand in for cost
-- [Full documentation](https://x.pcstyle.dev/llms-full.txt)
+- [OpenAPI 3.1 description](https://mdfromx.com/openapi.json) — every read route, parameter, and response schema
+- [MCP server](https://mdfromx.com/mcp) — the same reads as MCP tools, over Streamable HTTP
+- [MCP server card](https://mdfromx.com/.well-known/mcp/server-card.json) — also at https://mdfromx.com/mcp/server-card
+- [MCP registry manifest](https://mdfromx.com/server.json) — name, version, and remotes
+- [Resource catalog](https://mdfromx.com/.well-known/ard.json) — ARD catalog of every machine surface here
+- [API catalog](https://mdfromx.com/.well-known/api-catalog) — RFC 9727 linkset
+- [Agent skill](https://mdfromx.com/.well-known/agent-skills/browse-x.md) — `browse-x`, readable as Markdown: what it does, when to use it, and when not to
+- [Agent skill index](https://mdfromx.com/.well-known/agent-skills/index.json) — the catalog, with the installable archive and its digest
+- [Agent landing document](https://mdfromx.com/agents.md) — what to call, in order
+- [Authentication](https://mdfromx.com/auth.md) — none required; what the optional bearer key does
+- [Pricing](https://mdfromx.com/pricing.md) — free, with the rate limits that stand in for cost
+- [Full documentation](https://mdfromx.com/llms-full.txt)
 
-- [Build an interaction circle](https://x.pcstyle.dev/docs/x-circle)
+- [Build an interaction circle](https://mdfromx.com/docs/x-circle)

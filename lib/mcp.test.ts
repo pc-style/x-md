@@ -267,7 +267,7 @@ describe('tools/call', () => {
     vi.stubGlobal('fetch', fetchMock)
     const result = ok(await dispatch({
       jsonrpc: '2.0', id: 11, method: 'tools/call',
-      params: { name: 'submit_feedback', arguments: { message: '  search drops quoted posts  ', kind: 'bug', contextUrl: 'https://x.pcstyle.dev/docs/mcp' } },
+      params: { name: 'submit_feedback', arguments: { message: '  search drops quoted posts  ', kind: 'bug', contextUrl: 'https://mdfromx.com/docs/mcp' } },
     }))
     vi.unstubAllGlobals()
 
@@ -275,7 +275,7 @@ describe('tools/call', () => {
     expect(url).toBe('https://api.usenotra.com/v1/feedback/x-md')
     expect(init.method).toBe('POST')
     expect(new Headers(init.headers).get('authorization')).toBeNull()
-    expect(JSON.parse(String(init.body))).toEqual({ message: 'search drops quoted posts', kind: 'bug', contextUrl: 'https://x.pcstyle.dev/docs/mcp' })
+    expect(JSON.parse(String(init.body))).toEqual({ message: 'search drops quoted posts', kind: 'bug', contextUrl: 'https://mdfromx.com/docs/mcp' })
     expect(result.isError).toBe(false)
     expect(result.structuredContent).toEqual({ id: 'fb_1', deduplicated: false })
   })
@@ -306,11 +306,11 @@ describe('resources', () => {
     const resources = ok(await dispatch({ jsonrpc: '2.0', id: 11, method: 'resources/list' })).resources as typeof MCP_RESOURCES
     expect(resources.length).toBeGreaterThanOrEqual(4)
     expect(resources.map((resource) => resource.uri)).toEqual([
-      'https://x.pcstyle.dev/llms.txt',
-      'https://x.pcstyle.dev/llms-full.txt',
-      'https://x.pcstyle.dev/openapi.json',
-      'https://x.pcstyle.dev/index.md',
-      'https://x.pcstyle.dev/mcp/server-card',
+      'https://mdfromx.com/llms.txt',
+      'https://mdfromx.com/llms-full.txt',
+      'https://mdfromx.com/openapi.json',
+      'https://mdfromx.com/index.md',
+      'https://mdfromx.com/mcp/server-card',
     ])
     for (const resource of resources) {
       expect(resource.name).toMatch(/^[a-z0-9-]+$/)
@@ -323,16 +323,16 @@ describe('resources', () => {
   test('resources/read fetches a document and labels it', async () => {
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, text: async () => '# x.md\n' }))
     vi.stubGlobal('fetch', fetchMock)
-    const result = ok(await dispatch({ jsonrpc: '2.0', id: 12, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/llms.txt' } }))
-    expect(fetchMock).toHaveBeenCalledWith('https://x.pcstyle.dev/llms.txt', expect.objectContaining({ headers: { Accept: 'text/plain' } }))
-    expect((result.contents as Array<Record<string, unknown>>)[0]).toMatchObject({ uri: 'https://x.pcstyle.dev/llms.txt', mimeType: 'text/plain', text: '# x.md\n' })
+    const result = ok(await dispatch({ jsonrpc: '2.0', id: 12, method: 'resources/read', params: { uri: 'https://mdfromx.com/llms.txt' } }))
+    expect(fetchMock).toHaveBeenCalledWith('https://mdfromx.com/llms.txt', expect.objectContaining({ headers: { Accept: 'text/plain' } }))
+    expect((result.contents as Array<Record<string, unknown>>)[0]).toMatchObject({ uri: 'https://mdfromx.com/llms.txt', mimeType: 'text/plain', text: '# x.md\n' })
     vi.unstubAllGlobals()
   })
 
   test('the server card reads without a round trip', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    const result = ok(await dispatch({ jsonrpc: '2.0', id: 13, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/mcp/server-card' } }))
+    const result = ok(await dispatch({ jsonrpc: '2.0', id: 13, method: 'resources/read', params: { uri: 'https://mdfromx.com/mcp/server-card' } }))
     expect(fetchMock).not.toHaveBeenCalled()
     const contents = (result.contents as Array<{ text: string; mimeType: string }>)[0]!
     expect(contents.mimeType).toBe('application/mcp-server-card+json')
@@ -345,14 +345,14 @@ describe('resources', () => {
     // -32602 and the `data` is what tells a client which one it hit.
     const missing = failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: {} }))
     expect(missing.code).toBe(-32602)
-    const unknown = failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/nope.txt' } }))
+    const unknown = failure(await dispatch({ jsonrpc: '2.0', id: 14, method: 'resources/read', params: { uri: 'https://mdfromx.com/nope.txt' } }))
     expect(unknown.code).toBe(MCP_RESOURCE_NOT_FOUND)
     expect((unknown.data as { available?: unknown }).available).toBeDefined()
   })
 
   test('an unreachable document fails loudly instead of returning empty content', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 503, text: async () => '' })))
-    const error = failure(await dispatch({ jsonrpc: '2.0', id: 15, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/openapi.json' } }))
+    const error = failure(await dispatch({ jsonrpc: '2.0', id: 15, method: 'resources/read', params: { uri: 'https://mdfromx.com/openapi.json' } }))
     expect(error.code).toBe(-32603)
     vi.unstubAllGlobals()
   })
@@ -365,7 +365,7 @@ describe('discovery documents', () => {
     expect(String(manifest.name)).toMatch(/^[a-zA-Z0-9.-]+\/[a-zA-Z0-9._-]+$/)
     expect(String(manifest.description).length).toBeLessThanOrEqual(100)
     expect(String(manifest.title).length).toBeLessThanOrEqual(100)
-    expect(manifest.remotes).toEqual([{ type: 'streamable-http', url: 'https://x.pcstyle.dev/mcp' }])
+    expect(manifest.remotes).toEqual([{ type: 'streamable-http', url: 'https://mdfromx.com/mcp' }])
     expect(manifest.repository).toEqual({ source: 'github', url: 'https://github.com/pc-style/x-md' })
   })
 
@@ -381,8 +381,8 @@ describe('discovery documents', () => {
     const card = serverCard()
     expect(card.title).toBe('x.md')
     expect(String(card.description).length).toBeGreaterThan(20)
-    expect(card.icons).toEqual([{ src: 'https://x.pcstyle.dev/logo.svg', mimeType: 'image/svg+xml', sizes: ['any'] }])
-    expect(card.serverUrl).toBe('https://x.pcstyle.dev/mcp')
+    expect(card.icons).toEqual([{ src: 'https://mdfromx.com/logo.svg', mimeType: 'image/svg+xml', sizes: ['any'] }])
+    expect(card.serverUrl).toBe('https://mdfromx.com/mcp')
     expect(card.transport).toBe('streamable-http')
     expect((card.tools as Array<{ name: string }>).map((tool) => tool.name)).toEqual(MCP_TOOLS.map((tool) => tool.name))
     expect(JSON.parse(JSON.stringify(card))).toEqual(card)
@@ -401,9 +401,9 @@ describe('discovery documents', () => {
     const listed = ok(await dispatch({ jsonrpc: '2.0', id: 31, method: 'resources/list' }, { site })).resources as Array<{ uri: string }>
     expect(listed.map((resource) => resource.uri)).toContain(`${site}/llms.txt`)
     // A URI copied from the canonical card still resolves on the parallel domain.
-    const read = ok(await dispatch({ jsonrpc: '2.0', id: 32, method: 'resources/read', params: { uri: 'https://x.pcstyle.dev/mcp/server-card' } }, { site }))
+    const read = ok(await dispatch({ jsonrpc: '2.0', id: 32, method: 'resources/read', params: { uri: 'https://mdfromx.com/mcp/server-card' } }, { site }))
     const contents = (read.contents as Array<{ uri: string; text: string }>)[0]
-    expect(contents.uri).toBe('https://x.pcstyle.dev/mcp/server-card')
+    expect(contents.uri).toBe('https://mdfromx.com/mcp/server-card')
     expect(JSON.parse(contents.text)).toEqual(serverCard(site))
     const init = ok(await dispatch({ jsonrpc: '2.0', id: 33, method: 'initialize', params: { protocolVersion: '2025-06-18' } }, { site }))
     expect((init.serverInfo as { websiteUrl: string }).websiteUrl).toBe(`${site}/`)
@@ -444,7 +444,7 @@ describe('the HTTP transport', () => {
     expect(held.res.statusCode).toBe(200)
     expect(held.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
     const manifest = JSON.parse(held.body())
-    expect(manifest).toMatchObject({ name: MCP_SERVER_NAME, serverUrl: 'https://x.pcstyle.dev/mcp', transport: 'streamable-http' })
+    expect(manifest).toMatchObject({ name: MCP_SERVER_NAME, serverUrl: 'https://mdfromx.com/mcp', transport: 'streamable-http' })
     expect(manifest.protocolVersions).toContain(MCP_MODERN_PROTOCOL)
     expect(manifest.tools).toHaveLength(MCP_TOOLS.length)
   })
@@ -644,7 +644,7 @@ describe('the 2026-07-28 routing headers', () => {
     expect(validateModernHeaders({ protocolVersion: MCP_MODERN_PROTOCOL, method: 'tools/call', name: 'x_md_get_post' }, call)).toBeNull()
     expect(validateModernHeaders({ protocolVersion: MCP_MODERN_PROTOCOL, method: 'tools/call', name: 'other' }, call)?.code).toBe(-32020)
 
-    const uri = 'https://x.pcstyle.dev/llms.txt'
+    const uri = 'https://mdfromx.com/llms.txt'
     const read = { jsonrpc: '2.0', id: 5, method: 'resources/read', params: { ...modernParams, uri } }
     expect(validateModernHeaders({ protocolVersion: MCP_MODERN_PROTOCOL, method: 'resources/read', name: uri }, read)).toBeNull()
   })

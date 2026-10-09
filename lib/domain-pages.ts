@@ -1,10 +1,10 @@
 export const PARALLEL_HOST = 'mdfromx.com'
-/** Older service URLs accepted as converter input on every host. */
+/** Service URLs accepted as converter input on every host. */
 export const PARALLEL_HOSTS: ReadonlySet<string> = new Set([PARALLEL_HOST, `fast.${PARALLEL_HOST}`])
 /** Adapt authored service references; third-party URLs keep their original hosts. */
 export function domainText(source: string, origin: string): string {
   const { host } = new URL(origin)
-  return source.replace(/(?<![a-zA-Z0-9_.-])(https:\/\/)?(?:x\.pcstyle\.dev|(?:fast\.)?mdfromx\.com)(?![a-zA-Z0-9_-]|\.[a-zA-Z0-9_-])/g,
+  return source.replace(/(?<![a-zA-Z0-9_.-])(https:\/\/)?(?:fast\.)?mdfromx\.com(?![a-zA-Z0-9_-]|\.[a-zA-Z0-9_-])/g,
     (_match, scheme) => scheme ? origin : host)
 }
 

@@ -8,7 +8,7 @@ export default defineConfig({
   content: { root: 'docs' },
   deployment: {
     output: 'static',
-    site: 'https://x.pcstyle.dev',
+    site: 'https://mdfromx.com',
   },
   theme: {
     accent: 'green',
@@ -63,7 +63,7 @@ export default defineConfig({
         { name: 'Satoshi', src: 'docs-assets/fonts/Satoshi-Regular.otf', weight: 400 },
       ],
       logo: 'public/logo.svg',
-      site: 'x.pcstyle.dev/docs',
+      site: 'mdfromx.com/docs',
       palette: {
         background: '#f7f6f2',
         foreground: '#1a1915',

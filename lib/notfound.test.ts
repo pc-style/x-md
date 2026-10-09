@@ -24,7 +24,7 @@ function exchange(options: { method?: string; url?: string; accept?: string; que
   req.method = options.method ?? 'GET'
   req.url = options.url ?? '/api/notfound'
   req.query = options.query ?? {}
-  req.headers = { host: 'x.pcstyle.dev', 'x-forwarded-proto': 'https', accept: options.accept ?? '*/*' }
+  req.headers = { host: 'mdfromx.com', 'x-forwarded-proto': 'https', accept: options.accept ?? '*/*' }
   const res = new ServerResponse(req) as any
   res.body = undefined
   res.status = (code: number) => { res.statusCode = code; return res }
@@ -34,7 +34,7 @@ function exchange(options: { method?: string; url?: string; accept?: string; que
   return { req, res }
 }
 
-const RECOVERY = ['https://x.pcstyle.dev/', '/docs', '/sitemap.xml', '/llms.txt', '/openapi.json']
+const RECOVERY = ['https://mdfromx.com/', '/docs', '/sitemap.xml', '/llms.txt', '/openapi.json']
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -62,11 +62,11 @@ describe('recovery payloads', () => {
   })
 
   test('the json body is an RFC 9457 problem document with recovery links', () => {
-    const problem = notFoundProblem('https://x.pcstyle.dev/nope', '/nope')
+    const problem = notFoundProblem('https://mdfromx.com/nope', '/nope')
     expect(problem.status).toBe(404)
     expect(problem.code).toBe('route_not_found')
     expect(problem.detail).toContain('/nope')
-    expect(problem.links?.map((link) => link.href)).toContain('https://x.pcstyle.dev/llms.txt')
+    expect(problem.links?.map((link) => link.href)).toContain('https://mdfromx.com/llms.txt')
   })
 
   test('a resource-aware detail replaces the provider\'s post-shaped message', () => {
@@ -104,7 +104,7 @@ describe('negotiated 404', () => {
     ['', 'text/markdown'],
     ['image/png', 'text/markdown'],
   ])('Accept %s stays 404 and answers %s', (accept, contentType) => {
-    const response = notFoundResponse({ instance: 'https://x.pcstyle.dev/nope', accept, path: '/nope' })
+    const response = notFoundResponse({ instance: 'https://mdfromx.com/nope', accept, path: '/nope' })
     expect(response.status).toBe(404)
     expect(response.headers['Content-Type']).toContain(contentType)
     expect(response.headers.Vary).toBe('Accept')
@@ -113,7 +113,7 @@ describe('negotiated 404', () => {
   })
 
   test('a caller with no preference on an /api path gets problem+json', () => {
-    const response = notFoundResponse({ instance: 'https://x.pcstyle.dev/api/v1/nope', accept: '*/*', path: '/api/v1/nope' })
+    const response = notFoundResponse({ instance: 'https://mdfromx.com/api/v1/nope', accept: '*/*', path: '/api/v1/nope' })
     expect(response.headers['Content-Type']).toContain('application/problem+json')
     expect(JSON.parse(response.body).code).toBe('route_not_found')
   })
@@ -123,8 +123,6 @@ describe('negotiated 404', () => {
     for (const accept of ['text/markdown', 'text/html', 'application/json']) {
       const { body } = notFoundResponse({ instance, accept, path: '/nope' })
       expect(body).toContain('https://mdfromx.com/llms.txt')
-      // The problem `type` stays a canonical identifier; only the recovery links move.
-      if (accept !== 'application/json') expect(body).not.toContain('x.pcstyle.dev')
     }
     expect(notFoundProblem(instance, '/nope').links?.map((link) => link.href)).toContain('https://mdfromx.com/api')
   })
@@ -146,7 +144,7 @@ describe('the catch-all handler', () => {
     const { req, res } = exchange({ accept: 'application/json', url: '/api/notfound?path=/api/v1/nope', query: { path: '/api/v1/nope' } })
     await notFoundHandler(req, res)
     const problem = JSON.parse(res.body)
-    expect(problem.instance).toBe('https://x.pcstyle.dev/api/v1/nope')
+    expect(problem.instance).toBe('https://mdfromx.com/api/v1/nope')
     expect(problem.detail).toContain('/api/v1/nope')
   })
 

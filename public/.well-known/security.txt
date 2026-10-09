@@ -1,4 +1,4 @@
-# Security contact for x.md (https://x.pcstyle.dev), per RFC 9116.
+# Security contact for x.md (https://mdfromx.com), per RFC 9116.
 # x.md is a free, read-only, MIT-licensed project maintained by one developer.
 # Report privately through GitHub, or by email if GitHub is not an option.
 # Do not include API keys, private-account
@@ -8,7 +8,7 @@ Contact: https://github.com/pc-style/x-md/security/advisories/new
 Contact: mailto:me@pcstyle.dev
 Expires: 2027-09-01T00:00:00.000Z
 Preferred-Languages: en
-Canonical: https://x.pcstyle.dev/.well-known/security.txt
+Canonical: https://mdfromx.com/.well-known/security.txt
 Policy: https://github.com/pc-style/x-md/blob/main/SECURITY.md
 Acknowledgments: https://github.com/pc-style/x-md/security/advisories
 

@@ -16,9 +16,9 @@ describe('requestOrigin', () => {
   test('uses the request host for known public and local hosts', () => {
     expect(
       requestOrigin({
-        headers: { 'x-forwarded-proto': 'https', host: 'x.pcstyle.dev' },
+        headers: { 'x-forwarded-proto': 'https', host: 'mdfromx.com' },
       }),
-    ).toBe('https://x.pcstyle.dev')
+    ).toBe('https://mdfromx.com')
     expect(
       requestOrigin({
         headers: { host: 'localhost:5173' },
@@ -30,15 +30,15 @@ describe('requestOrigin', () => {
   test('ignores a forged forwarded host', () => {
     expect(
       requestOrigin({
-        headers: { 'x-forwarded-host': 'evil.example', host: 'x.pcstyle.dev' },
+        headers: { 'x-forwarded-host': 'evil.example', host: 'mdfromx.com' },
       }),
-    ).toBe('https://x.pcstyle.dev')
+    ).toBe('https://mdfromx.com')
   })
 
   test('falls back to the hosted origin', () => {
-    expect(requestOrigin({ headers: {} })).toBe('https://x.pcstyle.dev')
+    expect(requestOrigin({ headers: {} })).toBe('https://mdfromx.com')
     for (const host of ['evil.example/path', 'user@evil.example', 'evil.example,other.example', 'evil.example\"<>', 'host:99999']) {
-      expect(requestOrigin({ headers: { host } })).toBe('https://x.pcstyle.dev')
+      expect(requestOrigin({ headers: { host } })).toBe('https://mdfromx.com')
     }
   })
 })

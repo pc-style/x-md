@@ -13,7 +13,7 @@ gsap.registerPlugin(ScrollTrigger)
 const app = document.querySelector<HTMLDivElement>('#app')!
 
 const HOSTED_HOSTS = new Set([
-  'x.pcstyle.dev',
+  'mdfromx.com',
   'mdfromx.com',
   typeof window !== 'undefined' ? window.location.hostname.replace(/^www\./, '') : '',
 ])

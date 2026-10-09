@@ -11,7 +11,7 @@
 import { problemDetails, problemMediaType, type ProblemDetails, type ProblemLink } from './apierror.js'
 import { CONTENT_TYPE, selectRepresentation, type Repr } from './negotiate.js'
 
-const SITE = 'https://x.pcstyle.dev'
+const SITE = 'https://mdfromx.com'
 
 /** Mirrors the link set blume already builds into /404.md and /404.json, on the origin the request used. */
 export function notFoundLinks(origin: string = SITE): ProblemLink[] {

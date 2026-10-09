@@ -7,7 +7,7 @@ sidebar:
   icon: package
 ---
 
-`mdfromx` is a typed client for the `/api/v1` post, profile and search routes. (`/api/v1/oembed` is left out: it only serves x.md's own link previews.) Its types are generated from the [OpenAPI document](https://x.pcstyle.dev/openapi.json), so they match the API at the version you installed. It comes in two flavors in one package:
+`mdfromx` is a typed client for the `/api/v1` post, profile and search routes. (`/api/v1/oembed` is left out: it only serves x.md's own link previews.) Its types are generated from the [OpenAPI document](https://mdfromx.com/openapi.json), so they match the API at the version you installed. It comes in two flavors in one package:
 
 - `mdfromx` runs on `fetch` with no runtime dependencies, in Node 18+, Bun, Deno, browsers and Workers.
 - `mdfromx/effect` is an Effect service whose calls return `Effect` and `Stream`, with one tagged error per problem code and every response decoded with Effect Schema.

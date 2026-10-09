@@ -154,7 +154,7 @@ export const FAQ: { question: string; answer: string }[] = [
   {
     question: 'How do I point an agent at it?',
     answer:
-      'Three ways: tell the agent in its prompt to swap x.com for x.pcstyle.dev, install the browse-x skill, or call the documented HTTP API described at /docs, /openapi.json, and /mcp.',
+      'Three ways: tell the agent in its prompt to swap x.com for mdfromx.com, install the browse-x skill, or call the documented HTTP API described at /docs, /openapi.json, and /mcp.',
   },
 ]
 
@@ -184,7 +184,7 @@ export function landingHtml(): string {
           </h1>
           <p class="mt-7 max-w-[46ch] text-[16px] leading-[1.75] text-ink-2 sm:text-[17px]">
             Treat them that way. Swap <code class="code-chip">x.com</code> for
-            <code class="code-chip">x.pcstyle.dev</code> in any public post URL and the
+            <code class="code-chip">mdfromx.com</code> in any public post URL and the
             post, its thread, or the full article comes back as Markdown your agent can read.
           </p>
 
@@ -219,7 +219,7 @@ export function landingHtml(): string {
         <div class="lg:col-span-5 lg:self-end" data-hero-card>
           <div class="float-card lg:-mr-6 lg:-mb-10">
             <div class="float-card-bar">
-              <span class="truncate">x.pcstyle.dev${EXAMPLE_PATH}</span>
+              <span class="truncate">mdfromx.com${EXAMPLE_PATH}</span>
               <span class="pane-tag pane-tag-good">text/markdown</span>
             </div>
             <pre>${heroCard}</pre>
@@ -252,7 +252,7 @@ export function landingHtml(): string {
           </article>
           <article class="bento-card bento-b bento-dark" data-rise-card>
             <div class="flex items-center justify-between gap-3">
-              <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl x.pcstyle.dev${EXAMPLE_PATH}</p>
+              <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl mdfromx.com${EXAMPLE_PATH}</p>
               <span class="pane-tag pane-tag-good shrink-0">markdown</span>
             </div>
             <pre class="mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre" style="color: var(--color-code-ink)">${mdOutput}</pre>
@@ -349,7 +349,7 @@ export function landingHtml(): string {
             <div id="agent-panel-prompt" class="acc-body">
               <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
                 One line is enough: <span class="font-medium text-ink">"To read an X post, swap
-                x.com for x.pcstyle.dev."</span> Every agent that can fetch a URL now reads tweets.
+                x.com for mdfromx.com."</span> Every agent that can fetch a URL now reads tweets.
               </p>
             </div>
           </div>

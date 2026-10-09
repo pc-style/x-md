@@ -1,76 +1,76 @@
 {
   "linkset": [
     {
-      "anchor": "https://x.pcstyle.dev/.well-known/api-catalog",
+      "anchor": "https://mdfromx.com/.well-known/api-catalog",
       "item": [
         {
-          "href": "https://x.pcstyle.dev/api",
+          "href": "https://mdfromx.com/api",
           "type": "application/json",
           "title": "x.md read API"
         },
         {
-          "href": "https://x.pcstyle.dev/mcp",
+          "href": "https://mdfromx.com/mcp",
           "type": "application/json",
           "title": "x.md MCP server"
         },
         {
-          "href": "https://x.pcstyle.dev/api/v1/oembed",
+          "href": "https://mdfromx.com/api/v1/oembed",
           "type": "application/json+oembed",
           "title": "x.md oEmbed provider"
         }
       ]
     },
     {
-      "anchor": "https://x.pcstyle.dev/api",
+      "anchor": "https://mdfromx.com/api",
       "service-desc": [
         {
-          "href": "https://x.pcstyle.dev/openapi.json",
+          "href": "https://mdfromx.com/openapi.json",
           "type": "application/vnd.oai.openapi+json"
         }
       ],
       "service-doc": [
         {
-          "href": "https://x.pcstyle.dev/docs",
+          "href": "https://mdfromx.com/docs",
           "type": "text/html"
         },
         {
-          "href": "https://x.pcstyle.dev/llms.txt",
+          "href": "https://mdfromx.com/llms.txt",
           "type": "text/plain"
         }
       ],
       "describedby": [
         {
-          "href": "https://x.pcstyle.dev/.well-known/ard.json",
+          "href": "https://mdfromx.com/.well-known/ard.json",
           "type": "application/json"
         }
       ]
     },
     {
-      "anchor": "https://x.pcstyle.dev/mcp",
+      "anchor": "https://mdfromx.com/mcp",
       "service-desc": [
         {
-          "href": "https://x.pcstyle.dev/.well-known/mcp/server-card.json",
+          "href": "https://mdfromx.com/.well-known/mcp/server-card.json",
           "type": "application/mcp-server-card+json"
         }
       ],
       "service-doc": [
         {
-          "href": "https://x.pcstyle.dev/docs/agents",
+          "href": "https://mdfromx.com/docs/agents",
           "type": "text/html"
         }
       ]
     },
     {
-      "anchor": "https://x.pcstyle.dev/api/v1/oembed",
+      "anchor": "https://mdfromx.com/api/v1/oembed",
       "service-desc": [
         {
-          "href": "https://x.pcstyle.dev/openapi.json",
+          "href": "https://mdfromx.com/openapi.json",
           "type": "application/vnd.oai.openapi+json"
         }
       ],
       "service-doc": [
         {
-          "href": "https://x.pcstyle.dev/docs/responses",
+          "href": "https://mdfromx.com/docs/responses",
           "type": "text/html"
         }
       ]
