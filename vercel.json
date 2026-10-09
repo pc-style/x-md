@@ -215,7 +215,7 @@
       ]
     },
     {
-      "source": "/(server.json|.well-known/mcp/server-card.json|.well-known/ai-catalog.json)",
+      "source": "/(server.json|.well-known/mcp/server-card.json|.well-known/ai-catalog.json|.well-known/integrations.json|.well-known/agent-card.json)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",

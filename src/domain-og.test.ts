@@ -23,7 +23,8 @@ describe('host-aware pages and social cards', () => {
 
   test.each(hosts)('routes %s docs, discovery and images through the host renderer', (host) => {
     const response = (path: string, accept = 'text/html') => middleware(new Request(`https://${host}${path}`, { headers: { Accept: accept } }))
-    for (const path of ['/', '/docs', '/docs/posts', '/openapi.json', '/og.png', '/og/docs/posts.png', '/feeds/x-md.jsonl']) {
+    for (const path of ['/', '/docs', '/docs/posts', '/openapi.json', '/og.png', '/og/docs/posts.png', '/feeds/x-md.jsonl',
+      '/.well-known/integrations.json', '/.well-known/agent-card.json']) {
       const target = new URL(response(path).headers.get('x-middleware-rewrite')!)
       expect(target.pathname).toBe('/api/site')
       expect(target.searchParams.get('path')).toBe(path)
@@ -35,6 +36,19 @@ describe('host-aware pages and social cards', () => {
     for (const path of ['/jack/status/20', '/api/v1/posts', '/assets/main.js', '/_astro/main.js']) {
       expect(response(path).headers.get('x-middleware-rewrite')).toBeNull()
     }
+  })
+
+  test.each(hosts)('declares %s, not the default host, in integrations.json and the agent card', (host) => {
+    const read = (file: string) => JSON.parse(domainText(readFileSync(new URL(`../public/.well-known/${file}`, import.meta.url), 'utf8'), `https://${host}`))
+    const integrations = read('integrations.json')
+    expect(JSON.stringify(integrations)).not.toContain('x.pcstyle.dev')
+    for (const surface of integrations.surfaces) {
+      expect(surface.basis.source).toBe(`https://${host}/.well-known/integrations.json`)
+      expect(new URL(surface.url).host).toBe(host)
+    }
+    const card = read('agent-card.json')
+    expect(JSON.stringify(card)).not.toContain('x.pcstyle.dev')
+    expect(card.url).toBe(`https://${host}/mcp`)
   })
 
   test('maps only safe public files', () => {
