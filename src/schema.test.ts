@@ -121,9 +121,13 @@ describe('homepage JSON-LD', () => {
   test('the read-only API node points at the published descriptions', () => {
     const api = nodeOf(graph, 'WebAPI')
     expect(api.documentation).toEqual(
-      expect.arrayContaining(['https://x.pcstyle.dev/docs', 'https://x.pcstyle.dev/openapi.json']),
+      expect.arrayContaining(['https://mdfromx.com/docs', 'https://mdfromx.com/openapi.json']),
     )
-    expect(api.termsOfService).toBe('https://x.pcstyle.dev/terms')
+    expect(api.termsOfService).toBe('https://mdfromx.com/terms')
+  })
+
+  test('shows mdfromx.com in the styled terminal comparison', () => {
+    expect(landingHtml()).toContain('$ curl mdfromx.com/trq212/status/2052809885763747935')
   })
 
   test('every @id reference resolves inside the graph', () => {
