@@ -1,9 +1,10 @@
 // Blume exports TypeScript source. Bundle its renderer before Vercel traces the
 // function, so package exports cannot point at .ts files Vercel renamed to .js.
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const result = await Bun.build({
-  entrypoints: [import.meta.resolve('blume/og').replace('file://', '')],
+  entrypoints: [fileURLToPath(import.meta.resolve('blume/og'))],
   outdir: resolve(import.meta.dirname, '../.cache'),
   naming: 'blume-og.mjs',
   target: 'node',
