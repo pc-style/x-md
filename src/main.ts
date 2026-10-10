@@ -1,4 +1,3 @@
-import './style.css'
 import { captureLandingEvent } from './posthog'
 import { inject } from '@vercel/analytics'
 import { gsap } from 'gsap'
