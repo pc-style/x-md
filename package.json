@@ -44,11 +44,11 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.4",
-    "@vercel/build-utils": "14.14.0",
+    "@vercel/build-utils": "14.20.0",
     "@vercel/node": "23.0.0",
     "blume": "^1.7.0",
     "typescript": "~7.0.2",
-    "vite": "^8.3.2",
+    "vite": "^8.3.4",
     "vitest": "^5.0.3"
   },
   "dependencies": {
@@ -56,9 +56,9 @@
     "@the-convocation/twitter-scraper": "^0.22.3",
     "@usenotra/geo": "^0.5.0",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/functions": "^3.9.9",
+    "@vercel/functions": "^3.9.11",
     "gsap": "^3.15.0",
-    "posthog-js": "^1.435.6",
+    "posthog-js": "^1.438.5",
     "tailwindcss": "^4.3.3",
     "zod": "^4.6.5"
   },
