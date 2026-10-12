@@ -19,6 +19,6 @@ before pushing). This file only adds what is specific to working here with Claud
   inside a JSON body corrupts legitimate text, and `res.json()` would clobber the `problem+json` type the RFC
   9457 error handling depends on.
 - Scoring work is measured against the scorer's own data, not guesswork: `https://ora.ai/api/checks` lists all
-  125 checks with their criteria and weights, and `https://ora.ai/api/score/x.pcstyle.dev` gives the per-check
-  result with the exact evidence string. `npx is-agentic x.pcstyle.dev` reads the latest *stored* report and
-  cannot force a re-scan — trigger one at <https://is-agentic.com/scan/x.pcstyle.dev>.
+  125 checks with their criteria and weights, and `https://ora.ai/api/score/mdfromx.com` gives the per-check
+  result with the exact evidence string. `npx is-agentic mdfromx.com` reads the latest *stored* report and
+  cannot force a re-scan — trigger one at <https://is-agentic.com/scan/mdfromx.com>.

@@ -8,22 +8,22 @@ sidebar:
 
 ## Read a post
 
-`GET /{handle}/status/{id}` — the permalink form. Swap `x.com` for `x.pcstyle.dev` and keep the path.
+`GET /{handle}/status/{id}` — the permalink form. Swap `x.com` for `mdfromx.com` and keep the path.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?thread=off'
+curl -sS 'https://mdfromx.com/trq212/status/2052809885763747935?thread=off'
 ```
 
 `GET /api/v1/posts` — the same reader on the [versioned surface](/versioning), for a client that holds a URL rather than a path. Identify the post either with `url`, or with the `handle` and `id` pair.
 
 ```bash
 # By URL
-curl -sS -G 'https://x.pcstyle.dev/api/v1/posts' \
+curl -sS -G 'https://mdfromx.com/api/v1/posts' \
   --data-urlencode 'url=https://x.com/trq212/status/2052809885763747935' \
   --data-urlencode 'thread=off'
 
 # Or by handle and id
-curl -sS 'https://x.pcstyle.dev/api/v1/posts?handle=trq212&id=2052809885763747935'
+curl -sS 'https://mdfromx.com/api/v1/posts?handle=trq212&id=2052809885763747935'
 ```
 
 Both forms take the same options and return the same body. Without `thread=off`, the default response includes available parents, the author's thread, and top replies. Each returned post links to its X source.
@@ -34,10 +34,10 @@ Media permalinks resolve to the same post: `/{handle}/status/{id}/photo/1` and `
 
 ```bash
 # Author thread, capped at 20 posts
-curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?context=thread&thread=20'
+curl -sS 'https://mdfromx.com/trq212/status/2052809885763747935?context=thread&thread=20'
 
 # Expanded details, without unrelated replies
-curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?full=true&replies=off'
+curl -sS 'https://mdfromx.com/trq212/status/2052809885763747935?full=true&replies=off'
 ```
 
 | Parameter | Default | Values |
@@ -69,7 +69,7 @@ Missing or gated context can produce a shorter thread. Inspect JSON `warnings` b
 ## Save to Obsidian
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935?format=obsidian' > post.md
+curl -sS 'https://mdfromx.com/trq212/status/2052809885763747935?format=obsidian' > post.md
 ```
 
 Obsidian output includes frontmatter and expanded details regardless of `full`.

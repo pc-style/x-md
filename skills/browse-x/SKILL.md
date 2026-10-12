@@ -3,12 +3,12 @@ name: browse-x
 description: "Reads public X (formerly Twitter) posts, threads, X Articles, profiles, followers, following, and search results as Markdown or JSON, with no X account and no API key. Use when a URL points at x.com, twitter.com, or t.co; when the user mentions a tweet, an X post, a thread, or an X profile; when you need an account's recent posts or connections; or when you need X search results as structured data. Read-only: it never posts, replies, follows, or reads protected accounts, direct messages, or Lists."
 allowed-tools:
   - Bash(bun scripts/browse-x.ts *)
-  - Bash(curl *x.pcstyle.dev*)
+  - Bash(curl *mdfromx.com*)
 ---
 
 # browse x
 
-public content through x.pcstyle.dev. no X login needed. run the helper from this skill's directory:
+public content through mdfromx.com. no X login needed. run the helper from this skill's directory:
 
 ## when to use this
 

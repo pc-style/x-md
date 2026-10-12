@@ -29,7 +29,7 @@ Anything that is not a positive integer — a negative number, `0`, or text — 
 Pass `nextCursor` back as `cursor` with the same route, query, feed, and options:
 
 ```js
-const url = new URL('https://x.pcstyle.dev/api/v1/search')
+const url = new URL('https://mdfromx.com/api/v1/search')
 url.search = new URLSearchParams({
   q: 'typescript', feed: 'latest', format: 'json', limit: '20'
 }).toString()
@@ -63,7 +63,7 @@ Markdown responses carry the same thing as a **Continue** link at the end of the
 ## Request a numbered page
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/search?q=typescript&feed=latest&page=2'
+curl -sS 'https://mdfromx.com/api/v1/search?q=typescript&feed=latest&page=2'
 ```
 
 Numbered pagination walks every preceding upstream page to reach the one you asked for, so `page=5` costs five upstream calls where a cursor costs one. It is slower, spends more of your [search allowance](/reliability#rate-limits), and stops at `page=10`. Use it for a bounded scan, or when a cursor cannot be carried across process boundaries; use cursors for everything else.
@@ -77,4 +77,4 @@ A supplied `cursor` takes precedence: `page` is ignored when both are sent.
 
 ## Machine-readable
 
-[`/openapi.json`](https://x.pcstyle.dev/openapi.json) describes the same contract twice: as `cursor`, `page`, and `limit` parameters with their bounds on every list operation, and as an `x-pagination` object naming the request parameters, the `nextCursor` response field, the limits, and the termination rule in one place.
+[`/openapi.json`](https://mdfromx.com/openapi.json) describes the same contract twice: as `cursor`, `page`, and `limit` parameters with their bounds on every list operation, and as an `x-pagination` object naming the request parameters, the `nextCursor` response field, the limits, and the termination rule in one place.

@@ -1,7 +1,7 @@
 ---
 title: "x.md pricing"
 description: "x.md is free. There is no paid tier, no metering, and no billing. Rate limits are the only cost dimension; this file states them in a form an agent can compare."
-canonical: https://x.pcstyle.dev/pricing.md
+canonical: https://mdfromx.com/pricing.md
 last-updated: 2026-09-08
 currency: USD
 price: 0
@@ -19,7 +19,7 @@ allowance that keeps a free service usable for everyone. Compare on limits, not
 on cost.
 
 Currency: USD. Last updated: 2026-09-08. Canonical source:
-<https://x.pcstyle.dev/pricing.md>.
+<https://mdfromx.com/pricing.md>.
 
 ## Plans
 
@@ -56,7 +56,7 @@ you need any of those, self-host: `git clone https://github.com/pc-style/x-md`.
   therefore no cancellation or refund — there is nothing to cancel or refund.
 - **Commitment:** none, in both directions. The hosted service is provided as
   is, without warranty, and may change or stop. See
-  [/terms](https://x.pcstyle.dev/terms).
+  [/terms](https://mdfromx.com/terms).
 - **Licence:** MIT for the source. The X content x.md renders belongs to its
   authors and to X; x.md grants you no rights over it.
 - **Status:** beta. Routes and output fields can change as upstream X providers
@@ -65,26 +65,26 @@ you need any of those, self-host: `git clone https://github.com/pc-style/x-md`.
 ## Procurement
 
 - Security review: [SECURITY.md](https://github.com/pc-style/x-md/blob/main/SECURITY.md)
-  and [/.well-known/security.txt](https://x.pcstyle.dev/.well-known/security.txt).
-- Data handling: [/privacy](https://x.pcstyle.dev/privacy).
+  and [/.well-known/security.txt](https://mdfromx.com/.well-known/security.txt).
+- Data handling: [/privacy](https://mdfromx.com/privacy).
 - SLA, DPA, vendor forms, uptime credits: not offered. This is a free
   best-effort project, not a vendor.
 
 ## Action path
 
-1. Just call it. `curl https://x.pcstyle.dev/{handle}/status/{id}` — no signup,
-   no key. See [/auth.md](https://x.pcstyle.dev/auth.md).
+1. Just call it. `curl https://mdfromx.com/{handle}/status/{id}` — no signup,
+   no key. See [/auth.md](https://mdfromx.com/auth.md).
 2. Hitting `429` repeatedly on legitimate interactive use? Open an issue at
    <https://github.com/pc-style/x-md/issues> describing the workload and ask
    about a key.
 3. Need capacity, privacy, or control beyond that? Self-host; the guide is at
-   [/docs/self-hosting](https://x.pcstyle.dev/docs/self-hosting).
+   [/docs/self-hosting](https://mdfromx.com/docs/self-hosting).
 
 ## Change policy
 
 Pricing is $0 and there is no mechanism to charge, so there is no price to
 change. Rate limits can change with upstream provider capacity; the current
-values live here, in [/llms.txt](https://x.pcstyle.dev/llms.txt), and in
-[/docs/reliability](https://x.pcstyle.dev/docs/reliability), and changes are
+values live here, in [/llms.txt](https://mdfromx.com/llms.txt), and in
+[/docs/reliability](https://mdfromx.com/docs/reliability), and changes are
 recorded in the repository
 [CHANGELOG](https://github.com/pc-style/x-md/blob/main/CHANGELOG.md).

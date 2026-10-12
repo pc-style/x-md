@@ -56,7 +56,7 @@ export function aboutHtml(): string {
         <p>
           x.md is a small HTTP service with one convention at its centre: keep the path, change the host.
           Take any public post URL on <strong>x.com</strong>, replace the host with
-          <strong>x.pcstyle.dev</strong>, and the same path answers with the post as Markdown instead of a
+          <strong>mdfromx.com</strong>, and the same path answers with the post as Markdown instead of a
           web application. The reply chain comes back with it, quoted posts are nested inline, images and
           videos survive as links, and long-form X Articles convert with their headings and lists intact.
           The same host swap works for profiles, post search, followers, and following, and every route can
@@ -308,7 +308,7 @@ export function termsHtml(): string {
     page: 'terms',
     eyebrow: 'Terms',
     heading: 'Free, as-is, read-only.',
-    lede: `Plain-language terms for using the hosted service at x.pcstyle.dev. Using it means you accept
+    lede: `Plain-language terms for using the hosted service at mdfromx.com. Using it means you accept
       them. They are short because the service is small: it reads content that X already publishes and
       hands it back as text.`,
     body: `

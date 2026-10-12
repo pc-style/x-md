@@ -11,7 +11,7 @@ body:
     attributes:
       label: Request
       description: The exact URL or command, with the handle or query. Redact anything private.
-      placeholder: curl -sS 'https://x.pcstyle.dev/handle/status/123?full=true'
+      placeholder: curl -sS 'https://mdfromx.com/handle/status/123?full=true'
     validations:
       required: true
   - type: dropdown
@@ -19,7 +19,7 @@ body:
     attributes:
       label: Where
       options:
-        - Hosted API (x.pcstyle.dev)
+        - Hosted API (mdfromx.com)
         - Self-hosted
         - browse-x skill
     validations:

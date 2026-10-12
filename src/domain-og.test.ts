@@ -7,21 +7,26 @@ const hosts = ['mdfromx.com', 'fast.mdfromx.com', 'www.elon-dont-c-and-d-me-plz.
 
 describe('host-aware pages and social cards', () => {
   test('leaves unrelated hostnames intact and handles sentence punctuation', () => {
-    const source = 'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path mdfromx.com.'
+    const source = 'https://notmdfromx.com/path https://mdfromx.com.evil.example https://other.mdfromx.com/path mdfromx.com.'
     expect(domainText(source, 'https://future.example')).toBe(
-      'https://notmdfromx.com/path https://x.pcstyle.dev.evil.example https://other.mdfromx.com/path future.example.',
+      'https://notmdfromx.com/path https://mdfromx.com.evil.example https://other.mdfromx.com/path future.example.',
     )
   })
+  test('adapts both legacy and current service references', () => {
+    expect(domainText('https://x.pcstyle.dev/docs https://mdfromx.com/docs', 'https://future.example')).toBe(
+      'https://future.example/docs https://future.example/docs',
+    )
+  })
+
   test.each(hosts)('uses %s throughout raw HTML metadata and copy', (host) => {
     const original = readFileSync(new URL('../index.html', import.meta.url), 'utf8')
     const result = domainText(original, `https://${host}`)
     expect(result).toContain(`property="og:image" content="https://${host}/og.png"`)
     expect(result).toContain(`name="twitter:image" content="https://${host}/og.png"`)
     expect(result).toContain(`rel="canonical" href="https://${host}/"`)
-    expect(result).not.toContain('x.pcstyle.dev')
   })
 
-  test.each(hosts)('routes %s docs, discovery and images through the host renderer', (host) => {
+  test.each(hosts.filter((host) => host !== 'mdfromx.com'))('routes %s docs, discovery and images through the host renderer', (host) => {
     const response = (path: string, accept = 'text/html') => middleware(new Request(`https://${host}${path}`, { headers: { Accept: accept } }))
     for (const path of ['/', '/docs', '/docs/posts', '/openapi.json', '/og.png', '/og/docs/posts.png', '/feeds/x-md.jsonl',
       '/.well-known/integrations.json', '/.well-known/agent-card.json']) {
@@ -38,6 +43,11 @@ describe('host-aware pages and social cards', () => {
     }
   })
 
+  test('serves mdfromx.com from the canonical host without a rewrite', () => {
+    const response = middleware(new Request('https://mdfromx.com/docs', { headers: { Accept: 'text/html' } }))
+    expect(response.headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
   test.each(hosts)('declares %s, not the default host, in integrations.json and the agent card', (host) => {
     const read = (file: string) => JSON.parse(domainText(readFileSync(new URL(`../public/.well-known/${file}`, import.meta.url), 'utf8'), `https://${host}`))
     const integrations = read('integrations.json')
@@ -49,6 +59,12 @@ describe('host-aware pages and social cards', () => {
     const card = read('agent-card.json')
     expect(JSON.stringify(card)).not.toContain('x.pcstyle.dev')
     expect(card.url).toBe(`https://${host}/mcp`)
+  })
+
+  test.each(['integrations.json', 'agent-card.json'])('%s uses the canonical host without runtime rewriting', (file) => {
+    const source = readFileSync(new URL(`../public/.well-known/${file}`, import.meta.url), 'utf8')
+    expect(source).not.toContain('x.pcstyle.dev')
+    expect(source).toContain('https://mdfromx.com/')
   })
 
   test('maps only safe public files', () => {

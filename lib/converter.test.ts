@@ -34,8 +34,8 @@ import { renderThreadMarkdown } from './markdown.js'
 import { fetchPosts } from './tweet-fetch.js'
 
 describe('output selection', () => {
-  test.each(['x.pcstyle.dev', 'mdfromx.com'])('accepts permalinks from %s', (host) => {
-    expect(parseStatusUrl(`https://${host}/jack/status/20`)).toEqual({
+  test.each(['x.pcstyle.dev', 'mdfromx.com', 'fast.mdfromx.com'])('accepts permalinks from %s', (host) => {
+    expect(parseStatusUrl(`https://${host}/jack/status/20`, 'https://mdfromx.com')).toEqual({
       handle: 'jack', id: '20', canonicalUrl: 'https://x.com/jack/status/20',
     })
   })

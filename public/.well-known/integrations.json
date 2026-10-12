@@ -6,18 +6,18 @@
       "slug": "x-md-api",
       "name": "x.md API",
       "type": "http",
-      "url": "https://x.pcstyle.dev/api/v1",
-      "spec": "https://x.pcstyle.dev/openapi.json",
-      "docs": "https://x.pcstyle.dev/docs",
+      "url": "https://mdfromx.com/api/v1",
+      "spec": "https://mdfromx.com/openapi.json",
+      "docs": "https://mdfromx.com/docs",
       "basis": {
         "via": "declared",
-        "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+        "source": "https://mdfromx.com/.well-known/integrations.json"
       },
       "auth": {
         "status": "none",
         "basis": {
           "via": "declared",
-          "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+          "source": "https://mdfromx.com/.well-known/integrations.json"
         }
       }
     },
@@ -25,18 +25,18 @@
       "slug": "x-md-mcp",
       "name": "x.md MCP server",
       "type": "mcp",
-      "url": "https://x.pcstyle.dev/mcp",
+      "url": "https://mdfromx.com/mcp",
       "transports": ["streamable-http"],
-      "docs": "https://x.pcstyle.dev/docs/mcp",
+      "docs": "https://mdfromx.com/docs/mcp",
       "basis": {
         "via": "declared",
-        "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+        "source": "https://mdfromx.com/.well-known/integrations.json"
       },
       "auth": {
         "status": "none",
         "basis": {
           "via": "declared",
-          "source": "https://x.pcstyle.dev/.well-known/integrations.json"
+          "source": "https://mdfromx.com/.well-known/integrations.json"
         }
       }
     }

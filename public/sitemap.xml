@@ -1,108 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://x.pcstyle.dev/</loc>
+    <loc>https://mdfromx.com/</loc>
     <lastmod>2026-09-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs</loc>
+    <loc>https://mdfromx.com/docs</loc>
     <lastmod>2026-09-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/agents</loc>
+    <loc>https://mdfromx.com/docs/agents</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/errors</loc>
+    <loc>https://mdfromx.com/docs/errors</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/mcp</loc>
+    <loc>https://mdfromx.com/docs/mcp</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/sdk</loc>
+    <loc>https://mdfromx.com/docs/sdk</loc>
     <lastmod>2026-10-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/bulk-import</loc>
+    <loc>https://mdfromx.com/docs/bulk-import</loc>
     <lastmod>2026-09-09</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/pagination</loc>
+    <loc>https://mdfromx.com/docs/pagination</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/posts</loc>
+    <loc>https://mdfromx.com/docs/posts</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/profiles</loc>
+    <loc>https://mdfromx.com/docs/profiles</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/reliability</loc>
+    <loc>https://mdfromx.com/docs/reliability</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/responses</loc>
+    <loc>https://mdfromx.com/docs/responses</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/search</loc>
+    <loc>https://mdfromx.com/docs/search</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/self-hosting</loc>
+    <loc>https://mdfromx.com/docs/self-hosting</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/docs/versioning</loc>
+    <loc>https://mdfromx.com/docs/versioning</loc>
     <lastmod>2026-09-08</lastmod>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/about</loc>
-    <lastmod>2026-09-08</lastmod>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>https://x.pcstyle.dev/contact</loc>
+    <loc>https://mdfromx.com/about</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/privacy</loc>
+    <loc>https://mdfromx.com/contact</loc>
+    <lastmod>2026-09-08</lastmod>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://mdfromx.com/privacy</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/terms</loc>
+    <loc>https://mdfromx.com/terms</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/pricing.md</loc>
+    <loc>https://mdfromx.com/pricing.md</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/auth.md</loc>
+    <loc>https://mdfromx.com/auth.md</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/agents.md</loc>
+    <loc>https://mdfromx.com/agents.md</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://x.pcstyle.dev/mcp</loc>
+    <loc>https://mdfromx.com/mcp</loc>
     <lastmod>2026-09-08</lastmod>
     <priority>0.6</priority>
   </url>
-  <url><loc>https://x.pcstyle.dev/docs/x-circle</loc><lastmod>2026-09-28</lastmod></url>
+  <url><loc>https://mdfromx.com/docs/x-circle</loc><lastmod>2026-09-28</lastmod></url>
 </urlset>

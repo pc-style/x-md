@@ -27,7 +27,7 @@ function requestProtocol(req: OriginRequest): 'http' | 'https' {
   return 'https'
 }
 
-export function requestOrigin(req: OriginRequest, fallback = 'https://x.pcstyle.dev'): string {
+export function requestOrigin(req: OriginRequest, fallback = 'https://mdfromx.com'): string {
   // Vercel routes only attached domains here. Do not trust x-forwarded-host,
   // and validate the authority before reflecting it into HTML or documents.
   const host = headerValue(req.headers.host)

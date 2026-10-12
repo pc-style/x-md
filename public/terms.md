@@ -1,13 +1,13 @@
 ---
 title: "x.md terms of use"
-description: "Plain-language terms for the hosted service at x.pcstyle.dev: free, as-is, read-only, no SLA, no warranty. What you are responsible for, who owns the content, and the MIT licence that covers the software only."
-canonical: https://x.pcstyle.dev/terms
+description: "Plain-language terms for the hosted service at mdfromx.com: free, as-is, read-only, no SLA, no warranty. What you are responsible for, who owns the content, and the MIT licence that covers the software only."
+canonical: https://mdfromx.com/terms
 last-updated: 2026-09-08
 ---
 
 # Free, as-is, read-only
 
-Plain-language terms for using the hosted service at x.pcstyle.dev. Using it
+Plain-language terms for using the hosted service at mdfromx.com. Using it
 means you accept them. They are short because the service is small: it reads
 content that X already publishes and hands it back as text.
 
@@ -37,7 +37,7 @@ withdrawn at any time, and the service may be slowed, restricted, or shut down
 without notice. Rate limits exist to keep scarce upstream capacity available to
 everyone; do not attempt to circumvent them, and do not use the service for bulk
 or firehose collection. If you need guaranteed capacity or stability,
-[run your own deployment](https://x.pcstyle.dev/docs/self-hosting) — that is what
+[run your own deployment](https://mdfromx.com/docs/self-hosting) — that is what
 the licence is for.
 
 ## Your responsibilities
@@ -74,4 +74,4 @@ These terms can change; the current version is the one published here, and the
 full history is in
 [the public repository](https://github.com/pc-style/x-md). Continuing to use the
 service after a change means you accept the updated terms. Questions go to
-[contact](https://x.pcstyle.dev/contact). Last reviewed 8 September 2026.
+[contact](https://mdfromx.com/contact). Last reviewed 8 September 2026.

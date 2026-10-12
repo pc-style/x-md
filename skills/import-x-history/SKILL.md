@@ -1,13 +1,13 @@
 ---
 name: import-x-history
-description: "Imports an X (Twitter) account's post history in bulk through x.pcstyle.dev: hundreds to thousands of posts in one request, replies and reposts included, JSON or NDJSON, with per-account archiving for repeat requests. Use when onboarding a user from their X handle, building a writing-style or memory profile from someone's posts, or when you need more than one page of an account's timeline. No key needed; a key raises the import allowance. Read-only."
+description: "Imports an X (Twitter) account's post history in bulk through mdfromx.com: hundreds to thousands of posts in one request, replies and reposts included, JSON or NDJSON, with per-account archiving for repeat requests. Use when onboarding a user from their X handle, building a writing-style or memory profile from someone's posts, or when you need more than one page of an account's timeline. No key needed; a key raises the import allowance. Read-only."
 allowed-tools:
-  - Bash(curl *x.pcstyle.dev*)
+  - Bash(curl *mdfromx.com*)
 ---
 
 # import x history
 
-one request, one handle, as much history as you ask for. base URL `https://x.pcstyle.dev` (`https://mdfromx.com` is the same service). no key is needed: anonymous imports are metered per address, **10 per 15 minutes**. the default keyed allowance is **60 per 15 minutes per key**, but issued keys can have an override; read `RateLimit-Policy`; send it as:
+one request, one handle, as much history as you ask for. base URL `https://mdfromx.com` (`https://mdfromx.com` is the same service). no key is needed: anonymous imports are metered per address, **10 per 15 minutes**. the default keyed allowance is **60 per 15 minutes per key**, but issued keys can have an override; read `RateLimit-Policy`; send it as:
 
 ```
 Authorization: Bearer $X_MD_API_KEY
@@ -19,7 +19,7 @@ if the key is in the environment as `X_MD_API_KEY`, use it and never print it. a
 
 ```bash
 curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000"
+  "https://mdfromx.com/api/v1/profiles/paulg/posts?since=2025-09-01&max_posts=2000"
 ```
 
 response: `{ "profile": {...}, "posts": [...], "meta": {...} }`
@@ -55,7 +55,7 @@ the service stores what it walks per handle. the next import of that handle only
 
 ```bash
 curl -sS -H "Authorization: Bearer $X_MD_API_KEY" \
-  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?index=true"
+  "https://mdfromx.com/api/v1/profiles/paulg/posts?index=true"
 # {"handle":"paulg","archive":{"count":1166,"oldest":"…","newest":"…","covered_since":"…","covered_until":"…","floor_reached":false,…},"persistent":true}
 ```
 
@@ -65,7 +65,7 @@ archived posts keep the engagement counts from when they were stored. pass `refr
 
 ```bash
 curl -sN -H "Authorization: Bearer $X_MD_API_KEY" \
-  "https://x.pcstyle.dev/api/v1/profiles/paulg/posts?since=2026-01-01&format=ndjson"
+  "https://mdfromx.com/api/v1/profiles/paulg/posts?since=2026-01-01&format=ndjson"
 ```
 
 post lines are buffered until the final selection is known, newest first, matching JSON. Require the trailing `meta` line; an `error` line or missing metadata means failure. HTTP headers may already be 200, so inspect the stream error code and retry_after.
@@ -86,6 +86,6 @@ post lines are buffered until the final selection is known, newest first, matchi
 
 ## what else is there
 
-the same base URL (and key, if you have one) works on the rest of the read API — a single post or thread (`/api/v1/posts?url=…`), a profile page with `limit` up to 100 (`/api/v1/profiles/{handle}?with_replies=true&limit=100&format=json`), search with `since`/`until` (`/api/v1/search?q=…`), followers/following. full reference: `https://x.pcstyle.dev/openapi.json`, guide: `https://x.pcstyle.dev/docs/bulk-import`.
+the same base URL (and key, if you have one) works on the rest of the read API — a single post or thread (`/api/v1/posts?url=…`), a profile page with `limit` up to 100 (`/api/v1/profiles/{handle}?with_replies=true&limit=100&format=json`), search with `since`/`until` (`/api/v1/search?q=…`), followers/following. full reference: `https://mdfromx.com/openapi.json`, guide: `https://mdfromx.com/docs/bulk-import`.
 
 read-only: this never posts, follows, or reads protected accounts, DMs or Lists.

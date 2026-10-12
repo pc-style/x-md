@@ -1,7 +1,7 @@
 ---
 title: "Contact x.md"
 description: "How to reach x.md: bug reports and feature requests through GitHub issues, questions through Discussions, security reports through the repository's private advisory form, and me@pcstyle.dev for anything that does not fit in public."
-canonical: https://x.pcstyle.dev/contact
+canonical: https://mdfromx.com/contact
 last-updated: 2026-09-08
 ---
 
@@ -39,7 +39,7 @@ private vulnerability report, not through a public issue. Do not include API
 keys, private-account data, or sensitive search terms in a public report. The
 latest tagged release and the current `main` branch are the supported versions.
 The machine-readable version of this is
-[/.well-known/security.txt](https://x.pcstyle.dev/.well-known/security.txt).
+[/.well-known/security.txt](https://mdfromx.com/.well-known/security.txt).
 
 ## Content and removal questions
 
@@ -48,7 +48,7 @@ it. When a post is deleted or an account is made private or protected on X, x.md
 stops returning it. If you believe something reached you through x.md that
 should not have, open an issue describing the route — without pasting private
 data into it — and it will be looked at. The
-[privacy page](https://x.pcstyle.dev/privacy) explains what the service retains.
+[privacy page](https://mdfromx.com/privacy) explains what the service retains.
 
 ## Email
 

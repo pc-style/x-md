@@ -12,7 +12,7 @@ sidebar:
 Reach for x.md when the job is reading one piece of public X content right now:
 
 - The text of a public X post, thread, or X Article, without a browser or an X login.
-- Resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log. Swap the host for `x.pcstyle.dev` and keep the path.
+- Resolving an `x.com`, `twitter.com`, or `t.co` link found in a document, issue, changelog, or chat log. Swap the host for `mdfromx.com` and keep the path.
 - A public profile's bio and latest original posts, without holding X credentials.
 - Who a public account follows, or who follows it.
 - X search results as structured data rather than a rendered timeline.
@@ -35,16 +35,16 @@ Reach for x.md when the job is reading one piece of public X content right now:
 
     ```bash
     curl -sS -H 'Accept: text/markdown' \
-      'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+      'https://mdfromx.com/trq212/status/2052809885763747935'
     ```
 
-    Ask for `Accept: application/json` (or `?format=json`) when you need fields. Every route, parameter, and response schema is in [`/openapi.json`](https://x.pcstyle.dev/openapi.json); the stable machine paths are [`/api/v1/*`](/versioning).
+    Ask for `Accept: application/json` (or `?format=json`) when you need fields. Every route, parameter, and response schema is in [`/openapi.json`](https://mdfromx.com/openapi.json); the stable machine paths are [`/api/v1/*`](/versioning).
   </Tab>
   <Tab title="MCP">
     The same reads as Model Context Protocol tools, over Streamable HTTP, no key required.
 
     ```text
-    https://x.pcstyle.dev/mcp
+    https://mdfromx.com/mcp
     ```
 
     [Connect an agent to the MCP server](/mcp).
@@ -99,16 +99,16 @@ The script exits with `2` for invalid arguments and `1` for network or API error
 
 | Document | Purpose |
 | --- | --- |
-| [`/llms.txt`](https://x.pcstyle.dev/llms.txt) | What x.md is for, when to use it, and every route, in one text file |
-| [`/openapi.json`](https://x.pcstyle.dev/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
-| [`/api`](https://x.pcstyle.dev/api) | A small JSON index for an agent that has only the domain |
-| `https://x.pcstyle.dev/mcp` | MCP server over Streamable HTTP — see [the MCP page](/mcp) |
-| [`/.well-known/api-catalog`](https://x.pcstyle.dev/.well-known/api-catalog) | RFC 9727 linkset |
-| [`/.well-known/ard.json`](https://x.pcstyle.dev/.well-known/ard.json) | Agentic Resource Discovery catalog |
+| [`/llms.txt`](https://mdfromx.com/llms.txt) | What x.md is for, when to use it, and every route, in one text file |
+| [`/openapi.json`](https://mdfromx.com/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
+| [`/api`](https://mdfromx.com/api) | A small JSON index for an agent that has only the domain |
+| `https://mdfromx.com/mcp` | MCP server over Streamable HTTP — see [the MCP page](/mcp) |
+| [`/.well-known/api-catalog`](https://mdfromx.com/.well-known/api-catalog) | RFC 9727 linkset |
+| [`/.well-known/ard.json`](https://mdfromx.com/.well-known/ard.json) | Agentic Resource Discovery catalog |
 
 ## Read docs as Markdown
 
-Each documentation page has a **Copy as Markdown** action. Append `.md` to any docs URL, send `Accept: text/markdown`, or add `?mode=agent`. The [documentation manifest](https://x.pcstyle.dev/llms.txt) lists every page.
+Each documentation page has a **Copy as Markdown** action. Append `.md` to any docs URL, send `Accept: text/markdown`, or add `?mode=agent`. The [documentation manifest](https://mdfromx.com/llms.txt) lists every page.
 
 :::warning
 Requested URLs and queries are sent to the hosted service and its data providers. Keep secrets out of queries and URLs.

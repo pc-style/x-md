@@ -6,10 +6,10 @@
 - Adam's instruction: keep the new stuff; report logic/auth/behavior conflicts rather than silently change them.
 
 ## domains
-- #26 already made mdfromx.com work by building a `dist/_domains/mdfromx` text-replaced variant of every static page and rewriting by host in `middleware.ts`. Source of truth stays `x.pcstyle.dev`; the build derives the mdfromx.com copy. Do not hand-edit docs to the new domain.
+- #26 already made mdfromx.com work by building a `dist/_domains/mdfromx` text-replaced variant of every static page and rewriting by host in `middleware.ts`. Source of truth stays `mdfromx.com`; the build derives the mdfromx.com copy. Do not hand-edit docs to the new domain.
 - This branch fixes what #26 left dynamic and hardcoded: MCP server card / discover / resources (`lib/mcp.ts` takes a `site`), 404 recovery links (`lib/notfound.ts` derives the origin from `instance`), `.well-known/agent-skills/*.md` joins the variant tree, and `fast.mdfromx.com` is a parallel host (`PARALLEL_HOSTS` in `lib/domain-pages.ts`, shared by middleware, `requestOrigin`, and the converter's accepted hosts).
-- RFC 9457 problem `type` URIs and `Link: rel=help` stay on x.pcstyle.dev on purpose: they are identifiers, the same error on both hosts.
-- `skills/import-x-history/SKILL.md` now names x.pcstyle.dev (variant gives mdfromx.com) and says the key is optional, because that is true on the merged public deployment.
+- RFC 9457 problem `type` URIs and `Link: rel=help` stay on mdfromx.com on purpose: they are identifiers, the same error on both hosts.
+- `skills/import-x-history/SKILL.md` now names mdfromx.com (variant gives mdfromx.com) and says the key is optional, because that is true on the merged public deployment.
 
 ## verified
 - audit of the fast branch (agent, spot-checked): fra1 region pin, keyless bulk import (10/15min per IP), single-upstream 429 cooldown, maxDuration 120, MCP/OpenAPI limit drift. The "import double-charges its quota" claim was WRONG: `chargeRequestQuota` only charges the front door and peeks the import counter.
@@ -37,7 +37,7 @@
 
 ## Host-aware website (2026-09-13)
 - Request: every attached domain should use its own host in docs, links, and OGs, without a code change for each new domain.
-- Reproduced: new domain's raw `/docs` HTML names x.pcstyle.dev in canonical, OG, examples, and discovery links.
+- Reproduced: new domain's raw `/docs` HTML names mdfromx.com in canonical, OG, examples, and discovery links.
 - Replace the mdfromx-only build tree with middleware routing to a Vercel function that reads bundled public build output and substitutes service references per request. Keep main host's existing static output. Render alternate-host PNGs with Blume's existing renderer and local fonts.
 - Host comes from validated Host, never x-forwarded-host; no network fetch to that host for static rendering. CDN cache separates by host/path. Pass the current origin to converter input validation as well.
 - Scope: open and watch a PR against main. No merge or production publish requested.

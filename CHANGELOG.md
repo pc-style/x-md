@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to x.md. Versions are git tags on `main`; the hosted API at x.pcstyle.dev always runs the latest tagged release.
+Notable changes to x.md. Versions are git tags on `main`; the hosted API at mdfromx.com always runs the latest tagged release.
 
 ## 1.1.2 - 2026-09-11
 
@@ -25,7 +25,7 @@ An agent-readiness release. Nothing in 1.0.0 changed behaviour; everything below
 - **The landing page is pre-rendered**, so its content is readable without running JavaScript.
 - **Discovery documents:** `/llms.txt`, `/llms-full.txt`, `/agents.md`, `/auth.md`, `/pricing.md`, a JSON API index at `/api`, an RFC 9727 API catalog at `/.well-known/api-catalog`, and an Agentic Resource Discovery catalog at `/.well-known/ard.json`.
 - **Agent-friendly 404s.** An unknown path answers with a recovery document — HTML, Markdown, or problem JSON depending on `Accept` — listing the routes that do exist.
-- **Documentation:** new pages for [versioning and deprecation](https://x.pcstyle.dev/docs/versioning), the [error catalogue](https://x.pcstyle.dev/docs/errors), and the [MCP server](https://x.pcstyle.dev/docs/mcp); the pagination, response, and limit references were rewritten against the code.
+- **Documentation:** new pages for [versioning and deprecation](https://mdfromx.com/docs/versioning), the [error catalogue](https://mdfromx.com/docs/errors), and the [MCP server](https://mdfromx.com/docs/mcp); the pagination, response, and limit references were rewritten against the code.
 
 ## 1.0.0 - 2026-09-07
 

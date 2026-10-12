@@ -1,15 +1,15 @@
 {
   "protocolVersion": "0.3.0",
   "name": "x.md",
-  "description": "Reads public X posts, threads, profiles, connections, and search results as Markdown or JSON. x.md does not speak the A2A task protocol: call it as an MCP server at the url below, or over plain HTTP using https://x.pcstyle.dev/openapi.json. Read-only, and no credentials are required.",
-  "url": "https://x.pcstyle.dev/mcp",
+  "description": "Reads public X posts, threads, profiles, connections, and search results as Markdown or JSON. x.md does not speak the A2A task protocol: call it as an MCP server at the url below, or over plain HTTP using https://mdfromx.com/openapi.json. Read-only, and no credentials are required.",
+  "url": "https://mdfromx.com/mcp",
   "provider": {
     "organization": "x.md",
-    "url": "https://x.pcstyle.dev/"
+    "url": "https://mdfromx.com/"
   },
-  "iconUrl": "https://x.pcstyle.dev/logo.svg",
+  "iconUrl": "https://mdfromx.com/logo.svg",
   "version": "1.1.2",
-  "documentationUrl": "https://x.pcstyle.dev/docs/mcp",
+  "documentationUrl": "https://mdfromx.com/docs/mcp",
   "capabilities": {
     "streaming": false,
     "pushNotifications": false,

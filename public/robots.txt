@@ -1,6 +1,6 @@
 # x.md — read-only Markdown mirror of public X content.
-# Product and route reference for agents: https://x.pcstyle.dev/llms.txt
-# Resource catalog: https://x.pcstyle.dev/.well-known/ard.json
+# Product and route reference for agents: https://mdfromx.com/llms.txt
+# Resource catalog: https://mdfromx.com/.well-known/ard.json
 
 # As a condition of accessing this website, you agree to abide by the
 # following content signals:
@@ -67,5 +67,5 @@ User-agent: Bytespider
 Content-Signal: search=no, ai-input=no, ai-train=no
 Disallow: /
 
-Sitemap: https://x.pcstyle.dev/sitemap.xml
-schemamap: https://x.pcstyle.dev/schemamap.xml
+Sitemap: https://mdfromx.com/sitemap.xml
+schemamap: https://mdfromx.com/schemamap.xml

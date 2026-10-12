@@ -27,7 +27,7 @@ Status: --thread off|full|conversation|2-100, --userinfo off|author|all,
         --context full|thread, --replies top|recent|off
 Other:  --nocache, --help
 
-X_API_BASE (or X_MD_API_BASE) overrides https://x.pcstyle.dev.
+X_API_BASE (or X_MD_API_BASE) overrides https://mdfromx.com.
 X_MD_API_KEY optionally sends a bearer key for browse requests.
 `
 
@@ -171,7 +171,7 @@ export const run = async (
   output: Output = { write: (value) => process.stdout.write(value) },
 ) => {
   const parsed = parse(args)
-  const { url, accept } = request(parsed, env.X_API_BASE || env.X_MD_API_BASE || 'https://x.pcstyle.dev')
+  const { url, accept } = request(parsed, env.X_API_BASE || env.X_MD_API_BASE || 'https://mdfromx.com')
   const headers: Record<string, string> = { Accept: accept }
   if (env.X_MD_API_KEY) headers.Authorization = `Bearer ${env.X_MD_API_KEY}`
   let response: Response

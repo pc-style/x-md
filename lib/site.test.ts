@@ -14,9 +14,9 @@ beforeAll(async () => {
   root = await mkdtemp(join(tmpdir(), 'xmd-site-'))
   await mkdir(join(root, 'dist/.well-known/agent-skills'), { recursive: true })
   await mkdir(join(root, 'dist/.well-known/agent-skills/import-x-history'))
-  await writeFile(join(root, 'dist/index.html'), '<a href="https://x.pcstyle.dev/docs">x.pcstyle.dev</a>')
-  await writeFile(join(root, 'dist/openapi.json'), JSON.stringify({ servers: [{ url: 'https://x.pcstyle.dev' }, { url: 'https://mdfromx.com' }] }))
-  await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.md'), '# Use https://x.pcstyle.dev')
+  await writeFile(join(root, 'dist/index.html'), '<a href="https://mdfromx.com/docs">mdfromx.com</a>')
+  await writeFile(join(root, 'dist/openapi.json'), JSON.stringify({ servers: [{ url: 'https://mdfromx.com' }, { url: 'https://mdfromx.com' }] }))
+  await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.md'), '# Use https://mdfromx.com')
   await writeFile(join(root, 'dist/.well-known/agent-skills/browse-x.tar.gz'), archive)
   await writeFile(join(root, 'dist/.well-known/agent-skills/index.json'), JSON.stringify({ skills: [
     { type: 'skill-md', url: '/.well-known/agent-skills/browse-x.md', digest: 'old' },

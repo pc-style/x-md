@@ -55,7 +55,7 @@ A deprecated route keeps answering exactly as before and adds three signals to *
 ```http
 Deprecation: @1789430400
 Sunset: Wed, 15 Sep 2027 00:00:00 GMT
-Link: <https://x.pcstyle.dev/api/v1/posts>; rel="successor-version", <https://x.pcstyle.dev/docs/versioning>; rel="deprecation"; type="text/html", <https://x.pcstyle.dev/docs/versioning>; rel="sunset"; type="text/html"
+Link: <https://mdfromx.com/api/v1/posts>; rel="successor-version", <https://mdfromx.com/docs/versioning>; rel="deprecation"; type="text/html", <https://mdfromx.com/docs/versioning>; rel="sunset"; type="text/html"
 ```
 
 | Header | Specification | How to read it |
@@ -90,7 +90,7 @@ Nothing has been removed yet. This table is what the sunset window looks like wh
 Deprecation is visible on a `HEAD`, so a client can check without spending a read:
 
 ```bash
-curl -sSI 'https://x.pcstyle.dev/api/convert?url=https://x.com/jack/status/20' \
+curl -sSI 'https://mdfromx.com/api/convert?url=https://x.com/jack/status/20' \
   | grep -iE '^(deprecation|sunset|link):'
 ```
 
@@ -98,11 +98,11 @@ A reasonable client policy: log a warning when `Deprecation` is present, follow 
 
 The same policy is machine-readable in two places:
 
-- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — the `x-api-lifecycle` object carries `current_major_version`, `supported_versions`, `minimum_support_window_months`, `deprecation_signals`, and every deprecated operation with its dates and its replacement: `successor` when one route replaces the alias, `successor_parameter` plus `successors` for `/api/browse`, which picks its replacement from `resource`. The operations themselves carry `x-successor-version` (`/api/convert`) or `x-successor-version-map` (`/api/browse`), alongside OpenAPI's own `deprecated: true`.
-- [`/api`](https://x.pcstyle.dev/api) — the `versioning` object repeats the same dates in a smaller document, for an agent that has only the domain. Its `/api/browse` entry carries `successor_parameter` and `successors` rather than a single `successor` string, so parse both shapes.
+- [`/openapi.json`](https://mdfromx.com/openapi.json) — the `x-api-lifecycle` object carries `current_major_version`, `supported_versions`, `minimum_support_window_months`, `deprecation_signals`, and every deprecated operation with its dates and its replacement: `successor` when one route replaces the alias, `successor_parameter` plus `successors` for `/api/browse`, which picks its replacement from `resource`. The operations themselves carry `x-successor-version` (`/api/convert`) or `x-successor-version-map` (`/api/browse`), alongside OpenAPI's own `deprecated: true`.
+- [`/api`](https://mdfromx.com/api) — the `versioning` object repeats the same dates in a smaller document, for an agent that has only the domain. Its `/api/browse` entry carries `successor_parameter` and `successors` rather than a single `successor` string, so parse both shapes.
 
 ## Release notes
 
-Changes are tagged on `main` and listed in [CHANGELOG.md](https://github.com/pc-style/x-md/blob/main/CHANGELOG.md). The hosted API at `x.pcstyle.dev` runs the latest tag.
+Changes are tagged on `main` and listed in [CHANGELOG.md](https://github.com/pc-style/x-md/blob/main/CHANGELOG.md). The hosted API at `mdfromx.com` runs the latest tag.
 
 x.md is a free, MIT-licensed, best-effort project. This policy describes how change is *signalled*; it is not an SLA. If a route is broken by an upstream provider rather than by a release, the failure shows up as a [`502` or `503` problem document](/errors), not as a version bump.

@@ -1,7 +1,7 @@
 ---
 title: "About x.md"
 description: "x.md is a free, read-only service that turns public X posts, threads, profiles, and search results into Markdown for agents. Open source, MIT-licensed, maintained by one independent developer, and not affiliated with X Corp."
-canonical: https://x.pcstyle.dev/about
+canonical: https://mdfromx.com/about
 last-updated: 2026-09-08
 ---
 
@@ -15,7 +15,7 @@ open source, and run by one independent developer.
 
 x.md is a small HTTP service with one convention at its centre: keep the path,
 change the host. Take any public post URL on **x.com**, replace the host with
-**x.pcstyle.dev**, and the same path answers with the post as Markdown instead
+**mdfromx.com**, and the same path answers with the post as Markdown instead
 of a web application. The reply chain comes back with it, quoted posts are
 nested inline, images and videos survive as links, and long-form X Articles
 convert with their headings and lists intact. The same host swap works for
@@ -43,7 +43,7 @@ that repeated reads of the same URL do not hit upstream again. Callers need no
 account and no X API key on the hosted path. Content negotiation decides the
 response: browsers get a readable HTML page, agents that ask for `text/markdown`
 get Markdown, link-preview bots get Open Graph embed HTML, and
-[the documentation](https://x.pcstyle.dev/docs) describes every parameter.
+[the documentation](https://mdfromx.com/docs) describes every parameter.
 
 ## Scope and limits
 
@@ -55,7 +55,7 @@ supported. The service is in beta — routes and output fields can change when
 upstream providers change — and it is rate limited and cached for interactive
 use rather than bulk collection. Being able to read something here does not
 grant you rights to redistribute it; see the
-[terms](https://x.pcstyle.dev/terms).
+[terms](https://mdfromx.com/terms).
 
 ## Who maintains it
 
@@ -64,12 +64,12 @@ x.md is built and maintained by one independent developer, pcstyle
 product, and it is **not affiliated with, endorsed by, or connected to X Corp**.
 The entire source is public and MIT-licensed, so you can read exactly what the
 service does, open an issue when it is wrong, or
-[deploy your own copy](https://x.pcstyle.dev/docs/self-hosting) and run the same
+[deploy your own copy](https://mdfromx.com/docs/self-hosting) and run the same
 host swap on your own domain. Development happens in the open in the repository.
 
 ## Where to go next
 
-- [API documentation](https://x.pcstyle.dev/docs) — routes, parameters, output formats, and limits.
-- [OpenAPI description](https://x.pcstyle.dev/openapi.json) and [llms.txt](https://x.pcstyle.dev/llms.txt) — the machine-readable descriptions of the same surface.
-- [Contact](https://x.pcstyle.dev/contact) — how to report a bug or a security issue.
-- [Privacy](https://x.pcstyle.dev/privacy) — what the service does and does not store.
+- [API documentation](https://mdfromx.com/docs) — routes, parameters, output formats, and limits.
+- [OpenAPI description](https://mdfromx.com/openapi.json) and [llms.txt](https://mdfromx.com/llms.txt) — the machine-readable descriptions of the same surface.
+- [Contact](https://mdfromx.com/contact) — how to report a bug or a security issue.
+- [Privacy](https://mdfromx.com/privacy) — what the service does and does not store.

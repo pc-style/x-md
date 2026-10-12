@@ -1,6 +1,6 @@
 # x.md
 
-Turn public X posts, conversations, profiles, search results, and social graphs into compact Markdown for agents. The hosted API is available at [x.pcstyle.dev](https://x.pcstyle.dev); no X API key is required for the default provider path.
+Turn public X posts, conversations, profiles, search results, and social graphs into compact Markdown for agents. The hosted API is available at [mdfromx.com](https://mdfromx.com); no X API key is required for the default provider path.
 
 > [!IMPORTANT]
 > **Status: beta.** Routes and output fields can change as upstream X providers change. The compatibility target for self-hosting is Bun 1.4 (see `.bun-version`) and the locked dependencies in this repository.
@@ -19,18 +19,18 @@ Turn public X posts, conversations, profiles, search results, and social graphs 
 
 ## Use the hosted API
 
-Replace `x.com` with `x.pcstyle.dev` on a public status URL:
+Replace `x.com` with `mdfromx.com` on a public status URL:
 
 ```text
 https://x.com/handle/status/1234567890
-https://x.pcstyle.dev/handle/status/1234567890
+https://mdfromx.com/handle/status/1234567890
 ```
 
 ```bash
 curl -sS -H 'Accept: text/markdown' \
-  'https://x.pcstyle.dev/handle/status/1234567890'
+  'https://mdfromx.com/handle/status/1234567890'
 
-curl -sS -G 'https://x.pcstyle.dev/api/v1/posts' \
+curl -sS -G 'https://mdfromx.com/api/v1/posts' \
   --data-urlencode 'url=https://x.com/handle/status/1234567890'
 ```
 
@@ -43,14 +43,14 @@ Everything here is public, needs no key, and is meant to be read by a program:
 | Surface | Where | What it is |
 | --- | --- | --- |
 | Markdown negotiation | any read route, or `/`, `/docs`, `/about` | `Accept: text/markdown` returns Markdown; docs pages also answer to a `.md` suffix or `?mode=agent`. Responses carry `Vary: Accept` and a `Link: …; rel="alternate"` to the Markdown twin |
-| `/llms.txt` | [x.pcstyle.dev/llms.txt](https://x.pcstyle.dev/llms.txt) | What x.md is for, when *not* to use it, and every route, in one text file |
-| `/openapi.json` | [x.pcstyle.dev/openapi.json](https://x.pcstyle.dev/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
-| `/api` | [x.pcstyle.dev/api](https://x.pcstyle.dev/api) | A small JSON index for an agent that has only the domain |
-| `/mcp` | [x.pcstyle.dev/mcp](https://x.pcstyle.dev/mcp) | MCP server over Streamable HTTP, exposing the same reads as tools |
+| `/llms.txt` | [mdfromx.com/llms.txt](https://mdfromx.com/llms.txt) | What x.md is for, when *not* to use it, and every route, in one text file |
+| `/openapi.json` | [mdfromx.com/openapi.json](https://mdfromx.com/openapi.json) | OpenAPI 3.1: parameters, response schemas, error bodies, quotas, lifecycle |
+| `/api` | [mdfromx.com/api](https://mdfromx.com/api) | A small JSON index for an agent that has only the domain |
+| `/mcp` | [mdfromx.com/mcp](https://mdfromx.com/mcp) | MCP server over Streamable HTTP, exposing the same reads as tools |
 | Agent skill | `bunx skills add pc-style/x-md -g -y --skill browse-x` | The `browse-x` skill for coding agents |
-| `/.well-known/ard.json` | [x.pcstyle.dev/.well-known/ard.json](https://x.pcstyle.dev/.well-known/ard.json) | Agentic Resource Discovery catalog of every machine surface above |
+| `/.well-known/ard.json` | [mdfromx.com/.well-known/ard.json](https://mdfromx.com/.well-known/ard.json) | Agentic Resource Discovery catalog of every machine surface above |
 
-Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents (`application/problem+json`) with a stable machine `code`, a human `detail`, and a `resolution` hint — see the [error catalogue](https://x.pcstyle.dev/docs/errors). Rate limits are advertised on every response with the IETF `RateLimit-Policy` and `RateLimit` structured fields plus the `RateLimit-Limit`/`-Remaining`/`-Reset` compatibility triple, and `Retry-After` on a `429`.
+Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents (`application/problem+json`) with a stable machine `code`, a human `detail`, and a `resolution` hint — see the [error catalogue](https://mdfromx.com/docs/errors). Rate limits are advertised on every response with the IETF `RateLimit-Policy` and `RateLimit` structured fields plus the `RateLimit-Limit`/`-Remaining`/`-Reset` compatibility triple, and `Retry-After` on a `429`.
 
 ### Versioning
 
@@ -61,10 +61,10 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem documents 
 ```http
 Deprecation: @1789430400
 Sunset: Wed, 15 Sep 2027 00:00:00 GMT
-Link: <https://x.pcstyle.dev/api/v1/posts>; rel="successor-version"
+Link: <https://mdfromx.com/api/v1/posts>; rel="successor-version"
 ```
 
-Full policy: [x.pcstyle.dev/docs/versioning](https://x.pcstyle.dev/docs/versioning).
+Full policy: [mdfromx.com/docs/versioning](https://mdfromx.com/docs/versioning).
 
 ## Post conversion
 
@@ -84,15 +84,15 @@ Both `GET /:handle/status/:id` and `GET /api/v1/posts?url=…` support:
 
 ```bash
 # Expanded conversation without replies
-curl -sS 'https://x.pcstyle.dev/handle/status/1234567890?full=true&replies=off'
+curl -sS 'https://mdfromx.com/handle/status/1234567890?full=true&replies=off'
 
 # Author thread only, capped at 20 posts
-curl -sS 'https://x.pcstyle.dev/handle/status/1234567890?context=thread&thread=20'
+curl -sS 'https://mdfromx.com/handle/status/1234567890?context=thread&thread=20'
 
 # Structured output
 curl -sS -H 'Accept: application/json' \
-  'https://x.pcstyle.dev/handle/status/1234567890'
-curl -sS 'https://x.pcstyle.dev/handle/status/1234567890?format=json'
+  'https://mdfromx.com/handle/status/1234567890'
+curl -sS 'https://mdfromx.com/handle/status/1234567890?format=json'
 ```
 
 JSON conversion responses contain `url`, `markdown`, raw `posts`, `compact`, `warnings`, `postCount`, `source`, `cache`, and `format`. Media in both Markdown and `posts` includes direct video data when the upstream provider exposes it; availability and lifetime of X CDN URLs are controlled by X.
@@ -113,19 +113,19 @@ Browse routes return compact Markdown by default and structured data with `?form
 The default `limit` is 20 and the maximum is 100; every page is cut exactly at `limit` (search feeds served by own accounts answer 20). Pass the opaque `cursor` returned as `nextCursor` — there is no ceiling on a cursor chain — or use `page=1` through `page=10`; values above 10 are clamped. Profile reads return original posts unless `with_replies=true` / `with_reposts=true` is set, and `until=<date>` jumps straight to a date. Search takes `since` and `until`.
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/elonmusk'
-curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&limit=20'
-curl -sS 'https://x.pcstyle.dev/elonmusk/followers?full=true'
+curl -sS 'https://mdfromx.com/elonmusk'
+curl -sS 'https://mdfromx.com/search?q=typescript&feed=latest&limit=20'
+curl -sS 'https://mdfromx.com/elonmusk/followers?full=true'
 curl -sS -H 'Accept: application/json' \
-  'https://x.pcstyle.dev/elonmusk/following?limit=20'
+  'https://mdfromx.com/elonmusk/following?limit=20'
 ```
 
 ### Versioned browse routes
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/api/v1/profiles/elonmusk'
+curl -sS 'https://mdfromx.com/api/v1/profiles/elonmusk'
 
-curl -sS -G 'https://x.pcstyle.dev/api/v1/search' \
+curl -sS -G 'https://mdfromx.com/api/v1/search' \
   --data-urlencode 'q=typescript' \
   --data-urlencode 'feed=top' \
   --data-urlencode 'format=json'
@@ -162,12 +162,12 @@ Browse JSON includes the resource-specific `profile`, `posts`, or `users`, plus 
 `GET /{handle}/posts` returns an account's history in bulk — thousands of posts, replies included, raw JSON, in seconds:
 
 ```bash
-curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
-curl -sN 'https://x.pcstyle.dev/paulg/posts?since=2026-06-01&format=ndjson'   # stream
-curl -sS 'https://x.pcstyle.dev/paulg/posts?index=true'                        # what is archived already
+curl -sS 'https://mdfromx.com/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sN 'https://mdfromx.com/paulg/posts?since=2026-06-01&format=ndjson'   # stream
+curl -sS 'https://mdfromx.com/paulg/posts?index=true'                        # what is archived already
 ```
 
-X hands out a timeline one cursor at a time; x.md mints cursors for arbitrary instants and walks many chains at once, then stores what it collected so the next import only fetches the gap. Measured: 1379 posts in 7.8 s at `concurrency=32` against the public upstream, 8× a sequential walk at equal completeness ([bench/RESULTS-scale.md](bench/RESULTS-scale.md)). Parameters: `since`, `until`, `max_posts` (≤5000), `with_replies`, `with_reposts`, `only_replies`, `concurrency` (≤32 per upstream), `format=json|ndjson`, `refresh`, `index`. Full guide: [Import a post history](https://x.pcstyle.dev/docs/bulk-import).
+X hands out a timeline one cursor at a time; x.md mints cursors for arbitrary instants and walks many chains at once, then stores what it collected so the next import only fetches the gap. Measured: 1379 posts in 7.8 s at `concurrency=32` against the public upstream, 8× a sequential walk at equal completeness ([bench/RESULTS-scale.md](bench/RESULTS-scale.md)). Parameters: `since`, `until`, `max_posts` (≤5000), `with_replies`, `with_reposts`, `only_replies`, `concurrency` (≤32 per upstream), `format=json|ndjson`, `refresh`, `index`. Full guide: [Import a post history](https://mdfromx.com/docs/bulk-import).
 
 ## Agent skill
 
@@ -177,7 +177,7 @@ Install the hosted skill, `browse-x`, with the [skills CLI](https://skills.sh/):
 bunx skills add pc-style/x-md -g -y --skill browse-x
 ```
 
-The skill uses `https://x.pcstyle.dev`; it does not require a local checkout or local API keys. Its helper is a TypeScript CLI (`bun skills/browse-x/scripts/browse-x.ts …`) that needs Bun, and exits with code 3 on a rate limit after printing `Retry-After`, so agents know exactly how long to wait.
+The skill uses `https://mdfromx.com`; it does not require a local checkout or local API keys. Its helper is a TypeScript CLI (`bun skills/browse-x/scripts/browse-x.ts …`) that needs Bun, and exits with code 3 on a rate limit after printing `Retry-After`, so agents know exactly how long to wait.
 
 The skills CLI command follows the repository's current default branch. For a reviewable, immutable copy, check out the newest tag on the [releases page](https://github.com/pc-style/x-md/releases) and copy `skills/browse-x` from that checkout.
 
@@ -191,7 +191,7 @@ Successful responses are cached for about one hour by default (`CACHE_TTL_SECOND
 
 - The hosted service receives the public X URL, handle, or search query you request and sends it to FxTwitter or X's public syndication service. Successful results are cached for about one hour and can be served to other callers requesting the same public resource.
 - Optional Context.dev and Firecrawl fallbacks are disabled unless a self-hosted operator configures their API keys. When enabled, the public X URL is sent to that provider.
-- The hosted `browse-x` skill sends its arguments to `x.pcstyle.dev`. Do not put secrets or private-account information in URLs or search terms.
+- The hosted `browse-x` skill sends its arguments to `mdfromx.com`. Do not put secrets or private-account information in URLs or search terms.
 - Optional, disabled-by-default PostHog dataset capture archives allowlisted structured public results, not just metrics. See the [archive/privacy policy](internal/archive.md) for actor pseudonyms, opt-out controls, retention duties, and delivery limits.
 - Media links point to upstream X/FxTwitter CDNs. Fetching those links is outside x.md's cache and privacy boundary.
 

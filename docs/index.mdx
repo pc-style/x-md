@@ -7,7 +7,7 @@ sidebar:
   icon: rocket
 ---
 
-x.md turns a public X URL into Markdown your agent can read. The rule is one sentence: replace `x.com` with `x.pcstyle.dev` and keep the rest of the URL. Nothing to install, no key, no login.
+x.md turns a public X URL into Markdown your agent can read. The rule is one sentence: replace `x.com` with `mdfromx.com` and keep the rest of the URL. Nothing to install, no key, no login.
 
 <Steps>
   <Step title="Tell your agent the rule">
@@ -15,8 +15,8 @@ x.md turns a public X URL into Markdown your agent can read. The rule is one sen
 
     ```text
     To read an X (Twitter) post, thread, or profile, swap x.com for
-    x.pcstyle.dev in the URL and fetch it. For search, fetch
-    https://x.pcstyle.dev/search?q=<query>. The response is Markdown.
+    mdfromx.com in the URL and fetch it. For search, fetch
+    https://mdfromx.com/search?q=<query>. The response is Markdown.
     ```
 
     Any agent that can fetch a URL now reads X. No further setup.
@@ -27,14 +27,14 @@ x.md turns a public X URL into Markdown your agent can read. The rule is one sen
     Summarize https://x.com/trq212/status/2052809885763747935 and its replies.
     ```
 
-    The agent fetches `https://x.pcstyle.dev/trq212/status/2052809885763747935` and gets the post text, source links, and thread context back as Markdown. Add `?thread=off` to that URL to read only the requested post.
+    The agent fetches `https://mdfromx.com/trq212/status/2052809885763747935` and gets the post text, source links, and thread context back as Markdown. Add `?thread=off` to that URL to read only the requested post.
   </Step>
 
   <Step title="Give it tools instead (optional)">
     If your agent speaks MCP, connect it once and skip the prompt entirely. Claude Code:
 
     ```bash
-    claude mcp add --transport http x-md https://x.pcstyle.dev/mcp
+    claude mcp add --transport http x-md https://mdfromx.com/mcp
     ```
 
     Codex, Cursor, OpenCode, Antigravity, and Amp are on [the MCP page](/mcp#connect). Skills-aware agents can [install the `browse-x` skill](/agents) instead.
@@ -47,13 +47,13 @@ The same host swap works in a browser or a script. The API is documented in full
 
 ```bash
 # A post, as Markdown
-curl -sS 'https://x.pcstyle.dev/trq212/status/2052809885763747935'
+curl -sS 'https://mdfromx.com/trq212/status/2052809885763747935'
 
 # Search, as JSON with fields instead of prose
-curl -sS 'https://x.pcstyle.dev/search?q=typescript&feed=latest&format=json'
+curl -sS 'https://mdfromx.com/search?q=typescript&feed=latest&format=json'
 
 # An account's last year, replies included, as raw JSON in seconds
-curl -sS 'https://x.pcstyle.dev/paulg/posts?since=2025-09-01&max_posts=2000'
+curl -sS 'https://mdfromx.com/paulg/posts?since=2025-09-01&max_posts=2000'
 ```
 
 Lists go up to **100 per page**; pick Latest, Top, Photos, Videos, or Users with `feed`. JSON responses include the rendered `markdown` too. [See response formats](/responses). For a whole account history use the [bulk import](/bulk-import).
@@ -85,9 +85,9 @@ One plain `GET`, no key, no OAuth. Send `Accept: text/markdown` for Markdown or 
 
 | Surface | Where |
 | --- | --- |
-| OpenAPI 3.1 description | [`/openapi.json`](https://x.pcstyle.dev/openapi.json) |
-| MCP server | `https://x.pcstyle.dev/mcp` — see [the MCP page](/mcp) |
-| Documentation index for LLMs | [`/llms.txt`](https://x.pcstyle.dev/llms.txt) |
+| OpenAPI 3.1 description | [`/openapi.json`](https://mdfromx.com/openapi.json) |
+| MCP server | `https://mdfromx.com/mcp` — see [the MCP page](/mcp) |
+| Documentation index for LLMs | [`/llms.txt`](https://mdfromx.com/llms.txt) |
 | Versioned machine routes | [`/api/v1/*`](/versioning) |
 | Error codes | [Catalogue](/errors) |
 

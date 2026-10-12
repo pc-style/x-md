@@ -14,14 +14,14 @@ Errors follow [RFC 9457 problem details](https://www.rfc-editor.org/rfc/rfc9457)
 
 ```json
 {
-  "type": "https://x.pcstyle.dev/docs/reliability#rate-limited",
+  "type": "https://mdfromx.com/docs/reliability#rate-limited",
   "title": "Rate limit exceeded",
   "status": 429,
   "detail": "Too many live search lookups from this IP. Slow down and retry shortly.",
-  "instance": "https://x.pcstyle.dev/api/v1/search?q=vercel",
+  "instance": "https://mdfromx.com/api/v1/search?q=vercel",
   "code": "rate_limited",
   "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
-  "documentation_url": "https://x.pcstyle.dev/docs/reliability#errors",
+  "documentation_url": "https://mdfromx.com/docs/reliability#errors",
   "error": "Too many live search lookups from this IP. Slow down and retry shortly.",
   "retry_after": 43
 }
@@ -54,7 +54,7 @@ The body is `application/problem+json; charset=utf-8`. A caller whose `Accept` h
 | --- | --- | --- |
 | `Cache-Control: no-store` | every problem response | Errors are never stored, by us or by a CDN. The recoverable `404` document sends `public, max-age=0, must-revalidate` instead, so a cache must revalidate it before reusing it. |
 | `Link: …; rel="help"` | every problem response | This documentation. |
-| `Link: …; rel="service-desc"` | every error | [`/openapi.json`](https://x.pcstyle.dev/openapi.json). |
+| `Link: …; rel="service-desc"` | every error | [`/openapi.json`](https://mdfromx.com/openapi.json). |
 | `Retry-After` | `429`, `503`, and partial import `502` | Seconds to wait. Takes precedence over the `RateLimit` reset if the two disagree. |
 | `Allow` | `405` | The methods this route accepts. |
 | `Deprecation`, `Sunset` | errors from a deprecated route | See [versioning](/versioning). |
@@ -90,14 +90,14 @@ The public read API needs no credentials. These appear only when a credential wa
 | Code | Title | Meaning | What to do |
 | --- | --- | --- | --- |
 | `invalid_key` | Invalid or disabled API key | An `Authorization: Bearer` key was present but unknown or revoked. | Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`. |
-| `unauthorized` | Unauthorized | A non-public route, such as the admin API. | This route is private. The public read-only API needs no credentials; see [/openapi.json](https://x.pcstyle.dev/openapi.json). |
+| `unauthorized` | Unauthorized | A non-public route, such as the admin API. | This route is private. The public read-only API needs no credentials; see [/openapi.json](https://mdfromx.com/openapi.json). |
 
 ## Not found — `404`
 
 | Code | Title | Meaning | What to do |
 | --- | --- | --- | --- |
 | `not_found` | Not found | The post or profile is confirmed missing or inaccessible. An ambiguous provider miss is never enough to establish this. | Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available. |
-| `route_not_found` | API route not found | The path is not a route on this service. | Discover the public API through [/api](https://x.pcstyle.dev/api), [/openapi.json](https://x.pcstyle.dev/openapi.json), or [/.well-known/api-catalog](https://x.pcstyle.dev/.well-known/api-catalog). |
+| `route_not_found` | API route not found | The path is not a route on this service. | Discover the public API through [/api](https://mdfromx.com/api), [/openapi.json](https://mdfromx.com/openapi.json), or [/.well-known/api-catalog](https://mdfromx.com/.well-known/api-catalog). |
 
 A `404` is a routing dead end for an agent, so both forms carry `links` pointing at the routes that do exist. Follow them rather than guessing at another path.
 
@@ -146,7 +146,7 @@ x.md reads third-party providers that fail independently of it, so these are usu
 
 Anything on this page can be read by a program instead:
 
-- [`/openapi.json`](https://x.pcstyle.dev/openapi.json) — `x-error-catalog` lists every code with its status, title, and resolution, and each operation lists the codes it can actually emit, with example bodies.
-- [`/api`](https://x.pcstyle.dev/api) — the `errors.codes` array, in a much smaller document.
+- [`/openapi.json`](https://mdfromx.com/openapi.json) — `x-error-catalog` lists every code with its status, title, and resolution, and each operation lists the codes it can actually emit, with example bodies.
+- [`/api`](https://mdfromx.com/api) — the `errors.codes` array, in a much smaller document.
 
 Related: [errors, limits, and caching](/reliability) · [versioning and deprecation](/versioning).

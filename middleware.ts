@@ -31,7 +31,7 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
-  const needsHost = url.hostname !== 'x.pcstyle.dev'
+  const needsHost = url.hostname !== 'mdfromx.com'
   const variant = (path: string) => needsHost && domainFile(path)
     ? `/api/site?${new URLSearchParams({ path })}` : path
   const file = domainFile(url.pathname)

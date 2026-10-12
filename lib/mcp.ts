@@ -9,7 +9,7 @@ import type { SearchCaller } from './xsearch.js'
 export const MCP_SERVER_NAME = 'io.github.pc-style/x-md'
 export const MCP_SERVER_TITLE = 'x.md'
 export const MCP_SERVER_VERSION = '1.1.2'
-export const MCP_SITE = 'https://x.pcstyle.dev'
+export const MCP_SITE = 'https://mdfromx.com'
 export const MCP_ENDPOINT = `${MCP_SITE}/mcp`
 export const MCP_DOCS_URL = `${MCP_SITE}/docs/mcp`
 export const MCP_SERVER_DESCRIPTION = 'Read public X posts, threads, profiles, and search results as Markdown or JSON.'
@@ -106,7 +106,7 @@ export interface McpResource {
 export interface McpContext {
   ip?: string
   caller?: SearchCaller
-  /** Origin the request arrived on (x.pcstyle.dev or a parallel domain); self-links are built from it. */
+  /** Origin the request arrived on (mdfromx.com or a parallel domain); self-links are built from it. */
   site?: string
   /** Which revision the request declared; decides which methods exist. */
   era?: 'modern' | 'legacy'

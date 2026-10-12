@@ -216,7 +216,7 @@ describe.each(SLUGS)('/%s page', (slug) => {
   test('has a root HTML file with canonical and Markdown alternate', () => {
     const file = read(`${slug}.html`)
     expect(file).toContain(`<div id="app" data-page="${slug}"></div>`)
-    expect(file).toContain(`<link rel="canonical" href="https://x.pcstyle.dev/${slug}" />`)
+    expect(file).toContain(`<link rel="canonical" href="https://mdfromx.com/${slug}" />`)
     expect(file).toContain(`<link rel="alternate" type="text/markdown" href="/${slug}.md"`)
     expect(file).toContain('<script type="module" src="/src/page.ts"></script>')
 

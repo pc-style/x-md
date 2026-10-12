@@ -1,7 +1,7 @@
 ---
 title: "x.md for agents"
 description: "How an autonomous agent should call x.md: what it is for, the exact routes, the response contract, the limits, and what it will never do."
-canonical: https://x.pcstyle.dev/agents.md
+canonical: https://mdfromx.com/agents.md
 last-updated: 2026-09-08
 ---
 
@@ -11,7 +11,7 @@ x.md is a read-only browser for public X (Twitter) content. Give it a public X
 URL, handle, or query; it answers with compact Markdown or structured JSON.
 Anonymous is the default and needs no account, no API key, and no OAuth; an
 optional bearer key, issued by hand, raises the search allowance
-([/auth.md](https://x.pcstyle.dev/auth.md)). MIT-licensed, free, best effort.
+([/auth.md](https://mdfromx.com/auth.md)). MIT-licensed, free, best effort.
 
 ## When to use x.md
 
@@ -25,17 +25,17 @@ Reach for x.md when the job is reading one piece of public X content right now:
 - You need X search results as structured data rather than a rendered timeline.
 - You are capturing a post into notes; `?format=obsidian` emits YAML frontmatter.
 - You want a JSON tool-call contract: `Accept: application/json`, described by
-  [openapi.json](https://x.pcstyle.dev/openapi.json) or the MCP server.
+  [openapi.json](https://mdfromx.com/openapi.json) or the MCP server.
 
 ## Call it in one request
 
 ```sh
 curl -H 'Accept: text/markdown' \
-  https://x.pcstyle.dev/trq212/status/2052809885763747935
+  https://mdfromx.com/trq212/status/2052809885763747935
 ```
 
 The rule is: take any public `x.com` URL and replace the host with
-`x.pcstyle.dev`. Keep the path. `twitter.com` and `t.co` links resolve the same
+`mdfromx.com`. Keep the path. `twitter.com` and `t.co` links resolve the same
 way once expanded.
 
 ## Routes
@@ -52,7 +52,7 @@ way once expanded.
 
 The same reads, versioned and stable for machine callers, live under
 `/api/v1/`: `POST`-free, `GET`-only, and described field by field in
-[openapi.json](https://x.pcstyle.dev/openapi.json).
+[openapi.json](https://mdfromx.com/openapi.json).
 
 ```text
 GET /api/v1/posts?url={status url}
@@ -126,23 +126,23 @@ query you send is forwarded to the upstream public providers.
 
 ## Other ways in
 
-- **MCP** — [https://x.pcstyle.dev/mcp](https://x.pcstyle.dev/mcp) exposes the
+- **MCP** — [https://mdfromx.com/mcp](https://mdfromx.com/mcp) exposes the
   same reads as tools, with the server card at `/mcp/server-card`.
 - **Agent skill** — `bunx skills add pc-style/x-md -g -y --skill browse-x`
   installs `browse-x`, a CLI wrapper that exits `3` on a rate limit after
   printing `Retry-After`. Index:
-  [/.well-known/agent-skills/index.json](https://x.pcstyle.dev/.well-known/agent-skills/index.json).
-- **Catalogs** — [/.well-known/ard.json](https://x.pcstyle.dev/.well-known/ard.json)
-  lists every machine surface; [/.well-known/api-catalog](https://x.pcstyle.dev/.well-known/api-catalog)
+  [/.well-known/agent-skills/index.json](https://mdfromx.com/.well-known/agent-skills/index.json).
+- **Catalogs** — [/.well-known/ard.json](https://mdfromx.com/.well-known/ard.json)
+  lists every machine surface; [/.well-known/api-catalog](https://mdfromx.com/.well-known/api-catalog)
   is the RFC 9727 linkset.
-- **Documentation** — [/docs](https://x.pcstyle.dev/docs), indexed for agents at
-  [/docs/llms.txt](https://x.pcstyle.dev/docs/llms.txt) and in full at
-  [/llms-full.txt](https://x.pcstyle.dev/llms-full.txt).
+- **Documentation** — [/docs](https://mdfromx.com/docs), indexed for agents at
+  [/docs/llms.txt](https://mdfromx.com/docs/llms.txt) and in full at
+  [/llms-full.txt](https://mdfromx.com/llms-full.txt).
 
 ## Facts about the service
 
-- Authentication: none required. See [/auth.md](https://x.pcstyle.dev/auth.md).
-- Price: free. See [/pricing.md](https://x.pcstyle.dev/pricing.md).
+- Authentication: none required. See [/auth.md](https://mdfromx.com/auth.md).
+- Price: free. See [/pricing.md](https://mdfromx.com/pricing.md).
 - Source: [github.com/pc-style/x-md](https://github.com/pc-style/x-md), MIT.
 - Contact: [GitHub issues](https://github.com/pc-style/x-md/issues).
 - Not affiliated with X Corp.
