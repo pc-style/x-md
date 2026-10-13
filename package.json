@@ -46,7 +46,7 @@
     "@types/node": "^26.6.4",
     "@vercel/build-utils": "14.20.0",
     "@vercel/node": "23.0.0",
-    "blume": "^1.7.0",
+    "blume": "^2.2.2",
     "typescript": "~7.0.2",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
