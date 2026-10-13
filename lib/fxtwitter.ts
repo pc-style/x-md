@@ -477,6 +477,7 @@ export function getParentStatusId(tweet: FxTweet): string | undefined {
 /** Walk parent replies from root through the given status id (inclusive). */
 export async function fetchFxConversationChain(
   id: string,
+  focal?: FxTweet,
 ): Promise<FxTweet[]> {
   const walked: FxTweet[] = []
   const seen = new Set<string>()
@@ -487,7 +488,7 @@ export async function fetchFxConversationChain(
     seen.add(currentId)
 
     try {
-      const tweet = await fetchFxStatus(currentId)
+      const tweet = currentId === id && focal ? focal : await fetchFxStatus(currentId)
       walked.push(tweet)
       currentId = getParentStatusId(tweet)
     } catch (error) {
@@ -505,7 +506,7 @@ export async function fetchFxThread(id: string): Promise<FxTweet[]> {
   if (data.thread?.length) {
     return data.thread.map(normalizeTweet)
   }
-  return [await fetchFxStatus(id)]
+  return [pickTweet(data) ?? await fetchFxStatus(id)]
 }
 
 export type FxReplyRanking = 'likes' | 'recency'
@@ -515,10 +516,12 @@ export async function fetchFxConversationReplies(
   id: string,
   rankingMode: FxReplyRanking = 'likes',
   limit = 10,
+  signal?: AbortSignal,
 ): Promise<FxTweet[]> {
   const query = encodeQuery({ ranking_mode: rankingMode })
   const data = await fxFetchJson<FxConversationResponse>(
     `2/conversation/${encodeURIComponent(id)}?${query}`,
+    signal,
   )
   const results = (data.replies ?? data.results ?? data.tweets ?? data.conversation ?? [])
     .map(normalizeTweet)
@@ -550,6 +553,6 @@ export async function fetchFxFullThread(id: string): Promise<FxTweet[]> {
     return [tweet]
   }
 
-  const chain = await fetchFxConversationChain(id)
+  const chain = await fetchFxConversationChain(id, tweet)
   return chain.length > 0 ? chain : [tweet]
 }

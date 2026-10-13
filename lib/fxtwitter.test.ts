@@ -3,6 +3,7 @@ import {
   getParentStatusId,
   fetchFxConversationChain,
   fetchFxFullThread,
+  fetchFxThread,
   fetchFxConversationReplies,
   searchFxStatuses,
   fetchFxProfileStatuses,
@@ -321,6 +322,36 @@ describe('fetchFxFullThread', () => {
 
     const result = await fetchFxFullThread('300')
     expect(result.map((t) => t.id)).toEqual(['100', '200', '300'])
+  })
+
+  test('reuses the status included with an empty thread payload', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      code: 200, thread: null, status: makeTweet('200', { quote: makeTweet('100') }),
+    }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchFxThread('200')
+
+    expect(result[0].quote?.id).toBe('100')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('walks parents without fetching the focal post a second time', async () => {
+    const root = makeTweet('100')
+    const leaf = makeTweet('200', { replying_to: { status: '100' },
+      media: { videos: [{ duration: 3, url: 'https://video/clip.mp4' }] } })
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes('/thread/') ? fxThreadResponse([leaf]) : fxStatusResponse(root),
+    ), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchFxFullThread('200')
+
+    expect(result.map(post => post.id)).toEqual(['100', '200'])
+    expect(result[1].media?.videos?.[0]?.duration_ms).toBe(3000)
+    expect(fetchMock.mock.calls.map(call => new URL(call[0]).pathname)).toEqual([
+      '/2/thread/200', '/2/status/100',
+    ])
   })
 
   test('does not truncate before the converter can preserve the focal post', async () => {
