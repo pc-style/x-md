@@ -43,13 +43,20 @@ header[data-blume-header] {
 
 /* Below lg the landing puts its menu button at the far right; Blume puts the
    drawer toggle first, which pushed the wordmark 48px to the right on phones.
-   Move the toggle to the end so the wordmark keeps its inset on every page. */
-header[data-blume-header] > button[data-blume-nav-toggle] {
+   Blume 2 groups it with the logo. Flatten that group on mobile so the toggle
+   can move to the header's end and the wordmark keeps its inset. */
+@media (width < 64rem) {
+  header[data-blume-header] > div:has(> [data-blume-nav-toggle]) {
+    display: contents;
+  }
+}
+
+header[data-blume-header] [data-blume-nav-toggle] {
   order: 10;
 }
 
-/* The logo is the header's first anchor (Blume's Logo.astro). */
-header[data-blume-header] > a:first-of-type {
+/* Blume's Logo.astro shares a header group with the drawer toggle. */
+header[data-blume-header] > div:has(> [data-blume-nav-toggle]) > a {
   font-size: var(--text-wordmark);
   font-weight: var(--font-weight-wordmark);
   letter-spacing: var(--tracking-wordmark);

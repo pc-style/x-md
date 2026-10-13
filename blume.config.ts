@@ -1,4 +1,6 @@
 import { defineConfig } from 'blume'
+import { vercel } from 'blume/analytics'
+import { orama } from 'blume/search'
 
 export default defineConfig({
   title: 'x.md docs',
@@ -6,10 +8,7 @@ export default defineConfig({
   basePath: '/docs',
   logo: { text: 'x.md', href: '/' },
   content: { root: 'docs' },
-  deployment: {
-    output: 'static',
-    site: 'https://mdfromx.com',
-  },
+  deployment: { site: 'https://mdfromx.com' },
   theme: {
     accent: 'green',
     radius: 'lg',
@@ -47,10 +46,10 @@ export default defineConfig({
     cta: { label: 'Convert', href: '/../#convert' },
   },
   github: { owner: 'pc-style', repo: 'x-md', branch: 'main' },
-  lastModified: true,
-  search: { provider: 'orama' },
-  analytics: { vercel: true },
-  ai: {
+  lastModified: 'git',
+  search: orama(),
+  analytics: [vercel()],
+  agents: {
     llmsTxt: true,
     skills: './skills',
   },
@@ -75,7 +74,7 @@ export default defineConfig({
     x: { handle: '@pcstyle53', creator: '@pcstyle53' },
   },
   markdown: {
-    codeBlocks: {
+    code: {
       theme: { light: 'github-dark', dark: 'github-dark' },
     },
   },
