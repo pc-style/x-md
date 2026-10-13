@@ -1,0 +1,154 @@
+{
+  "baselineCommit": "0654c4ad66e6e9ab610aa6c5861d49eafc7e1230",
+  "runtime": "1.4.0",
+  "targetMedianMs": 550,
+  "before": {
+    "measuredAt": "2026-10-13T23:42:43.336Z",
+    "method": "Bun, real convertTweet, empty memory cache per run, disk/Redis disabled; upstream caches uncontrolled; default thread/context/replies",
+    "summary": {
+      "runs": 54,
+      "successes": 54,
+      "medianMs": 1259.1474070000004,
+      "p90Ms": 2520.4239070000003
+    },
+    "cases": [
+      {
+        "handle": "jack",
+        "id": "20",
+        "kind": "baseline",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 2237.2742180000023,
+        "p90Ms": 2524.2966129999986
+      },
+      {
+        "handle": "trq212",
+        "id": "2052809885763747935",
+        "kind": "article",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 2510.3119580000057,
+        "p90Ms": 3040.9014949999982
+      },
+      {
+        "handle": "nthglsn",
+        "id": "2087920734702022870",
+        "kind": "photos",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 1342.7117549999966,
+        "p90Ms": 2297.008493999999
+      },
+      {
+        "handle": "hams",
+        "id": "2089985826394357796",
+        "kind": "parent chain",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 832.3357609999948,
+        "p90Ms": 1041.0050999999949
+      },
+      {
+        "handle": "josevc",
+        "id": "2088260915770585422",
+        "kind": "quote",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 1008.8802199999991,
+        "p90Ms": 1259.1474070000004
+      },
+      {
+        "handle": "matthew_d_green",
+        "id": "2097693527450816692",
+        "kind": "author thread",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 1168.700920000003,
+        "p90Ms": 1539.5225600000012
+      }
+    ],
+    "measuredAtStart": "2026-10-13T23:41:23.908Z"
+  },
+  "after": {
+    "measuredAt": "2026-10-13T23:46:58.440Z",
+    "method": "Bun, real convertTweet, empty memory cache per run, disk/Redis disabled; upstream caches uncontrolled; default thread/context/replies",
+    "summary": {
+      "runs": 54,
+      "successes": 54,
+      "medianMs": 700.9601799999946,
+      "p90Ms": 1320.113446000003
+    },
+    "cases": [
+      {
+        "handle": "jack",
+        "id": "20",
+        "kind": "baseline",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 1165.1309350000001,
+        "p90Ms": 1422.7979429999978
+      },
+      {
+        "handle": "trq212",
+        "id": "2052809885763747935",
+        "kind": "article",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 1289.5850890000002,
+        "p90Ms": 1852.2229110000007
+      },
+      {
+        "handle": "nthglsn",
+        "id": "2087920734702022870",
+        "kind": "photos",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 730.8971480000037,
+        "p90Ms": 1320.113446000003
+      },
+      {
+        "handle": "hams",
+        "id": "2089985826394357796",
+        "kind": "parent chain",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 502.3080750000008,
+        "p90Ms": 845.7201120000027
+      },
+      {
+        "handle": "josevc",
+        "id": "2088260915770585422",
+        "kind": "quote",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 571.4542170000059,
+        "p90Ms": 699.9461749999973
+      },
+      {
+        "handle": "matthew_d_green",
+        "id": "2097693527450816692",
+        "kind": "author thread",
+        "runs": 9,
+        "successes": 9,
+        "medianMs": 570.2909550000004,
+        "p90Ms": 1196.7685930000007
+      }
+    ]
+  },
+  "headlineMedianSpeedup": 1.9201912427121353,
+  "combinedMedianSpeedup": 1.7963180262251275,
+  "allApplicationCacheMisses": true,
+  "postCountsPreserved": true,
+  "limits": [
+    "Upstream caches cannot be invalidated; this measures cold application conversions, not guaranteed cold upstream storage.",
+    "Module initialization and production Redis round trips are excluded.",
+    "Nine samples per case; p90 uses nearest rank.",
+    "Before quote and author-thread cases were measured in a second batch before implementation changes."
+  ],
+  "profiling": [
+    "Default full conversion made thread then conversation requests in series; archive/analytics already run after finish through waitUntil.",
+    "After implementation both requests start together and upstream work dominates wall time.",
+    "Conversation data lacks author continuations present in the thread endpoint, so consolidating to one request would drop data.",
+    "Status endpoint is faster but lacks required full thread/replies; faster degraded providers cannot override an authoritative private-post response."
+  ]
+}

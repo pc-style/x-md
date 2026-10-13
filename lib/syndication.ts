@@ -155,11 +155,11 @@ function mapSyndicationTweet(raw: SyndicationTweet, handle?: string, id?: string
   }
 }
 
-export async function fetchSyndicationStatus(handle: string, id: string): Promise<FxTweet> {
+export async function fetchSyndicationStatus(handle: string, id: string, signal?: AbortSignal): Promise<FxTweet> {
   let response: Response
   try {
     const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=0`
-    response = await providerFetch('syndication', url, { headers: { 'User-Agent': UA, Accept: 'application/json' } })
+    response = await providerFetch('syndication', url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal })
   } catch {
     throw new ConvertError(502, 'Failed to reach X syndication API.', 'syndication_network')
   }

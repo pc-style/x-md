@@ -6,7 +6,6 @@ import {
   fetchFxConversationReplies,
   fetchFxFullThread,
   fetchFxStatus,
-  type FxReplyRanking,
   type FxTweet,
 } from './fxtwitter.js'
 import { fetchSyndicationStatus } from './syndication.js'
@@ -57,9 +56,21 @@ function isHardNotFound(error: unknown): boolean {
 }
 
 async function fetchStatusWithFallback(handle: string, id: string): Promise<FetchResult> {
+  const controller = new AbortController()
+  let syndication: Promise<FxTweet> | undefined
+  const startSyndication = () => {
+    syndication ??= fetchSyndicationStatus(handle, id, controller.signal)
+    // The hedge can fail before the primary settles. Keep that rejection
+    // handled, while retaining it for the usual ordered fallback below.
+    void syndication.catch(() => {})
+    return syndication
+  }
+  // Prepare the free fallback on a slow primary, but never accept it before
+  // the primary fails: it can contain less data or hide a private-post error.
+  const hedge = setTimeout(startSyndication, 250)
   const attempts: Array<() => Promise<FetchResult>> = [
     async () => ({ tweets: [await fetchFxStatus(id)], source: 'fxtwitter' }),
-    async () => ({ tweets: [await fetchSyndicationStatus(handle, id)], source: 'syndication' }),
+    async () => ({ tweets: [await startSyndication()], source: 'syndication' }),
   ]
 
   if (process.env.CONTEXT_DEV_API_KEY) {
@@ -79,16 +90,21 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
   let lastError: unknown
 
   const sources: FetchSource[] = ['fxtwitter', 'syndication', ...(process.env.CONTEXT_DEV_API_KEY ? ['contextdev' as const] : []), ...(process.env.FIRECRAWL_API_KEY ? ['firecrawl' as const] : [])]
-  for (const [index, attempt] of attempts.entries()) {
-    try {
-      const result = await attempt()
-      // Only a fallback that actually served the request counts as used.
-      if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
-      return result
-    } catch (error) {
-      lastError = error
-      if (isHardNotFound(error)) throw error
+  try {
+    for (const [index, attempt] of attempts.entries()) {
+      try {
+        const result = await attempt()
+        // Only a fallback that actually served the request counts as used.
+        if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
+        return result
+      } catch (error) {
+        lastError = error
+        if (isHardNotFound(error)) throw error
+      }
     }
+  } finally {
+    clearTimeout(hedge)
+    controller.abort()
   }
 
   throw lastError instanceof ConvertError
@@ -108,8 +124,17 @@ export async function fetchPosts(
     return { ...result, tweets: annotateAndDedupe(result.tweets, id, []) }
   }
 
+  const threadPromise = fetchFxFullThread(id)
+  const repliesController = new AbortController()
+  // Thread assembly and ranked replies do not depend on each other. Handle
+  // reply failures immediately so a failed thread cannot leave an unhandled
+  // rejection; replies remain additive and never supply the focal post.
+  const repliesPromise = repliesMode !== 'off' && contextMode !== 'thread'
+    ? fetchFxConversationReplies(id, repliesMode === 'recent' ? 'recency' : 'likes', 10, repliesController.signal).catch(() => [])
+    : Promise.resolve<FxTweet[]>([])
+
   try {
-    const assembledThread = await fetchFxFullThread(id)
+    const assembledThread = await threadPromise
     const thread = contextMode === 'thread'
       ? focalAuthorThread(assembledThread, id, handle)
       : assembledThread
@@ -117,16 +142,13 @@ export async function fetchPosts(
       return { tweets: annotateAndDedupe(thread, id, []), source: 'fxtwitter' }
     }
 
-    let replies: FxTweet[] = []
-    try {
-      const ranking: FxReplyRanking = repliesMode === 'recent' ? 'recency' : 'likes'
-      replies = (await fetchFxConversationReplies(id, ranking, 10)) ?? []
-    } catch {
-      // Reply context is additive; preserve the existing thread/provider behavior.
-    }
+    const replies = (await repliesPromise) ?? []
     return { tweets: annotateAndDedupe(thread, id, replies), source: 'fxtwitter' }
   } catch (error) {
     if (isHardNotFound(error)) throw error
+  } finally {
+    // A failed/private thread must not keep an unused reply fetch running.
+    repliesController.abort()
   }
 
   const result = await fetchStatusWithFallback(handle, id)

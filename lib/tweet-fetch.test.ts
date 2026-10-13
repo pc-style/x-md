@@ -38,11 +38,12 @@ function restoreEnv() {
 describe('fetchPosts provider fallbacks', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(fetchFxConversationReplies).mockResolvedValue([])
     delete process.env.CONTEXT_DEV_API_KEY
     delete process.env.FIRECRAWL_API_KEY
   })
 
-  afterEach(restoreEnv)
+  afterEach(() => { restoreEnv(); vi.useRealTimers() })
 
   test('uses Context.dev after FxTwitter and syndication when configured', async () => {
     process.env.CONTEXT_DEV_API_KEY = 'ctxt_secret_test'
@@ -95,6 +96,75 @@ describe('fetchPosts provider fallbacks', () => {
     expect(fetchFirecrawlStatus).not.toHaveBeenCalled()
   })
 
+  test('hedges slow status fetches without letting a faster fallback replace the primary', async () => {
+    vi.useFakeTimers()
+    let finishStatus!: (tweet: { id: string; text: string }) => void
+    vi.mocked(fetchFxStatus).mockReturnValueOnce(new Promise(resolve => { finishStatus = resolve }))
+    vi.mocked(fetchSyndicationStatus).mockResolvedValueOnce({ id: '2', text: 'less complete fallback' })
+    const pending = fetchPosts('alice', '2', 'off')
+
+    await vi.advanceTimersByTimeAsync(300)
+    const hedged = vi.mocked(fetchSyndicationStatus).mock.calls.length
+    finishStatus({ id: '2', text: 'complete primary' })
+    const result = await pending
+
+    expect(hedged).toBe(1)
+    expect(result).toEqual({ source: 'fxtwitter', tweets: [{ id: '2', text: 'complete primary', context: 'post' }] })
+  })
+
+  test('a hedged fallback cannot override a delayed private-post error', async () => {
+    vi.useFakeTimers()
+    let failStatus!: (error: unknown) => void
+    vi.mocked(fetchFxStatus).mockReturnValueOnce(new Promise((_resolve, reject) => { failStatus = reject }))
+    vi.mocked(fetchSyndicationStatus).mockResolvedValueOnce({ id: '2', text: 'fallback' })
+    const pending = fetchPosts('alice', '2', 'off')
+    const check = expect(pending).rejects.toMatchObject({ code: 'private_tweet' })
+
+    await vi.advanceTimersByTimeAsync(300)
+    failStatus(new ConvertError(404, 'private', 'private_tweet'))
+
+    await check
+    expect(fetchContextDevStatus).not.toHaveBeenCalled()
+    expect(fetchFirecrawlStatus).not.toHaveBeenCalled()
+  })
+
+  test('cancels the hedge timer when the primary is fast', async () => {
+    vi.useFakeTimers()
+    vi.mocked(fetchFxStatus).mockResolvedValueOnce({ id: '2', text: 'primary' })
+    await fetchPosts('alice', '2', 'off')
+    await vi.advanceTimersByTimeAsync(300)
+    expect(fetchSyndicationStatus).not.toHaveBeenCalled()
+  })
+
+  test('uses an already completed hedge only after the primary fails', async () => {
+    vi.useFakeTimers()
+    let failStatus!: (error: unknown) => void
+    vi.mocked(fetchFxStatus).mockReturnValueOnce(new Promise((_resolve, reject) => { failStatus = reject }))
+    vi.mocked(fetchSyndicationStatus).mockResolvedValueOnce({ id: '2', text: 'fallback' })
+    let settled = false
+    const pending = fetchPosts('alice', '2', 'off').then(result => { settled = true; return result })
+
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(settled).toBe(false)
+    failStatus(new ConvertError(502, 'fx down', 'fxtwitter_network'))
+    const result = await pending
+
+    expect(result.source).toBe('syndication')
+    expect(fetchSyndicationStatus).toHaveBeenCalledOnce()
+    expect(fetchSyndicationStatus.mock.calls[0][2]?.aborted).toBe(true)
+  })
+
+  test('failed speculative replies are cancelled before the fallback result is served', async () => {
+    vi.mocked(fetchFxFullThread).mockRejectedValueOnce(new ConvertError(502, 'thread down', 'fxtwitter_network'))
+    vi.mocked(fetchFxConversationReplies).mockReturnValueOnce(new Promise(() => {}))
+    vi.mocked(fetchFxStatus).mockResolvedValueOnce({ id: '2', text: 'fallback status' })
+
+    const result = await fetchPosts('alice', '2', 'full')
+
+    expect(result.tweets).toEqual([{ id: '2', text: 'fallback status', context: 'post' }])
+    expect(vi.mocked(fetchFxConversationReplies).mock.calls[0][3]?.aborted).toBe(true)
+  })
+
   test('thread=full still starts with FxTwitter full thread before fallback chain', async () => {
     process.env.CONTEXT_DEV_API_KEY = 'ctxt_secret_test'
     vi.mocked(fetchFxFullThread).mockResolvedValue([{ id: '1', text: 'thread' }])
@@ -117,18 +187,41 @@ describe('fetchPosts provider fallbacks', () => {
 
     const result = await fetchPosts('alice', '2', 'full')
 
-    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'likes', 10)
+    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'likes', 10, expect.any(AbortSignal))
     expect(result.tweets.map(({ id, context }) => ({ id, context }))).toEqual([
       { id: '1', context: 'parent' }, { id: '2', context: 'post' },
       { id: '3', context: 'thread' }, { id: '4', context: 'reply' },
     ])
   })
 
+  test('starts replies before the independent thread fetch finishes', async () => {
+    let finishThread!: (tweets: Array<{ id: string; text: string }>) => void
+    vi.mocked(fetchFxFullThread).mockReturnValueOnce(new Promise(resolve => { finishThread = resolve }))
+    vi.mocked(fetchFxConversationReplies).mockResolvedValue([{ id: '3', text: 'reply' }])
+
+    const pending = fetchPosts('alice', '2', 'full')
+    const repliesStarted = vi.mocked(fetchFxConversationReplies).mock.calls.length
+    finishThread([{ id: '2', text: 'post' }])
+    const result = await pending
+
+    expect(repliesStarted).toBe(1)
+    expect(result.tweets.map(post => post.id)).toEqual(['2', '3'])
+  })
+
+  test('private thread errors win over successful speculative replies', async () => {
+    vi.mocked(fetchFxFullThread).mockRejectedValueOnce(new ConvertError(404, 'private', 'private_tweet'))
+    vi.mocked(fetchFxConversationReplies).mockResolvedValue([{ id: '3', text: 'reply' }])
+
+    await expect(fetchPosts('alice', '2', 'full')).rejects.toMatchObject({ code: 'private_tweet' })
+    expect(fetchFxStatus).not.toHaveBeenCalled()
+    expect(fetchSyndicationStatus).not.toHaveBeenCalled()
+  })
+
   test('recent maps to recency and conversation failure keeps the thread', async () => {
     vi.mocked(fetchFxFullThread).mockResolvedValue([{ id: '2', text: 'post' }])
     vi.mocked(fetchFxConversationReplies).mockRejectedValue(new Error('conversation unavailable'))
     const result = await fetchPosts('alice', '2', 'full', 'full', 'recent')
-    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'recency', 10)
+    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'recency', 10, expect.any(AbortSignal))
     expect(result.tweets).toEqual([{ id: '2', text: 'post', context: 'post' }])
   })
 
