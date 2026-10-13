@@ -431,9 +431,10 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
-    const { firecrawlSearchConfigured, searchFirecrawlStatuses } = await import('./firecrawl.js')
-    if (!truthy(input.require_live) && ['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
-      const posts = await searchFirecrawlStatuses(query, feed, limit)
+    const webIndexEligible = !truthy(input.require_live) && ['latest', 'top'].includes(feed) && page === 1 && !tagged
+    const firecrawl = webIndexEligible ? await import('./firecrawl.js') : undefined
+    if (firecrawl?.firecrawlSearchConfigured()) {
+      const posts = await firecrawl.searchFirecrawlStatuses(query, feed, limit)
       trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
       return render({ resource, posts, query: typed, feed, page, limit, source: 'firecrawl', degraded: true })
     }

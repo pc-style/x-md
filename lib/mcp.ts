@@ -871,7 +871,6 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
     const outcome = await TOOL_RUNNERS[tool.name]!((args ?? {}) as Record<string, unknown>, ctx)
     return { result: { content: [{ type: 'text', text: outcome.text }], structuredContent: outcome.structured, isError: false } }
   } catch (error) {
-    const { FeedbackSubmitError } = await import('@usenotra/geo/feedback')
     // Upstream failures belong in the result so the model can read and react to
     // them; only protocol mistakes come back as JSON-RPC errors.
     if (error instanceof ConvertError) {
@@ -883,7 +882,8 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
         },
       }
     }
-    if (error instanceof FeedbackSubmitError) {
+    const { FeedbackSubmitError } = tool.name === 'submit_feedback' ? await import('@usenotra/geo/feedback') : { FeedbackSubmitError: undefined }
+    if (FeedbackSubmitError && error instanceof FeedbackSubmitError) {
       return { result: { content: [{ type: 'text', text: `Feedback could not be submitted (HTTP ${error.status}): ${error.message}` }], isError: true } }
     }
     console.error(error)
