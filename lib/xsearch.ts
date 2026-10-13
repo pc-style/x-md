@@ -9,15 +9,13 @@ import { providerFetch, trackRateLimit } from './server-events.js'
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import {
-  ApiError,
-  AuthenticationError,
-  ErrorRateLimitStrategy,
-  Scraper,
-  SearchMode,
-  type Tweet,
-  type Profile,
-} from '@the-convocation/twitter-scraper'
+import type { Profile, Scraper, Tweet } from '@the-convocation/twitter-scraper'
+
+let twitterScraperModule: Promise<typeof import('@the-convocation/twitter-scraper')> | undefined
+function twitterScraper(): Promise<typeof import('@the-convocation/twitter-scraper')> {
+  if (!twitterScraperModule) twitterScraperModule = import('@the-convocation/twitter-scraper')
+  return twitterScraperModule
+}
 import { ConvertError } from './errors.js'
 import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
 import { poolSnapshot, resetPool, type PoolSnapshot } from './pool.js'
@@ -110,6 +108,7 @@ export function xsearchConfigured(): boolean {
 
 async function scraperFor(state: SessionState): Promise<Scraper> {
   if (state.scraper) return state.scraper
+  const { Scraper, ErrorRateLimitStrategy } = await twitterScraper()
   const scraper = new Scraper({
     rateLimitStrategy: new ErrorRateLimitStrategy(),
     fetch: (input, init) => {
@@ -124,13 +123,6 @@ async function scraperFor(state: SessionState): Promise<Scraper> {
   ])
   state.scraper = scraper
   return scraper
-}
-
-function feedToMode(feed: string): SearchMode {
-  if (feed === 'top') return SearchMode.Top
-  if (feed === 'photos' || feed === 'media') return SearchMode.Photos
-  if (feed === 'videos') return SearchMode.Videos
-  return SearchMode.Latest
 }
 
 /** Match FxTwitter's classic X timestamp format: `Sun Sep 06 16:27:32 +0000 2026`. */
@@ -175,7 +167,8 @@ export function tweetToFx(tweet: Tweet): FxTweet {
 
 type Failure = { kind: 'rate_limit' | 'auth' | 'transient'; detail: string }
 
-function classify(error: unknown): Failure {
+async function classify(error: unknown): Promise<Failure> {
+  const { AuthenticationError, ApiError } = await twitterScraper()
   if (error instanceof AuthenticationError) return { kind: 'auth', detail: error.message }
   if (error instanceof ApiError) {
     const status = error.response.status
@@ -194,7 +187,9 @@ function classify(error: unknown): Failure {
  */
 export function searchXStatuses(queryText: string, feed: string, cursor?: string, count = 20, caller?: SearchCaller | string): Promise<FxListResponse<FxTweet>> {
   return withSearchSession(async (scraper) => {
-    const page = await scraper.fetchSearchTweets(queryText, Math.min(count, 20), feedToMode(feed), cursor)
+    const { SearchMode } = await twitterScraper()
+    const mode = feed === 'top' ? SearchMode.Top : (feed === 'photos' || feed === 'media' ? SearchMode.Photos : (feed === 'videos' ? SearchMode.Videos : SearchMode.Latest))
+    const page = await scraper.fetchSearchTweets(queryText, Math.min(count, 20), mode, cursor)
     return { results: page.tweets.map(tweetToFx), cursor: { bottom: page.next, top: page.previous } }
   }, normalizeCaller(caller))
 }
@@ -330,7 +325,7 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
       const scraper = await scraperFor(state)
       return await search(scraper)
     } catch (error) {
-      last = classify(error)
+      last = await classify(error)
       if (last.kind === 'auth') state.disabled = last.detail
       else state.coolUntil = Date.now() + (last.kind === 'rate_limit' ? RATE_LIMIT_COOLDOWN_MS : TRANSIENT_COOLDOWN_MS)
       console.warn(`[xsearch] session ${state.session.id} ${last.kind}: ${last.detail}`)

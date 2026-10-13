@@ -1,29 +1,11 @@
-import { trackRateLimit, trackFallback } from './server-events.js'
-import {
-  buildCacheKey,
-  cacheControlHeader,
-  type CacheStatus,
-  vercelCacheControlHeader,
-  withCache,
-} from './cache.js'
+import type { CacheStatus } from './cache.js'
+import { cacheControlHeader, vercelCacheControlHeader } from './cache.js'
 import { ConvertError } from './errors.js'
-import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { kv } from './kv.js'
 import { SEARCH_IP, SEARCH_KEY, searchIpKey, searchKeyKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
-import { searchXStatuses, searchXUsers, xsearchConfigured, type SearchCaller } from './xsearch.js'
-import { cursorAt, parseDateInput } from './fx-cursor.js'
-import { isReply, isRepost, ownPost } from './import.js'
-import {
-  fetchFxConnections,
-  fetchFxConversationReplies,
-  fetchFxProfile,
-  fetchFxProfileStatuses,
-  searchFxStatuses,
-  type FxAuthor,
-  type FxListResponse,
-  type FxTweet,
-} from './fxtwitter.js'
+import type { SearchCaller } from './xsearch.js'
+import type { FxAuthor, FxListResponse, FxTweet } from './fxtwitter.js'
 
 const DEFAULT_LIMIT = 20
 /** Every list is assembled from as many upstream pages as needed (~20–70 items each). */
@@ -289,6 +271,8 @@ async function collectProfilePosts(
   withReplies: boolean,
   withReposts: boolean,
 ): Promise<FxListResponse<FxTweet>> {
+  const { ownPost, isRepost, isReply } = await import('./import.js')
+  const { fetchFxProfileStatuses } = await import('./fxtwitter.js')
   const keep = (post: FxTweet): boolean => {
     if (!ownPost(post, handle)) return false
     if (isRepost(post)) return withReposts
@@ -373,6 +357,10 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
 type BrowsePayload = Omit<BrowseResult, 'cache'>
 
 async function browseUncached(input: BrowseInput, resource: BrowseResource, page: number, limit: number): Promise<BrowsePayload> {
+  const { parseDateInput, cursorAt } = await import('./fx-cursor.js')
+  const { fetchFxConnections, fetchFxConversationReplies, fetchFxProfile, searchFxStatuses } = await import('./fxtwitter.js')
+  const { searchXStatuses, searchXUsers, xsearchConfigured } = await import('./xsearch.js')
+  const { trackRateLimit, trackFallback } = await import('./server-events.js')
   const full = truthy(input.full)
   if (resource === 'search') {
     const typed = input.q?.trim()
@@ -443,6 +431,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     // Web-index fallback only for a fresh first page: it has no notion of X cursors.
+    const { firecrawlSearchConfigured, searchFirecrawlStatuses } = await import('./firecrawl.js')
     if (!truthy(input.require_live) && ['latest', 'top'].includes(feed) && page === 1 && !tagged && firecrawlSearchConfigured()) {
       const posts = await searchFirecrawlStatuses(query, feed, limit)
       trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
@@ -481,6 +470,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
 }
 
 export async function browse(input: BrowseInput): Promise<BrowseResult> {
+  const { buildCacheKey, withCache } = await import('./cache.js')
   const resource = input.resource as BrowseResource
   if (!['profile', 'search', 'followers', 'following', 'replies'].includes(resource)) {
     throw new ConvertError(400, 'Unsupported browse resource.', 'invalid_resource')
