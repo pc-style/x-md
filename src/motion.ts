@@ -29,6 +29,25 @@ export function setupMotion(root: HTMLElement) {
   })
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
+    // The hero is already readable while this optional chunk downloads. Keep
+    // its entrance transforms in the GSAP context without fading visible text.
+    if (root.querySelector('[data-hero-stagger]')) {
+      gsap.from('[data-hero-stagger] > *', {
+        y: 26,
+        duration: 0.9,
+        ease: 'power3.out',
+        stagger: 0.09,
+      })
+    }
+    if (root.querySelector('[data-hero-card]')) {
+      gsap.from('[data-hero-card]', {
+        y: 48,
+        rotate: 6,
+        duration: 1.1,
+        ease: 'power3.out',
+        delay: 0.3,
+      })
+    }
     const words = gsap.utils.toArray<HTMLElement>('[data-scrub-text] .reveal-word')
     if (words.length) {
       gsap.to(words, {
