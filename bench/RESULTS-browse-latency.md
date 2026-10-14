@@ -60,9 +60,10 @@ scenario spends 1.7 upstream requests per list on average: the hedge fires only 
 - The shared cache write after a miss is handed to `waitUntil` (`withCache`'s `defer` hook) instead of being
   awaited before the response; the in-process copy is published first, as before, so concurrent callers read it.
 - The FxTwitter search breaker is read alongside the live-search burst gate instead of after it.
-- For the own-account provider, the pool split (a read) is computed alongside the per-IP charge, and the split
-  itself takes two store hops instead of four: settings and key index together, then key records and every counter
-  together.
+- For the own-account provider, the pool split takes two store hops instead of four: settings and key index
+  together, then key records and every counter together. It is still read after the per-IP charge, so key usage
+  that lands during that charge shrinks the public cap. A follow-up to #70 restored that order after #70 overlapped them,
+  which costs back one store hop on an own-account search miss (the 12 → 6 row above becomes 12 → 7).
 - A followers/following page still unanswered after 800 ms is asked of another base in the FxTwitter pool as
   well, and the first good answer wins. The hedge always goes to a base other than the one already in flight, and
   does not fire when every other base is cooling down. A single-base deployment (the default) is never asked

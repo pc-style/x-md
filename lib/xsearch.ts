@@ -291,16 +291,15 @@ async function withSearchSession<T>(search: (scraper: Scraper) => Promise<T>, ca
   if (caller?.kind === 'public') {
     // An unknown IP is still metered (as one shared "unknown" bucket) rather than left unaccounted.
     const ipKey = accountIpKey(caller.ip ?? '')
-    // The pool split is a read, so it is computed while the per-IP charge is in
-    // flight; it decides nothing until that charge has been allowed.
-    const [fair, publicCap] = await Promise.all([rateLimit(ipKey, ACCOUNT_IP.quota, ACCOUNT_IP.windowSec, true), publicCapNow()])
+    const fair = await rateLimit(ipKey, ACCOUNT_IP.quota, ACCOUNT_IP.windowSec, true)
     if (!fair.allowed) {
       trackRateLimit('ip', ACCOUNT_IP.name)
       throw new ConvertError(429, 'Account-backed search allowance reached for this IP. Retry after the current window.', 'rate_limited', fair.retryAfter, ACCOUNT_IP.name)
     }
     // Shared public cap: whatever the pool has left after key usage and reservations.
     // Refund both counters on reject so retries do not burn capacity that keys release later in the window.
-    const shared = await rateLimit(ACCOUNT_PUBLIC_COUNTER, publicCap, ACCOUNT_WINDOW_SEC, true, true)
+    // Read the split only after the per-IP charge, so key usage that lands meanwhile shrinks the cap.
+    const shared = await rateLimit(ACCOUNT_PUBLIC_COUNTER, await publicCapNow(), ACCOUNT_WINDOW_SEC, true, true)
     if (!shared.allowed) {
       trackRateLimit('global', ACCOUNT_IP.name)
       await refundRateLimit(ipKey, ACCOUNT_WINDOW_SEC, fair.bucket)
