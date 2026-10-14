@@ -1,5 +1,5 @@
 import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
-import { ConvertError } from './errors.js'
+import { ConvertError, ParentContextThrottleError } from './errors.js'
 
 /**
  * Upstream pool. `FXTWITTER_BASE_URL` is one base URL or a comma-separated
@@ -495,7 +495,10 @@ export async function fetchFxConversationChain(
     } catch (error) {
       // A concurrent optional reply can cool the shared provider before the
       // parent walk. Surface its retry deadline instead of silently truncating.
-      if (error instanceof ConvertError && ['private_tweet', 'upstream_rate_limited'].includes(error.code ?? '')) throw error
+      if (error instanceof ConvertError && error.code === 'private_tweet') throw error
+      if (error instanceof ConvertError && error.code === 'upstream_rate_limited') {
+        throw walked.length > 0 ? new ParentContextThrottleError(error) : error
+      }
       break
     }
   }
