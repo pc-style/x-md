@@ -35,7 +35,9 @@ export default defineConfig({
   theme: {
     accent: 'green',
     radius: 'lg',
-    mode: 'light',
+    // Follow the reader's system setting, as the landing page does; both store
+    // an explicit choice under the same `blume-theme` key.
+    mode: 'system',
     fonts: {
       body: satoshi,
       display: satoshi,
@@ -98,7 +100,7 @@ export default defineConfig({
   },
   markdown: {
     code: {
-      theme: { light: 'github-dark', dark: 'github-dark' },
+      theme: { light: 'github-light', dark: 'github-dark' },
     },
   },
 })

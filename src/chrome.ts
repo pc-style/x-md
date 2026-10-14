@@ -182,12 +182,15 @@ export function setupMobileMenu(root: HTMLElement) {
   })
 }
 
+/** Blume's key: the docs and the landing pages share one stored theme. */
+const THEME_KEY = 'blume-theme'
+
 export function setupTheme(root: HTMLElement) {
   const toggle = root.querySelector<HTMLButtonElement>('[data-theme-toggle]')
   if (!toggle) return
   const storedTheme = () => {
     try {
-      return localStorage.getItem('x-md-theme')
+      return localStorage.getItem(THEME_KEY)
     } catch {
       return null
     }
@@ -206,7 +209,7 @@ export function setupTheme(root: HTMLElement) {
   toggle.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'
     try {
-      localStorage.setItem('x-md-theme', next)
+      localStorage.setItem(THEME_KEY, next)
     } catch {
       // Storage can be unavailable in sandboxed or privacy-restricted contexts.
     }
