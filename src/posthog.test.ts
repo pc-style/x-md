@@ -12,6 +12,7 @@ let cookieWrites: string[]
 
 beforeEach(() => {
   vi.resetModules()
+  vi.doMock('posthog-js', () => ({ default: posthog }))
   vi.mocked(posthog.init).mockReset()
   vi.mocked(posthog.capture).mockReset()
   vi.mocked(posthog.get_distinct_id).mockReset().mockReturnValue(actorId)
@@ -44,6 +45,38 @@ async function loadAnalytics() {
   await module.analyticsReady
   return module
 }
+
+test('a returning visitor keeps the actor cookie when converting during SDK download', async () => {
+  vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
+  cookies.set('__Host-xmd_actor', actorId)
+  let release!: () => void
+  const gate = new Promise<void>(resolve => { release = resolve })
+  vi.doMock('posthog-js', async () => { await gate; return { default: posthog } })
+  const module = await import('./posthog')
+  try {
+    module.captureLandingEvent('conversion_requested')
+    expect(posthog.init).not.toHaveBeenCalled()
+    expect(posthog.capture).not.toHaveBeenCalled()
+    expect(cookies.get('__Host-xmd_actor')).toBe(actorId)
+    expect(cookieWrites).toEqual([])
+  } finally {
+    release()
+    await module.analyticsReady
+  }
+  expect(posthog.capture).toHaveBeenCalledWith('conversion_requested')
+  expect(cookies.get('__Host-xmd_actor')).toBe(actorId)
+})
+
+test.each(['download', 'initialization'])('a failed SDK %s clears the pending actor cookie', async failure => {
+  vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
+  cookies.set('__Host-xmd_actor', actorId)
+  if (failure === 'download') vi.doMock('posthog-js', async () => { throw new Error('unavailable') })
+  else vi.mocked(posthog.init).mockImplementation(() => { throw new Error('unavailable') })
+  const module = await loadAnalytics()
+  expect(cookies.has('__Host-xmd_actor')).toBe(false)
+  module.captureLandingEvent('conversion_requested')
+  expect(posthog.capture).not.toHaveBeenCalled()
+})
 
 test('enables web analytics through the proxy without replay or interaction capture', async () => {
   const { captureLandingEvent } = await loadAnalytics()

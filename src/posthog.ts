@@ -7,6 +7,7 @@ const pendingEvents: LandingEvent[] = []
 const posthogKey = import.meta.env.VITE_POSTHOG_KEY
 const posthogHost = import.meta.env.VITE_POSTHOG_HOST
 let enabled = false
+let analyticsFailed = false
 const actorBridgeEnabled = import.meta.env.VITE_XMD_ARCHIVE_ACTOR_BRIDGE === 'true'
 const actorCookie = '__Host-xmd_actor'
 const anonymousId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -27,8 +28,11 @@ function clearActor() {
 function bridgeActor() {
   if (window.location.protocol !== 'https:') return
   try {
-    if (!posthog) { clearActor(); return }
     if (!actorBridgeEnabled) { clearActor(); return }
+    if (!posthog) {
+      if (analyticsFailed || !configured) clearActor()
+      return
+    }
     if (posthog.has_opted_out_capturing()) {
       document.cookie = '__Host-xmd_archive_optout=1; Secure; SameSite=Lax; Path=/; Max-Age=2592000'
       clearActor()
@@ -88,6 +92,17 @@ function sanitizeWebVitalEvents(eventProperties: Record<string, unknown>) {
 
 const configured = !blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production'
   && posthogKey && posthogHost?.startsWith('https://') && window.location.pathname === '/'
+if (!configured) {
+  try { clearActor() } catch { /* Cookies may be blocked. */ }
+}
+
+function analyticsFailure() {
+  enabled = false
+  analyticsFailed = true
+  posthog = undefined
+  pendingEvents.length = 0
+  try { clearActor() } catch { /* Cookies may be blocked. */ }
+}
 
 // Download and evaluate the SDK after controls are available, and only when
 // production configuration and the visitor's privacy settings permit it.
@@ -138,9 +153,9 @@ export const analyticsReady: Promise<void> = configured ? import('posthog-js').t
     for (const event of pendingEvents.splice(0)) captureLandingEvent(event)
   } catch {
     // Optional analytics must not stop the landing page from loading.
-    pendingEvents.length = 0
+    analyticsFailure()
   }
-}).catch(() => { pendingEvents.length = 0 }) : Promise.resolve()
+}).catch(analyticsFailure) : Promise.resolve()
 
 export function captureLandingEvent(event: LandingEvent) {
   if (!configured || window.location.pathname !== '/' || !events.has(event)) return
@@ -148,7 +163,7 @@ export function captureLandingEvent(event: LandingEvent) {
     if (privacyBlocked()) { clearActor(); return }
     if (event === 'conversion_requested') bridgeActor()
     if (!enabled || !posthog) {
-      if (pendingEvents.length < 20) pendingEvents.push(event)
+      if (!analyticsFailed && pendingEvents.length < 20) pendingEvents.push(event)
       return
     }
     posthog.capture(event)
