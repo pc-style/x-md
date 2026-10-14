@@ -142,7 +142,7 @@ function run(command: (string | number)[]): unknown {
 
 async function fakeRedis(body: string): Promise<Response> {
   const commands = JSON.parse(body) as (string | number)[][]
-  const replies = commands.map((command) => { try { return { result: run(command) } } catch (error) { return { error: String(error) } } })
+  const replies = commands.map((command) => { try { return { result: run(command) } } catch (error) { return { error: error instanceof Error ? error.message : 'ERR' } } })
   const out = JSON.stringify(replies)
   redisStats.calls += 1
   redisStats.bytes += body.length + out.length
@@ -216,7 +216,7 @@ function headroom(): number {
 }
 globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-  if (url.startsWith(REDIS_URL)) return fakeRedis(String(init?.body ?? ''))
+  if (new URL(url).origin === REDIS_URL) return fakeRedis(String(init?.body ?? ''))
   if (!SIM) while (headroom() <= 0) await new Promise((r) => setTimeout(r, 250))
   stamps.push(Date.now())
   upstream.requests += 1
