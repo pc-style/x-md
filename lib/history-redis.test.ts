@@ -110,3 +110,20 @@ test('a failed archive write holds the handle lock until every chunk it sent has
   await expect(importWithHistory({ handle: 'ada', until: new Date(NOW), maxPosts: 5000 })).rejects.toThrow('redis HTTP 500')
   expect(landed).toBe(true)
 })
+
+test('a write whose pipeline answers 200 with a failed command fails instead of recording coverage', async () => {
+  const posts = Array.from({ length: 3 }, (_, i) => post(NOW - (i + 1) * 60_000))
+  vi.mocked(importProfilePosts).mockImplementation(async () => ({ profile: { screen_name: 'ada' }, posts, meta: { handle: 'ada', count: posts.length, until: new Date(NOW).toISOString(), truncated: false, floor_reached: true, with_replies: true, with_reposts: true, only_replies: false, concurrency: 16, windows: 1, pages: 1, retried_pages: 0, duration_ms: 1, estimated_rate_per_hour: 60, source: 'fxtwitter' } }))
+  const run = upstash.fetch.getMockImplementation()!
+  const indexWrites: unknown[] = []
+  upstash.fetch.mockImplementation(async (url: string, init?: RequestInit) => {
+    const commands = JSON.parse(String(init?.body)) as (string | number)[][]
+    if (commands.some((command) => command[0] === 'ZADD')) {
+      return new Response(JSON.stringify([{ error: 'OOM command not allowed' }, { result: 3 }, { result: 0 }]), { status: 200 })
+    }
+    if (commands.some((command) => command[0] === 'HSET' && String(command[1]).endsWith(':index'))) indexWrites.push(commands)
+    return run(url, init)
+  })
+  await expect(importWithHistory({ handle: 'ada', until: new Date(NOW), maxPosts: 5000 })).rejects.toThrow('redis OOM')
+  expect(indexWrites).toEqual([])
+})

@@ -176,16 +176,20 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
   })
 
   test('hedged copies race and the first full page wins', async () => {
-    const page = (length: number, delay: number) => new Promise<Response>((resolve) => setTimeout(() => resolve(new Response(JSON.stringify({ code: 200, results: Array.from({ length }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: `b${length}` } }), { status: 200 })), delay))
+    let slowAnswered = false
+    const page = (length: number, delay: number) => new Promise<Response>((resolve) => setTimeout(() => {
+      if (delay >= 40) slowAnswered = true
+      resolve(new Response(JSON.stringify({ code: 200, results: Array.from({ length }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: `b${length}` } }), { status: 200 }))
+    }, delay))
     const fetchMock = vi.fn().mockImplementationOnce(() => page(1, 40)).mockImplementationOnce(() => page(10, 5))
     vi.stubGlobal('fetch', fetchMock)
-    const started = performance.now()
     const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
     expect(result.results).toHaveLength(10)
     expect(result.cursor?.bottom).toBe('b10')
     expect(result.attempts).toBe(2)
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(performance.now() - started).toBeLessThan(35)
+    // The full page won without waiting for the slow copy to answer.
+    expect(slowAnswered).toBe(false)
   })
 
   test('every hedged copy keeps the retry budget and the page settles for the best short page', async () => {

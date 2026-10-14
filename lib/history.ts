@@ -157,6 +157,9 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
         const replies = await Promise.allSettled(chunks.slice(i, i + WRITE_PARALLEL).map((commands) => run<number>(commands, 10_000)))
         for (const reply of replies) {
           if (reply.status === 'rejected') throw reply.reason
+          // A pipeline answers 200 even when one of its commands failed.
+          const failed = reply.value.find((command) => command.error)
+          if (failed) throw new Error(`redis ${failed.error}`)
           count = Math.max(count, Number(reply.value[2]?.result ?? 0))
         }
       }
