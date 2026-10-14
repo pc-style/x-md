@@ -77,18 +77,4 @@ export function setupMotion(root: HTMLElement) {
       })
     })
   })
-
-  mm.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
-    const section = root.querySelector<HTMLElement>('[data-pin-section]')
-    const target = root.querySelector<HTMLElement>('[data-pin-target]')
-    if (!section || !target) return
-    ScrollTrigger.create({
-      trigger: section,
-      start: 'top 120px',
-      end: () => `+=${Math.max(section.offsetHeight - target.offsetHeight - 160, 0)}`,
-      pin: target,
-      pinSpacing: false,
-      invalidateOnRefresh: true,
-    })
-  })
 }

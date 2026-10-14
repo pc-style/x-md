@@ -158,20 +158,31 @@ export const FAQ: { question: string; answer: string }[] = [
   },
 ]
 
+/**
+ * Query parameters, the Accept header and site paths render as code chips. The
+ * visible text stays identical to `FAQ`, so the JSON-LD copy still matches it.
+ */
+function faqAnswerHtml(answer: string): string {
+  return answer.replace(
+    /\?[a-z]+=[a-z]+|Accept: application\/json|(?<=\s)\/(?:docs|openapi\.json|mcp)\b/g,
+    (token) => `<code class="code-chip">${token}</code>`,
+  )
+}
+
 const FAQ_ITEMS = FAQ.map(
   (item) => `<div>
             <h3 class="text-[18px] leading-snug font-bold text-ink">${item.question}</h3>
-            <p class="mt-3 max-w-[52ch] text-[15.5px] leading-relaxed text-ink-2">${item.answer}</p>
+            <p class="mt-3 max-w-[52ch] text-[15.5px] leading-relaxed text-ink-2">${faqAnswerHtml(item.answer)}</p>
           </div>`,
 ).join('\n          ')
 
 export function landingHtml(): string {
   return `
-<div class="x-root w-full max-w-full overflow-x-hidden">
+<div class="x-root w-full max-w-full overflow-x-clip">
   <a href="#convert" class="skip-link">Skip to converter</a>
   ${headerHtml({ page: 'landing' })}
 
-  <main id="top" class="w-full max-w-full overflow-x-hidden">
+  <main id="top" class="w-full max-w-full overflow-x-clip">
 
     <!-- hero: artistic asymmetry -->
     <section class="relative overflow-hidden">
@@ -238,7 +249,7 @@ export function landingHtml(): string {
 
     <!-- interest: gapless bento, before / after -->
     <section id="how" class="scroll-mt-28">
-      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+      <div class="mx-auto max-w-[1200px] px-6 py-24 sm:px-8 md:py-32">
         <h2 class="max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           You see the same post either way. Your agent doesn't.
         </h2>
@@ -248,14 +259,14 @@ export function landingHtml(): string {
               <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl x.com${EXAMPLE_PATH}</p>
               <span class="pane-tag pane-tag-bad shrink-0">no content</span>
             </div>
-            <pre class="mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre" style="color: var(--color-code-ink)">${xComOutput}</pre>
+            <pre class="mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre max-sm:whitespace-pre-wrap max-sm:[overflow-wrap:anywhere]" style="color: var(--color-code-ink)">${xComOutput}</pre>
           </article>
           <article class="bento-card bento-b bento-dark" data-rise-card>
             <div class="flex items-center justify-between gap-3">
               <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl mdfromx.com${EXAMPLE_PATH}</p>
               <span class="pane-tag pane-tag-good shrink-0">markdown</span>
             </div>
-            <pre class="mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre" style="color: var(--color-code-ink)">${mdOutput}</pre>
+            <pre class="mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre max-sm:whitespace-pre-wrap max-sm:[overflow-wrap:anywhere]" style="color: var(--color-code-ink)">${mdOutput}</pre>
           </article>
           <article class="bento-card bento-c bento-tint" data-rise-card>
             <h3 class="text-[19px] font-bold text-ink">One host swap, nothing else</h3>
@@ -277,7 +288,7 @@ export function landingHtml(): string {
 
     <!-- desire: scrubbing statement -->
     <section class="border-t border-line">
-      <div class="mx-auto max-w-[1000px] px-6 py-28 sm:px-8 md:py-44">
+      <div class="mx-auto max-w-[1000px] px-6 py-24 sm:px-8 md:py-36">
         <p data-scrub-text class="text-[clamp(1.6rem,3.4vw,2.7rem)] leading-[1.35] font-bold tracking-tight text-ink">
           Your notes, your scripts, and your agents all speak Markdown. X speaks JavaScript. x.md is the translation layer: keep the URL, change the host, read the post.
         </p>
@@ -285,10 +296,10 @@ export function landingHtml(): string {
     </section>
 
     <!-- desire: pinned split, what comes through -->
-    <section data-pin-section class="border-t border-line">
-      <div class="mx-auto grid max-w-[1200px] gap-12 px-6 py-28 sm:px-8 md:py-40 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+    <section class="border-t border-line">
+      <div class="mx-auto grid max-w-[1200px] gap-12 px-6 py-24 sm:px-8 md:py-32 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
         <div>
-          <div data-pin-target class="lg:pr-8">
+          <div class="lg:sticky lg:top-28 lg:pr-8">
             <h2 class="max-w-[14ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
               Nothing important gets dropped.
             </h2>
@@ -334,62 +345,55 @@ export function landingHtml(): string {
       </div>
     </section>
 
-    <!-- agents: horizontal accordion -->
+    <!-- agents: three ways in, all visible -->
     <section id="agents" class="deferred-section scroll-mt-28 border-t border-line">
-      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+      <div class="mx-auto max-w-[1200px] px-6 py-24 sm:px-8 md:py-32">
         <h2 class="max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           Three ways to point an agent at it.
         </h2>
-        <div class="acc mt-14">
-          <div class="acc-item" data-open>
-            <button type="button" class="acc-trigger" aria-expanded="true" aria-controls="agent-panel-prompt">
-              <span class="acc-num block">for any agent</span>
-              <span class="mt-3 block text-[20px] font-bold text-ink">Say it in the prompt</span>
-            </button>
-            <div id="agent-panel-prompt" class="acc-body">
-              <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
-                One line is enough: <span class="font-medium text-ink">"To read an X post, swap
-                x.com for mdfromx.com."</span> Every agent that can fetch a URL now reads tweets.
-              </p>
+        <div class="mt-14 grid gap-4 lg:grid-cols-[1fr_1.4fr_1fr]">
+          <article class="way-card">
+            <p class="way-label">for any agent</p>
+            <h3 class="mt-3 text-[20px] font-bold text-ink">Say it in the prompt</h3>
+            <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
+              One line is enough. Every agent that can fetch a URL now reads tweets.
+            </p>
+            <div class="mt-auto pt-6">
+              <p class="way-quote">"To read an X post, swap x.com for mdfromx.com."</p>
             </div>
-          </div>
-          <div class="acc-item">
-            <button type="button" class="acc-trigger" aria-expanded="false" aria-controls="agent-panel-skill">
-              <span class="acc-num block">for skills-aware agents</span>
-              <span class="mt-3 block text-[20px] font-bold text-ink">Install the skill</span>
-            </button>
-            <div id="agent-panel-skill" class="acc-body">
-              <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
-                One command teaches Amp, Claude Code, and friends the host swap permanently.
-              </p>
-              <div class="cmd-row mt-5 max-w-[460px]">
-                <code><span class="t-dim">$ </span>${SKILL_CMD}</code>
+          </article>
+          <article class="way-card way-card-accent">
+            <p class="way-label">for skills-aware agents</p>
+            <h3 class="mt-3 text-[20px] font-bold text-ink">Install the skill</h3>
+            <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
+              One command teaches Amp, Claude Code, and friends the host swap permanently.
+            </p>
+            <div class="mt-auto pt-6">
+              <div class="cmd-row">
+                <code><span class="t-dim mr-2 select-none">$</span>${SKILL_CMD}</code>
                 <button type="button" class="copy-btn" data-copy="${SKILL_CMD}">Copy</button>
               </div>
             </div>
-          </div>
-          <div class="acc-item">
-            <button type="button" class="acc-trigger" aria-expanded="false" aria-controls="agent-panel-api">
-              <span class="acc-num block">for scripts</span>
-              <span class="mt-3 block text-[20px] font-bold text-ink">Call the API</span>
-            </button>
-            <div id="agent-panel-api" class="acc-body">
-              <p class="max-w-[44ch] text-[14.5px] leading-relaxed text-ink-2">
-                <code class="code-chip">GET /api/v1/posts?url=…</code> returns the same Markdown
-                with JSON and raw variants. Every route, parameter, and limit is written down in the
-                <a href="/docs" class="font-bold text-accent hover:text-accent-deep">API documentation</a>
-                and described again in
-                <a href="/openapi.json" class="font-bold text-accent hover:text-accent-deep">OpenAPI</a>.
-              </p>
-            </div>
-          </div>
+          </article>
+          <article class="way-card">
+            <p class="way-label">for scripts</p>
+            <h3 class="mt-3 text-[20px] font-bold text-ink">Call the API</h3>
+            <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
+              The same Markdown, with JSON and raw variants. Every route, parameter, and limit is
+              written down in the
+              <a href="/docs" class="font-bold text-accent hover:text-accent-deep">API documentation</a>
+              and described again in
+              <a href="/openapi.json" class="font-bold text-accent hover:text-accent-deep">OpenAPI</a>.
+            </p>
+            <p class="mt-auto pt-6"><code class="code-chip">GET /api/v1/posts?url=…</code></p>
+          </article>
         </div>
       </div>
     </section>
 
     <!-- documentation: crawlable links to every published surface -->
     <section id="resources" class="deferred-section scroll-mt-28 border-t border-line">
-      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+      <div class="mx-auto max-w-[1200px] px-6 py-24 sm:px-8 md:py-32">
         <h2 class="max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           The documentation, and a machine-readable copy of it.
         </h2>
@@ -405,7 +409,7 @@ export function landingHtml(): string {
 
     <!-- faq: the questions agents and readers actually ask -->
     <section id="faq" class="deferred-section scroll-mt-28 border-t border-line">
-      <div class="mx-auto max-w-[1200px] px-6 py-28 sm:px-8 md:py-40">
+      <div class="mx-auto max-w-[1200px] px-6 py-24 sm:px-8 md:py-32">
         <h2 class="max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           Common questions.
         </h2>
@@ -417,7 +421,7 @@ export function landingHtml(): string {
 
     <!-- action -->
     <section class="deferred-section border-t border-line bg-raised">
-      <div class="mx-auto max-w-[1200px] px-6 py-28 text-center sm:px-8 md:py-44">
+      <div class="mx-auto max-w-[1200px] px-6 py-24 text-center sm:px-8 md:py-36">
         <h2 class="mx-auto max-w-[18ch] text-[clamp(2.2rem,5vw,4rem)] leading-[1.05] font-black tracking-tight text-ink">
           Read a post the way your agent does.
         </h2>

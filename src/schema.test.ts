@@ -99,7 +99,8 @@ describe('homepage JSON-LD', () => {
     expect(questions.length).toBeGreaterThanOrEqual(4)
     expect(questions.length).toBe(FAQ.length)
 
-    const text = textOf(landing)
+    // textOf turns `<code>/mcp</code>.` into "/mcp ."; a browser renders "/mcp.".
+    const text = textOf(landing).replace(/ ([.,)])/g, '$1')
     for (const [index, question] of questions.entries()) {
       expect(question['@type']).toBe('Question')
       expect(question.acceptedAnswer['@type']).toBe('Answer')

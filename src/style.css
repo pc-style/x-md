@@ -52,6 +52,11 @@
   h2,
   h3 {
     letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 
   ::selection {
@@ -275,6 +280,8 @@
   .code-chip {
     @apply rounded-md bg-raised-2 font-mono text-[12px] font-medium text-ink-2;
     padding: 2px 7px;
+    /* A chip is one token: never break `?thread=off` after the `?`. */
+    white-space: nowrap;
   }
 
   .code-block {
@@ -377,6 +384,17 @@
   .float-card pre {
     @apply m-0 overflow-x-auto px-5 py-5 font-mono text-[12.5px] leading-[1.75] whitespace-pre;
     color: var(--color-code-ink);
+  }
+
+  @media (max-width: 639px) {
+    .float-card {
+      transform: none;
+    }
+
+    .float-card pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
   }
 
   /* ---------- Marquee ---------- */
@@ -500,49 +518,25 @@
     @apply border-t-0 pt-0;
   }
 
-  /* ---------- Horizontal accordion ---------- */
+  /* ---------- Agent ways ---------- */
 
-  .acc {
-    @apply flex flex-col gap-3 lg:h-[420px] lg:flex-row;
+  .way-card {
+    @apply flex flex-col rounded-2xl border border-line bg-raised p-7;
   }
 
-  .acc-item {
-    @apply relative cursor-pointer overflow-hidden rounded-2xl border border-line bg-raised p-7;
-    flex: 1;
-    transition: flex 520ms cubic-bezier(0.22, 1, 0.36, 1);
+  .way-card-accent {
+    background:
+      linear-gradient(155deg, rgb(20 108 67 / 0.09), transparent 60%),
+      var(--color-raised);
+    border-color: rgb(20 108 67 / 0.28);
   }
 
-  .acc-trigger {
-    @apply w-full text-left;
-  }
-
-  @media (min-width: 1024px) {
-    .acc-item[data-open] {
-      flex: 2.6;
-    }
-  }
-
-  .acc-body {
-    @apply mt-4;
-  }
-
-  @media (min-width: 1024px) {
-    .acc-body {
-      opacity: 0;
-      transform: translateY(8px);
-      transition:
-        opacity 380ms ease 140ms,
-        transform 380ms cubic-bezier(0.22, 1, 0.36, 1) 140ms;
-    }
-
-    .acc-item[data-open] .acc-body {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  .acc-num {
+  .way-label {
     @apply font-mono text-[12px] text-ink-4;
+  }
+
+  .way-quote {
+    @apply border-l-2 border-accent pl-4 text-[15px] leading-relaxed font-medium text-ink;
   }
 
   /* ---------- Tables (docs) ---------- */
