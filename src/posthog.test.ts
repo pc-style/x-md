@@ -39,8 +39,14 @@ beforeEach(() => {
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals() })
 
+async function loadAnalytics() {
+  const module = await import('./posthog')
+  await module.analyticsReady
+  return module
+}
+
 test('enables web analytics through the proxy without replay or interaction capture', async () => {
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   expect(posthog.init).toHaveBeenCalledWith('phc_test', expect.objectContaining({
     api_host: 'https://p.pcstyle.dev', ui_host: 'https://eu.posthog.com',
     capture_pageview: true, capture_pageleave: true, persistence: 'localStorage',
@@ -54,7 +60,7 @@ test('enables web analytics through the proxy without replay or interaction capt
 })
 
 test('sanitizes URLs and user properties while preserving session metrics', async () => {
-  await import('./posthog')
+  await loadAnalytics()
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
   const result = beforeSend({ event: '$pageview', properties: {
     token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
@@ -101,7 +107,7 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
 
 test.each(['/admin', '/admin.html', '/docs', '/search'])('does not initialize on %s', async (pathname) => {
   window.location.pathname = pathname
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   captureLandingEvent('conversion_requested')
   expect(posthog.init).not.toHaveBeenCalled()
   expect(posthog.capture).not.toHaveBeenCalled()
@@ -112,7 +118,7 @@ test.each([
   ['VITE_POSTHOG_KEY', ''], ['VITE_POSTHOG_HOST', ''], ['VITE_POSTHOG_HOST', 'http://example.test'],
 ] as const)('ignores disabled or incomplete configuration: %s=%s', async (name, value) => {
   vi.stubEnv(name, value)
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   captureLandingEvent('conversion_requested')
   expect(posthog.init).not.toHaveBeenCalled()
   expect(posthog.capture).not.toHaveBeenCalled()
@@ -120,12 +126,12 @@ test.each([
 
 test('analytics failures do not interrupt loading or interactions', async () => {
   vi.mocked(posthog.init).mockImplementation(() => { throw new Error('blocked') })
-  const disabled = await import('./posthog')
+  const disabled = await loadAnalytics()
   expect(() => disabled.captureLandingEvent('conversion_requested')).not.toThrow()
   expect(posthog.capture).not.toHaveBeenCalled()
   vi.resetModules()
   vi.mocked(posthog.init).mockReset()
-  const enabled = await import('./posthog')
+  const enabled = await loadAnalytics()
   vi.mocked(posthog.capture).mockImplementation(() => { throw new Error('blocked') })
   expect(() => enabled.captureLandingEvent('conversion_requested')).not.toThrow()
 })
@@ -136,7 +142,7 @@ function loaded() {
 }
 
 test('bridge is disabled by default without changing ordinary analytics', async () => {
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   captureLandingEvent('conversion_requested')
   expect(cookieWrites.length).toBeGreaterThan(0)
@@ -146,7 +152,7 @@ test('bridge is disabled by default without changing ordinary analytics', async 
 
 test('bridges anonymous identity on loaded and refreshes it before conversion', async () => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   expect(cookieWrites).toEqual([`__Host-xmd_actor=${encodeURIComponent(actorId)}; Secure; SameSite=Lax; Path=/; Max-Age=2592000`])
   const freshId = '019abcde-1234-7123-8123-123456789abd'
@@ -162,7 +168,7 @@ test('bridges anonymous identity on loaded and refreshes it before conversion', 
 
 test.each(['false', 'TRUE', '1'])('requires exact bridge flag: %s', async value => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', value)
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   expect(cookieWrites.length).toBeGreaterThan(0)
   expect(cookieWrites.every(cookie => cookie.includes('Max-Age=0'))).toBe(true)
@@ -171,7 +177,7 @@ test.each(['false', 'TRUE', '1'])('requires exact bridge flag: %s', async value 
 test('never writes bridge cookies on HTTP', async () => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
   window.location.protocol = 'http:'
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   captureLandingEvent('conversion_requested')
   expect(cookieWrites).toEqual([])
@@ -181,7 +187,7 @@ test.each(['email@example.com', 'user-123', '', '019abcde-1234-7123-8123-1234567
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
   cookies.set('__Host-xmd_actor', actorId)
   vi.mocked(posthog.get_distinct_id).mockReturnValue(id)
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   expect(cookies.has('__Host-xmd_actor')).toBe(false)
 })
@@ -190,7 +196,7 @@ test.each([['$user_id', actorId], ['$is_identified', true], ['$user_state', 'ide
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
   cookies.set('__Host-xmd_actor', actorId)
   vi.mocked(posthog.get_property).mockImplementation(key => key === property ? value : undefined)
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   expect(cookies.has('__Host-xmd_actor')).toBe(false)
 })
@@ -205,7 +211,7 @@ test.each(['cookie', 'DNT', 'GPC'])('honors %s before initialization and removes
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
   cookies.set('__Host-xmd_actor', actorId)
   blockPrivacy(signal)
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   captureLandingEvent('conversion_requested')
   expect(posthog.init).not.toHaveBeenCalled()
   expect(posthog.capture).not.toHaveBeenCalled()
@@ -214,7 +220,7 @@ test.each(['cookie', 'DNT', 'GPC'])('honors %s before initialization and removes
 
 test.each(['cookie', 'DNT', 'GPC'])('honors new %s before conversion', async signal => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   blockPrivacy(signal)
   captureLandingEvent('conversion_requested')
@@ -224,7 +230,7 @@ test.each(['cookie', 'DNT', 'GPC'])('honors new %s before conversion', async sig
 
 test('SDK opt-out clears actor before conversion', async () => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   vi.mocked(posthog.has_opted_out_capturing).mockReturnValue(true)
   captureLandingEvent('conversion_requested')
@@ -239,7 +245,7 @@ test('SDK opt-out clears actor before conversion', async () => {
 
 test('SDK bridge failures clear stale identity without breaking conversion', async () => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  const { captureLandingEvent } = await import('./posthog')
+  const { captureLandingEvent } = await loadAnalytics()
   loaded()
   vi.mocked(posthog.get_distinct_id).mockImplementation(() => { throw new Error('blocked') })
   expect(() => captureLandingEvent('conversion_requested')).not.toThrow()
@@ -250,7 +256,7 @@ test('SDK bridge failures clear stale identity without breaking conversion', asy
 
 test.each(['cookie', 'DNT', 'GPC'])('before_send honors new %s for automatic events', async signal => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
   blockPrivacy(signal)
@@ -262,7 +268,7 @@ test.each(['cookie', 'DNT', 'GPC'])('before_send honors new %s for automatic eve
 test('mirrors existing SDK optout when the SDK loads', async () => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
   vi.mocked(posthog.has_opted_out_capturing).mockReturnValue(true)
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   expect(cookies.get('__Host-xmd_archive_optout')).toBe('1')
   expect(cookies.has('__Host-xmd_actor')).toBe(false)
@@ -271,7 +277,7 @@ test('mirrors existing SDK optout when the SDK loads', async () => {
 
 test.each([true, false])('disabling an enabled bridge clears its actor even with SDK available=%s', async sdkAvailable => {
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'true')
-  await import('./posthog')
+  await loadAnalytics()
   loaded()
   expect(cookies.get('__Host-xmd_actor')).toBe(actorId)
   vi.resetModules()
@@ -279,7 +285,7 @@ test.each([true, false])('disabling an enabled bridge clears its actor even with
   vi.mocked(posthog.get_distinct_id).mockClear()
   vi.stubEnv('VITE_XMD_ARCHIVE_ACTOR_BRIDGE', 'false')
   if (!sdkAvailable) vi.stubEnv('VITE_POSTHOG_KEY', '')
-  await import('./posthog')
+  await loadAnalytics()
   expect(cookies.has('__Host-xmd_actor')).toBe(false)
   expect(cookieWrites.at(-1)).toBe('__Host-xmd_actor=; Secure; SameSite=Lax; Path=/; Max-Age=0')
   expect(posthog.get_distinct_id).not.toHaveBeenCalled()

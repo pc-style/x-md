@@ -97,6 +97,26 @@ describe('browse', () => {
     expect(result.nextCursor).toBe('fxtwitter:page-4@15')
   })
 
+  test('reuses a large upstream page while walking numbered search blocks', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: posts(100), cursor: { bottom: 'next' } })
+    const result = await browse({ resource: 'search', q: 'large page', page: 5, limit: 10, nocache: true })
+    expect(result.posts?.map(({ id }) => id)).toEqual(posts(100).slice(40, 50).map(({ id }) => id))
+    expect(result.nextCursor).toBe('fxtwitter:@50')
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+  })
+
+  test('reuses offset blocks before fetching the next upstream followers page', async () => {
+    const users = Array.from({ length: 70 }, (_, index) => ({ screen_name: `user${index}` }))
+    vi.mocked(fetchFxConnections)
+      .mockResolvedValueOnce({ results: users, cursor: { bottom: 'next' } })
+      .mockResolvedValueOnce({ results: [{ screen_name: 'last' }] })
+    const result = await browse({ resource: 'followers', handle: 'ada', page: 4, limit: 20, nocache: true })
+    expect(result.users).toEqual([...users.slice(60), { screen_name: 'last' }])
+    expect(result.nextCursor).toBeUndefined()
+    expect(fetchFxConnections).toHaveBeenCalledTimes(2)
+    expect(fetchFxConnections).toHaveBeenLastCalledWith('ada', 'followers', 'next', 20)
+  })
+
   test('assembles up to 100 search results and appends date operators', async () => {
     vi.mocked(searchFxStatuses).mockImplementation(async (_q, _feed, cursor) => ({ results: posts(20, cursor ?? 'first'), cursor: { bottom: `${cursor ?? 'first'}+` } }))
     const result = await browse({ resource: 'search', q: 'x-md', limit: 100, since: '2025-01-01', until: '2025-02-01', nocache: true })

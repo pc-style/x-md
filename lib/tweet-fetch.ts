@@ -145,7 +145,7 @@ export async function fetchPosts(
     const replies = (await repliesPromise) ?? []
     return { tweets: annotateAndDedupe(thread, id, replies), source: 'fxtwitter' }
   } catch (error) {
-    if (isHardNotFound(error)) throw error
+    if (isHardNotFound(error) || (error instanceof ConvertError && error.code === 'upstream_rate_limited')) throw error
   } finally {
     // A failed/private thread must not keep an unused reply fetch running.
     repliesController.abort()

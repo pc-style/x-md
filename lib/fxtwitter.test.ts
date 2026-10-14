@@ -389,6 +389,68 @@ describe('fetchFxFullThread', () => {
     expect(result[0].id).toBe('100')
   })
 
+  test('uses the focal status supplied with an empty thread instead of fetching it again', async () => {
+    const root = makeTweet('100')
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes('/thread/') ? { code: 200, status: leaf, thread: null } : fxStatusResponse(root),
+    )))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchFxFullThread('200')
+    expect(result.map(({ id }) => id)).toEqual(['100', '200'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/status/100')
+  })
+
+  test('keeps a known focal post when its parent is unavailable', async () => {
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes('/thread/') ? { code: 200, thread: [leaf] } : { code: 404, message: 'NOT_FOUND' },
+    ))))
+    expect((await fetchFxFullThread('200')).map(({ id }) => id)).toEqual(['200'])
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
+  })
+
+  test('keeps explicit private parent failures terminal even with a known focal post', async () => {
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(
+      url.includes('/thread/') ? { code: 200, thread: [leaf] } : { code: 404, message: 'PRIVATE_TWEET' },
+    ))))
+    await expect(fetchFxFullThread('200')).rejects.toMatchObject({ code: 'private_tweet' })
+  })
+
+  test('a concurrent reply throttle cannot silently remove required parent context', async () => {
+    const { resetFxPool } = await import('./fxtwitter.js')
+    const { fetchPosts } = await import('./tweet-fetch.js')
+    resetFxPool()
+    let releaseThread!: () => void
+    const gate = new Promise<void>(resolve => { releaseThread = resolve })
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/conversation/')) {
+        return new Response('{}', { status: 429, headers: { 'Retry-After': '5' } })
+      }
+      if (url.includes('/thread/')) {
+        await gate
+        return new Response(JSON.stringify(fxThreadResponse([leaf])))
+      }
+      return new Response(JSON.stringify(fxStatusResponse(makeTweet('100'))))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const pending = fetchPosts('ada', '200', 'full')
+      const result = expect(pending).rejects.toMatchObject({ code: 'upstream_rate_limited', retryAfter: 5 })
+      // Let the reply response install its cooldown before the parent walk.
+      await new Promise(resolve => setTimeout(resolve, 0))
+      releaseThread()
+      await result
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    } finally {
+      releaseThread()
+      resetFxPool()
+    }
+  })
+
   test('falls back to conversation chain when thread endpoint returns single tweet with parent', async () => {
     const root = makeTweet('100')
     const leaf = makeTweet('200', { replying_to: { status: '100' } as FxReplyingTo })
@@ -414,6 +476,8 @@ describe('fetchFxFullThread', () => {
 
     const result = await fetchFxFullThread('200')
     expect(result.map((t) => t.id)).toEqual(['100', '200'])
+    expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => String(url))).not.toContain('https://api.fxtwitter.com/2/status/200')
   })
 
   test('returns exactly limit posts when thread count equals limit', async () => {

@@ -14,6 +14,27 @@ interface CacheEnvelope<T> {
 
 const memory = new Map<string, CacheEnvelope<unknown>>()
 const MAX_MEMORY_ENTRIES = 500
+const lookups = new Map<string, Promise<unknown>>()
+const fills = new Map<string, Promise<unknown>>()
+
+/** Share only pending work; settled misses and failures must be retried. */
+async function singleFlight<T>(pending: Map<string, Promise<unknown>>, key: string, fn: (release: () => void) => Promise<T>): Promise<T> {
+  const existing = pending.get(key)
+  if (existing) return existing as Promise<T>
+  // Keep unique-key bursts bounded without evicting work other callers await.
+  if (pending.size >= MAX_MEMORY_ENTRIES) return fn(() => {})
+  let operation: Promise<T> | undefined
+  const release = () => {
+    if (operation && pending.get(key) === operation) pending.delete(key)
+  }
+  operation = fn(release)
+  pending.set(key, operation)
+  try {
+    return await operation
+  } finally {
+    release()
+  }
+}
 
 function ttlMs(): number {
   const raw = process.env.CACHE_TTL_SECONDS ?? '3600'
@@ -55,8 +76,19 @@ function pruneMemory(): void {
 
 function readEnvelope<T>(entry: CacheEnvelope<T> | undefined): T | undefined {
   if (!entry) return undefined
-  if (Date.now() > entry.expiresAt) return undefined
+  if (Date.now() >= entry.expiresAt) return undefined
   return entry.value
+}
+
+function readMemory<T>(key: string): { value: T; status: 'hit' } | undefined {
+  const entry = memory.get(key) as CacheEnvelope<T> | undefined
+  const value = readEnvelope(entry)
+  if (entry && value !== undefined) {
+    touchMemory(key, entry)
+    return { value, status: 'hit' }
+  }
+  memory.delete(key)
+  return undefined
 }
 
 /**
@@ -140,6 +172,8 @@ async function writeShared<T>(key: string, entry: CacheEnvelope<T>, ttl: number)
 /** Test hook: drop the in-process hot layer to simulate a fresh runtime instance. */
 export function resetMemoryCache(): void {
   memory.clear()
+  lookups.clear()
+  fills.clear()
 }
 
 export function buildCacheKey(parts: Record<string, string | number>): string {
@@ -150,28 +184,28 @@ export function buildCacheKey(parts: Record<string, string | number>): string {
 }
 
 export async function getCached<T>(key: string): Promise<{ value: T; status: CacheStatus } | undefined> {
-  const mem = readEnvelope(memory.get(key) as CacheEnvelope<T> | undefined)
-  if (mem !== undefined) {
-    touchMemory(key, memory.get(key) as CacheEnvelope<T>)
-    return { value: mem, status: 'hit' }
-  }
+  const mem = readMemory<T>(key)
+  if (mem) return mem
 
-  const shared = await readShared<T>(key)
-  const fromShared = readEnvelope(shared)
-  if (fromShared !== undefined && shared) {
-    touchMemory(key, shared)
-    pruneMemory()
-    return { value: fromShared, status: 'hit' }
-  }
+  return singleFlight(lookups, key, async () => {
+    const shared = await readShared<T>(key)
+    const fromShared = readEnvelope(shared)
+    if (fromShared !== undefined && shared) {
+      touchMemory(key, shared)
+      pruneMemory()
+      return { value: fromShared, status: 'hit' as const }
+    }
 
-  const disk = await readDisk<T>(key)
-  const fromDisk = readEnvelope(disk)
-  if (fromDisk !== undefined && disk) {
-    touchMemory(key, disk)
-    return { value: fromDisk, status: 'hit' }
-  }
+    const disk = await readDisk<T>(key)
+    const fromDisk = readEnvelope(disk)
+    if (fromDisk !== undefined && disk) {
+      touchMemory(key, disk)
+      pruneMemory()
+      return { value: fromDisk, status: 'hit' as const }
+    }
 
-  return undefined
+    return undefined
+  })
 }
 
 export async function setCached<T>(key: string, value: T, ttl = ttlMs()): Promise<void> {
@@ -191,23 +225,46 @@ export async function setCached<T>(key: string, value: T, ttl = ttlMs()): Promis
 /**
  * `ttlFor` lets a caller shorten the TTL based on the produced value, e.g. a
  * degraded fallback result that should be re-checked soon.
+ * `flightKey` scopes pending origin work when the loader performs per-caller
+ * admission. Stored entries and their durable lookups still use the shared key.
  */
 export async function withCache<T>(
   key: string,
   nocache: boolean,
   fn: () => Promise<T>,
   ttlFor?: (value: T) => number | undefined,
+  flightKey?: string,
 ): Promise<{ value: T; status: CacheStatus }> {
   if (nocache || cacheDisabled()) {
     return { value: await fn(), status: 'bypass' }
+  }
+
+  const hot = readMemory<T>(key)
+  if (hot) {
+    trackCache(true)
+    return hot
+  }
+
+  const fillKey = JSON.stringify([key, flightKey ?? null])
+  const pending = fills.get(fillKey)
+  if (pending) {
+    trackCache(false)
+    return { value: await pending as T, status: 'miss' }
   }
 
   const hit = await getCached<T>(key)
   trackCache(Boolean(hit))
   if (hit) return hit
 
-  const value = await fn()
-  await setCached(key, value, ttlFor?.(value) ?? ttlMs())
+  const value = await singleFlight(fills, fillKey, async (release) => {
+    const value = await fn()
+    const write = setCached(key, value, ttlFor?.(value) ?? ttlMs())
+    // setCached publishes hot memory synchronously. New callers must read its
+    // expiry instead of joining this value while a slow durable write finishes.
+    release()
+    await write
+    return value
+  })
   return { value, status: 'miss' }
 }
 

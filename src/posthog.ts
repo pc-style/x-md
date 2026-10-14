@@ -1,4 +1,8 @@
-import posthog from 'posthog-js'
+import type { PostHog } from 'posthog-js'
+
+let posthog: PostHog | undefined
+type LandingEvent = 'conversion_requested' | 'skill_install_command_copied'
+const pendingEvents: LandingEvent[] = []
 
 const posthogKey = import.meta.env.VITE_POSTHOG_KEY
 const posthogHost = import.meta.env.VITE_POSTHOG_HOST
@@ -23,6 +27,7 @@ function clearActor() {
 function bridgeActor() {
   if (window.location.protocol !== 'https:') return
   try {
+    if (!posthog) { clearActor(); return }
     if (!actorBridgeEnabled) { clearActor(); return }
     if (posthog.has_opted_out_capturing()) {
       document.cookie = '__Host-xmd_archive_optout=1; Secure; SameSite=Lax; Path=/; Max-Age=2592000'
@@ -81,9 +86,16 @@ function sanitizeWebVitalEvents(eventProperties: Record<string, unknown>) {
   }
 }
 
-if (!blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production' && posthogKey && posthogHost?.startsWith('https://') && window.location.pathname === '/') {
+const configured = !blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production'
+  && posthogKey && posthogHost?.startsWith('https://') && window.location.pathname === '/'
+
+// Download and evaluate the SDK after controls are available, and only when
+// production configuration and the visitor's privacy settings permit it.
+export const analyticsReady: Promise<void> = configured ? import('posthog-js').then(({ default: sdk }) => {
   try {
-    posthog.init(posthogKey, {
+    if (privacyBlocked() || window.location.pathname !== '/') { clearActor(); return }
+    posthog = sdk
+    sdk.init(posthogKey, {
       api_host: posthogHost,
       loaded: () => bridgeActor(),
       ui_host: 'https://eu.posthog.com',
@@ -123,16 +135,22 @@ if (!blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'producti
       },
     })
     enabled = true
+    for (const event of pendingEvents.splice(0)) captureLandingEvent(event)
   } catch {
     // Optional analytics must not stop the landing page from loading.
+    pendingEvents.length = 0
   }
-}
+}).catch(() => { pendingEvents.length = 0 }) : Promise.resolve()
 
-export function captureLandingEvent(event: 'conversion_requested' | 'skill_install_command_copied') {
-  if (!enabled || window.location.pathname !== '/' || !events.has(event)) return
+export function captureLandingEvent(event: LandingEvent) {
+  if (!configured || window.location.pathname !== '/' || !events.has(event)) return
   try {
     if (privacyBlocked()) { clearActor(); return }
     if (event === 'conversion_requested') bridgeActor()
+    if (!enabled || !posthog) {
+      if (pendingEvents.length < 20) pendingEvents.push(event)
+      return
+    }
     posthog.capture(event)
   } catch { /* Keep the interaction working if analytics fails. */ }
 }

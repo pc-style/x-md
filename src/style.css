@@ -1,7 +1,52 @@
-@import "https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap";
 @import "tailwindcss";
 
 @import "./tokens.css";
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-500-af02a72246f5.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-700-353a7fbfb447.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-900-bd11b5820231.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Entrance motion starts with the first paint and never hides readable text. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-hero-stagger] > * {
+    animation: hero-rise 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  [data-hero-stagger] > :nth-child(2) { animation-delay: 90ms; }
+  [data-hero-stagger] > :nth-child(3) { animation-delay: 180ms; }
+  [data-hero-stagger] > :nth-child(4) { animation-delay: 270ms; }
+  [data-hero-stagger] > :nth-child(5) { animation-delay: 360ms; }
+  [data-hero-card] {
+    animation: hero-card-rise 1100ms 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  @keyframes hero-rise {
+    from { transform: translateY(26px); }
+    to { transform: translateY(0); }
+  }
+  @keyframes hero-card-rise {
+    from { transform: translateY(48px) rotate(6deg); }
+    to { transform: translateY(0) rotate(0); }
+  }
+}
 
 @layer base {
   html {

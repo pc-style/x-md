@@ -1,0 +1,75 @@
+import { gsap } from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
+
+gsap.registerPlugin(ScrollTrigger)
+
+function splitWords(el: HTMLElement) {
+  const text = (el.textContent ?? '').trim()
+  const nodes: (string | HTMLSpanElement)[] = []
+  for (const word of text.split(/\s+/)) {
+    const span = document.createElement('span')
+    span.className = 'reveal-word'
+    span.textContent = word
+    if (nodes.length) nodes.push(' ')
+    nodes.push(span)
+  }
+  el.replaceChildren(...nodes)
+}
+
+export function setupMotion(root: HTMLElement) {
+  const scrubEl = root.querySelector<HTMLElement>('[data-scrub-text]')
+  if (scrubEl && scrubEl.getBoundingClientRect().top >= window.innerHeight) splitWords(scrubEl)
+
+  const mm = gsap.matchMedia()
+
+  mm.add('(prefers-reduced-motion: reduce)', () => {
+    root
+      .querySelectorAll<HTMLElement>('.reveal-word')
+      .forEach((w) => (w.style.opacity = '1'))
+  })
+
+  mm.add('(prefers-reduced-motion: no-preference)', () => {
+    const words = gsap.utils.toArray<HTMLElement>('[data-scrub-text] .reveal-word')
+    if (words.length) {
+      gsap.to(words, {
+        opacity: 1,
+        stagger: 0.05,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: '[data-scrub-text]',
+          start: 'top 80%',
+          end: 'center 42%',
+          scrub: true,
+        },
+      })
+    }
+
+    gsap.utils.toArray<HTMLElement>('[data-rise-card]').forEach((el, i) => {
+      // A late chunk or an anchor visit must not hide content already on screen.
+      if (el.getBoundingClientRect().top < window.innerHeight) return
+      gsap.from(el, {
+        y: 36,
+        opacity: 0,
+        scale: 0.96,
+        duration: 0.8,
+        delay: (i % 2) * 0.08,
+        ease: 'power3.out',
+        scrollTrigger: { trigger: el, start: 'top 86%' },
+      })
+    })
+  })
+
+  mm.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
+    const section = root.querySelector<HTMLElement>('[data-pin-section]')
+    const target = root.querySelector<HTMLElement>('[data-pin-target]')
+    if (!section || !target) return
+    ScrollTrigger.create({
+      trigger: section,
+      start: 'top 120px',
+      end: () => `+=${Math.max(section.offsetHeight - target.offsetHeight - 160, 0)}`,
+      pin: target,
+      pinSpacing: false,
+      invalidateOnRefresh: true,
+    })
+  })
+}
