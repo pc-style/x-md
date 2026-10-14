@@ -1,13 +1,9 @@
 import { captureLandingEvent } from './posthog'
 import { inject } from '@vercel/analytics'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome'
-import { landingHtml } from './landing'
 
 // Vercel Web Analytics for the landing page (docs pages are a separate static build).
 inject()
-gsap.registerPlugin(ScrollTrigger)
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
@@ -98,97 +94,26 @@ function setupAccordion(root: HTMLElement) {
   })
 }
 
-function splitWords(el: HTMLElement) {
-  const text = (el.textContent ?? '').trim()
-  el.innerHTML = text
-    .split(/\s+/)
-    .map((w) => `<span class="reveal-word">${w}</span>`)
-    .join(' ')
-}
-
-function setupMotion(root: HTMLElement) {
-  const scrubEl = root.querySelector<HTMLElement>('[data-scrub-text]')
-  if (scrubEl) splitWords(scrubEl)
-
-  const mm = gsap.matchMedia()
-
-  mm.add('(prefers-reduced-motion: reduce)', () => {
-    root
-      .querySelectorAll<HTMLElement>('.reveal-word')
-      .forEach((w) => (w.style.opacity = '1'))
-  })
-
-  mm.add('(prefers-reduced-motion: no-preference)', () => {
-    gsap.from('[data-hero-stagger] > *', {
-      y: 26,
-      opacity: 0,
-      duration: 0.9,
-      ease: 'power3.out',
-      stagger: 0.09,
-    })
-
-    gsap.from('[data-hero-card]', {
-      y: 48,
-      opacity: 0,
-      rotate: 6,
-      duration: 1.1,
-      ease: 'power3.out',
-      delay: 0.3,
-    })
-
-    const words = gsap.utils.toArray<HTMLElement>('[data-scrub-text] .reveal-word')
-    if (words.length) {
-      gsap.to(words, {
-        opacity: 1,
-        stagger: 0.05,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '[data-scrub-text]',
-          start: 'top 80%',
-          end: 'center 42%',
-          scrub: true,
-        },
-      })
-    }
-
-    gsap.utils.toArray<HTMLElement>('[data-rise-card]').forEach((el, i) => {
-      gsap.from(el, {
-        y: 36,
-        opacity: 0,
-        scale: 0.96,
-        duration: 0.8,
-        delay: (i % 2) * 0.08,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: el, start: 'top 86%' },
-      })
-    })
-  })
-
-  mm.add('(min-width: 1024px) and (prefers-reduced-motion: no-preference)', () => {
-    const section = root.querySelector<HTMLElement>('[data-pin-section]')
-    const target = root.querySelector<HTMLElement>('[data-pin-target]')
-    if (!section || !target) return
-    ScrollTrigger.create({
-      trigger: section,
-      start: 'top 120px',
-      end: () => `+=${Math.max(section.offsetHeight - target.offsetHeight - 160, 0)}`,
-      pin: target,
-      pinSpacing: false,
-      invalidateOnRefresh: true,
-    })
-  })
-}
-
-
 // The markup is pre-rendered into index.html at build time so crawlers and
 // agents see the full page without running JavaScript. Only render here when
 // that pre-render is missing (dev servers that skip the transform).
-if (!app.firstElementChild) app.innerHTML = landingHtml()
+async function enhanceLanding() {
+  if (!app.firstElementChild) {
+    const { landingHtml } = await import('./landing')
+    app.innerHTML = landingHtml()
+  }
 
-setupConvertForm(app)
-setupMobileMenu(app)
-setupTheme(app)
-setupLinkPrefetch(app)
-setupCopyButtons(app)
-setupAccordion(app)
-setupMotion(app)
+  setupConvertForm(app)
+  setupMobileMenu(app)
+  setupTheme(app)
+  setupLinkPrefetch(app)
+  setupCopyButtons(app)
+  setupAccordion(app)
+  if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+    void import('./motion').then(({ setupMotion }) => setupMotion(app)).catch(() => {
+      // Optional motion must not stop the already-readable page or its controls.
+    })
+  }
+}
+
+void enhanceLanding()

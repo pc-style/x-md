@@ -165,6 +165,20 @@ describe('fetchPosts provider fallbacks', () => {
     expect(vi.mocked(fetchFxConversationReplies).mock.calls[0][3]?.aborted).toBe(true)
   })
 
+  test('initial thread throttles still allow the focal-post fallback', async () => {
+    const throttle = new ConvertError(503, 'fx throttled', 'upstream_rate_limited', 5)
+    vi.mocked(fetchFxFullThread).mockRejectedValueOnce(throttle)
+    vi.mocked(fetchFxStatus).mockRejectedValueOnce(throttle)
+    vi.mocked(fetchSyndicationStatus).mockResolvedValueOnce({ id: '2', text: 'fallback post' })
+
+    const result = await fetchPosts('alice', '2', 'full')
+
+    expect(result).toEqual({ source: 'syndication', tweets: [{ id: '2', text: 'fallback post', context: 'post' }] })
+    expect(fetchFxStatus).toHaveBeenCalledWith('2')
+    expect(fetchSyndicationStatus).toHaveBeenCalledWith('alice', '2', expect.any(AbortSignal))
+    expect(vi.mocked(fetchFxConversationReplies).mock.calls[0][3]?.aborted).toBe(true)
+  })
+
   test('thread=full still starts with FxTwitter full thread before fallback chain', async () => {
     process.env.CONTEXT_DEV_API_KEY = 'ctxt_secret_test'
     vi.mocked(fetchFxFullThread).mockResolvedValue([{ id: '1', text: 'thread' }])

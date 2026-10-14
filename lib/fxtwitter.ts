@@ -1,5 +1,5 @@
 import { providerFetch, reportProviderResponse, trackUpstream } from './server-events.js'
-import { ConvertError } from './errors.js'
+import { ConvertError, ParentContextThrottleError } from './errors.js'
 
 /**
  * Upstream pool. `FXTWITTER_BASE_URL` is one base URL or a comma-separated
@@ -479,20 +479,26 @@ export async function fetchFxConversationChain(
   id: string,
   focal?: FxTweet,
 ): Promise<FxTweet[]> {
-  const walked: FxTweet[] = []
-  const seen = new Set<string>()
-  let currentId: string | undefined = id
+  const seeded = focal?.id === id
+  const walked: FxTweet[] = seeded ? [focal] : []
+  const seen = new Set<string>(seeded ? [id] : [])
+  let currentId: string | undefined = seeded ? getParentStatusId(focal) : id
 
   while (currentId && walked.length < 100) {
     if (seen.has(currentId)) break
     seen.add(currentId)
 
     try {
-      const tweet = currentId === id && focal ? focal : await fetchFxStatus(currentId)
+      const tweet = await fetchFxStatus(currentId)
       walked.push(tweet)
       currentId = getParentStatusId(tweet)
     } catch (error) {
+      // A concurrent optional reply can cool the shared provider before the
+      // parent walk. Surface its retry deadline instead of silently truncating.
       if (error instanceof ConvertError && error.code === 'private_tweet') throw error
+      if (error instanceof ConvertError && error.code === 'upstream_rate_limited') {
+        throw walked.length > 0 ? new ParentContextThrottleError(error) : error
+      }
       break
     }
   }
@@ -506,7 +512,10 @@ export async function fetchFxThread(id: string): Promise<FxTweet[]> {
   if (data.thread?.length) {
     return data.thread.map(normalizeTweet)
   }
-  return [pickTweet(data) ?? await fetchFxStatus(id)]
+  // The thread response can still contain its focal status when no thread is
+  // available. Reuse that snapshot before issuing another status request.
+  const focal = pickTweet(data)
+  return [focal ?? await fetchFxStatus(id)]
 }
 
 export type FxReplyRanking = 'likes' | 'recency'

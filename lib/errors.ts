@@ -19,3 +19,10 @@ export class ConvertError extends Error {
     this.policy = policy
   }
 }
+
+/** A known thread needs parent context, but the provider cannot supply it yet. */
+export class ParentContextThrottleError extends ConvertError {
+  constructor(error: ConvertError) {
+    super(error.status, error.message, error.code, error.retryAfter, error.policy)
+  }
+}

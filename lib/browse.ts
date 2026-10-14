@@ -155,12 +155,19 @@ async function collectList<T>(
   let position: ListPosition | undefined = start ?? { offset: 0 }
   let results: T[] = []
   let budget = maxUpstreamPages + (blocks - 1) * 2
+  // A block can end inside a large upstream page. Keep that page for the next
+  // block in this request instead of fetching the same cursor again.
+  let loaded: { cursor: string | undefined; value: FxListResponse<T> } | undefined
   for (let index = 0; index < blocks; index += 1) {
     results = []
     let next: ListPosition | undefined
-    while (position && budget > 0 && results.length < limit) {
-      budget -= 1
-      const upstream = await fetchPage(position.cursor)
+    while (position && results.length < limit) {
+      if (!loaded || loaded.cursor !== position.cursor) {
+        if (budget <= 0) break
+        budget -= 1
+        loaded = { cursor: position.cursor, value: await fetchPage(position.cursor) }
+      }
+      const upstream = loaded.value
       if (reportStalls && upstream.results.length === 0 && upstream.cursor?.bottom) {
         return { results, next: position, warnings: ['empty_page'] }
       }
@@ -404,9 +411,10 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
-    // Only the feeds FxTwitter can serve consult its breaker.
+    // A continuation is bound to its provider, so it needs no unrelated
+    // provider's shared-store lookup.
     const fxFeed = ['latest', 'top'].includes(feed)
-    const fxDown = fxFeed && Date.now() < (await readSearchBreaker()).until
+    const fxDown = fxFeed && (!tagged || tagged.source === 'fxtwitter') && Date.now() < (await readSearchBreaker()).until
     const live: Array<{ source: BrowseSource; limit: number; pages: number; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
     if (fxFeed && !fxDown) live.push({ source: 'fxtwitter', limit, pages: LIST_MAX_UPSTREAM_PAGES, search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
     // Own-account searches spend a scarce per-account budget: one upstream page per request.
@@ -494,11 +502,18 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
   const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), resource === 'profile' ? PROFILE_MAX_LIMIT : MAX_LIMIT)
   const key = buildCacheKey({ v: 7, id: input.id ?? '', require_live: truthy(input.require_live) ? 1 : 0, include_posts: String(input.include_posts ?? true), resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
+  // Search admission is caller-specific. Share settled cached content as before,
+  // but never share a pending quota failure between different callers.
+  const caller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
+  const flightKey = resource === 'search'
+    ? JSON.stringify([caller.kind, caller.kind === 'key' ? caller.id : caller.ip ?? ''])
+    : undefined
   const cached = await withCache(
     key,
     truthy(input.nocache),
     () => browseUncached(input, resource, page, limit),
     (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
+    flightKey,
   )
   return { ...cached.value, cache: cached.status }
 }

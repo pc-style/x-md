@@ -1,7 +1,30 @@
-@import "https://api.fontshare.com/v2/css?f[]=satoshi@500,700,900&display=swap";
 @import "tailwindcss";
 
 @import "./tokens.css";
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-500-af02a72246f5.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-700-353a7fbfb447.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-900-bd11b5820231.woff2') format('woff2');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 @layer base {
   html {
