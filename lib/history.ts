@@ -12,8 +12,9 @@
  *   hist:{handle}:index  hash   count, oldest, newest, updated_at, floor_reached
  *   hist:{handle}:ids    zset   member = post id, score = post time in ms
  *   hist:{handle}:posts  hash   post id -> JSON
- * The store is never the bottleneck: a 2000-post write is a few pipelined
- * commands; X costs seconds per page.
+ * Reads are bounded to the posts a response can use (a 3,500-post archive is
+ * ~10 MB of JSON, half a second to move), and a write is one parallel round
+ * of pipelined chunks; X costs seconds per page.
  *
  * Engagement counts in archived posts are as of the walk that stored them.
  * `refresh: true` re-walks the requested range and overwrites.
@@ -62,17 +63,28 @@ const EDGE_OVERLAP_MS = 6 * 3_600_000
 const FRESH_MS = 60_000
 /** Posts per Redis pipeline call, under Upstash's request size limit. */
 const WRITE_CHUNK = 150
+/** Write chunks in flight at once. */
+const WRITE_PARALLEL = 6
+/** Smallest archive read when filters may discard posts, so a filtered request does not crawl. */
+const READ_CHUNK = 200
 
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
 
+/** An archived post with the score the store sorts it by; `post` is missing if its body is. */
+interface Entry { id: string; score: number; post?: FxTweet }
+
+/** The store's order: score descending, ties by id descending as Redis compares members (bytewise). */
+const storeOrder = (a: Entry, b: Entry) => b.score - a.score || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0)
+
 interface Store {
   readIndex(handle: string): Promise<HistoryIndex | undefined>
   writeIndex(index: HistoryIndex): Promise<void>
-  put(handle: string, posts: FxTweet[]): Promise<void>
-  /** Posts with time in [from, to], newest first. */
-  range(handle: string, from: number, to: number): Promise<FxTweet[]>
+  /** Scores each post by postTime; resolves with the number of posts archived for the handle afterwards. */
+  put(handle: string, posts: FxTweet[]): Promise<number>
+  /** Entries scored in [from, to] in store order; `page` skips `offset` of them and returns at most `count`. */
+  range(handle: string, from: number, to: number, page?: { offset: number; count: number }): Promise<Entry[]>
   stats(handle: string): Promise<{ count: number }>
   clear(handle: string): Promise<void>
 }
@@ -88,9 +100,10 @@ function bucket(handle: string) {
 const memoryStore: Store = {
   async readIndex(handle) { return bucket(handle).index },
   async writeIndex(index) { bucket(index.handle).index = index },
-  async put(handle, posts) { const b = bucket(handle); for (const post of posts) if (post.id) b.posts.set(post.id, post) },
-  async range(handle, from, to) {
-    return [...bucket(handle).posts.values()].filter((post) => { const at = postTime(post); return at >= from && at <= to }).sort((a, b) => postTime(b) - postTime(a) || (BigInt(b.id ?? 0) > BigInt(a.id ?? 0) ? 1 : -1))
+  async put(handle, posts) { const b = bucket(handle); for (const post of posts) if (post.id) b.posts.set(post.id, post); return b.posts.size },
+  async range(handle, from, to, page) {
+    const all = [...bucket(handle).posts.values()].map((post): Entry => ({ id: post.id!, score: postTime(post), post })).filter((entry) => entry.score >= from && entry.score <= to).sort(storeOrder)
+    return page ? all.slice(page.offset, page.offset + page.count) : all
   },
   async stats(handle) { return { count: bucket(handle).posts.size } },
   async clear(handle) { memory.delete(handle.toLowerCase()) },
@@ -118,6 +131,7 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
     },
     async put(handle, posts) {
       const k = keys(handle)
+      const chunks: RedisCommand[][] = []
       for (let i = 0; i < posts.length; i += WRITE_CHUNK) {
         const chunk = posts.slice(i, i + WRITE_CHUNK).filter((post) => post.id)
         if (!chunk.length) continue
@@ -127,21 +141,45 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
           zadd.push(postTime(post), post.id!)
           hset.push(post.id!, JSON.stringify(post))
         }
-        await run([zadd, hset], 10_000)
+        chunks.push([zadd, hset, ['ZCARD', k.ids]])
       }
+      if (!chunks.length) {
+        const [count] = await run<number>([['ZCARD', k.ids]])
+        return Number(count.result ?? 0)
+      }
+      // Chunks only add members and each counts after its own ZADD, so the
+      // largest count is the one taken after every chunk had landed. A failed
+      // chunk fails the write only once its siblings have landed too: the
+      // caller holds this handle's lock until `put` settles, and a write still
+      // in flight after that could overwrite the next holder's newer copy.
+      let count = 0
+      for (let i = 0; i < chunks.length; i += WRITE_PARALLEL) {
+        const replies = await Promise.allSettled(chunks.slice(i, i + WRITE_PARALLEL).map((commands) => run<number>(commands, 10_000)))
+        for (const reply of replies) {
+          if (reply.status === 'rejected') throw reply.reason
+          // A pipeline answers 200 even when one of its commands failed.
+          const failed = reply.value.find((command) => command.error)
+          if (failed) throw new Error(`redis ${failed.error}`)
+          count = Math.max(count, Number(reply.value[2]?.result ?? 0))
+        }
+      }
+      return count
     },
-    async range(handle, from, to) {
+    async range(handle, from, to, page) {
       const k = keys(handle)
-      const [ids] = await run<string[]>([['ZRANGE', k.ids, to, from, 'BYSCORE', 'REV']])
-      const list = ids.result ?? []
-      if (!list.length) return []
+      const [scored] = await run<string[]>([['ZRANGE', k.ids, to, from, 'BYSCORE', 'REV', ...(page ? ['LIMIT', page.offset, page.count] : []), 'WITHSCORES']])
+      const flat = scored.result ?? []
+      const entries: Entry[] = []
+      for (let i = 0; i < flat.length; i += 2) entries.push({ id: flat[i], score: Number(flat[i + 1]) })
+      if (!entries.length) return []
       // One pipeline round-trip for every chunk of bodies.
       const chunks: RedisCommand[] = []
-      for (let i = 0; i < list.length; i += 500) chunks.push(['HMGET', k.posts, ...list.slice(i, i + 500)])
+      for (let i = 0; i < entries.length; i += 500) chunks.push(['HMGET', k.posts, ...entries.slice(i, i + 500).map((entry) => entry.id)])
       const replies = await run<(string | null)[]>(chunks, 15_000)
-      const out: FxTweet[] = []
-      for (const reply of replies) for (const raw of reply.result ?? []) if (raw) out.push(JSON.parse(raw) as FxTweet)
-      return out
+      replies.forEach((reply, chunk) => (reply.result ?? []).forEach((raw, i) => {
+        if (raw) entries[chunk * 500 + i].post = JSON.parse(raw) as FxTweet
+      }))
+      return entries
     },
     async stats(handle) {
       const [count] = await run<number>([['ZCARD', keys(handle).ids]])
@@ -187,11 +225,14 @@ export interface HistoryInput extends Omit<ImportInput, 'withReplies' | 'withRep
 
 interface Coverage { since?: number; until: number; floor: boolean }
 
-async function record(s: Store, handle: string, posts: FxTweet[], covered: Coverage[], incomplete: boolean): Promise<HistoryIndex> {
-  if (posts.length) await s.put(handle, posts)
-  const previous = await s.readIndex(handle)
+/**
+ * Write the index for posts already stored (`count` is the archive size that
+ * `put` reported). `previous` is the index as read under this handle's lock,
+ * so it is still current.
+ */
+async function record(s: Store, handle: string, posts: FxTweet[], count: number | undefined, covered: Coverage[], incomplete: boolean, previous: HistoryIndex | undefined): Promise<HistoryIndex> {
   if (!posts.length && !covered.length && previous && !incomplete) return previous
-  const stats = await s.stats(handle)
+  const stats = { count: count ?? (await s.stats(handle)).count }
   // Oldest/newest come from the posts this request added (reposts excluded:
   // they carry the original's date) merged with what the index already said.
   const times = posts.filter((post) => !isRepost(post)).map(postTime).filter(Boolean)
@@ -230,6 +271,25 @@ async function record(s: Store, handle: string, posts: FxTweet[], covered: Cover
   return index
 }
 
+/** Wait for every task, then fail with the first failure: a failed read must not leave a walk running unwatched. */
+async function settleAll(tasks: Array<Promise<unknown> | undefined>): Promise<void> {
+  for (const result of await Promise.allSettled(tasks)) if (result.status === 'rejected') throw result.reason
+}
+
+/**
+ * Newest-first posts in [from, to] that pass `wanted`, at most `need` of them,
+ * read in pages so a large archive is not pulled whole for a short answer.
+ */
+async function readWanted(s: Store, handle: string, from: number, to: number, wanted: (post: FxTweet) => boolean, need: number, unfiltered: boolean): Promise<Entry[]> {
+  const out: Entry[] = []
+  const count = unfiltered ? need : Math.max(need * 2, READ_CHUNK)
+  for (let offset = 0; ; offset += count) {
+    const page = await s.range(handle, from, to, { offset, count })
+    for (const entry of page) if (entry.post && wanted(entry.post)) out.push(entry)
+    if (out.length >= need || page.length < count) return out.slice(0, need)
+  }
+}
+
 export async function importWithHistory(input: HistoryInput): Promise<HistoryResult> {
   return withHistoryLock(input.handle, () => importHistory(input))
 }
@@ -261,7 +321,9 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     // Stream only the final selection: concurrent arrivals can be evicted by newer posts.
   }
 
-  let index = input.refresh ? undefined : await s.readIndex(handle)
+  // The lock holds every other writer off this handle, so this read stays current for `record`.
+  const previous = await s.readIndex(handle)
+  let index = input.refresh ? undefined : previous
   const walked: HistoryMeta['archive']['walked'] = []
   let profile: FxAuthor | undefined
   let added = 0
@@ -287,15 +349,15 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     return result
   }
 
-  // Serve the archived part first; it is instant.
-  let archived: FxTweet[] | undefined
-  if (index) {
-    archived = await s.range(handle, since ?? 0, until)
-    for (const post of archived) emit(post)
-  }
+  // Only the newest `maxPosts` (plus one, to tell a full answer from a
+  // truncated one) can reach the body, and a gap walk only needs to know
+  // whether the archive already holds that many. The read runs alongside the
+  // first walk; together with the walked posts it is the final body.
+  const unfiltered = withReplies && withReposts && !onlyReplies
+  const archived = readWanted(s, handle, since ?? 0, until, wanted, maxPosts + 1, unfiltered)
 
   if (!index || index.incomplete || index.coverage_version !== 2) {
-    await walk('refresh', since, until, maxPosts)
+    await settleAll([walk('refresh', since, until, maxPosts), archived])
   } else {
     const coveredUntil = index.covered_until ? Date.parse(index.covered_until) : (index.newest ? Date.parse(index.newest) : undefined)
     const coveredSince = index.floor_reached ? undefined : index.covered_since ? Date.parse(index.covered_since) : (index.oldest ? Date.parse(index.oldest) : undefined)
@@ -303,9 +365,13 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     // Skip the top-up when the archive was refreshed moments ago and the request
     // reaches no further than moments past that refresh.
     const freshEnough = Date.now() - refreshedAt < FRESH_MS && until - refreshedAt < FRESH_MS
-    if (coveredUntil === undefined || (until > coveredUntil && !freshEnough)) {
-      await walk('top-up', coveredUntil === undefined ? since : Math.max(since ?? 0, coveredUntil - EDGE_OVERLAP_MS), until, maxPosts)
-    }
+    // The archive read and the top-up are independent; only the backfill decision needs both.
+    await settleAll([
+      archived.then((entries) => { for (const entry of entries) emit(entry.post!) }),
+      coveredUntil === undefined || (until > coveredUntil && !freshEnough)
+        ? walk('top-up', coveredUntil === undefined ? since : Math.max(since ?? 0, coveredUntil - EDGE_OVERLAP_MS), until, maxPosts)
+        : undefined,
+    ])
     const needOlder = !index.floor_reached && (since === undefined || coveredSince === undefined || since < coveredSince)
     if (needOlder && emitted.size < maxPosts) {
       await walk('backfill', since, coveredSince === undefined ? until : coveredSince + EDGE_OVERLAP_MS, maxPosts)
@@ -315,12 +381,31 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
       capped = true
     }
   }
-  index = await record(s, handle, fresh, covered, warnings.length > 0)
+  // Walks overlap at their edges; the last copy of a post is the one stored.
+  const stored = new Map<string, FxTweet>()
+  for (const post of fresh) if (post.id) stored.set(post.id, post)
+  const count = stored.size ? await s.put(handle, [...stored.values()]) : undefined
+  index = await record(s, handle, fresh, count, covered, warnings.length > 0, previous)
   added = fresh.length
 
-  // Final body from the archive, filtered and capped, newest first. When nothing
-  // was walked the first read is still current, so do not read it again.
-  let posts = (walked.length === 0 && archived ? archived : await s.range(handle, since ?? 0, until)).filter(wanted)
+  // Final body, filtered and capped, newest first: what a read of the archive
+  // would now return. The lock kept every other writer out, so that is the
+  // first read with the posts just stored laid over it, in store order.
+  const read = await archived
+  const last = read.at(-1)
+  const selection = new Map(read.map((entry) => [entry.id, entry]))
+  // A stored post that leaves the read's span (filtered out, or rescored below
+  // its last entry) frees a place that only an unread post could take.
+  let vacated = false
+  for (const [id, post] of stored) {
+    const entry = { id, score: postTime(post), post }
+    const inRange = entry.score >= (since ?? 0) && entry.score <= until && wanted(post)
+    if (selection.has(id) && (!inRange || (last && storeOrder(entry, last) > 0))) vacated = true
+    if (inRange) selection.set(id, entry)
+    else selection.delete(id)
+  }
+  const selected = vacated && read.length > maxPosts ? await readWanted(s, handle, since ?? 0, until, wanted, maxPosts + 1, unfiltered) : [...selection.values()].sort(storeOrder)
+  let posts = selected.slice(0, maxPosts + 1).map((entry) => entry.post!)
   const truncated = posts.length > maxPosts || capped
   if (truncated) posts = posts.slice(0, maxPosts)
   const originals = posts.filter((post) => !isRepost(post))

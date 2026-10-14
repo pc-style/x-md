@@ -175,6 +175,110 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
     await expect(fetchFxStatus('20')).rejects.toMatchObject({ status: 404, code: 'private_tweet' })
   })
 
+  test('hedged copies race and the first full page wins', async () => {
+    let slowAnswered = false
+    const page = (length: number, delay: number) => new Promise<Response>((resolve) => setTimeout(() => {
+      if (delay >= 40) slowAnswered = true
+      resolve(new Response(JSON.stringify({ code: 200, results: Array.from({ length }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: `b${length}` } }), { status: 200 }))
+    }, delay))
+    const fetchMock = vi.fn().mockImplementationOnce(() => page(1, 40)).mockImplementationOnce(() => page(10, 5))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
+    expect(result.results).toHaveLength(10)
+    expect(result.cursor?.bottom).toBe('b10')
+    expect(result.attempts).toBe(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    // The full page won without waiting for the slow copy to answer.
+    expect(slowAnswered).toBe(false)
+  })
+
+  test('every hedged copy keeps the retry budget and the page settles for the best short page', async () => {
+    let n = 0
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ code: 200, results: Array.from({ length: n++ % 3 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'b' } }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
+    // The first copy makes all five attempts; the second retries alongside it until it ends.
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(9)
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(10)
+    expect(result.attempts).toBe(fetchMock.mock.calls.length)
+    expect(result.results).toHaveLength(2)
+  })
+
+  test('a cursor that fails for a while fails a hedged page no sooner than a plain fetch', async () => {
+    // NOT_FOUND for every request sent in the first 35 ms, each after 10 ms: a
+    // plain fetch's fifth attempt goes out at 40 ms and gets the page, while
+    // five attempts spent two at a time would all have gone out inside 35 ms.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    try {
+      for (const hedge of [1, 2]) {
+        const t0 = Date.now()
+        const fetchMock = vi.fn().mockImplementation(() => {
+          const failing = Date.now() - t0 < 35
+          return new Promise<Response>((resolve) => setTimeout(() => resolve(failing
+            ? new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' }), { status: 404 })
+            : new Response(JSON.stringify({ code: 200, results: Array.from({ length: 10 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'b10' } }), { status: 200 })), 10))
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        const page = fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge })
+        await vi.advanceTimersByTimeAsync(200)
+        await expect(page).resolves.toMatchObject({ results: expect.arrayContaining([expect.objectContaining({ id: '10' })]) })
+      }
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('a hedged copy that fails loses to one still in flight', async () => {
+    const full = new Response(JSON.stringify({ code: 200, results: Array.from({ length: 10 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'b10' } }), { status: 200 })
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => setTimeout(() => resolve(full), 25)))
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => setTimeout(() => resolve(new Response('upstream down', { status: 500 })), 1)))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
+    expect(result.results).toHaveLength(10)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  test('a malformed hedged copy loses to a good one', async () => {
+    const full = new Response(JSON.stringify({ code: 200, results: Array.from({ length: 10 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'b10' } }), { status: 200 })
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => new Promise<Response>((resolve) => setTimeout(() => resolve(full), 25)))
+      .mockImplementationOnce(async () => new Response(JSON.stringify({ code: 200 }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
+    expect(result.results).toHaveLength(10)
+  })
+
+  test('a hedged page fails once every copy has, without retrying the error', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response('upstream down', { status: 500 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  test('no second copy goes onto a base that is cooling down', async () => {
+    resetFxPool()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 429, headers: { 'retry-after': '1' } }))
+      .mockImplementation(() => new Promise<Response>((resolve) => setTimeout(() => resolve(new Response(JSON.stringify({ code: 200, results: Array.from({ length: 10 }, (_, i) => makeTweet(String(i + 1))), cursor: { bottom: 'b10' } }), { status: 200 })), 20)))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(fetchFxProfileStatuses('theo', 'cursor-0', 100)).rejects.toMatchObject({ code: 'upstream_rate_limited' })
+    const result = await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 4, hedge: 2 })
+    expect(result.results).toHaveLength(10)
+    // One request once the cooldown is over; no duplicate waited it out alongside.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    resetFxPool()
+  })
+
+  test('a gate sees every hedged copy', async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ code: 200, results: [] }), { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    let gated = 0
+    await fetchFxProfileStatuses('theo', 'cursor-1', 100, { retries: 2, hedge: 2, gate: (request) => { gated += 1; return request() } })
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(5)
+    expect(gated).toBe(fetchMock.mock.calls.length)
+  })
+
   test('does not claim an uncursored profile timeline miss proves deletion', async () => {
     const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify({ code: 404, message: 'NOT_FOUND' }), { status: 404 })))
     vi.stubGlobal('fetch', fetchMock)

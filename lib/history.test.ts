@@ -211,10 +211,43 @@ describe('importWithHistory', () => {
 
 })
 
+test('a walked copy that leaves the bounded read does not hide an unread archived post', async () => {
+  await importWithHistory({ handle: 'ada', since: new Date(NOW - 20 * HOUR), until: new Date(NOW), maxPosts: 5000 })
+  vi.setSystemTime(NOW + 2 * 60_000)
+  // The top-up returns the two newest posts rescored far back, which frees two places in the newest five.
+  vi.mocked(importProfilePosts).mockImplementationOnce(async input => {
+    const moved = [NOW, NOW - HOUR].map(ms => ({ ...post(ms), created_at: new Date(ms - 15 * HOUR).toUTCString() }))
+    for (const p of moved) input.onPost?.(p)
+    const result = await fakeEngine({ ...input, maxPosts: 0 })
+    return { ...result, posts: moved, meta: { ...result.meta, count: moved.length } }
+  })
+  const walked = await importWithHistory({ handle: 'ada', since: new Date(NOW - 20 * HOUR), until: new Date(NOW + 2 * 60_000), maxPosts: 5 })
+  expect(walked.meta.archive.walked).toEqual(['top-up'])
+  const reread = await importWithHistory({ handle: 'ada', since: new Date(NOW - 20 * HOUR), until: new Date(NOW + 2 * 60_000), maxPosts: 5 })
+  expect(reread.meta.archive.walked).toEqual([])
+  expect(walked.posts.map(p => p.id)).toEqual(reread.posts.map(p => p.id))
+  expect(walked.posts.map(p => p.id)).toEqual([2, 3, 4, 5, 6].map(h => idAt(NOW - h * HOUR)))
+})
+
 test('JSON and NDJSON select the same posts after a newer top-up evicts archived entries', async () => {
   await importWithHistory({ handle: 'ada', since: new Date(NOW - 10 * HOUR), until: new Date(NOW), maxPosts: 5 })
   const streamed: string[] = []
   const result = await importWithHistory({ handle: 'ada', until: new Date(NOW + 10 * HOUR), maxPosts: 5, onPost: p => streamed.push(p.id!) })
   expect(streamed).toEqual(result.posts.map(p => p.id))
   expect(streamed).toHaveLength(result.meta.count)
+})
+
+test('a failed archive read waits for the walk it overlapped before failing', async () => {
+  let walked = false
+  vi.mocked(importProfilePosts).mockImplementationOnce(async input => {
+    await new Promise(resolve => setTimeout(resolve, 20))
+    walked = true
+    return fakeEngine(input)
+  })
+  resetHistoryStore({
+    readIndex: async () => undefined, writeIndex: async () => {}, put: async () => 0, stats: async () => ({ count: 0 }), clear: async () => {},
+    range: async () => { throw new Error('store down') },
+  })
+  await expect(importWithHistory({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })).rejects.toThrow('store down')
+  expect(walked).toBe(true)
 })

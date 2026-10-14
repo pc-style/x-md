@@ -8,6 +8,7 @@ vi.mock('./fxtwitter.js', async () => {
 import { decodeTimelineCursor, encodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
 import { fetchFxProfile, fetchFxProfileStatuses, type FxListResponse, type FxTweet } from './fxtwitter.js'
 import { estimateRate, importProfilePosts, isReply, ownPost, postTime } from './import.js'
+import { importProfilePosts as importOnMain } from './fixtures/import-main.js'
 import { ConvertError } from './errors.js'
 
 const HOUR = 3_600_000
@@ -220,7 +221,8 @@ describe('importProfilePosts', () => {
     const entries = timeline('ada', 900, 1)
     vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
     const all = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 400 * HOUR), until: new Date(NOW), maxPosts: 5000, concurrency: 4 })
-    const exact = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 400 * HOUR), until: new Date(NOW), maxPosts: all.posts.length, concurrency: 4 })
+    // Same window grid as `all`: reposts just past `since` ride along with whichever page crosses it.
+    const exact = await importProfilePosts({ handle: 'ada', since: new Date(NOW - 400 * HOUR), until: new Date(NOW), maxPosts: all.posts.length, concurrency: 4, tuning: { windowTargetPosts: 30 } })
     expect(exact.posts).toHaveLength(all.posts.length)
     expect(exact.meta.truncated).toBe(false)
     const capped = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 120, concurrency: 1 })
@@ -296,6 +298,149 @@ describe('importProfilePosts', () => {
     expect(estimateRate(entries.map((entry) => entry.post), 'ada')).toBeCloseTo(0.5, 0)
     expect(estimateRate([], 'ada')).toBe(1)
   })
+})
+
+test('a small max_posts returns what a deep walk would without waiting on chains that cannot change it', async () => {
+  const entries = timeline('ada', 1500, 1)
+  const upstream = fakeUpstream(entries)
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(upstream.mock))
+  const onMain = await importOnMain({ handle: 'ada', until: new Date(NOW), maxPosts: 50, concurrency: 16 })
+  // Pages from below the newest ~120 posts never answer: main would wait on
+  // them forever, but nothing in them could be among the newest 50.
+  const slow = entries[120].sort
+  let cancelled = 0
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(async (handle, cursor, count, options) => {
+    if (decodeTimelineCursor(cursor!)!.sortIndex > slow) return withRetries(upstream.mock)(handle, cursor, count, options)
+    return new Promise((_resolve, reject) => options?.signal?.addEventListener('abort', () => {
+      cancelled += 1
+      reject(options.signal!.reason)
+    }, { once: true }))
+  })
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50, concurrency: 16 })
+  // The newest 50 by id over the whole timeline, old-original reposts included.
+  const expected = own('ada', entries).map((entry) => entry.post).sort((a, b) => (BigInt(b.id!) > BigInt(a.id!) ? 1 : -1)).slice(0, 50)
+  expect(result.posts.map((post) => post.id)).toEqual(expected.map((post) => post.id))
+  expect(result.posts.map((post) => post.id)).toEqual(onMain.posts.map((post) => post.id))
+  expect(result.meta.truncated).toBe(true)
+  expect(cancelled).toBeGreaterThan(8)
+})
+
+test('the walk does not wait for the profile, but its failure still fails the import', async () => {
+  const entries = timeline('ada', 600, 1)
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+  let answer!: (author: { screen_name: string }) => void
+  vi.mocked(fetchFxProfile).mockReturnValue(new Promise((resolve) => { answer = resolve }))
+  const pending = importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 200, concurrency: 4 })
+  await vi.waitFor(() => expect(vi.mocked(fetchFxProfileStatuses).mock.calls.length).toBeGreaterThan(2))
+  answer({ screen_name: 'ada' })
+  const result = await pending
+  expect(result.profile).toEqual({ screen_name: 'ada' })
+  expect(result.posts).toHaveLength(200)
+
+  vi.mocked(fetchFxProfile).mockRejectedValue(new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30))
+  await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 200, concurrency: 4 })).rejects.toMatchObject({ code: 'upstream_unavailable' })
+})
+
+test('a third profile copy goes out when the first two miss', async () => {
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(timeline('ada', 100, 1)).mock))
+  const miss = new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
+  vi.mocked(fetchFxProfile).mockRejectedValueOnce(miss).mockRejectedValueOnce(miss).mockResolvedValueOnce({ screen_name: 'ada' })
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })
+  expect(result.profile).toEqual({ screen_name: 'ada' })
+  expect(fetchFxProfile).toHaveBeenCalledTimes(3)
+})
+
+test('old thread roots above their replies: the walk stops once the newest 100 are settled', async () => {
+  // Every 9th reply drags its 60-day-old root in right above it, so the posting
+  // rate read off created_at is tiny while a page still spans about a day.
+  const entries = timeline('ada', 3000, 1).flatMap((entry, index) => {
+    if (index % 9 !== 0 || !isReply(entry.post)) return [entry]
+    const rootAt = snowflakeTime(entry.sort) - 60 * 24 * HOUR
+    return [{ sort: entry.sort + 1n, post: { id: (snowflakeAt(rootAt) + 7n).toString(), text: `root ${index}`, created_at: xdate(rootAt), author: { screen_name: 'ada' } } }, entry]
+  })
+  const upstream = fakeUpstream(entries)
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(upstream.mock))
+  const onMain = await importOnMain({ handle: 'ada', until: new Date(NOW), maxPosts: 100 })
+  const mainCalls = upstream.calls()
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 100 })
+  const expected = own('ada', entries).map((entry) => entry.post).filter((post) => postTime(post) <= NOW).sort((a, b) => (BigInt(b.id!) > BigInt(a.id!) ? 1 : -1)).slice(0, 100)
+  expect(result.posts.map((post) => post.id)).toEqual(expected.map((post) => post.id))
+  expect(result.posts.map((post) => post.id)).toEqual(onMain.posts.map((post) => post.id))
+  // About five pages hold 100 posts. The windows are 30 days long, but their
+  // chains stop once the newest 100 are settled instead of walking them out.
+  expect(upstream.calls() - mainCalls).toBeLessThan(mainCalls / 2)
+  expect(result.meta.truncated).toBe(true)
+  expect(result.meta.floor_reached).toBe(false)
+  expect(Date.parse(result.meta.covered_since!)).toBeLessThanOrEqual(Date.parse(result.meta.oldest!))
+})
+
+test('a page ending in an old thread root does not make the next window skip ahead', async () => {
+  const entries = timeline('ada', 400, 1)
+  // The first page (30 entries) ends with three 10-day-old thread roots, each positioned
+  // right above a newer reply: the page's tail time is far below its bottom.
+  for (const index of [29, 28, 27]) {
+    const at = entries[index].sort
+    const rootAt = snowflakeTime(at) - 10 * 24 * HOUR
+    entries.splice(index, 1, { sort: at, post: { id: (snowflakeAt(rootAt) + 7n).toString(), text: `old root ${index}`, created_at: xdate(rootAt), author: { screen_name: 'ada' } } })
+  }
+  const upstream = fakeUpstream(entries)
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(upstream.mock))
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 100, concurrency: 1 })
+  const expected = own('ada', entries).map((entry) => entry.post).filter((post) => postTime(post) <= NOW).sort((a, b) => (BigInt(b.id!) > BigInt(a.id!) ? 1 : -1)).slice(0, 100)
+  expect(result.posts.map((post) => post.id)).toEqual(expected.map((post) => post.id))
+})
+
+test('a reply X folds under a later one is found from the page a full walk asks between them', async () => {
+  // X leaves an own reply out of any page that also holds a later reply to the
+  // same conversation (live: @paulg's 2026-09-27 21:50 reply, hidden under his
+  // 09-28 09:05 one), so it shows only from a page that starts between the two.
+  // A dense stretch, a sparse one ending in the later reply, eleven quiet hours,
+  // the hidden reply, then a dense stretch again.
+  const reply = (at: number, text: string): Entry => ({ sort: snowflakeAt(at), post: { id: snowflakeAt(at).toString(), text, created_at: xdate(at), author: { screen_name: 'ada' }, replying_to: { screen_name: 'other', status: '1' } } })
+  const entries: Entry[] = []
+  let at = NOW
+  for (let i = 0; i < 30; i += 1, at -= HOUR / 4) entries.push(reply(at, `dense ${i}`))
+  for (let i = 0; i < 10; i += 1, at -= 2 * HOUR) entries.push(reply(at, `sparse ${i}`))
+  const later = entries.at(-1)!
+  at += 2 * HOUR - 11 * HOUR
+  const hidden = reply(at, 'hidden')
+  entries.push(hidden)
+  for (let i = 1; i <= 200; i += 1) entries.push(reply(at - i * HOUR / 4, `older ${i}`))
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(async (_handle, cursor): Promise<FxListResponse<FxTweet>> => {
+    const below = decodeTimelineCursor(cursor!)!.sortIndex
+    const start = entries.findIndex((entry) => entry.sort < below)
+    if (start < 0) return { results: [], attempts: 1 }
+    let page = entries.slice(start, start + 30)
+    if (page.includes(later)) page = page.filter((entry) => entry !== hidden)
+    return { results: page.map((entry) => entry.post), cursor: { bottom: encodeTimelineCursor({ issuedAt: 0n, sortIndex: page.at(-1)!.sort, direction: 2 }) }, attempts: 1 }
+  })
+  const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 60 })
+  expect(result.posts).toHaveLength(60)
+  expect(result.meta.warnings).toBeUndefined()
+  expect(result.posts.map((post) => post.text)).toContain('hidden')
+})
+
+test('the profile costs two requests when they answer, a third only after two misses', async () => {
+  vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(timeline('ada', 100, 1)).mock))
+  await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })
+  expect(fetchFxProfile).toHaveBeenCalledTimes(2)
+  // Each copy is one request: the caller sends the copies, not fetchFxProfile.
+  expect(vi.mocked(fetchFxProfile).mock.calls.every((call) => call[2] === false)).toBe(true)
+
+  vi.mocked(fetchFxProfile).mockClear()
+  const miss = new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
+  vi.mocked(fetchFxProfile).mockRejectedValue(miss)
+  await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })).rejects.toBe(miss)
+  expect(fetchFxProfile).toHaveBeenCalledTimes(3)
+
+  vi.mocked(fetchFxProfile).mockReset()
+  // A miss then a throttle fails with the throttle, as main's one request
+  // retried after the miss would: its Retry-After is what the caller must wait.
+  const throttled = new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', 600)
+  vi.mocked(fetchFxProfile).mockRejectedValueOnce(miss).mockRejectedValueOnce(throttled)
+  await expect(importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })).rejects.toBe(throttled)
+  // A real error is final: no third copy.
+  expect(fetchFxProfile).toHaveBeenCalledTimes(2)
 })
 
 test('reaching account creation reports exhausted accessible history', async () => {
