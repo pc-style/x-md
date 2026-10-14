@@ -99,6 +99,8 @@ export function trackUpstream(provider: Provider, error_type: 'timeout' | 'http_
 }
 
 const responseReports = new WeakMap<Response, (kind: Parameters<typeof trackUpstream>[1]) => void>()
+/** Optional work cancelled by the caller is not an upstream outage. */
+export const UPSTREAM_CANCELLED = new DOMException('Upstream request no longer needed', 'AbortError')
 
 export function reportProviderResponse(response: Response, kind: Parameters<typeof trackUpstream>[1]): void {
   responseReports.get(response)?.(kind)
@@ -111,7 +113,9 @@ export async function providerFetch(provider: Provider, input: Parameters<typeof
   try {
     response = await fetch(input, init)
   } catch (error) {
-    trackUpstream(provider, error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 'timeout' : 'network_error', null, started)
+    if (init?.signal?.reason !== UPSTREAM_CANCELLED) {
+      trackUpstream(provider, error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name) ? 'timeout' : 'network_error', null, started)
+    }
     throw error
   }
   let reported = false
@@ -126,7 +130,10 @@ export async function providerFetch(provider: Provider, input: Parameters<typeof
   const json = response.json.bind(response)
   response.json = async () => {
     let data: unknown
-    try { data = await json() } catch (error) { report('parse_failure'); throw error }
+    try { data = await json() } catch (error) {
+      if (init?.signal?.reason !== UPSTREAM_CANCELLED) report('parse_failure')
+      throw error
+    }
     if (data == null || (typeof data === 'object' && !Array.isArray(data) && Object.keys(data).length === 0)) report('empty_response')
     else if (typeof data !== 'object') report('parse_failure')
     else if (typeof data === 'object') {

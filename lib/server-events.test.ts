@@ -4,7 +4,7 @@ import { IncomingMessage, ServerResponse } from 'node:http'
 import { Socket } from 'node:net'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { waitUntil } from '@vercel/functions'
-import { withServerEvents, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback, errorTypeFor } from './server-events.js'
+import { withServerEvents, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback, errorTypeFor, UPSTREAM_CANCELLED } from './server-events.js'
 import { problemDetails, sendProblem } from './apierror.js'
 import { ConvertError } from './errors.js'
 import { trackRequest } from './analytics.js'
@@ -33,6 +33,42 @@ beforeEach(() => {
   }))
 })
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks() })
+
+test('cancelling optional upstream work does not report an upstream timeout', async () => {
+  const { req, res } = exchange()
+  const controller = new AbortController()
+  upstream = async () => {
+    controller.abort(UPSTREAM_CANCELLED)
+    throw UPSTREAM_CANCELLED
+  }
+  await withServerEvents('convert', async () => {
+    await expect(providerFetch('fxtwitter', 'https://provider.invalid', { signal: controller.signal }))
+      .rejects.toBe(UPSTREAM_CANCELLED)
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(events('upstream_error')).toEqual([])
+})
+
+test('cancelling a response body after headers does not report a parse failure', async () => {
+  const { req, res } = exchange()
+  const controller = new AbortController()
+  upstream = async () => new Response(new ReadableStream({
+    start(stream) {
+      controller.signal.addEventListener('abort', () => stream.error(controller.signal.reason), { once: true })
+    },
+  }))
+  await withServerEvents('convert', async () => {
+    const response = await providerFetch('fxtwitter', 'https://provider.invalid', { signal: controller.signal })
+    const reading = response.json()
+    const rejected = expect(reading).rejects.toBe(UPSTREAM_CANCELLED)
+    controller.abort(UPSTREAM_CANCELLED)
+    await rejected
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(events('upstream_error')).toEqual([])
+})
 
 test.each([
   ['convert', { handle: 'private-handle', id: 'private-id' }, 'status_convert'],

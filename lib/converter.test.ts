@@ -201,10 +201,10 @@ describe('parseThread — valid values accepted', () => {
 })
 
 // ---------------------------------------------------------------------------
-// canonicalThreadCacheValue — tested via the cache key built by convertTweet
+// Snapshot cache keys depend on retrieval options, not presentation.
 // ---------------------------------------------------------------------------
 
-describe('canonicalThreadCacheValue — cache key normalisation', () => {
+describe('snapshot cache key normalisation', () => {
   const validUrl = 'https://x.com/testuser/status/1234567890'
   const mockedBuildCacheKey = vi.mocked(buildCacheKey)
 
@@ -250,17 +250,17 @@ describe('canonicalThreadCacheValue — cache key normalisation', () => {
     )
   })
 
-  test('numeric thread value is preserved in the cache key (e.g. "5")', async () => {
+  test('numeric display limits reuse the full thread snapshot', async () => {
     await convertTweet({ url: validUrl, thread: '5' })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ thread: '5' }),
+      expect.objectContaining({ thread: 'full' }),
     )
   })
 
-  test('cache key uses version 6, normalized handle, and includes post-context defaults', async () => {
+  test('cache key identifies the snapshot, normalized handle, and post-context defaults', async () => {
     await convertTweet({ url: validUrl, thread: 'full' })
     expect(mockedBuildCacheKey).toHaveBeenCalledWith(
-      expect.objectContaining({ v: 6, handle: 'testuser', context: 'full', replies: 'top' }),
+      expect.objectContaining({ v: 7, resource: 'post-snapshot', handle: 'testuser', context: 'full', replies: 'top' }),
     )
   })
 
