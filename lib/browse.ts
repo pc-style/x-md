@@ -21,6 +21,23 @@ const MAX_PAGE = 10
 const DEGRADED_TTL_MS = 60_000
 const DEGRADED_NOTE = 'Live X search is unavailable right now. These are web-indexed snippets of x.com posts, not a live timeline: ordering and coverage differ, snippet text may be truncated, and no metrics are available.'
 
+const pendingBrowseLookups = new Map<string, Promise<unknown>>()
+
+/** Only overlap is shared: a later page still obtains its own fresh snapshot. */
+async function shareBrowseLookup<T>(key: string, nocache: boolean, read: () => Promise<T>): Promise<T> {
+  if (nocache || ['1', 'true'].includes(process.env.CACHE_DISABLED ?? '')) return read()
+  const existing = pendingBrowseLookups.get(key)
+  if (existing) return existing as Promise<T>
+  if (pendingBrowseLookups.size >= 500) return read()
+  const operation = read()
+  pendingBrowseLookups.set(key, operation)
+  try {
+    return await operation
+  } finally {
+    if (pendingBrowseLookups.get(key) === operation) pendingBrowseLookups.delete(key)
+  }
+}
+
 export type BrowseResource = 'profile' | 'search' | 'followers' | 'following' | 'replies'
 export type BrowseSource = 'fxtwitter' | 'xsearch' | 'firecrawl'
 
@@ -277,6 +294,7 @@ async function collectProfilePosts(
   limit: number,
   withReplies: boolean,
   withReposts: boolean,
+  nocache: boolean,
 ): Promise<FxListResponse<FxTweet>> {
   const { ownPost, isRepost, isReply } = await import('./import.js')
   const { fetchFxProfileStatuses } = await import('./fxtwitter.js')
@@ -290,7 +308,8 @@ async function collectProfilePosts(
   const position = raw ? splitOffset(raw) : undefined
   const list = await collectList(page, position ? { cursor: position.raw, offset: position.offset } : undefined, limit,
     async next => {
-      const result = await fetchFxProfileStatuses(handle, next, 100, { withReplies, retries: 2 })
+      const result = await shareBrowseLookup(JSON.stringify(['profile-statuses', handle, next ?? '', withReplies]), nocache,
+        () => fetchFxProfileStatuses(handle, next, 100, { withReplies, retries: 2 }))
       return { ...result, results: result.results.filter(keep) }
     }, PROFILE_MAX_UPSTREAM_PAGES)
   const next = joinOffset(list.next)
@@ -463,17 +482,19 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const until = input.until ? parseDateInput(input.until) : undefined
     if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_option')
     const [profile, list] = await Promise.all([
-      fetchFxProfile(handle),
+      shareBrowseLookup(JSON.stringify(['profile', handle]), truthy(input.nocache), () => fetchFxProfile(handle)),
       input.include_posts === false || input.include_posts === 'false' || input.include_posts === '0'
         ? Promise.resolve({ results: [] } as FxListResponse<FxTweet>)
-        : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts),
+        : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts, truthy(input.nocache)),
     ])
     const base = { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
     return { ...base, markdown: renderMarkdown(input, base, full) }
   }
 
   const start = input.cursor ? (({ raw, offset }) => ({ cursor: raw, offset }))(splitOffset(input.cursor)) : undefined
-  const list = await collectList(page, start, limit, (cursor) => fetchFxConnections(handle, resource, cursor, limit))
+  const list = await collectList(page, start, limit, cursor => shareBrowseLookup(
+    JSON.stringify(['connections', handle, resource, cursor ?? '', limit]), truthy(input.nocache),
+    () => fetchFxConnections(handle, resource, cursor, limit)))
   const base = { resource, users: list.results, handle, page, limit, nextCursor: joinOffset(list.next), source: 'fxtwitter' as const }
   return { ...base, markdown: renderMarkdown(input, base, full) }
 }
