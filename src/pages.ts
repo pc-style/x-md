@@ -255,7 +255,7 @@ export function privacyHtml(): string {
         <h2>Cookies and local storage</h2>
         <p>
           The API sets no cookies at all. In the browser, x.md stores your light/dark theme choice in
-          <strong>localStorage</strong> under <strong>x-md-theme</strong>, and the analytics library, when
+          <strong>localStorage</strong> under <strong>blume-theme</strong>, and the analytics library, when
           it runs, keeps its own anonymous identifier there. One optional cookie exists,
           <strong>__Host-xmd_actor</strong>: it holds an anonymous UUID, is set only in builds where the
           operator has enabled the archive actor bridge, and is scoped

@@ -66,7 +66,7 @@ both are absent from local and preview builds.
 ## Cookies and local storage
 
 The API sets no cookies at all. In the browser, x.md stores your light/dark theme
-choice in `localStorage` under `x-md-theme`, and the analytics library, when it
+choice in `localStorage` under `blume-theme`, and the analytics library, when it
 runs, keeps its own anonymous identifier there. One optional cookie exists,
 `__Host-xmd_actor`: it holds an anonymous UUID, is set only in builds where the
 operator has enabled the archive actor bridge, and is scoped
