@@ -344,7 +344,13 @@ function encodeQuery(params: Record<string, string | number | undefined>): strin
   return query.toString()
 }
 
-export async function fetchFxProfile(handle: string, signal?: AbortSignal): Promise<FxAuthor> {
+/** The profile endpoint's spurious NOT_FOUND, which says nothing about the account. */
+export function isFxProfileMiss(error: unknown): boolean {
+  return error instanceof ConvertError && error.code === 'upstream_unavailable' && error.message.startsWith('X profile')
+}
+
+/** `retry: false` makes one request and leaves the miss to the caller (lib/import.ts sends its own copies). */
+export async function fetchFxProfile(handle: string, signal?: AbortSignal, retry = true): Promise<FxAuthor> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`, signal)
@@ -353,7 +359,7 @@ export async function fetchFxProfile(handle: string, signal?: AbortSignal): Prom
     } catch (error) {
       // NOT_FOUND is intermittently returned for real profiles. One bounded
       // retry recovers it; an actual provider Retry-After must be surfaced.
-      if (attempt || !(error instanceof ConvertError) || error.code !== 'upstream_unavailable' || !error.message.startsWith('X profile')) throw error
+      if (attempt || !retry || !isFxProfileMiss(error)) throw error
       await abortableDelay(250, signal)
     }
   }
@@ -368,6 +374,22 @@ export interface FxProfileStatusesOptions {
    * the short answer is a transient miss, not the end of the timeline. Default 0.
    */
   retries?: number
+  /**
+   * Copies of the request in flight at once (default 1). A short answer is a
+   * per-request coin flip, and it is also the slow one (≥ 2.3 s against a
+   * ~1.6 s median for a full page, measured 2026-10-13), so a second copy sent
+   * up front usually lands a full page before the first could even come back
+   * short. The first copy makes exactly the attempts an unhedged fetch would,
+   * one after another; the others retry alongside it until it ends. A cursor
+   * X keeps failing for a few seconds outlasts attempts spent side by side, so
+   * sharing one budget between copies would lose pages a plain fetch keeps. The
+   * first full page wins; without one the first copy's outcome stands. A copy
+   * that loses is left to finish rather than aborted, since an abort reads as
+   * an upstream timeout in the provider metrics.
+   */
+  hedge?: number
+  /** Runs each upstream request; lets the caller cap requests in flight across pages. */
+  gate?: <T>(request: () => Promise<T>) => Promise<T>
   /** Cancels the request and any retry wait. */
   signal?: AbortSignal
 }
@@ -396,37 +418,92 @@ export async function fetchFxProfileStatuses(
 ): Promise<FxListResponse<FxTweet>> {
   const query = encodeQuery({ cursor, count, with_replies: options.withReplies ? 'true' : 'false' })
   const path = `2/profile/${encodeURIComponent(handle)}/statuses?${query}`
-  let best: FxListResponse<FxTweet> = { results: [] }
   const attempts = 1 + Math.max(0, options.retries ?? 0)
-  let throttled = 0
-  for (let attempt = 0; attempt < attempts; attempt += 1) {
-    let data: Partial<FxListResponse<FxTweet>>
-    options.signal?.throwIfAborted()
-    try {
-      data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(path, options.signal)
-    } catch (error) {
-      // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
-      // This does not mean the profile or any post vanished: retry the same page.
-      if (error instanceof ConvertError && error.code === 'not_found') {
-        if (!cursor) throw new ConvertError(503, 'X profile timeline could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
-        if (attempt + 1 < attempts) continue
-        throw new ConvertError(502, 'X timeline page could not be resolved upstream.', 'partial_upstream_failure', 10)
+  const gate = options.gate ?? ((request) => request())
+  const signal = options.signal
+  signal?.throwIfAborted()
+  type Outcome = { kind: 'full'; page: FxListResponse<FxTweet> } | { kind: 'short'; best: FxListResponse<FxTweet> } | { kind: 'missed' } | { kind: 'error'; error: unknown } | { kind: 'stopped' }
+  let requests = 0
+  // A full page arrived or the caller gave up: no copy sends another request.
+  let won = false
+  let firstEnded = false
+  // One copy: the plain fetch's loop. A copy after the first stops once the
+  // first has ended, and steps aside rather than wait out a cooling base, as
+  // it would only add to the load that base is shedding.
+  const copy = async (extra: boolean): Promise<Outcome> => {
+    let best: FxListResponse<FxTweet> = { results: [] }
+    let throttled = 0
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (won || (extra && (firstEnded || !FX_BASES.some((base) => (coolUntil.get(base) ?? 0) <= Date.now())))) return { kind: 'stopped' }
+      let data: Partial<FxListResponse<FxTweet>> | undefined
+      try {
+        data = await gate(async () => {
+          if (won) return undefined
+          requests += 1
+          return fxFetchJson<Partial<FxListResponse<FxTweet>>>(path, signal)
+        })
+      } catch (error) {
+        // FxTwitter intermittently answers NOT_FOUND for a valid timeline cursor.
+        // This does not mean the profile or any post vanished: retry the same page.
+        if (error instanceof ConvertError && error.code === 'not_found') {
+          if (!cursor) return { kind: 'error', error: new ConvertError(503, 'X profile timeline could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30) }
+          if (attempt + 1 < attempts) continue
+          return { kind: 'missed' }
+        }
+        // A throttled page is worth a short wait when the caller asked for retries;
+        // the loop still ends with the error so a hard limit surfaces as 503.
+        if (!extra && error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && (error.retryAfter ?? 0) <= 10 && throttled < FX_THROTTLE_WAITS) {
+          throttled += 1
+          attempt -= 1
+          try {
+            if (error.retryAfter) await abortableDelay(error.retryAfter * 1000, signal)
+          } catch (aborted) {
+            return { kind: 'error', error: aborted }
+          }
+          continue
+        }
+        return { kind: 'error', error }
       }
-      // A throttled page is worth a short wait when the caller asked for retries;
-      // the loop still ends with the error so a hard limit surfaces as 503.
-      if (error instanceof ConvertError && error.code === 'upstream_rate_limited' && options.retries && (error.retryAfter ?? 0) <= 10 && throttled < FX_THROTTLE_WAITS) {
-        throttled += 1
-        attempt -= 1
-        if (error.retryAfter) await abortableDelay(error.retryAfter * 1000, options.signal)
-        continue
+      if (!data) return { kind: 'stopped' }
+      let page: FxListResponse<FxTweet>
+      try {
+        page = { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor, attempts: requests }
+      } catch (error) {
+        return { kind: 'error', error }
       }
-      throw error
+      if (page.results.length >= FX_SHORT_PAGE) return { kind: 'full', page }
+      if (page.results.length >= best.results.length) best = page
     }
-    const page = { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor, attempts: attempt + 1 + throttled }
-    if (page.results.length >= FX_SHORT_PAGE) return page
-    if (page.results.length >= best.results.length) best = page
+    return { kind: 'short', best }
   }
-  return { ...best, attempts: attempts + throttled }
+  return new Promise<FxListResponse<FxTweet>>((resolve, reject) => {
+    let settled = false
+    const settle = (finish: () => void) => {
+      if (settled) return
+      settled = true
+      won = true
+      signal?.removeEventListener('abort', onAbort)
+      finish()
+    }
+    const onAbort = () => settle(() => reject(signal?.reason))
+    signal?.addEventListener('abort', onAbort, { once: true })
+    const first = copy(false).then((outcome) => {
+      firstEnded = true
+      return outcome
+    })
+    const copies = [first, ...Array.from({ length: Math.max(1, options.hedge ?? 1) - 1 }, () => copy(true))]
+    for (const run of copies) void run.then((outcome) => { if (outcome.kind === 'full') settle(() => resolve({ ...outcome.page, attempts: requests })) })
+    // No copy brought a full page: the first copy decides, as the plain fetch
+    // would have, between its error, a NOT_FOUND and the best short page.
+    void Promise.all(copies).then((outcomes) => {
+      const [outcome] = outcomes
+      if (outcome.kind === 'error') return settle(() => reject(outcome.error))
+      if (outcome.kind === 'missed') return settle(() => reject(new ConvertError(502, 'X timeline page could not be resolved upstream.', 'partial_upstream_failure', 10)))
+      let best: FxListResponse<FxTweet> = { results: [] }
+      for (const other of outcomes) if (other.kind === 'short' && other.best.results.length >= best.results.length) best = other.best
+      settle(() => resolve({ ...best, attempts: requests }))
+    })
+  })
 }
 
 export async function searchFxStatuses(

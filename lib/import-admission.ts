@@ -31,6 +31,7 @@ export async function withImportSlot<T>(work: () => Promise<T>): Promise<T> {
   }
   try { return await work() } finally {
     local.delete(id)
+    // Awaited: the caller's next walk (a backfill after a top-up) must not compete with its own lease.
     if (config) {
       try { await redisPipeline(config, [['ZREM', KEY, id]]) } catch { /* The lease expires. */ }
     }
