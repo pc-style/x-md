@@ -269,14 +269,16 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
 
   if (response.status === 429) {
     const retryAfter = retryAfterSeconds(response.headers.get('retry-after')) ?? 5
-    coolUntil.set(base, Date.now() + retryAfter * 1000)
+    const now = Date.now()
+    const deadline = Math.max(coolUntil.get(base) ?? 0, now + retryAfter * 1000)
+    coolUntil.set(base, deadline)
     // With more than one base the caller can retry at once on another one.
-    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', FX_BASES.length > 1 ? 0 : retryAfter)
+    throw new ConvertError(503, 'FxTwitter is rate limiting x.md right now.', 'upstream_rate_limited', FX_BASES.length > 1 ? 0 : Math.ceil((deadline - now) / 1000))
   }
   // A self-hosted instance whose accounts are exhausted answers 5xx rather than
   // 429; in a pool that base sits out briefly and the page moves to the next one.
   if (response.status >= 500 && FX_BASES.length > 1) {
-    coolUntil.set(base, Date.now() + Math.max(FX_UPSTREAM_ERROR_COOLDOWN_MS, (retryAfterSeconds(response.headers.get('retry-after')) ?? 0) * 1000))
+    coolUntil.set(base, Math.max(coolUntil.get(base) ?? 0, Date.now() + Math.max(FX_UPSTREAM_ERROR_COOLDOWN_MS, (retryAfterSeconds(response.headers.get('retry-after')) ?? 0) * 1000)))
     throw new ConvertError(503, `FxTwitter upstream ${new URL(base).host} answered ${response.status}.`, 'upstream_rate_limited', 0)
   }
 
@@ -512,10 +514,9 @@ export async function fetchFxThread(id: string): Promise<FxTweet[]> {
   if (data.thread?.length) {
     return data.thread.map(normalizeTweet)
   }
-  // The thread response can still contain its focal status when no thread is
-  // available. Reuse that snapshot before issuing another status request.
-  const focal = pickTweet(data)
-  return [focal ?? await fetchFxStatus(id)]
+  // The thread endpoint also returns the focal status when no thread is available.
+  const tweet = pickTweet(data)
+  return [tweet?.id === id ? tweet : await fetchFxStatus(id)]
 }
 
 export type FxReplyRanking = 'likes' | 'recency'

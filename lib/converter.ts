@@ -6,7 +6,7 @@ import {
   withCache,
 } from './cache.js'
 import { ConvertError } from './errors.js'
-import { fetchPosts, type ContextMode, type FetchSource, type RepliesMode } from './tweet-fetch.js'
+import { fetchPosts, type ContextMode, type FetchResult, type FetchSource, type RepliesMode } from './tweet-fetch.js'
 import { renderThreadMarkdown, type UserinfoLevel } from './markdown.js'
 
 export type OutputFormat = 'markdown' | 'obsidian' | 'json'
@@ -125,14 +125,6 @@ function parseFormat(raw: string | null | undefined): OutputFormat {
   throw new ConvertError(400, '`format` must be `markdown`, `obsidian`, or `json`.', 'invalid_format')
 }
 
-const DEFAULT_THREAD = 'full'
-
-function canonicalThreadCacheValue(raw: string | null | undefined): string {
-  if (raw === 'off') return 'off'
-  if (!raw || raw === 'full' || raw === 'conversation') return DEFAULT_THREAD
-  return raw
-}
-
 function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; limit: number } {
   if (raw === 'off') return { mode: 'off', limit: 1 }
 
@@ -200,21 +192,21 @@ function limitPostsByRole(posts: FxTweet[], requestedId: string, limit: number):
 }
 
 type ConvertPayload = Omit<ConvertSuccess, 'cache'>
+interface PostSnapshot extends FetchResult {
+  fetchedAt: string
+}
 
-async function convertTweetUncached(
+function renderSnapshot(
+  snapshot: PostSnapshot,
   format: OutputFormat,
   thread: { mode: 'off' | 'full'; limit: number },
   userinfo: UserinfoLevel,
   canonicalUrl: string,
-  handle: string,
   id: string,
   compact: boolean,
-  context: ContextMode,
-  replies: RepliesMode,
-): Promise<ConvertPayload> {
+): ConvertPayload {
   const warnings: string[] = []
-
-  const { tweets, source } = await fetchPosts(handle, id, thread.mode, context, replies)
+  const { tweets, source, fetchedAt } = snapshot
 
   let posts = tweets
   if (thread.mode === 'full' && posts.length > thread.limit) {
@@ -240,7 +232,7 @@ async function convertTweetUncached(
 
   return {
     body,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt,
     warnings,
     canonicalUrl,
     format,
@@ -262,22 +254,33 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   const { canonicalUrl, handle, id } = resolveTarget(input)
 
   const cacheKey = buildCacheKey({
-    v: 6,
+    v: 7,
+    resource: 'post-snapshot',
     id,
     handle: handle.toLowerCase(),
-    format,
-    thread: canonicalThreadCacheValue(input.thread),
-    userinfo: input.userinfo ?? 'off',
-    compact: compact ? '1' : '0',
+    thread: thread.mode,
     context,
     replies,
   })
 
-  const { value, status } = await withCache(cacheKey, nocache, async () =>
-    convertTweetUncached(format, thread, userinfo, canonicalUrl, handle, id, compact, context, replies),
-  )
+  // Cache retrieval, not presentation: formats and display limits all render
+  // the same upstream snapshot without fetching the conversation again. Store
+  // its timestamp once so rendering another view cannot refresh its age.
+  const { value, status } = await withCache<PostSnapshot>(cacheKey, nocache, async () => {
+    const snapshot = {
+      ...await fetchPosts(handle, id, thread.mode, context, replies),
+      fetchedAt: new Date().toISOString(),
+    }
+    // A malformed provider payload must remain retryable, including bad fields
+    // hidden by compact/truncated views or duplicate-author suppression. Check
+    // every post's rich author view before sharing any representation.
+    for (const tweet of snapshot.tweets) {
+      renderSnapshot({ ...snapshot, tweets: [tweet] }, 'markdown', { mode: 'off', limit: 1 }, 'author', canonicalUrl, id, false)
+    }
+    return snapshot
+  })
 
-  return { ...value, cache: status }
+  return { ...renderSnapshot(value, format, thread, userinfo, canonicalUrl, id, compact), cache: status }
 }
 
 export function acceptPrefersHtml(accept: string): boolean {

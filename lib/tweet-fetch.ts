@@ -1,4 +1,4 @@
-import { trackFallback } from './server-events.js'
+import { trackFallback, UPSTREAM_CANCELLED } from './server-events.js'
 import { ConvertError, ParentContextThrottleError } from './errors.js'
 import { fetchContextDevStatus } from './contextdev.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
@@ -6,6 +6,7 @@ import {
   fetchFxConversationReplies,
   fetchFxFullThread,
   fetchFxStatus,
+  type FxReplyRanking,
   type FxTweet,
 } from './fxtwitter.js'
 import { fetchSyndicationStatus } from './syndication.js'
@@ -104,7 +105,7 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
     }
   } finally {
     clearTimeout(hedge)
-    controller.abort()
+    controller.abort(UPSTREAM_CANCELLED)
   }
 
   throw lastError instanceof ConvertError
@@ -124,17 +125,10 @@ export async function fetchPosts(
     return { ...result, tweets: annotateAndDedupe(result.tweets, id, []) }
   }
 
-  const threadPromise = fetchFxFullThread(id)
-  const repliesController = new AbortController()
-  // Thread assembly and ranked replies do not depend on each other. Handle
-  // reply failures immediately so a failed thread cannot leave an unhandled
-  // rejection; replies remain additive and never supply the focal post.
-  const repliesPromise = repliesMode !== 'off' && contextMode !== 'thread'
-    ? fetchFxConversationReplies(id, repliesMode === 'recent' ? 'recency' : 'likes', 10, repliesController.signal).catch(() => [])
-    : Promise.resolve<FxTweet[]>([])
-
   try {
-    const assembledThread = await threadPromise
+    // Optional replies share the provider's cooldown. Finish mandatory parent
+    // discovery first so an early reply 429 cannot silently truncate context.
+    const assembledThread = await fetchFxFullThread(id)
     const thread = contextMode === 'thread'
       ? focalAuthorThread(assembledThread, id, handle)
       : assembledThread
@@ -142,13 +136,11 @@ export async function fetchPosts(
       return { tweets: annotateAndDedupe(thread, id, []), source: 'fxtwitter' }
     }
 
-    const replies = (await repliesPromise) ?? []
+    const ranking: FxReplyRanking = repliesMode === 'recent' ? 'recency' : 'likes'
+    const replies = (await fetchFxConversationReplies(id, ranking, 10).catch(() => [])) ?? []
     return { tweets: annotateAndDedupe(thread, id, replies), source: 'fxtwitter' }
   } catch (error) {
     if (isHardNotFound(error) || error instanceof ParentContextThrottleError) throw error
-  } finally {
-    // A failed/private thread must not keep an unused reply fetch running.
-    repliesController.abort()
   }
 
   const result = await fetchStatusWithFallback(handle, id)

@@ -37,13 +37,58 @@ function restoreEnv() {
 
 describe('fetchPosts provider fallbacks', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.mocked(fetchFxConversationReplies).mockResolvedValue([])
     delete process.env.CONTEXT_DEV_API_KEY
     delete process.env.FIRECRAWL_API_KEY
   })
 
-  afterEach(() => { restoreEnv(); vi.useRealTimers() })
+  afterEach(() => {
+    restoreEnv()
+    vi.useRealTimers()
+  })
+
+  test('finishes mandatory thread retrieval before ranked replies', async () => {
+    vi.useFakeTimers()
+    vi.mocked(fetchFxFullThread).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      return [{ id: '1', text: 'parent' }, { id: '2', text: 'post' }, { id: '3', text: 'continuation' }]
+    })
+    vi.mocked(fetchFxConversationReplies).mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      return [{ id: '4', text: 'reply' }]
+    })
+
+    const started = Date.now()
+    const result = fetchPosts('alice', '2', 'full')
+    await vi.runAllTimersAsync()
+
+    expect((await result).tweets.map(({ id, context }) => ({ id, context }))).toEqual([
+      { id: '1', context: 'parent' }, { id: '2', context: 'post' },
+      { id: '3', context: 'thread' }, { id: '4', context: 'reply' },
+    ])
+    expect(Date.now() - started).toBe(2000)
+  })
+
+  test('a private thread never starts optional replies or fallbacks', async () => {
+    vi.mocked(fetchFxFullThread).mockRejectedValue(new ConvertError(404, 'Post is private.', 'private_tweet'))
+
+    await expect(fetchPosts('alice', '2', 'full')).rejects.toMatchObject({ status: 404, code: 'private_tweet' })
+
+    expect(fetchFxConversationReplies).not.toHaveBeenCalled()
+    expect(fetchFxStatus).not.toHaveBeenCalled()
+    expect(fetchSyndicationStatus).not.toHaveBeenCalled()
+  })
+
+  test('a thread outage skips replies and preserves the status fallback', async () => {
+    vi.mocked(fetchFxFullThread).mockRejectedValue(new ConvertError(502, 'Thread unavailable.', 'fxtwitter_error'))
+    vi.mocked(fetchFxStatus).mockResolvedValue({ id: '2', text: 'focal post' })
+
+    const result = await fetchPosts('alice', '2', 'full')
+
+    expect(fetchFxConversationReplies).not.toHaveBeenCalled()
+    expect(result).toEqual({ tweets: [{ id: '2', text: 'focal post', context: 'post' }], source: 'fxtwitter' })
+  })
 
   test('uses Context.dev after FxTwitter and syndication when configured', async () => {
     process.env.CONTEXT_DEV_API_KEY = 'ctxt_secret_test'
@@ -154,17 +199,6 @@ describe('fetchPosts provider fallbacks', () => {
     expect(fetchSyndicationStatus.mock.calls[0][2]?.aborted).toBe(true)
   })
 
-  test('failed speculative replies are cancelled before the fallback result is served', async () => {
-    vi.mocked(fetchFxFullThread).mockRejectedValueOnce(new ConvertError(502, 'thread down', 'fxtwitter_network'))
-    vi.mocked(fetchFxConversationReplies).mockReturnValueOnce(new Promise(() => {}))
-    vi.mocked(fetchFxStatus).mockResolvedValueOnce({ id: '2', text: 'fallback status' })
-
-    const result = await fetchPosts('alice', '2', 'full')
-
-    expect(result.tweets).toEqual([{ id: '2', text: 'fallback status', context: 'post' }])
-    expect(vi.mocked(fetchFxConversationReplies).mock.calls[0][3]?.aborted).toBe(true)
-  })
-
   test('initial thread throttles still allow the focal-post fallback', async () => {
     const throttle = new ConvertError(503, 'fx throttled', 'upstream_rate_limited', 5)
     vi.mocked(fetchFxFullThread).mockRejectedValueOnce(throttle)
@@ -176,7 +210,7 @@ describe('fetchPosts provider fallbacks', () => {
     expect(result).toEqual({ source: 'syndication', tweets: [{ id: '2', text: 'fallback post', context: 'post' }] })
     expect(fetchFxStatus).toHaveBeenCalledWith('2')
     expect(fetchSyndicationStatus).toHaveBeenCalledWith('alice', '2', expect.any(AbortSignal))
-    expect(vi.mocked(fetchFxConversationReplies).mock.calls[0][3]?.aborted).toBe(true)
+    expect(fetchFxConversationReplies).not.toHaveBeenCalled()
   })
 
   test('thread=full still starts with FxTwitter full thread before fallback chain', async () => {
@@ -201,14 +235,14 @@ describe('fetchPosts provider fallbacks', () => {
 
     const result = await fetchPosts('alice', '2', 'full')
 
-    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'likes', 10, expect.any(AbortSignal))
+    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'likes', 10)
     expect(result.tweets.map(({ id, context }) => ({ id, context }))).toEqual([
       { id: '1', context: 'parent' }, { id: '2', context: 'post' },
       { id: '3', context: 'thread' }, { id: '4', context: 'reply' },
     ])
   })
 
-  test('starts replies before the independent thread fetch finishes', async () => {
+  test('starts optional replies only after the parent chain finishes', async () => {
     let finishThread!: (tweets: Array<{ id: string; text: string }>) => void
     vi.mocked(fetchFxFullThread).mockReturnValueOnce(new Promise(resolve => { finishThread = resolve }))
     vi.mocked(fetchFxConversationReplies).mockResolvedValue([{ id: '3', text: 'reply' }])
@@ -218,11 +252,11 @@ describe('fetchPosts provider fallbacks', () => {
     finishThread([{ id: '2', text: 'post' }])
     const result = await pending
 
-    expect(repliesStarted).toBe(1)
+    expect(repliesStarted).toBe(0)
     expect(result.tweets.map(post => post.id)).toEqual(['2', '3'])
   })
 
-  test('private thread errors win over successful speculative replies', async () => {
+  test('private thread errors prevent reply retrieval', async () => {
     vi.mocked(fetchFxFullThread).mockRejectedValueOnce(new ConvertError(404, 'private', 'private_tweet'))
     vi.mocked(fetchFxConversationReplies).mockResolvedValue([{ id: '3', text: 'reply' }])
 
@@ -235,7 +269,7 @@ describe('fetchPosts provider fallbacks', () => {
     vi.mocked(fetchFxFullThread).mockResolvedValue([{ id: '2', text: 'post' }])
     vi.mocked(fetchFxConversationReplies).mockRejectedValue(new Error('conversation unavailable'))
     const result = await fetchPosts('alice', '2', 'full', 'full', 'recent')
-    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'recency', 10, expect.any(AbortSignal))
+    expect(fetchFxConversationReplies).toHaveBeenCalledWith('2', 'recency', 10)
     expect(result.tweets).toEqual([{ id: '2', text: 'post', context: 'post' }])
   })
 

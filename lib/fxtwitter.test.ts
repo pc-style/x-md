@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   getParentStatusId,
   fetchFxConversationChain,
@@ -9,9 +9,12 @@ import {
   fetchFxProfileStatuses,
   fetchFxProfile,
   fetchFxConnections,
+  fetchFxStatus,
+  resetFxPool,
   type FxTweet,
   type FxReplyingTo,
 } from './fxtwitter.js'
+import { fetchPosts } from './tweet-fetch.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -311,6 +314,106 @@ describe('fetchFxFullThread', () => {
     vi.restoreAllMocks()
   })
 
+  afterEach(() => vi.useRealTimers())
+
+  test('optional reply cooldown cannot suppress the parent walk', async () => {
+    resetFxPool()
+    const paths: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) => {
+      const pathname = new URL(String(input)).pathname
+      paths.push(pathname)
+      if (pathname.includes('/conversation/')) {
+        return new Response('{}', { status: 429, headers: { 'retry-after': '30' } })
+      }
+      const tweet = pathname.includes('/thread/')
+        ? makeTweet('200', { replying_to: { status: '100' } })
+        : makeTweet('100')
+      return new Response(JSON.stringify(fxStatusResponse(tweet)))
+    }))
+    try {
+      const result = await fetchPosts('alice', '200', 'full')
+      expect(result.tweets.map(tweet => tweet.id)).toEqual(['100', '200'])
+      expect(paths).toEqual(['/2/thread/200', '/2/status/100', '/2/conversation/200'])
+      await expect(fetchFxStatus('300')).rejects.toMatchObject({ code: 'upstream_rate_limited' })
+      expect(paths).toHaveLength(3)
+    } finally {
+      resetFxPool()
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('reuses a status payload when the thread endpoint returns no thread', async () => {
+    const tweet = makeTweet('100', { article: { title: 'Full article', content: { blocks: [{ text: 'Body' }] } } })
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 200, thread: null, status: tweet })))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await fetchFxFullThread('100')
+
+    expect(result).toMatchObject([tweet])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('does not reuse a thread status payload for a different post', async () => {
+    const tweet = makeTweet('100')
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ code: 200, thread: null, status: makeTweet('other') })))
+      .mockResolvedValueOnce(new Response(JSON.stringify(fxStatusResponse(tweet))))
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await fetchFxFullThread('100')).toMatchObject([tweet])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  test('walks only missing ancestors without fetching the focal post again', async () => {
+    vi.useFakeTimers()
+    const root = makeTweet('100')
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    const paths: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
+      const path = new URL(String(input)).pathname
+      paths.push(path)
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const payload = path.includes('/thread/')
+        ? { code: 200, thread: null, status: leaf }
+        : fxStatusResponse(path.endsWith('/100') ? root : leaf)
+      return new Response(JSON.stringify(payload))
+    }))
+
+    const started = Date.now()
+    const result = fetchFxFullThread('200')
+    await vi.runAllTimersAsync()
+
+    expect((await result).map((tweet) => tweet.id)).toEqual(['100', '200'])
+    expect(paths).toEqual(['/2/thread/200', '/2/status/100'])
+    expect(Date.now() - started).toBe(2000)
+  })
+
+  test('keeps the focal payload when an ancestor is unavailable', async () => {
+    const leaf = makeTweet('200', { replying_to: { status: '100' }, text: 'complete focal text' })
+    const paths: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => {
+      const path = new URL(String(input)).pathname
+      paths.push(path)
+      return new Response(JSON.stringify(path.includes('/thread/')
+        ? { code: 200, thread: [leaf] }
+        : { code: 404, message: 'NOT_FOUND' }))
+    }))
+
+    expect(await fetchFxFullThread('200')).toMatchObject([leaf])
+    expect(paths).toEqual(['/2/thread/200', '/2/status/100'])
+  })
+
+  test('a private ancestor still rejects the full thread', async () => {
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => new Response(JSON.stringify(
+      String(input).includes('/thread/')
+        ? { code: 200, thread: [leaf] }
+        : { code: 404, message: 'PRIVATE_TWEET' },
+    ))))
+
+    await expect(fetchFxFullThread('200')).rejects.toMatchObject({ status: 404, code: 'private_tweet' })
+  })
+
   test('returns multi-tweet thread directly when thread endpoint returns >1 tweets', async () => {
     const tweets = [makeTweet('100'), makeTweet('200'), makeTweet('300')]
     vi.stubGlobal(
@@ -419,7 +522,7 @@ describe('fetchFxFullThread', () => {
     await expect(fetchFxFullThread('200')).rejects.toMatchObject({ code: 'private_tweet' })
   })
 
-  test('a concurrent reply throttle cannot silently remove required parent context', async () => {
+  test('another request throttling the provider cannot silently remove required parent context', async () => {
     const { resetFxPool } = await import('./fxtwitter.js')
     const { fetchPosts } = await import('./tweet-fetch.js')
     resetFxPool()
@@ -440,8 +543,9 @@ describe('fetchFxFullThread', () => {
     try {
       const pending = fetchPosts('ada', '200', 'full')
       const result = expect(pending).rejects.toMatchObject({ code: 'upstream_rate_limited', retryAfter: 5 })
-      // Let the reply response install its cooldown before the parent walk.
-      await new Promise(resolve => setTimeout(resolve, 0))
+      // Another request can still establish a shared cooldown while this
+      // thread is in flight; preserve main's explicit retryable failure.
+      await expect(fetchFxConversationReplies('300')).rejects.toMatchObject({ code: 'upstream_rate_limited' })
       releaseThread()
       await result
       expect(fetchMock).toHaveBeenCalledTimes(2)
@@ -531,6 +635,24 @@ describe('fetchFxFullThread', () => {
 })
 
 describe('fetchFxConversationReplies', () => {
+  test('passes cancellation through to the upstream request', async () => {
+    const controller = new AbortController()
+    let upstreamSignal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn(async (_input: string | URL, init?: RequestInit) => {
+      upstreamSignal = init?.signal ?? undefined
+      return await new Promise<Response>((_resolve, reject) => {
+        upstreamSignal?.addEventListener('abort', () => reject(upstreamSignal?.reason), { once: true })
+      })
+    }))
+
+    const pending = fetchFxConversationReplies('20', 'likes', 10, controller.signal)
+    const rejected = expect(pending).rejects.toBeInstanceOf(DOMException)
+    controller.abort()
+
+    await rejected
+    expect(upstreamSignal?.aborted).toBe(true)
+  })
+
   test('keeps only direct replies, sorts by recency, caps, and sends ranking_mode', async () => {
     const replies = Array.from({ length: 12 }, (_, index) => makeTweet(String(index + 1), {
       likes: index,
@@ -610,6 +732,29 @@ describe('retryAfterSeconds', () => {
     expect(seconds).toBeLessThanOrEqual(91)
     expect(retryAfterSeconds(new Date(Date.now() - 90_000).toUTCString())).toBe(1)
   })
+})
+
+test('overlapping throttled requests preserve the longest provider cooldown', async () => {
+  resetFxPool()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  const responses: Array<(response: Response) => void> = []
+  const fetchMock = vi.fn(() => new Promise<Response>((resolve) => responses.push(resolve)))
+  vi.stubGlobal('fetch', fetchMock)
+  try {
+    const status = expect(fetchFxStatus('20')).rejects.toMatchObject({ code: 'upstream_rate_limited', retryAfter: 30 })
+    const replies = expect(fetchFxConversationReplies('20')).rejects.toMatchObject({ code: 'upstream_rate_limited', retryAfter: 25 })
+    responses[0](new Response('', { status: 429, headers: { 'retry-after': '30' } }))
+    await status
+    vi.setSystemTime(Date.now() + 5000)
+    responses[1](new Response('', { status: 429, headers: { 'retry-after': '5' } }))
+    await replies
+
+    await expect(fetchFxStatus('21')).rejects.toMatchObject({ code: 'upstream_rate_limited', retryAfter: 25 })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.useRealTimers()
+    resetFxPool()
+  }
 })
 
 test('rejects malformed timeline payloads instead of treating them as an empty floor', async () => {
