@@ -23,11 +23,11 @@ interface PageShell {
 
 function pageShell({ page, eyebrow, heading, lede, body }: PageShell): string {
   return `
-<div class="x-root w-full max-w-full overflow-x-hidden">
+<div class="x-root w-full max-w-full overflow-x-clip">
   <a href="#content" class="skip-link">Skip to content</a>
   ${headerHtml({ page })}
 
-  <main id="content" class="w-full max-w-full overflow-x-hidden">
+  <main id="content" class="w-full max-w-full overflow-x-clip">
     <article class="mx-auto max-w-[860px] px-6 pt-16 pb-24 sm:px-8 sm:pt-24 md:pb-32">
       <p class="eyebrow eyebrow-accent">${eyebrow}</p>
       <h1 class="mt-5 text-[clamp(2.3rem,5vw,3.6rem)] leading-[1.05] font-black tracking-tight text-ink">${heading}</h1>

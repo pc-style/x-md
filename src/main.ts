@@ -76,26 +76,6 @@ function setupCopyButtons(root: HTMLElement) {
   })
 }
 
-function setupAccordion(root: HTMLElement) {
-  const items = Array.from(root.querySelectorAll<HTMLElement>('.acc-item'))
-  if (!items.length) return
-  const open = (item: HTMLElement) => {
-    items.forEach((i) => {
-      delete i.dataset.open
-      i.querySelector<HTMLButtonElement>('.acc-trigger')?.setAttribute('aria-expanded', 'false')
-    })
-    item.dataset.open = ''
-    item.querySelector<HTMLButtonElement>('.acc-trigger')?.setAttribute('aria-expanded', 'true')
-  }
-  items.forEach((item) => {
-    const trigger = item.querySelector<HTMLButtonElement>('.acc-trigger')
-    if (!trigger) return
-    item.addEventListener('mouseenter', () => open(item))
-    trigger.addEventListener('focus', () => open(item))
-    trigger.addEventListener('click', () => open(item))
-  })
-}
-
 // The markup is pre-rendered into index.html at build time so crawlers and
 // agents see the full page without running JavaScript. Only render here when
 // that pre-render is missing (dev servers that skip the transform).
@@ -110,7 +90,6 @@ async function enhanceLanding() {
   setupTheme(app)
   setupLinkPrefetch(app)
   setupCopyButtons(app)
-  setupAccordion(app)
   if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
     void import('./motion').then(({ setupMotion }) => setupMotion(app)).catch(() => {
       // Optional motion must not stop the already-readable page or its controls.
