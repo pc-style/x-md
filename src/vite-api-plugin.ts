@@ -15,6 +15,7 @@ import {
   chargeRequestQuota,
   type QuotaCaller,
   type QuotaScope,
+  type RequestQuota,
 } from '../lib/ratelimit-headers'
 import { clientIp } from '../lib/ratelimit'
 import {
@@ -95,7 +96,11 @@ async function enforceQuota(
   scope: QuotaScope,
   caller: QuotaCaller,
 ): Promise<boolean> {
-  const quota = await chargeRequestQuota(scope, caller)
+  return answerQuota(req, res, await chargeRequestQuota(scope, caller))
+}
+
+/** Advertises a charged request's quota and answers 429 when the front door rejected it. */
+function answerQuota(req: IncomingMessage, res: ServerResponse, quota: RequestQuota): boolean {
   applyRequestQuota(res, quota)
   if (quota.allowed) return false
   applyExhaustedQuota(res, quota, 'api-ip', quota.retryAfter)
@@ -242,9 +247,19 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
     resolved.caller.kind === 'key'
       ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
       : { ip: resolved.ip }
-  if (await enforceQuota(req, res, scope, quotaCaller)) return true
+  // As in api/browse.ts: the cache lookup overlaps the front-door charge, and
+  // browse waits for the verdict before spending anything deeper.
+  const charged = chargeRequestQuota(scope, quotaCaller)
+  // `browse` rejects invalid input before it awaits this verdict, so a charge
+  // that fails in that window needs an observer of its own; the handler's
+  // own `await charged` below still surfaces the failure.
+  const admission = charged.then((quota) => quota.allowed)
+  admission.catch(() => undefined)
+  const pending = browse({ id: url.searchParams.get('id'), require_live: url.searchParams.get('require_live'), include_posts: url.searchParams.get('include_posts'), with_replies: url.searchParams.get('with_replies'), with_reposts: url.searchParams.get('with_reposts'), since: url.searchParams.get('since'), until: url.searchParams.get('until'), resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller }, { admission })
+  pending.catch(() => undefined)
+  if (answerQuota(req, res, await charged)) return true
   try {
-    const result = await browse({ id: url.searchParams.get('id'), require_live: url.searchParams.get('require_live'), include_posts: url.searchParams.get('include_posts'), with_replies: url.searchParams.get('with_replies'), with_reposts: url.searchParams.get('with_reposts'), since: url.searchParams.get('since'), until: url.searchParams.get('until'), resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller })
+    const result = await pending
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
     res.statusCode = response.status
     for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)

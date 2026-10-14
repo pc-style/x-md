@@ -222,6 +222,20 @@ export async function setCached<T>(key: string, value: T, ttl = ttlMs()): Promis
   await Promise.all([writeShared(key, entry, ttl), writeDisk(key, entry)])
 }
 
+export interface WithCacheOptions {
+  /**
+   * Settles once the caller may be answered: served, charged deeper, or sent
+   * to the origin. The lookup runs while it is pending, since a lookup commits
+   * nothing, and a rejection is propagated untouched before any of those.
+   */
+  admission?: Promise<unknown>
+  /**
+   * Takes over the durable write after a miss, so the caller is answered as
+   * soon as hot memory holds the value. Without it the write is awaited.
+   */
+  defer?: (write: Promise<void>) => void
+}
+
 /**
  * `ttlFor` lets a caller shorten the TTL based on the produced value, e.g. a
  * degraded fallback result that should be re-checked soon.
@@ -234,13 +248,17 @@ export async function withCache<T>(
   fn: () => Promise<T>,
   ttlFor?: (value: T) => number | undefined,
   flightKey?: string,
+  options: WithCacheOptions = {},
 ): Promise<{ value: T; status: CacheStatus }> {
+  const { admission, defer } = options
   if (nocache || cacheDisabled()) {
+    if (admission) await admission
     return { value: await fn(), status: 'bypass' }
   }
 
   const hot = readMemory<T>(key)
   if (hot) {
+    if (admission) await admission
     trackCache(true)
     return hot
   }
@@ -248,11 +266,17 @@ export async function withCache<T>(
   const fillKey = JSON.stringify([key, flightKey ?? null])
   const pending = fills.get(fillKey)
   if (pending) {
+    if (admission) await admission
     trackCache(false)
     return { value: await pending as T, status: 'miss' }
   }
 
-  const hit = await getCached<T>(key)
+  let hit = await getCached<T>(key)
+  if (admission) {
+    await admission
+    // Another caller's fill may have landed while the verdict was pending.
+    hit ??= readMemory<T>(key)
+  }
   trackCache(Boolean(hit))
   if (hit) return hit
 
@@ -262,7 +286,8 @@ export async function withCache<T>(
     // setCached publishes hot memory synchronously. New callers must read its
     // expiry instead of joining this value while a slow durable write finishes.
     release()
-    await write
+    if (defer) defer(write)
+    else await write
     return value
   })
   return { value, status: 'miss' }

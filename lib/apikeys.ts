@@ -71,14 +71,23 @@ export async function getApiKey(id: string): Promise<ApiKeyRecord | null> {
   return parseRecord(raw ?? null, last ?? null)
 }
 
-export async function listApiKeys(): Promise<ApiKeyRecord[]> {
-  const ids = await kv().smembers(INDEX)
+/** Every key id in the index. A listing is this read plus `getApiKeys`; callers that can use the ids before the records arrive (lib/pool.ts) take the halves separately. */
+export async function listApiKeyIds(): Promise<string[]> {
+  return kv().smembers(INDEX)
+}
+
+/** The records behind `ids`, newest first; ids with no record are skipped. */
+export async function getApiKeys(ids: readonly string[]): Promise<ApiKeyRecord[]> {
   if (ids.length === 0) return []
   const values = await kv().mget([...ids.map(recordKey), ...ids.map(lastUsedKey)])
   return ids
     .map((_, i) => parseRecord(values[i] ?? null, values[ids.length + i] ?? null))
     .filter((record): record is ApiKeyRecord => record !== null)
     .sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export async function listApiKeys(): Promise<ApiKeyRecord[]> {
+  return getApiKeys(await listApiKeyIds())
 }
 
 export async function updateApiKey(

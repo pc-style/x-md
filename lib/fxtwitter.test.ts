@@ -156,6 +156,19 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
     await expect(fetchFxConnections('theo', 'followers')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })
   })
 
+  test('a lone base is asked for a connections page once, however slow it is', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => {
+      setTimeout(() => resolve(new Response(JSON.stringify({ code: 200, results: [{ screen_name: 'bob' }] }), { status: 200 })), 5_000)
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+    const pending = fetchFxConnections('theo', 'followers')
+    await vi.advanceTimersByTimeAsync(5_000)
+    expect((await pending).results).toEqual([{ screen_name: 'bob' }])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
   test('keeps an explicit private post non-retryable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ code: 404, message: 'PRIVATE_TWEET' }), { status: 404 })))
     const { fetchFxStatus } = await import('./fxtwitter.js')
