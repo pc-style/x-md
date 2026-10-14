@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { IncomingMessage, ServerResponse } from 'node:http'
 import { Socket } from 'node:net'
+import { buildFeedbackToolDescription } from '@usenotra/geo/feedback'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('./browse.js', () => ({ browse: vi.fn() }))
@@ -143,6 +144,8 @@ describe('tools/list', () => {
     expect(required.x_md_get_followers).toEqual(['handle'])
     expect(required.x_md_get_following).toEqual(['handle'])
     expect(required.submit_feedback).toEqual(['message'])
+    // The description is inlined so tools/list does not load the feedback client; keep it in step.
+    expect(tools.find((tool) => tool.name === 'submit_feedback')?.description).toBe(buildFeedbackToolDescription('x.md'))
     // get_post takes a url OR a handle plus an id, so the choice is an anyOf.
     expect(tools[0]!.inputSchema.anyOf).toEqual([{ required: ['url'] }, { required: ['handle', 'id'] }])
   })

@@ -1,6 +1,4 @@
-import { buildFeedbackToolDescription, FeedbackSubmitError, submitFeedback } from '@usenotra/geo/feedback'
-import { browse, type BrowseResult } from './browse.js'
-import { convertTweet } from './converter.js'
+import type { BrowseResult } from './browse.js'
 import { ConvertError } from './errors.js'
 import { FEEDBACK_IP, feedbackIpKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
@@ -422,7 +420,7 @@ export const MCP_TOOLS: McpTool[] = [
   {
     name: 'submit_feedback',
     title: 'Submit feedback',
-    description: buildFeedbackToolDescription(MCP_SERVER_TITLE),
+    description: 'Send feedback about x.md to the x.md team. Use it to report bugs, request features, ask questions or share what worked well. Include the exact steps or URL when reporting a problem.',
     inputSchema: {
       $schema: DRAFT,
       type: 'object',
@@ -778,6 +776,7 @@ async function runBrowse(
   args: Record<string, unknown>,
   ctx: McpContext,
 ): Promise<{ text: string; structured: Record<string, unknown> }> {
+  const { browse } = await import('./browse.js')
   const result = await browse({
     resource,
     handle: text(args.handle)?.replace(/^@/, '') ?? null,
@@ -796,6 +795,7 @@ async function runBrowse(
 const TOOL_RUNNERS: Record<string, ToolRunner> = {
   async x_md_get_post(args, ctx) {
     const thread = text(args.thread) ?? 'full'
+    const { convertTweet } = await import('./converter.js')
     const result = await convertTweet({
       origin: ctx.site,
       url: text(args.url) ?? null,
@@ -829,6 +829,7 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
   x_md_get_followers: (args, ctx) => runBrowse('followers', args, ctx),
   x_md_get_following: (args, ctx) => runBrowse('following', args, ctx),
   async submit_feedback(args, ctx) {
+    const { submitFeedback } = await import('@usenotra/geo/feedback')
     // Refund rejected calls so a caller retrying early does not push its own reset further out.
     const gate = await rateLimit(feedbackIpKey(ctx.ip ?? ''), FEEDBACK_IP.quota, FEEDBACK_IP.windowSec, false, true)
     if (!gate.allowed) throw new ConvertError(429, 'Feedback rate limit reached.', 'rate_limited', gate.retryAfter, FEEDBACK_IP.name)
@@ -881,7 +882,8 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
         },
       }
     }
-    if (error instanceof FeedbackSubmitError) {
+    const { FeedbackSubmitError } = tool.name === 'submit_feedback' ? await import('@usenotra/geo/feedback') : { FeedbackSubmitError: undefined }
+    if (FeedbackSubmitError && error instanceof FeedbackSubmitError) {
       return { result: { content: [{ type: 'text', text: `Feedback could not be submitted (HTTP ${error.status}): ${error.message}` }], isError: true } }
     }
     console.error(error)
