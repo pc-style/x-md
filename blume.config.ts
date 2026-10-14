@@ -1,6 +1,29 @@
 import { defineConfig } from 'blume'
 import { vercel } from 'blume/analytics'
 import { orama } from 'blume/search'
+import type { LocalFontConfig } from 'blume'
+
+/**
+ * The same self-hosted, Latin-subsetted Satoshi the landing page loads
+ * (`bun run fonts:build`), at the same weights.
+ *
+ * Resolving the family through Fontshare instead downloaded six unsubsetted
+ * 25 kB faces on every docs page, and resolved them through a third party the
+ * reader had not connected to yet. These are the same typeface with identical
+ * advance widths, at a third of the bytes, and a reader who arrived from the
+ * landing page already has them.
+ */
+const satoshi: LocalFontConfig = {
+  name: 'Satoshi',
+  variants: [
+    { src: 'public/fonts/satoshi-400-b4e41e08.woff2', weight: 400 },
+    { src: 'public/fonts/satoshi-500-5e66a0b1.woff2', weight: 500 },
+    { src: 'public/fonts/satoshi-700-03127b3b.woff2', weight: 700 },
+    { src: 'public/fonts/satoshi-400-italic-c38203b7.woff2', weight: 400, style: 'italic' },
+    { src: 'public/fonts/satoshi-500-italic-0a3f54a4.woff2', weight: 500, style: 'italic' },
+    { src: 'public/fonts/satoshi-700-italic-b2f9998d.woff2', weight: 700, style: 'italic' },
+  ],
+}
 
 export default defineConfig({
   title: 'x.md docs',
@@ -14,8 +37,8 @@ export default defineConfig({
     radius: 'lg',
     mode: 'light',
     fonts: {
-      body: { name: 'Satoshi', provider: 'fontshare' },
-      display: { name: 'Satoshi', provider: 'fontshare' },
+      body: satoshi,
+      display: satoshi,
     },
   },
   navigation: {

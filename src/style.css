@@ -2,9 +2,15 @@
 
 @import "./tokens.css";
 
+/* Satoshi, self-hosted and subset to the range this site can render
+   (`bun run fonts:build`). The faces are the unsubsetted files Fontshare serves
+   without the Cyrillic, Greek and Vietnamese alternates no page here can reach,
+   which is most of their bytes: 25 kB per face down to 8 kB, with identical
+   advance widths. The ITF Free Font License in docs-assets/fonts permits it.
+   `swap` keeps the first paint on the system fallback. */
 @font-face {
   font-family: 'Satoshi';
-  src: url('/fonts/satoshi-500-af02a72246f5.woff2') format('woff2');
+  src: url('/fonts/satoshi-500-5e66a0b1.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -12,7 +18,7 @@
 
 @font-face {
   font-family: 'Satoshi';
-  src: url('/fonts/satoshi-700-353a7fbfb447.woff2') format('woff2');
+  src: url('/fonts/satoshi-700-03127b3b.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -20,7 +26,7 @@
 
 @font-face {
   font-family: 'Satoshi';
-  src: url('/fonts/satoshi-900-bd11b5820231.woff2') format('woff2');
+  src: url('/fonts/satoshi-900-f4d41ea8.woff2') format('woff2');
   font-weight: 900;
   font-style: normal;
   font-display: swap;

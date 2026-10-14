@@ -33,6 +33,8 @@
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
     "test": "bun --bun vitest --run",
+    "fonts:build": "bun scripts/build-fonts.ts",
+    "fonts:check": "bun scripts/build-fonts.ts --check",
     "docs:dev": "bun --bun blume dev",
     "docs:build": "bun --bun blume build",
     "openapi:build": "bun scripts/build-openapi.ts",

@@ -224,6 +224,30 @@ Optional environment variables:
 
 Deploy with Vercel after `bun run build`; `vercel.json` configures `dist`, the API handlers, and all public route rewrites.
 
+### Page weight
+
+The landing, content and docs pages share one budget, measured from the built `dist/` under Lighthouse's Slow 4G profile (1.6 Mbps, 150 ms RTT) with a 4x CPU slowdown:
+
+| page | render-blocking (brotli) | requests before first paint | median LCP |
+|---|---|---|---|
+| `/` | 28.6 kB | 6 | 548 ms |
+| `/about` | 26.5 kB | 6 | 432 ms |
+| `/docs` | 160.1 kB | 37 | 868 ms |
+
+The docs row is every face the build declares, Satoshi and IBM Plex Mono; a browser only fetches the ones a page renders (45 kB there). Webfonts are the largest single item and are self-hosted subsets; `bun run fonts:build` re-subsets them and `bun run fonts:check` verifies the committed files offline.
+
+Reproduce it with:
+
+```sh
+bun run build
+bun bench/frontend-load.ts                     # static budget from dist/
+node bench/frontend-trace.mjs --runs 11        # throttled LCP/TBT, cold cache
+node bench/frontend-trace.mjs --compare before,dist --runs 11   # before vs after
+node bench/frontend-shots.mjs --out /tmp/shots --label current  # for a pixel diff
+```
+
+`--dist <dir>` points any of them at a saved copy of `dist/`, so a before/after comparison runs the same code twice. The two Chromium harnesses resolve Playwright from `PLAYWRIGHT_MODULE` so the repo's dependency tree stays untouched.
+
 ## Project layout
 
 ```text
@@ -232,6 +256,7 @@ api/browse.ts      Profile, search, followers, and following handler
 api/oembed.ts      Discord oEmbed JSON for chat previews
 lib/               Providers, rendering, pagination, cache, and embeds
 src/               Vite landing page and rendered documentation
+bench/             Page-weight benchmarks for the public pages
 ```
 
 ## License
