@@ -3,6 +3,7 @@ import { defineConfig, loadEnv } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { apiDevPlugin } from './src/vite-api-plugin'
 import { prerenderLandingPlugin } from './src/vite-prerender-plugin'
+import { inlineStylesheetPlugin } from './src/vite-inline-stylesheet-plugin'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -11,7 +12,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [tailwindcss(), apiDevPlugin(), prerenderLandingPlugin()],
+    plugins: [tailwindcss(), apiDevPlugin(), prerenderLandingPlugin(), inlineStylesheetPlugin()],
     test: {
       setupFiles: ['./lib/test-setup.ts'],
     },
@@ -20,6 +21,10 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       emptyOutDir: false,
+      // Every page inlines its stylesheet and the entry chunks are a few kB, so
+      // the modulepreload shim Vite ships for Safari < 17 is a dead request on
+      // every cold load for no gain.
+      modulePreload: { polyfill: false },
       rollupOptions: {
         input: {
           main: resolve(import.meta.dirname, 'index.html'),

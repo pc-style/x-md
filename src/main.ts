@@ -1,9 +1,11 @@
 import { captureLandingEvent } from './posthog'
-import { inject } from '@vercel/analytics'
+import { loadWebAnalytics, whenUseful } from './deferred'
 import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome'
 
-// Vercel Web Analytics for the landing page (docs pages are a separate static build).
-inject()
+// Vercel Web Analytics for the landing page (docs pages are a separate static
+// build). Off the critical path: it lands after load, on first intent, or when
+// the page is hidden.
+whenUseful(loadWebAnalytics)
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 
