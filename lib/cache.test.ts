@@ -396,3 +396,84 @@ test('disk hits obey the hot-memory cap', async () => {
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('admission: the durable lookup runs while the verdict is pending, and nothing is fetched or served until it allows', async () => {
+  vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+  vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+  const { fetch } = fakeRedis()
+  vi.stubGlobal('fetch', fetch)
+  let admit!: () => void
+  const admission = new Promise<void>((resolve) => { admit = resolve })
+  const origin = vi.fn(async () => 'fresh')
+  let settled = false
+  const pending = withCache('gated', false, origin, undefined, undefined, { admission }).then((value) => { settled = true; return value })
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(origin).not.toHaveBeenCalled()
+  expect(settled).toBe(false)
+  admit()
+  expect(await pending).toEqual({ value: 'fresh', status: 'miss' })
+  expect(origin).toHaveBeenCalledTimes(1)
+})
+
+test('admission: a denial is thrown before the origin on a miss and withholds a hot hit', async () => {
+  const denied = new Error('denied')
+  const denial = () => { const rejected = Promise.reject(denied); rejected.catch(() => undefined); return rejected }
+  const origin = vi.fn(async () => 'fresh')
+  await expect(withCache('denied', false, origin, undefined, undefined, { admission: denial() })).rejects.toBe(denied)
+  expect(origin).not.toHaveBeenCalled()
+  expect(await withCache('denied', false, origin)).toEqual({ value: 'fresh', status: 'miss' })
+  await expect(withCache('denied', false, origin, undefined, undefined, { admission: denial() })).rejects.toBe(denied)
+  expect(await withCache('denied', false, origin, undefined, undefined, { admission: Promise.resolve() })).toEqual({ value: 'fresh', status: 'hit' })
+  expect(origin).toHaveBeenCalledTimes(1)
+})
+
+test('admission: a caller joining another flight still waits for its own verdict', async () => {
+  let release!: () => void
+  let started!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  const originStarted = new Promise<void>((resolve) => { started = resolve })
+  const first = withCache('joined', false, async () => { started(); await gate; return 'shared' })
+  await originStarted
+  const denied = new Error('denied')
+  const denial = Promise.reject(denied)
+  denial.catch(() => undefined)
+  const rejected = expect(withCache('joined', false, async () => 'unused', undefined, undefined, { admission: denial })).rejects.toBe(denied)
+  release()
+  await rejected
+  expect(await first).toEqual({ value: 'shared', status: 'miss' })
+})
+
+test('admission: a fill that landed while the verdict was pending is served instead of refetched', async () => {
+  let admit!: () => void
+  const admission = new Promise<void>((resolve) => { admit = resolve })
+  const origin = vi.fn(async () => 'late')
+  const gated = withCache('landed', false, origin, undefined, 'caller-a', { admission })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(await withCache('landed', false, async () => 'from-b', undefined, 'caller-b')).toEqual({ value: 'from-b', status: 'miss' })
+  admit()
+  expect(await gated).toEqual({ value: 'from-b', status: 'hit' })
+  expect(origin).not.toHaveBeenCalled()
+})
+
+test('defer: a miss is answered once hot memory holds the value, and the durable write finishes on its own', async () => {
+  vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+  vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+  let release!: () => void
+  let started!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  const writeStarted = new Promise<void>((resolve) => { started = resolve })
+  const { fetch, store } = fakeRedis(async (operation) => { if (operation === 'SET') { started(); await gate } })
+  vi.stubGlobal('fetch', fetch)
+  const deferred: Promise<void>[] = []
+  expect(await withCache('deferred', false, async () => 'value', undefined, undefined, { defer: (write) => { deferred.push(write) } })).toEqual({ value: 'value', status: 'miss' })
+  await writeStarted
+  expect(deferred).toHaveLength(1)
+  expect(store.size).toBe(0)
+  const origin = vi.fn(async () => 'other')
+  expect(await withCache('deferred', false, origin)).toEqual({ value: 'value', status: 'hit' })
+  expect(origin).not.toHaveBeenCalled()
+  release()
+  await deferred[0]
+  expect(store.size).toBe(1)
+})

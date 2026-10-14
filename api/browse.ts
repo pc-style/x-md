@@ -75,7 +75,19 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     resolved.caller.kind === 'key'
       ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
       : { ip: resolved.ip }
-  const quota = await chargeRequestQuota(scope, quotaCaller)
+  // The front-door charge and the cache lookup touch different keys, so the
+  // lookup starts while the charge is in flight: `browse` consults the cache on
+  // its own and waits for this verdict before it spends anything deeper or calls
+  // a provider. A denial is answered here, never from inside `browse`.
+  const charged = chargeRequestQuota(scope, quotaCaller)
+  // `browse` rejects invalid input before it awaits this verdict, so a charge
+  // that fails in that window needs an observer of its own; the handler's
+  // own `await charged` below still surfaces the failure.
+  const admission = charged.then((quota) => quota.allowed)
+  admission.catch(() => undefined)
+  const pending = browse({ id: param('id'), resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), require_live: param('require_live'), include_posts: param('include_posts'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller }, { admission })
+  pending.catch(() => undefined)
+  const quota = await charged
   applyRequestQuota(res, quota)
   if (!quota.allowed) {
     applyExhaustedQuota(res, quota, 'api-ip', quota.retryAfter)
@@ -92,7 +104,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await browse({ id: param('id'), resource: param('resource'), handle: param('handle'), q: param('q'), feed: param('feed'), cursor: param('cursor'), page: param('page'), limit: param('limit'), full: param('full'), format: param('format'), nocache: param('nocache'), require_live: param('require_live'), include_posts: param('include_posts'), with_replies: param('with_replies'), with_reposts: param('with_reposts'), until: param('until'), since: param('since'), ip: resolved.ip, caller: resolved.caller })
+    const result = await pending
     trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)

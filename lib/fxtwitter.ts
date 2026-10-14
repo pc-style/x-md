@@ -27,6 +27,19 @@ export function pickFxBase(): string {
   return [...FX_BASES].sort((a, b) => (coolUntil.get(a) ?? 0) - (coolUntil.get(b) ?? 0))[0]
 }
 
+/** The next base that is neither cooling down nor `avoid`; nothing when every other base is cooling. */
+function pickFxBaseAvoiding(avoid: string): string | undefined {
+  const now = Date.now()
+  for (let i = 0; i < FX_BASES.length; i += 1) {
+    const base = FX_BASES[(rotation + i) % FX_BASES.length]
+    if (base !== avoid && (coolUntil.get(base) ?? 0) <= now) {
+      rotation = (rotation + i + 1) % FX_BASES.length
+      return base
+    }
+  }
+  return undefined
+}
+
 /** Test hook. */
 export function resetFxPool(): void {
   coolUntil.clear()
@@ -251,9 +264,8 @@ export function retryAfterSeconds(header: string | null): number | undefined {
   return Math.max(1, Math.ceil((at - Date.now()) / 1000))
 }
 
-async function fxFetchJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+async function fxFetchJson<T>(path: string, signal?: AbortSignal, base = pickFxBase()): Promise<T> {
   let response: Response
-  const base = pickFxBase()
   const remaining = Math.ceil(((coolUntil.get(base) ?? 0) - Date.now()) / 1000)
   if (remaining > 0) throw new ConvertError(503, 'The data source is cooling down. Retry after the indicated delay.', 'upstream_rate_limited', remaining)
   try {
@@ -441,6 +453,66 @@ export async function searchFxStatuses(
   return { results: (data.results ?? []).map(normalizeTweet), cursor: data.cursor }
 }
 
+/**
+ * How long a connections page may take before a second copy of the request
+ * goes to the next base in the pool. A follower list is exactly one such page
+ * and FxTwitter's list pages have a long tail (0.6 s to 4 s for the same page,
+ * measured 2026-10-13), so that tail is the list's latency. The first good
+ * answer wins. A lone base is never asked twice: the hedge exists to route
+ * around a slow instance, not to double load.
+ */
+export const FX_CONNECTIONS_HEDGE_MS = 800
+
+/**
+ * Run `attempt` on the next base and, if it has not answered after `delayMs`,
+ * run it again on another base that is not cooling down. The first fulfilment
+ * wins. The loser is left to finish rather than aborted: the upstream has
+ * already done the work, and an abort would be recorded as a provider timeout.
+ * A failure before the hedge fires is reported at once, as it would be without
+ * one; once both are in flight the first failure is reported only if the other
+ * fails too. When no other base is available the hedge does not fire: a second
+ * copy on the same base would be a duplicate, not a route around it.
+ */
+async function hedged<T>(attempt: (base: string) => Promise<T>, delayMs: number): Promise<T> {
+  const first = pickFxBase()
+  if (FX_BASES.length < 2) return attempt(first)
+  return new Promise<T>((resolve, reject) => {
+    const failures: unknown[] = []
+    let started = 0
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let settled = false
+    const run = (base: string) => {
+      started += 1
+      attempt(base).then(
+        (value) => {
+          if (settled) return
+          settled = true
+          if (timer) clearTimeout(timer)
+          resolve(value)
+        },
+        (error: unknown) => {
+          if (settled) return
+          failures.push(error)
+          if (timer) {
+            clearTimeout(timer)
+            timer = undefined
+          }
+          if (failures.length === started) {
+            settled = true
+            reject(failures[0])
+          }
+        },
+      )
+    }
+    run(first)
+    timer = setTimeout(() => {
+      timer = undefined
+      const other = pickFxBaseAvoiding(first)
+      if (other) run(other)
+    }, delayMs)
+  })
+}
+
 export async function fetchFxConnections(
   handle: string,
   relation: 'followers' | 'following',
@@ -448,9 +520,8 @@ export async function fetchFxConnections(
   count = 20,
 ): Promise<FxListResponse<FxAuthor>> {
   const query = encodeQuery({ cursor, count })
-  const data = await fxFetchJson<Partial<FxListResponse<FxAuthor>>>(
-    `2/profile/${encodeURIComponent(handle)}/${relation}?${query}`,
-  )
+  const path = `2/profile/${encodeURIComponent(handle)}/${relation}?${query}`
+  const data = await hedged((base) => fxFetchJson<Partial<FxListResponse<FxAuthor>>>(path, undefined, base), FX_CONNECTIONS_HEDGE_MS)
   return { results: data.results ?? [], cursor: data.cursor }
 }
 

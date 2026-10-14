@@ -403,6 +403,13 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     // Front-door burst gate for every live search provider (FxTwitter, own accounts,
     // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
     const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
+    const tagged = splitCursor(input.cursor ?? undefined)
+    // Only the feeds FxTwitter can serve consult its breaker, and a continuation
+    // bound to another provider needs no unrelated provider's shared-store
+    // lookup. The read commits nothing, so it goes out alongside the burst
+    // gate's round trip below; the gate still decides first.
+    const fxFeed = ['latest', 'top'].includes(feed)
+    const breaker = fxFeed && (!tagged || tagged.source === 'fxtwitter') ? readSearchBreaker() : undefined
     if (caller.kind === 'key') {
       const verdict = await rateLimit(searchKeyKey(caller.id), SEARCH_KEY.quota, SEARCH_KEY.windowSec)
       if (!verdict.allowed) {
@@ -416,7 +423,6 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
-    const tagged = splitCursor(input.cursor ?? undefined)
     const render = (base: Omit<BrowseResult, 'markdown' | 'cache'>): BrowsePayload => ({ ...base, markdown: renderMarkdown(input, base, full) })
 
     if (feed === 'users') {
@@ -430,10 +436,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
-    // A continuation is bound to its provider, so it needs no unrelated
-    // provider's shared-store lookup.
-    const fxFeed = ['latest', 'top'].includes(feed)
-    const fxDown = fxFeed && (!tagged || tagged.source === 'fxtwitter') && Date.now() < (await readSearchBreaker()).until
+    const fxDown = breaker ? Date.now() < (await breaker).until : false
     const live: Array<{ source: BrowseSource; limit: number; pages: number; search: (cursor?: string) => Promise<FxListResponse<FxTweet>> }> = []
     if (fxFeed && !fxDown) live.push({ source: 'fxtwitter', limit, pages: LIST_MAX_UPSTREAM_PAGES, search: (cursor) => searchFxStatuses(query, feed, cursor, limit) })
     // Own-account searches spend a scarce per-account budget: one upstream page per request.
@@ -499,8 +502,25 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
   return { ...base, markdown: renderMarkdown(input, base, full) }
 }
 
-export async function browse(input: BrowseInput): Promise<BrowseResult> {
-  const { buildCacheKey, withCache } = await import('./cache.js')
+export interface BrowseOptions {
+  /**
+   * Whether the caller may spend quota and upstream capacity, decided by the
+   * handler's front-door charge. The cache is consulted while this is pending,
+   * since a lookup commits nothing; nothing is served, charged, or fetched
+   * until it resolves, and a denial throws so the handler's own 429 is the
+   * only answer the caller sees.
+   */
+  admission?: Promise<boolean>
+}
+
+export async function browse(input: BrowseInput, options: BrowseOptions = {}): Promise<BrowseResult> {
+  // Derived before anything can throw, so a verdict that fails while the input
+  // is still being rejected below is observed here and never left unhandled.
+  const admitted = options.admission?.then((allowed) => {
+    if (!allowed) throw new ConvertError(429, 'Too many requests from this address. Cached responses do not count against the allowance.', 'rate_limited')
+  })
+  admitted?.catch(() => undefined)
+  const [{ buildCacheKey, withCache }, { waitUntil }] = await Promise.all([import('./cache.js'), import('@vercel/functions')])
   const resource = input.resource as BrowseResource
   if (!['profile', 'search', 'followers', 'following', 'replies'].includes(resource)) {
     throw new ConvertError(400, 'Unsupported browse resource.', 'invalid_resource')
@@ -535,6 +555,10 @@ export async function browse(input: BrowseInput): Promise<BrowseResult> {
     () => browseUncached(input, resource, page, limit),
     (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
     flightKey,
+    // The in-process copy is stored at once; the shared write is best-effort
+    // and nothing in this response depends on it, so the caller does not wait
+    // out its round trip. waitUntil keeps the function alive until it lands.
+    { admission: admitted, defer: waitUntil },
   )
   return { ...cached.value, cache: cached.status }
 }

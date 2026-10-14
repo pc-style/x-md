@@ -1,11 +1,17 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-vi.mock('./cache.js', () => ({
+vi.mock('@vercel/functions', () => ({ waitUntil: vi.fn() }))
+vi.mock('./cache.js', async (original) => ({
+  ...await original<typeof import('./cache.js')>(),
   buildCacheKey: vi.fn(() => 'browse-test'),
   cacheControlHeader: vi.fn(() => 'public, max-age=300'),
   vercelCacheControlHeader: vi.fn(() => 'public, s-maxage=300'),
-  withCache: vi.fn(async (_key: string, _nocache: boolean, fn: () => Promise<unknown>) => ({ value: await fn(), status: 'miss' })),
+  withCache: vi.fn(passthroughCache),
 }))
+/** Every request reaches the origin; the real layer is swapped in where caching itself is under test. */
+async function passthroughCache(_key: string, _nocache: boolean, fn: () => Promise<unknown>) {
+  return { value: await fn(), status: 'miss' as const }
+}
 
 vi.mock('./firecrawl.js', () => ({
   firecrawlSearchConfigured: vi.fn(() => true),
@@ -42,13 +48,15 @@ vi.mock('./fxtwitter.js', () => ({
 
 import { browse, browseResponse, isOriginalPost, resetSearchBreaker } from './browse.js'
 import { decodeTimelineCursor, snowflakeTime } from './fx-cursor.js'
-import { buildCacheKey } from './cache.js'
+import { waitUntil } from '@vercel/functions'
+import { buildCacheKey, withCache } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { rateLimit } from './ratelimit.js'
 import { searchXStatuses, searchXUsers, xsearchConfigured } from './xsearch.js'
 import { fetchFxConnections, fetchFxProfile, fetchFxProfileStatuses, searchFxStatuses } from './fxtwitter.js'
 
+const realCache = await vi.importActual<typeof import('./cache.js')>('./cache.js')
 const post = { id: '1', text: 'hello', url: 'https://x.com/ada/status/1', author: { screen_name: 'ada' } }
 /** `n` distinct posts, ids `${prefix}1..n`. */
 const posts = (n: number, prefix = 'p') => Array.from({ length: n }, (_, i) => ({ ...post, id: `${prefix}${i + 1}` }))
@@ -165,7 +173,7 @@ describe('browse', () => {
 
   test('produces structured JSON with response metadata', async () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
-    const result = await browse({ resource: 'search', q: 'x-md', full: true, nocache: true })
+    const result = await browse({ resource: 'search', q: 'x-md', full: true })
     const response = browseResponse(result, true)
     expect(response.headers['Content-Type']).toContain('application/json')
     expect(response.headers).toMatchObject({
@@ -344,10 +352,104 @@ describe('search per-IP limit', () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     await browse({ resource: 'search', q: 'hello', nocache: true })
     expect(rateLimit).not.toHaveBeenCalled()
-    const { withCache } = await import('./cache.js')
-    vi.mocked(withCache).mockResolvedValueOnce({ value: { resource: 'search', markdown: '', page: 1, limit: 20, source: 'fxtwitter' } as never, status: 'hit' })
+    vi.mocked(withCache).mockResolvedValueOnce({ value: { resource: 'search', markdown: '', page: 1, limit: 20, source: 'fxtwitter' }, status: 'hit' })
     await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' })
     expect(rateLimit).not.toHaveBeenCalled()
+  })
+})
+
+describe('cache lookup and admission', () => {
+  const stored: string[] = []
+  beforeEach(async () => {
+    vi.mocked(xsearchConfigured).mockReturnValue(false)
+    // Memory layer only; a shared store is stubbed in where a test needs to see the lookup.
+    vi.stubEnv('CACHE_PERSIST', '0')
+    vi.stubEnv('KV_REST_API_URL', '')
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', '')
+    realCache.resetMemoryCache()
+    vi.mocked(withCache).mockImplementation(realCache.withCache)
+    stored.length = 0
+  })
+  afterEach(() => {
+    vi.mocked(withCache).mockImplementation(passthroughCache)
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+    vi.useRealTimers()
+  })
+  /** A shared store that remembers nothing but records every command it is sent. */
+  const sharedStore = () => {
+    vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+    vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const commands = JSON.parse(String(init.body)) as string[][]
+      stored.push(...commands.map((command) => command[0]!))
+      return new Response(JSON.stringify(commands.map(() => ({ result: null }))), { status: 200 })
+    }))
+  }
+
+  test('a miss looks the cache up at once but waits for admission before any gate or provider; a denial throws 429 and stores nothing', async () => {
+    sharedStore()
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    let admit!: (allowed: boolean) => void
+    const pending = browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' }, { admission: new Promise((resolve) => { admit = resolve }) })
+    await vi.waitFor(() => expect(stored).toEqual(['GET']))
+    expect(rateLimit).not.toHaveBeenCalled()
+    admit(false)
+    await expect(pending).rejects.toMatchObject({ status: 429, code: 'rate_limited' })
+    expect(rateLimit).not.toHaveBeenCalled()
+    expect(searchFxStatuses).not.toHaveBeenCalled()
+    expect(stored).toEqual(['GET'])
+    // Nothing was stored for the denied caller: an admitted request still goes to the provider.
+    expect(await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' }, { admission: Promise.resolve(true) })).toMatchObject({ cache: 'miss', source: 'fxtwitter' })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+    expect(withCache).toHaveBeenLastCalledWith('browse-test', false, expect.any(Function), expect.any(Function), expect.any(String), { admission: expect.any(Promise), defer: waitUntil })
+  })
+
+  test('a cached result still waits for admission and is withheld from a denied caller', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    expect(await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' }, { admission: Promise.resolve(true) })).toMatchObject({ cache: 'miss' })
+    await expect(browse({ resource: 'search', q: 'hello', ip: '9.9.9.9' }, { admission: Promise.resolve(false) })).rejects.toMatchObject({ status: 429 })
+    const served = await browse({ resource: 'search', q: 'hello', ip: '9.9.9.9' }, { admission: Promise.resolve(true) })
+    expect(served).toMatchObject({ cache: 'hit', source: 'fxtwitter' })
+    // One provider call and one burst-gate charge: the miss paid, the hit did not.
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
+    expect(rateLimit).toHaveBeenCalledTimes(1)
+  })
+
+  test('a validation failure never leaves a failing admission unobserved', async () => {
+    const rejections: unknown[] = []
+    const listeners = process.listeners('unhandledRejection')
+    process.removeAllListeners('unhandledRejection')
+    process.on('unhandledRejection', (reason) => { rejections.push(reason) })
+    try {
+      const failure = new Error('store unreachable')
+      await expect(browse({ resource: 'nope' }, { admission: Promise.reject(failure) })).rejects.toMatchObject({ status: 400, code: 'invalid_resource' })
+      // Node reports an orphaned rejection only once the microtask queue has drained.
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    } finally {
+      process.removeAllListeners('unhandledRejection')
+      for (const listener of listeners) process.on('unhandledRejection', listener)
+    }
+    expect(rejections).toEqual([])
+  })
+
+  test('an admitted miss is stored without holding up the result, with the short TTL when degraded', async () => {
+    vi.useFakeTimers()
+    vi.mocked(searchFxStatuses).mockRejectedValue(new ConvertError(503, 'down', 'search_unavailable'))
+    vi.mocked(searchFirecrawlStatuses).mockResolvedValue([post])
+    const degraded = await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' }, { admission: Promise.resolve(true) })
+    expect(degraded).toMatchObject({ cache: 'miss', degraded: true })
+    // The durable write was handed off rather than awaited.
+    expect(waitUntil).toHaveBeenCalledTimes(1)
+    expect(waitUntil).toHaveBeenCalledWith(expect.any(Promise))
+    vi.setSystemTime(Date.now() + 59_000)
+    expect(await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' })).toMatchObject({ cache: 'hit', degraded: true })
+    vi.setSystemTime(Date.now() + 2_000)
+    await resetSearchBreaker()
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    expect(await browse({ resource: 'search', q: 'hello', ip: '1.2.3.4' })).toMatchObject({ cache: 'miss', source: 'fxtwitter' })
+    expect(waitUntil).toHaveBeenCalledTimes(2)
   })
 })
 

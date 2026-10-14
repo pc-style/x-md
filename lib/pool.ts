@@ -18,7 +18,7 @@
  * case a friend who goes quiet and then bursts late in a window may find part
  * of their slice already handed to the public. That is the accepted trade-off.
  */
-import { importAllowance, listApiKeys, type ApiKeyRecord } from './apikeys.js'
+import { getApiKeys, importAllowance, listApiKeyIds, type ApiKeyRecord } from './apikeys.js'
 import { kv } from './kv.js'
 import { ACCOUNT_PUBLIC_COUNTER, IMPORT_KEY, accountKeyKey, importKeyKey } from './quotas.js'
 import { peekRateLimit, windowClock } from './ratelimit.js'
@@ -158,24 +158,36 @@ export async function poolSnapshot(capacity: number, windowSec: number): Promise
   return value
 }
 
+/**
+ * Two store hops: the settings and the key index first, then the key records
+ * and every counter together, since the counters are keyed by id and need not
+ * wait for the records. This runs inside a public search's admission, so each
+ * hop it saves comes straight off that request's latency.
+ */
 async function computeSnapshot(capacity: number, windowSec: number, now: number): Promise<PoolSnapshot> {
-  const [settings, records] = await Promise.all([getPoolSettings(), listApiKeys()])
+  const [settings, ids] = await Promise.all([getPoolSettings(), listApiKeyIds()])
   const clock = windowClock(windowSec, now)
-  const counts = await peekRateLimit([ACCOUNT_PUBLIC_COUNTER, ...records.map((r) => accountKeyKey(r.id))], windowSec)
-  const imports = await peekRateLimit(records.map((r) => importKeyKey(r.id)), IMPORT_KEY.windowSec)
+  const [records, counts, imports] = await Promise.all([
+    getApiKeys(ids),
+    peekRateLimit([ACCOUNT_PUBLIC_COUNTER, ...ids.map(accountKeyKey)], windowSec),
+    peekRateLimit(ids.map(importKeyKey), IMPORT_KEY.windowSec),
+  ])
   const publicUsed = counts.current[0] ?? 0
   const idleReleaseMs = settings.idleReleaseMinutes * 60_000
+  // Counters were read in index order; records come back newest first and skip deleted ids.
+  const slot = new Map(ids.map((id, index) => [id, index]))
 
-  const keys = records.map((record: ApiKeyRecord, index): KeyShare => {
-    const used = counts.current[index + 1] ?? 0
-    const previousUsed = counts.previous[index + 1] ?? 0
+  const keys = records.map((record: ApiKeyRecord): KeyShare => {
+    const index = slot.get(record.id) ?? -1
+    const used = index >= 0 ? counts.current[index + 1] ?? 0 : 0
+    const previousUsed = index >= 0 ? counts.previous[index + 1] ?? 0 : 0
     const { reserved, idle } = reservationFor(
       { limit: record.limitPer15m, disabled: record.disabled, used, previousUsed, lastUsedAt: record.lastUsedAt },
       clock, windowSec, idleReleaseMs, now,
     )
     return {
       id: record.id, label: record.label, limit: record.limitPer15m, disabled: record.disabled, used, reserved, idle, lastUsedAt: record.lastUsedAt,
-      importLimit: importAllowance(record, IMPORT_KEY.quota), importUsed: imports.current[index] ?? 0,
+      importLimit: importAllowance(record, IMPORT_KEY.quota), importUsed: index >= 0 ? imports.current[index] ?? 0 : 0,
     }
   })
 
