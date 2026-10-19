@@ -11,7 +11,7 @@ vi.mock('./motion', async () => {
 })
 vi.mock('./posthog', () => ({ captureLandingEvent: state.capture }))
 vi.mock('@vercel/analytics', () => ({ inject: vi.fn() }))
-vi.mock('./chrome', () => ({ setupMobileMenu: state.setupMenu, setupTheme: vi.fn(), setupLinkPrefetch: vi.fn() }))
+vi.mock('./chrome-setup', () => ({ setupMobileMenu: state.setupMenu, setupTheme: vi.fn(), setupLinkPrefetch: vi.fn() }))
 
 afterEach(() => vi.unstubAllGlobals())
 

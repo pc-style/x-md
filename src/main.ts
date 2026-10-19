@@ -1,6 +1,6 @@
 import { captureLandingEvent } from './posthog'
 import { loadWebAnalytics, whenUseful } from './deferred'
-import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome'
+import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome-setup'
 
 // Vercel Web Analytics for the landing page (docs pages are a separate static
 // build). Off the critical path: it lands after load, on first intent, or when
