@@ -99,7 +99,9 @@ vec3 kindColor(vec2 p, vec2 uv) {
   float xa = max(x, 0.0) / atmosW;
   float atmos = smoothstep(-0.02 * b, 0.0, x) / (1.0 + xa * xa * xa * xa);
   // The edge itself, in the saturated colour, then the body falling away.
-  float edgeBand = exp(-pow(x / (0.03 * b), 2.0));
+  // x-md: x < 0 inside the planet, and pow() with a negative base is undefined.
+  float edge = x / (0.03 * b);
+  float edgeBand = exp(-edge * edge);
   float band = inside * exp(x / (0.09 * b));
   float deep = inside * exp(x / (0.35 * b));
   float halo = exp(-max(x, 0.0) / (0.18 * b));

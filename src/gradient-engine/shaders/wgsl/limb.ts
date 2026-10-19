@@ -83,7 +83,9 @@ fn kindColor(p: vec2f, uv: vec2f) -> vec3f {
   var xa = max(x, 0.0) / atmosW;
   var atmos = smoothstep(-0.02 * b, 0.0, x) / (1.0 + xa * xa * xa * xa);
   // The edge itself, in the saturated colour, then the body falling away.
-  var edgeBand = exp(-pow(x / (0.03 * b), 2.0));
+  // x-md: x < 0 inside the planet, and pow() with a negative base is outside WGSL's domain.
+  let edge = x / (0.03 * b);
+  var edgeBand = exp(-edge * edge);
   var band = inside * exp(x / (0.09 * b));
   var deep = inside * exp(x / (0.35 * b));
   var halo = exp(-max(x, 0.0) / (0.18 * b));
