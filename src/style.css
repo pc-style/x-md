@@ -64,7 +64,8 @@
     color: #ffffff;
   }
 
-  html[data-theme="dark"] ::selection {
+  html[data-theme="dark"] ::selection,
+  .night ::selection {
     color: #0d1b13;
   }
 
@@ -134,7 +135,7 @@
   }
 
   html[data-theme="dark"] .site-header {
-    background-color: rgb(17 18 15 / 0.84);
+    background-color: rgb(8 11 9 / 0.8);
   }
 
   /* Shared chrome box; see the chrome tokens in tokens.css. */
@@ -200,7 +201,7 @@
   }
 
   html[data-theme="dark"] .mobile-menu {
-    background-color: rgb(17 18 15 / 0.97);
+    background-color: rgb(8 11 9 / 0.97);
   }
 
   .mobile-menu[data-open] {
@@ -218,7 +219,7 @@
   /* ---------- Type ---------- */
 
   .hero-h {
-    letter-spacing: -0.035em;
+    letter-spacing: -0.04em;
   }
 
   .eyebrow {
@@ -249,8 +250,18 @@
     box-shadow: 0 10px 28px rgb(20 108 67 / 0.28);
   }
 
-  html[data-theme="dark"] .btn-primary {
-    color: #0d1b13;
+  /* On dark ground the primary action is a light pill; the green belongs to the
+     Orbit arc and the accents. */
+  html[data-theme="dark"] .btn-primary,
+  .night .btn-primary {
+    background-color: var(--color-ink);
+    color: var(--color-surface);
+  }
+
+  html[data-theme="dark"] .btn-primary:hover,
+  .night .btn-primary:hover {
+    background-color: #ffffff;
+    box-shadow: none;
   }
 
   .btn-primary:active {
@@ -337,42 +348,72 @@
 
   /* ---------- Convert form ---------- */
 
+  /* One pill holding the URL and the action; the shell carries the focus ring. */
   .convert-shell {
-    @apply relative rounded-2xl border border-line bg-raised p-2.5 sm:p-3;
-    box-shadow:
-      0 1px 2px rgb(26 25 21 / 0.04),
-      0 24px 60px rgb(26 25 21 / 0.08);
+    @apply flex flex-col gap-2 rounded-2xl border border-line bg-raised p-2 sm:flex-row sm:items-center sm:rounded-full sm:p-1.5;
+  }
+
+  .convert-shell:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
   }
 
   .convert-input {
-    @apply min-w-0 flex-1 rounded-xl border border-line bg-surface px-4 py-3.5 font-mono text-[13px] text-ink outline-none;
+    @apply h-12 min-w-0 flex-1 rounded-xl border-0 bg-transparent px-4 font-mono text-[13.5px] text-ink outline-none sm:pl-5;
+  }
+
+  .x-root .convert-input:focus-visible {
+    outline: none;
   }
 
   .convert-input::placeholder {
     @apply text-ink-4;
   }
 
-  .convert-input:focus {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  /* ---------- Orbit bands (always dark, both themes) ---------- */
+
+  .night {
+    background-color: var(--color-surface);
+    color: var(--color-ink);
+    color-scheme: dark;
+  }
+
+  .orbit-band {
+    @apply relative isolate overflow-hidden;
+  }
+
+  /* The arc's crest sits about halfway down the gradient, so the gradient takes
+     the lower part of the band and the crest lands below the copy. On narrow
+     screens the stacked hero is tall, so the height is capped to keep the crest
+     under the last block rather than behind it. */
+  .orbit-sky {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-20;
+    height: min(62%, 80vw);
+  }
+
+  /* The band fades into the page instead of cutting the planet off. */
+  .orbit-band::after {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-1/4;
+    content: "";
+    background: linear-gradient(to bottom, transparent, var(--color-surface));
+  }
+
+  /* The sky paints ORBIT_FALLBACK; the live canvas fades in over it once the
+     engine has copied a real frame. */
+  .orbit-canvas {
+    @apply absolute inset-0 block h-full w-full opacity-0;
+    transition: opacity 1.4s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .orbit-canvas[data-painted] {
+    opacity: 1;
   }
 
   /* ---------- Hero ---------- */
 
-  .hero-wash {
-    @apply pointer-events-none absolute inset-0 -z-10;
-    background:
-      radial-gradient(ellipse 55% 45% at 78% 12%, rgb(20 108 67 / 0.08), transparent 65%),
-      radial-gradient(ellipse 45% 40% at 8% 85%, rgb(20 108 67 / 0.05), transparent 70%);
-  }
-
   .float-card {
-    @apply overflow-hidden rounded-2xl;
+    @apply overflow-hidden rounded-2xl border border-line;
     background-color: var(--color-code);
-    box-shadow:
-      0 2px 4px rgb(26 25 21 / 0.12),
-      0 40px 90px rgb(26 25 21 / 0.22);
-    transform: rotate(2deg);
   }
 
   .float-card-bar {
@@ -387,41 +428,9 @@
   }
 
   @media (max-width: 639px) {
-    .float-card {
-      transform: none;
-    }
-
     .float-card pre {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
-    }
-  }
-
-  /* ---------- Marquee ---------- */
-
-  .marquee {
-    @apply overflow-hidden border-y border-line py-5;
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
-  }
-
-  .marquee-track {
-    @apply flex w-max items-center gap-10 font-mono text-[13px] text-ink-3;
-    animation: marquee 30s linear infinite;
-  }
-
-  @keyframes marquee {
-    from {
-      transform: translateX(0);
-    }
-    to {
-      transform: translateX(-50%);
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .marquee-track {
-      animation: none;
     }
   }
 
@@ -461,7 +470,7 @@
 
   .bento-dark {
     background-color: var(--color-code);
-    border-color: transparent;
+    border-color: var(--color-hair);
   }
 
   .bento-tint {

@@ -188,20 +188,15 @@ const THEME_KEY = 'blume-theme'
 export function setupTheme(root: HTMLElement) {
   const toggle = root.querySelector<HTMLButtonElement>('[data-theme-toggle]')
   if (!toggle) return
-  const storedTheme = () => {
-    try {
-      return localStorage.getItem(THEME_KEY)
-    } catch {
-      return null
-    }
-  }
 
+  // The head script has already applied the stored choice, or the dark default;
+  // the system setting no longer decides, so there is nothing to follow here.
   const apply = (theme: 'light' | 'dark') => {
     document.documentElement.dataset.theme = theme
     document.documentElement.style.colorScheme = theme
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       'content',
-      theme === 'dark' ? '#11120f' : '#f7f6f2',
+      theme === 'dark' ? '#080b09' : '#f7f6f2',
     )
     toggle.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`)
   }
@@ -214,11 +209,6 @@ export function setupTheme(root: HTMLElement) {
       // Storage can be unavailable in sandboxed or privacy-restricted contexts.
     }
     apply(next)
-  })
-
-  const preference = matchMedia('(prefers-color-scheme: dark)')
-  preference.addEventListener('change', (event) => {
-    if (!storedTheme()) apply(event.matches ? 'dark' : 'light')
   })
 
   apply(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light')

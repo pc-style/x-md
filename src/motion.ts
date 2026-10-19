@@ -42,7 +42,6 @@ export function setupMotion(root: HTMLElement) {
     if (root.querySelector('[data-hero-card]')) {
       gsap.from('[data-hero-card]', {
         y: 48,
-        rotate: 6,
         duration: 1.1,
         ease: 'power3.out',
         delay: 0.3,

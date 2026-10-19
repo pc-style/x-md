@@ -37,17 +37,21 @@
   --tracking-wordmark: -0.025em;
 }
 
-html[data-theme="dark"] {
-  --color-surface: #11120f;
-  --color-raised: #181a16;
-  --color-raised-2: #20221d;
+/* Dark is the default theme. `.night` bands (the landing hero and closing call
+   to action) take the same values in either theme, so the Orbit gradient
+   always sits on the dark it was tuned for. */
+html[data-theme="dark"],
+.night {
+  --color-surface: #080b09;
+  --color-raised: #0f1310;
+  --color-raised-2: #171c18;
 
   --color-ink: #f1f0e9;
   --color-ink-2: #c5c3ba;
   --color-ink-3: #99978f;
   --color-ink-4: #747269;
 
-  --color-line: #2c2e28;
+  --color-line: #232924;
   --color-hair: rgb(255 255 255 / 0.08);
   --color-hair-strong: rgb(255 255 255 / 0.15);
 
@@ -57,7 +61,7 @@ html[data-theme="dark"] {
   --color-cyan: #67bcae;
   --color-danger: #f07f72;
 
-  --color-code: #090a08;
+  --color-code: #040605;
   --color-code-ink: #f0eee6;
   --color-code-dim: #96938a;
 }
