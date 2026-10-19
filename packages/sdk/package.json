@@ -63,7 +63,7 @@
     }
   },
   "devDependencies": {
-    "effect": "^4.0.2",
+    "effect": "^4.0.5",
     "typescript": "~7.0.2"
   }
 }
