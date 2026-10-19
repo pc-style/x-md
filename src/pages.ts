@@ -6,7 +6,7 @@
  * time. Agents check these pages to decide whether a service is real, so the
  * prose has to be in the raw HTML and every claim has to be true.
  */
-import { footerHtml, headerHtml, type PageKind } from './chrome'
+import { footerHtml, headerHtml, type ChromeData, type PageKind } from './chrome'
 
 const REPO = 'https://github.com/pc-style/x-md'
 const ISSUES = `${REPO}/issues`
@@ -15,17 +15,18 @@ export type PageSlug = 'about' | 'contact' | 'privacy' | 'terms'
 
 interface PageShell {
   page: PageKind
+  chrome: ChromeData
   eyebrow: string
   heading: string
   lede: string
   body: string
 }
 
-function pageShell({ page, eyebrow, heading, lede, body }: PageShell): string {
+function pageShell({ page, chrome, eyebrow, heading, lede, body }: PageShell): string {
   return `
 <div class="x-root w-full max-w-full overflow-x-clip">
   <a href="#content" class="skip-link">Skip to content</a>
-  ${headerHtml({ page })}
+  ${headerHtml({ page, ...chrome })}
 
   <main id="content" class="w-full max-w-full overflow-x-clip">
     <article class="mx-auto max-w-[860px] px-6 pt-16 pb-24 sm:px-8 sm:pt-24 md:pb-32">
@@ -43,8 +44,9 @@ ${body}
 `
 }
 
-export function aboutHtml(): string {
+export function aboutHtml(chrome: ChromeData = {}): string {
   return pageShell({
+    chrome,
     page: 'about',
     eyebrow: 'About',
     heading: 'A read-only door into public X content.',
@@ -118,8 +120,9 @@ export function aboutHtml(): string {
   })
 }
 
-export function contactHtml(): string {
+export function contactHtml(chrome: ChromeData = {}): string {
   return pageShell({
+    chrome,
     page: 'contact',
     eyebrow: 'Contact',
     heading: 'Everything goes through the repository.',
@@ -188,8 +191,9 @@ export function contactHtml(): string {
   })
 }
 
-export function privacyHtml(): string {
+export function privacyHtml(chrome: ChromeData = {}): string {
   return pageShell({
+    chrome,
     page: 'privacy',
     eyebrow: 'Privacy',
     heading: 'No accounts, no profiles, very little kept.',
@@ -303,8 +307,9 @@ export function privacyHtml(): string {
   })
 }
 
-export function termsHtml(): string {
+export function termsHtml(chrome: ChromeData = {}): string {
   return pageShell({
+    chrome,
     page: 'terms',
     eyebrow: 'Terms',
     heading: 'Free, as-is, read-only.',
@@ -379,7 +384,7 @@ export function termsHtml(): string {
 }
 
 /** Slug to builder, keyed by the `data-page` attribute on each root HTML file. */
-export const pageBuilders: Record<PageSlug, () => string> = {
+export const pageBuilders: Record<PageSlug, (chrome?: ChromeData) => string> = {
   about: aboutHtml,
   contact: contactHtml,
   privacy: privacyHtml,

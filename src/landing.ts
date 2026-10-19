@@ -5,7 +5,7 @@
  * can render it into `index.html` at build time. Agents and crawlers then read
  * the full page from the raw HTML; `main.ts` only wires up behaviour on top.
  */
-import { footerHtml, headerHtml } from './chrome'
+import { footerHtml, headerHtml, type ChromeData } from './chrome'
 import { ORBIT_FALLBACK } from './orbit'
 
 const EXAMPLE_HANDLE = 'trq212'
@@ -175,11 +175,11 @@ const FAQ_ITEMS = FAQ.map(
           </div>`,
 ).join('\n          ')
 
-export function landingHtml(): string {
+export function landingHtml(chrome: ChromeData = {}): string {
   return `
 <div class="x-root w-full max-w-full overflow-x-clip">
   <a href="#convert" class="skip-link">Skip to converter</a>
-  ${headerHtml({ page: 'landing' })}
+  ${headerHtml({ page: 'landing', ...chrome })}
 
   <main id="top" class="w-full max-w-full overflow-x-clip">
 

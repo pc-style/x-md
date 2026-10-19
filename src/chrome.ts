@@ -17,15 +17,38 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'API', href: '/docs/posts' },
 ]
 
-export function headerHtml(options: { page: PageKind }) {
+/** Build-time data for the chrome. `stars` is the repo's live star count, or absent when it could not be read. */
+export type ChromeData = { stars?: number | null }
+
+const REPO_URL = 'https://github.com/pc-style/x-md'
+
+/** `162`, `1.2k`, `12.3k`: the compact form the header shows, as GitHub does. */
+export function formatStars(stars: number): string {
+  return new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(stars).toLowerCase()
+}
+
+/** The GitHub mark (simple-icons, CC0) and a plain five-point star; icons are SVG so the font subset never needs a glyph. */
+const GITHUB_MARK = `<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>`
+
+const STAR = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
+
+export function headerHtml(options: { page: PageKind } & ChromeData) {
   const items = NAV_ITEMS.map((item) => {
     const current = options.page === 'docs' && item.href === '/docs'
     return `<a href="${item.href}" class="nav-link h-9 px-3"${current ? ' aria-current="page"' : ''}>${item.label}</a>`
   }).join('\n        ')
 
-  const mobileItems = [...NAV_ITEMS, { label: 'GitHub', href: 'https://github.com/pc-style/x-md' }]
-    .map((item) => `<a href="${item.href}">${item.label}</a>`)
-    .join('\n      ')
+  // The count is read at build time and never guessed: without it the link is
+  // the plain GitHub link.
+  const stars = typeof options.stars === 'number' ? formatStars(options.stars) : null
+  const github = stars
+    ? `<a href="${REPO_URL}" target="_blank" rel="noreferrer" class="nav-link nav-github hidden h-9 px-3 sm:flex" aria-label="GitHub, ${stars} stars">${GITHUB_MARK}<span class="nav-stars">${STAR}${stars}</span></a>`
+    : `<a href="${REPO_URL}" target="_blank" rel="noreferrer" class="nav-link nav-github hidden h-9 px-3 sm:flex">${GITHUB_MARK}GitHub</a>`
+
+  const mobileItems = [
+    ...NAV_ITEMS.map((item) => `<a href="${item.href}">${item.label}</a>`),
+    `<a href="${REPO_URL}">GitHub${stars ? ` <span class="text-ink-4">· ${stars} stars</span>` : ''}</a>`,
+  ].join('\n      ')
 
   const cta =
     options.page === 'landing'
@@ -40,7 +63,7 @@ export function headerHtml(options: { page: PageKind }) {
         ${items}
       </div>
       <div class="flex items-center gap-2">
-        <a href="https://github.com/pc-style/x-md" target="_blank" rel="noreferrer" class="nav-link hidden h-9 px-3 sm:flex">GitHub</a>
+        ${github}
         <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to dark mode" title="Switch color theme">
           <svg class="theme-icon theme-icon-moon" width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M16.3 12.9A7 7 0 0 1 7.1 3.7 7 7 0 1 0 16.3 12.9Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
