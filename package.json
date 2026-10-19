@@ -45,24 +45,24 @@
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
-    "@types/node": "^26.6.4",
-    "@vercel/build-utils": "14.20.0",
+    "@types/node": "^26.6.5",
+    "@vercel/build-utils": "14.21.2",
     "@vercel/node": "23.0.0",
     "blume": "^2.2.2",
     "typescript": "~7.0.2",
     "vite": "^8.3.4",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@the-convocation/twitter-scraper": "^0.22.3",
-    "@usenotra/geo": "^0.5.0",
+    "@usenotra/geo": "^0.6.1",
     "@vercel/analytics": "^2.0.1",
-    "@vercel/functions": "^3.9.11",
+    "@vercel/functions": "^3.10.1",
     "gsap": "^3.15.0",
-    "posthog-js": "^1.438.9",
+    "posthog-js": "^1.438.12",
     "tailwindcss": "^4.3.3",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "patchedDependencies": {
     "@the-convocation/twitter-scraper@0.22.3": "patches/@the-convocation%2Ftwitter-scraper@0.22.3.patch"
