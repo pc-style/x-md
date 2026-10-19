@@ -24,11 +24,9 @@ export function inlineStylesheetPlugin(): Plugin {
         const bundle = ctx.bundle
         if (!bundle || ctx.filename.endsWith('admin.html')) return html
 
-        // Vite still lists the stylesheet as a dependency of any lazy chunk that
-        // shares its chunk (the Orbit gradient does, through the preload helper),
-        // and its preloader would fetch the deleted file and reject the import.
-        // The preloader skips a stylesheet the page already links, and a
-        // `disabled` link is never fetched, so leave one behind as that marker.
+        // The deleted file must never be a lazy chunk's preload dependency, or
+        // loading that chunk fetches a 404 and rejects the import: the shared
+        // stylesheet has a chunk of its own for that reason (`vite.config.ts`).
         const sheets: string[] = []
         const stripped = html.replace(
           /<link rel="stylesheet" crossorigin href="([^"]+)">\s*/g,
@@ -37,7 +35,7 @@ export function inlineStylesheetPlugin(): Plugin {
             if (!asset || asset.type !== 'asset' || typeof asset.source !== 'string') return tag
             inlined.add(href.replace(/^\//, ''))
             sheets.push(asset.source)
-            return `<link rel="stylesheet" href="${href}" disabled>`
+            return ''
           },
         )
         if (!sheets.length) return html
