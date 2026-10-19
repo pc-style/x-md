@@ -29,9 +29,20 @@
           localStorage.removeItem('x-md-theme')
         } catch {}
         const dark = saved !== 'light'
-        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
-        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        const root = document.documentElement
+        root.dataset.theme = dark ? 'dark' : 'light'
+        root.style.colorScheme = dark ? 'dark' : 'light'
         document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#080b09' : '#f7f6f2')
+        // The load motion (the hero card's conversion, the horizon rising) is
+        // CSS keyed off this flag, so it starts with the first paint and stays
+        // off with JavaScript off or reduced motion.
+        if (matchMedia('(prefers-reduced-motion: no-preference)').matches) root.dataset.motion = ''
+        // The header is transparent over the hero until the page scrolls. Set
+        // here rather than in a module so the first paint is already right;
+        // without JavaScript the header keeps its background.
+        const atTop = () => root.toggleAttribute('data-top', scrollY < 24)
+        atTop()
+        addEventListener('scroll', atTop, { passive: true })
       })()
     </script>
     <title>x.md: tweets are just markdown now</title>

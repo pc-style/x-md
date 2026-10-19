@@ -39,6 +39,21 @@ function setupConvertForm(root: HTMLElement) {
   const input = root.querySelector<HTMLInputElement>('[data-convert-input]')
   if (!form || !input) return
 
+  // The hero card mirrors the converter: the path being typed, on the
+  // mdfromx.com host. Nothing is fetched; an unusable URL shows the example.
+  const cardPath = root.querySelector<HTMLElement>('[data-card-path]')
+  if (cardPath) {
+    const example = cardPath.textContent
+    form.addEventListener('input', () => {
+      const path = statusPathFromUrl(input.value) ?? example
+      if (path === cardPath.textContent) return
+      cardPath.textContent = path
+      if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+        cardPath.animate({ opacity: [0.35, 1] }, { duration: 260, easing: 'ease-out' })
+      }
+    })
+  }
+
   form.addEventListener('submit', (e) => {
     e.preventDefault()
     const raw = input.value.trim()
@@ -90,6 +105,9 @@ async function enhanceLanding() {
   setupTheme(app)
   setupLinkPrefetch(app)
   setupCopyButtons(app)
+  // The "what comes through" panels are stacked in the markup; the tabs are an
+  // enhancement in their own small chunk, kept out of the first render.
+  void import('./tabs').then(({ setupTabs }) => setupTabs(app)).catch(() => {})
   // The Orbit bands already paint a CSS arc, so the live gradient is optional
   // and waits with the other deferred bundles instead of competing with them.
   whenUseful(() => import('./orbit-canvas').then(({ setupOrbit }) => setupOrbit(app)))

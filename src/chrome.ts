@@ -55,8 +55,10 @@ export function headerHtml(options: { page: PageKind } & ChromeData) {
       ? `<a href="#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
       : `<a href="/#convert" class="btn-primary h-9 px-4 text-[13.5px]">Convert</a>`
 
+  // On the landing page the header starts transparent over the dark hero; see
+  // `.site-header` in style.css and the scroll flag in index.html.
   return `
-  <header class="site-header">
+  <header class="site-header"${options.page === 'landing' ? ' data-over="night"' : ''}>
     <nav aria-label="Primary" class="site-header-inner">
       <a href="/" class="text-wordmark font-wordmark tracking-wordmark text-ink">x.md</a>
       <div class="hidden items-center gap-1 md:flex">
