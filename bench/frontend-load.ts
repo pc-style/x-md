@@ -84,10 +84,10 @@ function tags(html: string, tag: string) {
   return html.match(new RegExp(`<${tag}\\b[^>]*>`, 'gi')) ?? []
 }
 
-/** Render-blocking stylesheets: no `media` that can fail, no `onload` trick. */
+/** Render-blocking stylesheets: no `media` that can fail, no `onload` trick, not `disabled` (never fetched). */
 function blockingStylesheets(html: string): string[] {
   return tags(html, 'link')
-    .filter(tag => /rel\s*=\s*["']stylesheet["']/i.test(tag) && !/\bmedia\s*=/i.test(tag))
+    .filter(tag => /rel\s*=\s*["']stylesheet["']/i.test(tag) && !/\bmedia\s*=/i.test(tag) && !/\bdisabled\b/i.test(tag))
     .flatMap(tag => [...tag.matchAll(ATTR('link', 'href'))].map(m => m[1]))
 }
 

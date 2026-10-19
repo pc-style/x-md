@@ -6,6 +6,7 @@
  * the full page from the raw HTML; `main.ts` only wires up behaviour on top.
  */
 import { footerHtml, headerHtml } from './chrome'
+import { ORBIT_FALLBACK } from './orbit'
 
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
@@ -50,20 +51,18 @@ Markdown has become the dominant file
 format used by agents to communicate
 with us…`
 
-const MARQUEE_ITEMS = [
-  'Full threads by default',
-  '?format=obsidian',
-  'Quote posts nested inline',
-  'Images and video preserved',
-  'X Articles, headings and all',
-  'text/markdown response',
-  '?thread=off for a single post',
-  'No account, no API key required',
-]
-
-const marqueeTrack = MARQUEE_ITEMS.map(
-  (item) => `<span class="flex items-center gap-10"><span>${item}</span><span aria-hidden="true" class="text-accent">·</span></span>`,
-).join('')
+/**
+ * An always-dark band with the Orbit gradient in its lower part, where the arc's
+ * crest clears the copy. The sky box paints the CSS fallback itself, so the arc
+ * is there with JavaScript off, and the canvas fades in over it once
+ * `orbit-canvas.ts` has rendered a frame.
+ */
+const orbitBand = (classes: string, content: string) => `<section class="night orbit-band ${classes}">
+      <div class="orbit-sky" style="background: ${ORBIT_FALLBACK}" aria-hidden="true">
+        <canvas class="orbit-canvas" data-orbit></canvas>
+      </div>
+      ${content}
+    </section>`
 
 type Resource = { href: string; title: string; blurb: string; hint: string; external?: boolean }
 
@@ -184,51 +183,49 @@ export function landingHtml(): string {
 
   <main id="top" class="w-full max-w-full overflow-x-clip">
 
-    <!-- hero: artistic asymmetry -->
-    <section class="relative overflow-hidden">
-      <div class="hero-wash"></div>
-      <div class="mx-auto grid max-w-[1200px] gap-14 px-6 pt-20 pb-24 sm:px-8 sm:pt-28 lg:grid-cols-12 lg:gap-8 lg:pb-36">
+    <!-- hero: the page opens over a planet's lit edge -->
+    ${orbitBand(
+      '',
+      `<div class="relative mx-auto grid max-w-[1200px] gap-14 px-6 pt-16 pb-[clamp(16rem,32vw,28rem)] sm:px-8 sm:pt-24 lg:grid-cols-12 lg:gap-10">
         <div class="lg:col-span-7" data-hero-stagger>
           <p class="eyebrow eyebrow-accent">Open source · Free · No account</p>
-          <h1 class="hero-h mt-5 max-w-[13ch] text-[clamp(2.9rem,6.2vw,5.2rem)] leading-[1.02] font-black text-ink">
+          <h1 class="hero-h mt-6 max-w-[13.5ch] text-[clamp(3rem,6.6vw,5.75rem)] leading-[0.96] font-black text-ink">
             Tweets are just markdown now.
           </h1>
-          <p class="mt-7 max-w-[46ch] text-[16px] leading-[1.75] text-ink-2 sm:text-[17px]">
+          <p class="mt-8 max-w-[46ch] text-[16px] leading-[1.75] text-ink-2 sm:text-[18px]">
             Treat them that way. Swap <code class="code-chip">x.com</code> for
             <code class="code-chip">mdfromx.com</code> in any public post URL and the
             post, its thread, or the full article comes back as Markdown your agent can read.
           </p>
 
-          <div id="convert" class="mt-10 max-w-[640px] scroll-mt-28">
-            <div class="convert-shell">
-              <form data-convert-form class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
-                <label for="x-url" class="sr-only">X status URL</label>
-                <input
-                  id="x-url"
-                  data-convert-input
-                  type="url"
-                  name="url"
-                  required
-                  inputmode="url"
-                  autocomplete="off"
-                  spellcheck="false"
-                  placeholder="https://x.com/handle/status/…"
-                  value="${EXAMPLE_X_URL}"
-                  class="convert-input"
-                />
-                <button type="submit" class="btn-primary h-[50px] shrink-0 px-6 text-[14px] sm:min-w-[160px]">
-                  Get Markdown
-                </button>
-              </form>
-              <p class="mt-3 px-1.5 text-[12.5px] leading-relaxed text-ink-4">
-                Opens the converted post in a new tab — the same result as swapping the host by hand.
-              </p>
-            </div>
+          <div id="convert" class="mt-10 max-w-[620px] scroll-mt-28">
+            <form data-convert-form class="convert-shell">
+              <label for="x-url" class="sr-only">X status URL</label>
+              <input
+                id="x-url"
+                data-convert-input
+                type="url"
+                name="url"
+                required
+                inputmode="url"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="https://x.com/handle/status/…"
+                value="${EXAMPLE_X_URL}"
+                class="convert-input"
+              />
+              <button type="submit" class="btn-primary h-12 shrink-0 px-6 text-[14.5px]">
+                Get Markdown
+              </button>
+            </form>
+            <p class="mt-3 px-5 text-[12.5px] leading-relaxed text-ink-4">
+              Opens the converted post in a new tab — the same result as swapping the host by hand.
+            </p>
           </div>
         </div>
 
-        <div class="lg:col-span-5 lg:self-end" data-hero-card>
-          <div class="float-card lg:-mr-6 lg:-mb-10">
+        <div class="lg:col-span-5 lg:pt-12" data-hero-card>
+          <div class="float-card">
             <div class="float-card-bar">
               <span class="truncate">mdfromx.com${EXAMPLE_PATH}</span>
               <span class="pane-tag pane-tag-good">text/markdown</span>
@@ -236,16 +233,8 @@ export function landingHtml(): string {
             <pre>${heroCard}</pre>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- marquee -->
-    <div class="marquee" aria-hidden="true">
-      <div class="marquee-track">
-        ${marqueeTrack}
-        ${marqueeTrack}
-      </div>
-    </div>
+      </div>`,
+    )}
 
     <!-- interest: gapless bento, before / after -->
     <section id="how" class="scroll-mt-28">
@@ -419,9 +408,10 @@ export function landingHtml(): string {
       </div>
     </section>
 
-    <!-- action -->
-    <section class="deferred-section border-t border-line bg-raised">
-      <div class="mx-auto max-w-[1200px] px-6 py-24 text-center sm:px-8 md:py-36">
+    <!-- action: the page closes back in orbit -->
+    ${orbitBand(
+      'deferred-section',
+      `<div class="relative mx-auto max-w-[1200px] px-6 pt-24 pb-[clamp(13rem,24vw,20rem)] text-center sm:px-8 md:pt-36">
         <h2 class="mx-auto max-w-[18ch] text-[clamp(2.2rem,5vw,4rem)] leading-[1.05] font-black tracking-tight text-ink">
           Read a post the way your agent does.
         </h2>
@@ -433,8 +423,8 @@ export function landingHtml(): string {
           MIT-licensed. Fork it, deploy to Vercel, and the same swap works on
           <a href="/docs/self-hosting" class="font-medium text-accent hover:text-accent-deep">your own domain</a>.
         </p>
-      </div>
-    </section>
+      </div>`,
+    )}
   </main>
 
   ${footerHtml()}

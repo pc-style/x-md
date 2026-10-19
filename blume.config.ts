@@ -35,9 +35,9 @@ export default defineConfig({
   theme: {
     accent: 'green',
     radius: 'lg',
-    // Follow the reader's system setting, as the landing page does; both store
-    // an explicit choice under the same `blume-theme` key.
-    mode: 'system',
+    // Dark by default, as the landing page is; both store an explicit choice
+    // under the same `blume-theme` key, and that choice still wins.
+    mode: 'dark',
     fonts: {
       body: satoshi,
       display: satoshi,

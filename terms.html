@@ -12,23 +12,24 @@
     />
     <meta name="author" content="x.md contributors" />
     <meta name="robots" content="index, follow, max-image-preview:large" />
-    <meta name="theme-color" content="#f7f6f2" />
+    <meta name="theme-color" content="#080b09" />
     <meta name="color-scheme" content="light dark" />
     <script>
       (() => {
         let saved = null
         // One key for the landing page and the Blume docs, so the theme carries
         // across without a flash. x-md-theme is the landing page's old key.
+        // Dark is the default; only an explicit choice of light overrides it.
         try {
           saved = localStorage.getItem('blume-theme')
           const legacy = localStorage.getItem('x-md-theme')
           if (!saved && legacy) localStorage.setItem('blume-theme', (saved = legacy))
           localStorage.removeItem('x-md-theme')
         } catch {}
-        const dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches
+        const dark = saved !== 'light'
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
         document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
-        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#11120f' : '#f7f6f2')
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#080b09' : '#f7f6f2')
       })()
     </script>
     <title>Terms of use — x.md</title>

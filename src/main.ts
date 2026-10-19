@@ -90,6 +90,9 @@ async function enhanceLanding() {
   setupTheme(app)
   setupLinkPrefetch(app)
   setupCopyButtons(app)
+  // The Orbit bands already paint a CSS arc, so the live gradient is optional
+  // and waits with the other deferred bundles instead of competing with them.
+  whenUseful(() => import('./orbit-canvas').then(({ setupOrbit }) => setupOrbit(app)))
   if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
     void import('./motion').then(({ setupMotion }) => setupMotion(app)).catch(() => {
       // Optional motion must not stop the already-readable page or its controls.
