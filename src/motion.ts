@@ -17,8 +17,12 @@ function splitWords(el: HTMLElement) {
 }
 
 export function setupMotion(root: HTMLElement) {
+  // A late chunk or an anchor visit must not hide content already on screen:
+  // only what is still below the fold gets a reveal.
+  const below = (el: Element) => el.getBoundingClientRect().top >= window.innerHeight
   const scrubEl = root.querySelector<HTMLElement>('[data-scrub-text]')
-  if (scrubEl && scrubEl.getBoundingClientRect().top >= window.innerHeight) splitWords(scrubEl)
+  if (scrubEl && below(scrubEl)) splitWords(scrubEl)
+  const streams = gsap.utils.toArray<HTMLElement>('[data-stream-view]').filter(below)
 
   const mm = gsap.matchMedia()
 
@@ -29,24 +33,44 @@ export function setupMotion(root: HTMLElement) {
   })
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
-    // The hero is already readable while this optional chunk downloads. Keep
-    // its entrance transforms in the GSAP context without fading visible text.
-    if (root.querySelector('[data-hero-stagger]')) {
-      gsap.from('[data-hero-stagger] > *', {
-        y: 26,
-        duration: 0.9,
-        ease: 'power3.out',
-        stagger: 0.09,
+    // The #how panes print their output as they arrive: the x.com markup dumps
+    // dim and "JavaScript is not available." lands last, while the Markdown
+    // streams in line by line. The animation is the hero card's `.stream` CSS.
+    for (const pane of streams) {
+      pane.dataset.stream = 'armed'
+      ScrollTrigger.create({
+        trigger: pane,
+        start: 'top 85%',
+        once: true,
+        onEnter: () => {
+          pane.dataset.stream = 'play'
+        },
       })
     }
-    if (root.querySelector('[data-hero-card]')) {
-      gsap.from('[data-hero-card]', {
-        y: 48,
-        duration: 1.1,
-        ease: 'power3.out',
-        delay: 0.3,
+
+    // The closing horizon rises a little as the band arrives, answering the
+    // hero's. Decorative and transform-only, so it may start mid-way.
+    const closing = root.querySelector<HTMLElement>('.orbit-band-closing')
+    const sky = closing?.querySelector<HTMLElement>('.orbit-sky')
+    let watch: ResizeObserver | undefined
+    if (closing && sky) {
+      gsap.fromTo(sky, { yPercent: 14 }, {
+        yPercent: 0,
+        ease: 'none',
+        // Keyed to the band's bottom: the arc sits low in it, so this is the
+        // stretch of scrolling in which the arc itself comes into view.
+        scrollTrigger: { trigger: closing, start: 'bottom 125%', end: 'bottom bottom', scrub: 0.4 },
       })
+      // The sections above it render lazily (`content-visibility: auto`) and
+      // change the page height when they do; keep the trigger's positions true.
+      let pending = 0
+      watch = new ResizeObserver(() => {
+        window.clearTimeout(pending)
+        pending = window.setTimeout(() => ScrollTrigger.refresh(), 200)
+      })
+      watch.observe(root)
     }
+
     const words = gsap.utils.toArray<HTMLElement>('[data-scrub-text] .reveal-word')
     if (words.length) {
       gsap.to(words, {
@@ -62,18 +86,9 @@ export function setupMotion(root: HTMLElement) {
       })
     }
 
-    gsap.utils.toArray<HTMLElement>('[data-rise-card]').forEach((el, i) => {
-      // A late chunk or an anchor visit must not hide content already on screen.
-      if (el.getBoundingClientRect().top < window.innerHeight) return
-      gsap.from(el, {
-        y: 36,
-        opacity: 0,
-        scale: 0.96,
-        duration: 0.8,
-        delay: (i % 2) * 0.08,
-        ease: 'power3.out',
-        scrollTrigger: { trigger: el, start: 'top 86%' },
-      })
-    })
+    return () => {
+      watch?.disconnect()
+      for (const pane of streams) delete pane.dataset.stream
+    }
   })
 }

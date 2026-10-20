@@ -34,6 +34,17 @@ export default defineConfig(({ mode }) => {
           privacy: resolve(import.meta.dirname, 'privacy.html'),
           terms: resolve(import.meta.dirname, 'terms.html'),
         },
+        output: {
+          // The shared stylesheet gets a chunk of its own. Left in the common
+          // `chrome` chunk, every lazy chunk that touches `chrome` (Vite's
+          // preload helper lives there) listed it as a preload dependency, and
+          // because the inline-stylesheet plugin deletes the file, loading
+          // them fetched a 404. Only the page entries depend on this chunk,
+          // and they have the stylesheet inlined.
+          codeSplitting: {
+            groups: [{ name: 'style', test: /\/src\/style\.css/ }],
+          },
+        },
       },
     },
     server: {

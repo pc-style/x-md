@@ -39,9 +39,11 @@
 
 /* Dark is the default theme. `.night` bands (the landing hero and closing call
    to action) take the same values in either theme, so the Orbit gradient
-   always sits on the dark it was tuned for. */
+   always sits on the dark it was tuned for. The landing header joins them
+   while it is transparent over the hero (`data-top`, set in index.html). */
 html[data-theme="dark"],
-.night {
+.night,
+html[data-top] [data-over="night"] {
   --color-surface: #080b09;
   --color-raised: #0f1310;
   --color-raised-2: #171c18;

@@ -1,5 +1,5 @@
 import './style.css'
-import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome'
+import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome-setup'
 import type { PageSlug } from './pages'
 
 // Shared entry for the static content pages (about, contact, privacy, terms).

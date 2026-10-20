@@ -128,14 +128,39 @@
   /* ---------- Header (minimal split nav) ---------- */
 
   .site-header {
-    @apply sticky top-0 z-50 w-full border-b border-line;
+    @apply sticky top-0 z-50 w-full;
+  }
+
+  /* The bar's background and border live on a layer of their own so arriving
+     at or leaving the top of the landing page is an opacity fade. */
+  .site-header::before {
+    @apply pointer-events-none absolute inset-0 -z-10 border-b border-line;
+    content: "";
     background-color: rgb(247 246 242 / 0.82);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+    transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
   }
 
-  html[data-theme="dark"] .site-header {
+  html[data-theme="dark"] .site-header::before {
     background-color: rgb(8 11 9 / 0.8);
+  }
+
+  /* Over the landing hero, at the top: no bar, and the night tokens
+     (tokens.css), so the light theme reads on the dark band too. */
+  html[data-top] .site-header[data-over="night"]::before {
+    opacity: 0;
+  }
+
+  /* An open menu at the top pushes the hero down, so the bar is over the page
+     itself: give it the menu's night background. */
+  html[data-top] .site-header[data-over="night"]:has(.mobile-menu[data-open])::before {
+    opacity: 1;
+    background-color: rgb(8 11 9 / 0.97);
+  }
+
+  html[data-top] .site-header[data-over="night"] .mobile-menu {
+    background-color: rgb(8 11 9 / 0.97);
   }
 
   /* Shared chrome box; see the chrome tokens in tokens.css. */
@@ -150,6 +175,14 @@
   .nav-link:hover,
   .nav-link[aria-current="page"] {
     @apply text-ink;
+  }
+
+  .nav-github {
+    @apply items-center gap-2;
+  }
+
+  .nav-stars {
+    @apply inline-flex items-center gap-1 tabular-nums;
   }
 
   .menu-toggle {
@@ -218,8 +251,19 @@
 
   /* ---------- Type ---------- */
 
+  /* Satoshi 900, eased from -0.04em now that the headline is smaller. */
   .hero-h {
-    letter-spacing: -0.04em;
+    letter-spacing: -0.035em;
+  }
+
+  /* Quiet proof under the converter. */
+  .proof-line {
+    @apply mt-5 pl-1 text-[13.5px] text-ink-3;
+  }
+
+  /* One vertical rhythm for the content sections. */
+  .section-pad {
+    @apply px-6 py-20 sm:px-8 md:py-24;
   }
 
   .eyebrow {
@@ -250,18 +294,18 @@
     box-shadow: 0 10px 28px rgb(20 108 67 / 0.28);
   }
 
-  /* On dark ground the primary action is a light pill; the green belongs to the
-     Orbit arc and the accents. */
+  /* On dark ground the primary action is the brand green with dark text (7.5:1),
+     the same green as the Orbit arc. */
   html[data-theme="dark"] .btn-primary,
-  .night .btn-primary {
-    background-color: var(--color-ink);
-    color: var(--color-surface);
+  .night .btn-primary,
+  html[data-top] [data-over="night"] .btn-primary {
+    color: #0d1b13;
   }
 
   html[data-theme="dark"] .btn-primary:hover,
-  .night .btn-primary:hover {
-    background-color: #ffffff;
-    box-shadow: none;
+  .night .btn-primary:hover,
+  html[data-top] [data-over="night"] .btn-primary:hover {
+    box-shadow: 0 10px 28px rgb(79 178 125 / 0.22);
   }
 
   .btn-primary:active {
@@ -378,22 +422,45 @@
     color-scheme: dark;
   }
 
+  /* `--band-pad` is the space under the band's copy; the arc's crest lands
+     `--crest-gap` below the last line of it at every width. */
   .orbit-band {
     @apply relative isolate overflow-hidden;
+    --band-pad: clamp(12rem, 22vw, 19rem);
+    --crest-gap: 6rem;
   }
 
-  /* The arc's crest sits about halfway down the gradient, so the gradient takes
-     the lower part of the band and the crest lands below the copy. On narrow
-     screens the stacked hero is tall, so the height is capped to keep the crest
-     under the last block rather than behind it. */
+  /* The arc's crest sits halfway down the gradient, and the arc's curve scales
+     with the box, so a box narrower than the page (and partly below the band
+     when that puts the crest in place) gives a rounder, calmer horizon centred
+     under the copy. The sides fade out where the ring leaves the box. */
   .orbit-sky {
-    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-20;
-    height: min(62%, 80vw);
+    @apply pointer-events-none absolute inset-x-0 mx-auto -z-20;
+    --sky-height: min(640px, max(70vw, 340px));
+    width: min(100%, 1100px);
+    height: var(--sky-height);
+    bottom: calc(var(--band-pad) - var(--crest-gap) - var(--sky-height) / 2);
+    mask-image: linear-gradient(to right, transparent, #000 20%, #000 80%, transparent);
   }
 
-  /* The band fades into the page instead of cutting the planet off. */
+  @media (max-width: 639px) {
+    .orbit-sky {
+      mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+    }
+  }
+
+  /* The hero runs up under the sticky header, which is transparent over it at
+     the top of the page. */
+  .orbit-band-hero {
+    margin-top: calc(-1 * var(--spacing-chrome-height));
+    padding-top: var(--spacing-chrome-height);
+  }
+
+  /* The band fades into the page below the crest instead of cutting the
+     planet off; the rim itself stays clear of the fade at every width. */
   .orbit-band::after {
-    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-1/4;
+    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-10;
+    height: calc(var(--band-pad) - var(--crest-gap));
     content: "";
     background: linear-gradient(to bottom, transparent, var(--color-surface));
   }
@@ -431,6 +498,143 @@
     .float-card pre {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
+    }
+  }
+
+  /* The card's address: "mdfrom" in front of "x.com/…", which is the whole
+     product. Flex items rather than inline text so the parts can move, and a
+     fade instead of an ellipsis at the clipped end. */
+  .card-url {
+    @apply flex min-w-0 flex-1 overflow-hidden whitespace-nowrap;
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+  }
+
+  .card-url > span {
+    flex: none;
+  }
+
+  .card-url-prefix {
+    color: #7fd7a8;
+  }
+
+  /* Both tags share one cell; only `text/markdown` shows at rest. */
+  .card-tag {
+    @apply grid shrink-0;
+  }
+
+  .card-tag > * {
+    grid-area: 1 / 1;
+    justify-self: end;
+  }
+
+  .card-tag-from {
+    opacity: 0;
+  }
+
+  /* ---------- Streamed code panes ---------- */
+
+  /* Each line is a box of its own (`streamLines` in landing.ts) so it can
+     fade and lift; the newlines between them keep the text intact. */
+  .stream .ln {
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  @keyframes line-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.4em);
+    }
+  }
+
+  @keyframes line-land {
+    from {
+      opacity: 0;
+      transform: translateY(-0.6em) scale(1.06);
+    }
+  }
+
+  @keyframes url-shift {
+    from {
+      transform: translateX(-6ch);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes tag-out {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-0.5em);
+    }
+  }
+
+  @keyframes tag-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.5em);
+    }
+  }
+
+  @keyframes sky-rise {
+    from {
+      opacity: 0;
+      transform: translateY(7%);
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* `motion.ts` arms panes that are still below the fold and plays them on
+       arrival; panes already on screen are never hidden. */
+    .stream[data-stream="armed"] .ln {
+      opacity: 0;
+    }
+
+    .stream[data-stream="play"] .ln {
+      animation: line-in 240ms cubic-bezier(0.2, 0, 0, 1) both;
+      animation-delay: calc(var(--i) * var(--stagger, 60ms));
+    }
+
+    .stream[data-stream="play"] .ln:has(.t-bad) {
+      animation: line-land 380ms cubic-bezier(0.2, 0.9, 0.3, 1.15) 720ms both;
+    }
+
+    /* The hero card converts once, on the first paint: x.com, then "mdfrom"
+       arrives in front of it, the tag flips, and the Markdown streams in,
+       done by about 1.3 s. Without `data-motion` it simply shows the result. */
+    html[data-motion] .hero-demo .card-url-rest {
+      animation: url-shift 320ms cubic-bezier(0.2, 0, 0, 1) 200ms both;
+    }
+
+    html[data-motion] .hero-demo .card-url-prefix {
+      animation: fade-in 240ms ease-out 320ms both;
+    }
+
+    html[data-motion] .hero-demo .card-tag-from {
+      animation: tag-out 180ms ease-in 400ms both;
+    }
+
+    html[data-motion] .hero-demo .card-tag-to {
+      animation: tag-in 220ms cubic-bezier(0.2, 0, 0, 1) 500ms both;
+    }
+
+    html[data-motion] .hero-demo .ln {
+      animation: line-in 240ms cubic-bezier(0.2, 0, 0, 1) both;
+      animation-delay: calc(560ms + var(--i) * 55ms);
+    }
+
+    /* The hero horizon rises with the first paint, so the CSS arc and the live
+       canvas that later fades in over it read as one arrival. */
+    html[data-motion] .orbit-band-hero .orbit-sky {
+      animation: sky-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
     }
   }
 
@@ -517,14 +721,84 @@
     color: #ffffff;
   }
 
-  /* ---------- Pinned split list ---------- */
+  /* ---------- What comes through (tabs) ---------- */
 
-  .through-item {
-    @apply border-t border-line py-10 sm:py-12;
+  .tablist {
+    @apply flex flex-wrap gap-2;
   }
 
-  .through-item:first-child {
-    @apply border-t-0 pt-0;
+  .tab {
+    @apply inline-flex h-10 cursor-pointer items-center rounded-full border border-line bg-transparent px-4 text-[14px] font-medium text-ink-3;
+  }
+
+  .tab:hover {
+    @apply text-ink;
+  }
+
+  .tab[aria-selected="true"] {
+    @apply border-transparent bg-raised-2 font-bold text-ink;
+    box-shadow: inset 0 0 0 1px var(--color-hair-strong);
+  }
+
+  .tab-panels {
+    @apply flex flex-col gap-4;
+  }
+
+  .tab-panel {
+    @apply grid content-start gap-8 rounded-2xl border border-line bg-raised p-6 sm:p-8 lg:grid-cols-[0.75fr_1.25fr] lg:gap-12;
+  }
+
+  .tab-panel:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* With tabs, every panel shares one cell: the tallest sets the height, and
+     switching crossfades instead of reflowing the page. */
+  [data-tabs-ready] .tablist {
+    @apply mb-5;
+  }
+
+  [data-tabs-ready] .tab-panels {
+    @apply grid;
+  }
+
+  [data-tabs-ready] .tab-panel {
+    grid-area: 1 / 1;
+    transition:
+      opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+      visibility 0s;
+  }
+
+  [data-tabs-ready] .tab-panel[data-inactive] {
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+      visibility 0s 180ms;
+  }
+
+  /* The selected tab already names the panel. */
+  [data-tabs-ready] .tab-title {
+    @apply sr-only;
+  }
+
+  .code-pane {
+    @apply min-w-0 overflow-hidden rounded-xl;
+    background-color: var(--color-code);
+    box-shadow: inset 0 0 0 1px var(--color-hair);
+  }
+
+  .code-pane-bar {
+    @apply truncate px-5 py-3 font-mono text-[11.5px];
+    color: var(--color-code-ink);
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  }
+
+  .code-pane pre {
+    @apply m-0 px-5 py-5 font-mono text-[12.5px] leading-[1.75] whitespace-pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--color-code-ink);
   }
 
   /* ---------- Agent ways ---------- */
