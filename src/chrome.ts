@@ -47,7 +47,7 @@ export function headerHtml(options: { page: PageKind } & ChromeData) {
 
   const mobileItems = [
     ...NAV_ITEMS.map((item) => `<a href="${item.href}">${item.label}</a>`),
-    `<a href="${REPO_URL}">GitHub${stars ? ` <span class="text-ink-4">· ${stars} stars</span>` : ''}</a>`,
+    `<a href="${REPO_URL}">GitHub${stars ? ` · ${stars} stars` : ''}</a>`,
   ].join('\n      ')
 
   const cta =

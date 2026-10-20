@@ -218,7 +218,7 @@ const EXCERPT_PANELS = EXCERPTS.map(
               </p>
             </div>
             <div class="code-pane">
-              <p class="code-pane-bar"><span class="t-dim">$ curl</span> mdfromx.com${item.request}</p>
+              <p class="code-pane-bar"><span class="t-dim">$ curl</span> 'mdfromx.com${item.request}'</p>
               <pre>${item.markdown}</pre>
             </div>
           </div>`,
