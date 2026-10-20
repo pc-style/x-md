@@ -42,6 +42,8 @@ export function setupPointer(root: HTMLElement) {
       // The line sits mid-way through the 2rem crossfade band (style.css).
       const band = 2 * parseFloat(getComputedStyle(document.documentElement).fontSize)
       card.dataset.scrub = ''
+      // The pointer takes over from the load scan if that is still running.
+      body.style.animationName = 'none'
       show(Math.min(1, Math.max(0, (event.clientY - box.top + band / 2) / (box.height + band))))
     },
     { passive: true },
