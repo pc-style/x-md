@@ -1,8 +1,8 @@
 /**
  * Touches for a mouse or trackpad, in a chunk that touch screens never load
- * (`main.ts`): a light that follows the pointer across the cards, and the hero
- * card's scan line following the pointer, so the post as x.com shows it and
- * its Markdown can be compared line by line.
+ * (`main.ts`): a light that follows the pointer across the cards, and, when
+ * motion is allowed, the hero card's scan line following the pointer, so the
+ * post as x.com shows it and its Markdown can be compared line by line.
  */
 export function setupPointer(root: HTMLElement) {
   root.addEventListener(
@@ -20,6 +20,9 @@ export function setupPointer(root: HTMLElement) {
   const card = root.querySelector<HTMLElement>('.hero-demo')
   const body = card?.querySelector<HTMLElement>('.card-body')
   if (!card || !body) return
+  // The scan line is motion: with reduced motion, even if it is switched on
+  // mid-visit, the card keeps its Markdown.
+  const motion = matchMedia('(prefers-reduced-motion: no-preference)')
   // Markdown above the line, the post below it; the bar follows whichever
   // view has most of the card. Leaving, or pressing to select text, returns
   // the card to its Markdown.
@@ -34,7 +37,7 @@ export function setupPointer(root: HTMLElement) {
   card.addEventListener(
     'pointermove',
     (event) => {
-      if (event.buttons) return
+      if (event.buttons || !motion.matches) return
       const box = body.getBoundingClientRect()
       // The line sits mid-way through the 2rem crossfade band (style.css).
       const band = 2 * parseFloat(getComputedStyle(document.documentElement).fontSize)
@@ -45,4 +48,5 @@ export function setupPointer(root: HTMLElement) {
   )
   card.addEventListener('pointerleave', rest)
   card.addEventListener('pointerdown', rest)
+  motion.addEventListener('change', rest)
 }
