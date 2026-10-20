@@ -32,6 +32,14 @@
   font-display: swap;
 }
 
+/* How far the hero card's scan line has travelled, 0 to 1. Registered so the
+   load animation and the pointer can move it smoothly. */
+@property --scan {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -284,14 +292,18 @@
 
   /* ---------- Buttons (pill interactives, 16px containers) ---------- */
 
+  /* A lit top edge, so the pill reads as a raised key rather than a flat shape. */
   .btn-primary {
     @apply inline-flex items-center justify-center rounded-full bg-accent font-bold text-white;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.24);
   }
 
   .btn-primary:hover {
     background-color: var(--color-accent-deep);
     transform: translateY(-1px);
-    box-shadow: 0 10px 28px rgb(20 108 67 / 0.28);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.24),
+      0 10px 28px rgb(20 108 67 / 0.28);
   }
 
   /* On dark ground the primary action is the brand green with dark text (7.5:1),
@@ -305,7 +317,10 @@
   html[data-theme="dark"] .btn-primary:hover,
   .night .btn-primary:hover,
   html[data-top] [data-over="night"] .btn-primary:hover {
-    box-shadow: 0 10px 28px rgb(79 178 125 / 0.22);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.3),
+      0 0 0 4px rgb(79 178 125 / 0.12),
+      0 12px 32px rgb(79 178 125 / 0.28);
   }
 
   .btn-primary:active {
@@ -476,6 +491,85 @@
     opacity: 1;
   }
 
+  /* The closing band ends on the product's name at full size, standing on the
+     horizon: lit from above, fading into the arc's glow below. With motion,
+     "mdfrom" is typed in front of the host as the band arrives (`motion.ts`). */
+  .orbit-band-closing {
+    --crest-gap: 1.5rem;
+  }
+
+  .host-mark {
+    @apply mx-auto mt-16 flex w-fit items-baseline font-black whitespace-nowrap select-none md:mt-20;
+    font-size: clamp(3.25rem, 12.5vw, 10.5rem);
+    line-height: 1;
+    letter-spacing: -0.055em;
+  }
+
+  .host-mark-prefix {
+    @apply flex;
+  }
+
+  .host-mark-prefix > span,
+  .host-mark-host {
+    @apply block pb-[0.08em];
+    background-clip: text;
+    color: transparent;
+  }
+
+  .host-mark-prefix > span {
+    background-image: linear-gradient(to bottom, #b4f3cc 15%, #4fb27d 60%, rgb(79 178 125 / 0.35));
+  }
+
+  .host-mark-host {
+    background-image: linear-gradient(to bottom, var(--color-ink) 25%, rgb(241 240 233 / 0.3));
+  }
+
+  .host-mark-caret {
+    @apply hidden self-center;
+    /* Takes no room, so the name closes up once it has faded. */
+    width: 0.05em;
+    height: 0.72em;
+    margin-inline: -0.025em;
+    border-radius: 1px;
+    background: #7fd7a8;
+    box-shadow: 0 0 18px rgb(127 215 168 / 0.7);
+  }
+
+  @keyframes type-in {
+    from {
+      max-width: 0;
+      opacity: 0;
+    }
+    to {
+      max-width: 1em;
+    }
+  }
+
+  @keyframes caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .host-mark[data-type="play"] .host-mark-caret {
+      @apply block;
+      animation:
+        caret 1s steps(1) infinite,
+        fade-away 300ms ease-in 1900ms both;
+    }
+
+    .host-mark[data-type="armed"] .host-mark-prefix > span {
+      max-width: 0;
+      opacity: 0;
+    }
+
+    .host-mark[data-type="play"] .host-mark-prefix > span {
+      animation: type-in 130ms cubic-bezier(0.2, 0, 0, 1) both;
+      animation-delay: calc(450ms + var(--i) * 110ms);
+    }
+  }
+
   /* ---------- Hero ---------- */
 
   .float-card {
@@ -513,8 +607,20 @@
     flex: none;
   }
 
+  /* `max-width` rather than display, so the host can lose and regain the
+     prefix smoothly when the pointer moves the scan line (`pointer.ts`). */
   .card-url-prefix {
+    max-width: 6ch;
+    overflow: hidden;
     color: #7fd7a8;
+    transition:
+      max-width 320ms cubic-bezier(0.2, 0, 0, 1),
+      opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .hero-demo[data-html] .card-url-prefix {
+    max-width: 0;
+    opacity: 0;
   }
 
   /* Both tags share one cell; only `text/markdown` shows at rest. */
@@ -527,8 +633,152 @@
     justify-self: end;
   }
 
-  .card-tag-from {
+  .card-tag > * {
+    transition: opacity 200ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .card-tag-from,
+  .hero-demo[data-html] .card-tag-to {
     opacity: 0;
+  }
+
+  .hero-demo[data-html] .card-tag-from {
+    opacity: 1;
+  }
+
+  /* The post as x.com shows it and the Markdown share one cell. A 2rem band
+     at the scan front crossfades them: Markdown above it, the post below.
+     At rest (`--scan: 1`) only the Markdown is visible. */
+  .card-body {
+    @apply relative grid overflow-hidden;
+    --scan-front: calc(var(--scan) * (100% + 2rem));
+    transition: --scan 650ms cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  .hero-demo[data-scrub] .card-body {
+    transition-duration: 90ms;
+    transition-timing-function: linear;
+  }
+
+  .card-body > * {
+    grid-area: 1 / 1;
+  }
+
+  .card-body > pre {
+    mask-image: linear-gradient(to bottom, #000 calc(var(--scan-front) - 2rem), transparent var(--scan-front));
+  }
+
+  .post-view {
+    @apply pointer-events-none flex flex-col gap-3.5 px-5 py-5 font-sans text-[14px] select-none;
+    color: #e7e9ea;
+    mask-image: linear-gradient(to bottom, transparent calc(var(--scan-front) - 2rem), #000 var(--scan-front));
+  }
+
+  .post-head {
+    @apply flex min-w-0 items-center gap-2 leading-none whitespace-nowrap;
+  }
+
+  .post-avatar {
+    @apply grid h-9 w-9 shrink-0 place-items-center rounded-full text-[15px] font-bold;
+    color: #fff4ec;
+    background: linear-gradient(140deg, #d97757, #8f3d22);
+  }
+
+  .post-name {
+    @apply font-bold;
+  }
+
+  .post-meta {
+    @apply truncate;
+    color: #71767b;
+  }
+
+  .post-article {
+    @apply overflow-hidden rounded-2xl;
+    box-shadow: inset 0 0 0 1px #2f3336;
+  }
+
+  /* The article's cover, drawn: warm paper, a kicker, a two-line title, and
+     two pages fanned on the right. */
+  .post-cover {
+    @apply relative h-[5.25rem] overflow-hidden;
+    background: #e3dacb;
+  }
+
+  .post-cover > span {
+    @apply absolute block;
+  }
+
+  .post-cover-kicker {
+    top: 26%;
+    left: 7%;
+    width: 15%;
+    height: 3px;
+    background: #d97757;
+  }
+
+  .post-cover-line {
+    top: 40%;
+    left: 7%;
+    width: 36%;
+    height: 9px;
+    border-radius: 2px;
+    background: #1f1d1a;
+  }
+
+  .post-cover-line-short {
+    top: 56%;
+    width: 22%;
+  }
+
+  .post-cover-page {
+    top: 16%;
+    right: 24%;
+    width: 21%;
+    height: 110%;
+    border-radius: 6px;
+    background:
+      repeating-linear-gradient(to bottom, transparent 0 14px, #e8e1d6 14px 18px) 12% 22% / 76% 70% no-repeat,
+      #fbf9f5;
+    box-shadow: inset 0 0 0 1px #2b2824;
+    transform: rotate(-7deg);
+  }
+
+  .post-cover-page + .post-cover-page {
+    top: 10%;
+    right: 7%;
+    box-shadow: inset 0 0 0 1.5px #d97757;
+    transform: rotate(4deg);
+  }
+
+  .post-title {
+    @apply px-3.5 py-3 leading-snug font-bold;
+  }
+
+  .post-actions {
+    @apply flex justify-between pr-4 text-[12.5px] leading-none;
+    color: #71767b;
+  }
+
+  .post-actions > span {
+    @apply inline-flex items-center gap-1.5;
+  }
+
+  /* The scan line sits mid-band, and only shows while it is travelling. */
+  .card-scan {
+    @apply pointer-events-none absolute inset-x-0 h-px self-start;
+    top: calc(var(--scan-front) - 1rem);
+    opacity: clamp(0, min(var(--scan), 1 - var(--scan)) * 40, 1);
+    background: linear-gradient(90deg, transparent, #7fd7a8 18%, #e6ffe9 50%, #7fd7a8 82%, transparent);
+    box-shadow:
+      0 0 6px rgb(230 255 233 / 0.8),
+      0 0 22px 2px rgb(127 215 168 / 0.65);
+  }
+
+  .card-scan::before {
+    @apply absolute inset-x-0 bottom-0 h-16;
+    content: "";
+    background: linear-gradient(to top, rgb(127 215 168 / 0.13), transparent);
   }
 
   /* ---------- Streamed code panes ---------- */
@@ -566,14 +816,33 @@
     }
   }
 
+  /* No end keyframe: the tag fades to its resting opacity, which the pointer
+     can change later. */
   @keyframes tag-out {
     from {
       opacity: 1;
-      transform: none;
+    }
+  }
+
+  @keyframes scan-down {
+    from {
+      --scan: 0;
+    }
+  }
+
+  @keyframes rain-fall {
+    from {
+      transform: translateY(8%);
     }
     to {
+      transform: translateY(-62%);
+    }
+  }
+
+  @keyframes fade-away {
+    to {
       opacity: 0;
-      transform: translateY(-0.5em);
+      visibility: hidden;
     }
   }
 
@@ -600,35 +869,36 @@
 
     .stream[data-stream="play"] .ln {
       animation: line-in 240ms cubic-bezier(0.2, 0, 0, 1) both;
-      animation-delay: calc(var(--i) * var(--stagger, 60ms));
+      animation-delay: calc(var(--start, 0ms) + var(--i) * var(--stagger, 60ms));
     }
 
     .stream[data-stream="play"] .ln:has(.t-bad) {
-      animation: line-land 380ms cubic-bezier(0.2, 0.9, 0.3, 1.15) 720ms both;
+      animation: line-land 380ms cubic-bezier(0.2, 0.9, 0.3, 1.15) calc(var(--start, 0ms) + 720ms) both;
     }
 
-    /* The hero card converts once, on the first paint: x.com, then "mdfrom"
-       arrives in front of it, the tag flips, and the Markdown streams in,
-       done by about 1.3 s. Without `data-motion` it simply shows the result. */
+    /* The hero card converts once, on the first paint: the post as x.com
+       shows it, then "mdfrom" arrives in front of the host, the tag flips, and
+       the scan line passes down the card leaving Markdown behind it, done by
+       about 1.7 s. Without `data-motion` it simply shows the result. */
     html[data-motion] .hero-demo .card-url-rest {
-      animation: url-shift 320ms cubic-bezier(0.2, 0, 0, 1) 200ms both;
+      animation: url-shift 320ms cubic-bezier(0.2, 0, 0, 1) 380ms both;
     }
 
     html[data-motion] .hero-demo .card-url-prefix {
-      animation: fade-in 240ms ease-out 320ms both;
+      animation: fade-in 240ms ease-out 500ms both;
     }
 
     html[data-motion] .hero-demo .card-tag-from {
-      animation: tag-out 180ms ease-in 400ms both;
+      animation: tag-out 180ms ease-in 560ms both;
     }
 
     html[data-motion] .hero-demo .card-tag-to {
-      animation: tag-in 220ms cubic-bezier(0.2, 0, 0, 1) 500ms both;
+      animation: tag-in 220ms cubic-bezier(0.2, 0, 0, 1) 660ms both;
     }
 
-    html[data-motion] .hero-demo .ln {
-      animation: line-in 240ms cubic-bezier(0.2, 0, 0, 1) both;
-      animation-delay: calc(560ms + var(--i) * 55ms);
+    /* `backwards`: once it ends, the line belongs to `--scan` again. */
+    html[data-motion] .hero-demo .card-body {
+      animation: scan-down 1050ms cubic-bezier(0.55, 0, 0.3, 1) 660ms backwards;
     }
 
     /* The hero horizon rises with the first paint, so the CSS arc and the live
@@ -695,6 +965,66 @@
   .pane-tag-good {
     color: #7fd7a8;
     background: rgb(127 215 168 / 0.12);
+  }
+
+  /* The x.com pane's scroll-by of markup before "JavaScript is not
+     available." lands (`motion.ts`). Decorative, and only ever added while
+     motion is allowed. */
+  .markup-rain {
+    @apply pointer-events-none absolute overflow-hidden font-mono text-[10.5px] leading-[1.6] break-all whitespace-pre-wrap;
+    inset: 4.5rem 1.75rem 1.75rem;
+    color: var(--color-code-dim);
+    mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 78%, transparent);
+    animation: fade-away 260ms ease-in 820ms both;
+  }
+
+  .markup-rain > span {
+    @apply block;
+    animation: rain-fall 1080ms cubic-bezier(0.45, 0, 0.7, 1) both;
+  }
+
+  /* ---------- Pointer light on cards ---------- */
+
+  /* A soft light that follows the pointer (`pointer.ts` sets --mx/--my): a
+     glow inside the card and a brighter rim. Hover-capable pointers only. */
+  .spot {
+    @apply relative isolate;
+  }
+
+  .spot::before,
+  .spot::after {
+    @apply pointer-events-none absolute inset-0 opacity-0;
+    content: "";
+    border-radius: inherit;
+    transition: opacity 400ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .spot::before {
+    padding: 1px;
+    background: radial-gradient(
+      16rem circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in oklab, var(--color-accent) 75%, transparent),
+      transparent 70%
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+  }
+
+  .spot::after {
+    z-index: -1;
+    background: radial-gradient(
+      30rem circle at var(--mx, 50%) var(--my, 50%),
+      color-mix(in oklab, var(--color-accent) 8%, transparent),
+      transparent 65%
+    );
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .spot:hover::before,
+    .spot:hover::after {
+      opacity: 1;
+    }
   }
 
   /* ---------- Copy command ---------- */
