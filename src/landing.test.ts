@@ -2,7 +2,13 @@ import { expect, test } from 'vitest'
 import { landingHtml } from './landing'
 
 const html = landingHtml()
-const text = (markup: string) => markup.replace(/<[^>]+>/g, '').replace(/&gt;/g, '>').replace(/&lt;/g, '<')
+/** The visible text of trusted, prerendered markup: the segments between tags, entities decoded. */
+const text = (markup: string) =>
+  markup
+    .split(/<[^>]+>/)
+    .join('')
+    .replace(/&gt;/g, '>')
+    .replace(/&lt;/g, '<')
 
 test('streamed panes keep their exact text, one balanced box per line', () => {
   const panes = [...html.matchAll(/<pre[^>]*class="stream[^"]*"[^>]*>([\s\S]*?)<\/pre>/g)].map(match => match[1])
