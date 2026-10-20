@@ -71,20 +71,74 @@ Markdown has become the dominant file
 format used by agents to communicate
 with us…`
 
+/** X's action row icons, drawn as plain strokes. */
+const POST_ICONS = {
+  reply: '<path d="M4 11.5a7 7 0 0 1 7-7h2a7 7 0 1 1 0 14h-1l-4 3v-3.4A7 7 0 0 1 4 11.5Z"/>',
+  repost: '<path d="m4 8 3-3 3 3M7 5v9a3 3 0 0 0 3 3h3M20 16l-3 3-3-3M17 19v-9a3 3 0 0 0-3-3h-3"/>',
+  like: '<path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.4 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10Z"/>',
+  views: '<path d="M5 20V11M10 20V5M15 20v-7M20 20V9"/>',
+}
+
+/** The example post's counts as X rounds them, read from the hosted service. */
+const POST_ACTIONS = (
+  [
+    ['reply', '1K'],
+    ['repost', '2.2K'],
+    ['like', '17K'],
+    ['views', '14M'],
+  ] as const
+)
+  .map(
+    ([icon, count]) =>
+      `<span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${POST_ICONS[icon]}</svg>${count}</span>`,
+  )
+  .join('')
+
 /**
- * The hero's demo: the product's one action. The bar reads `x.com/…`, "mdfrom"
- * arrives in front of it, the tag flips to `text/markdown` and the Markdown
- * streams in. The markup is the finished state, which is what readers without
+ * The example post as a person sees it on x.com: the author, the article's
+ * cover and title, the counts. The cover is drawn, not the article's image, so
+ * the first paint needs no request. It is a decorative double of the Markdown
+ * beside it, so it stays out of the accessibility tree.
+ */
+const postView = `<div class="post-view" aria-hidden="true">
+                <div class="post-head">
+                  <span class="post-avatar">T</span>
+                  <span class="post-name">Thariq</span>
+                  <span class="post-meta">@${EXAMPLE_HANDLE} · May 8</span>
+                </div>
+                <div class="post-article">
+                  <div class="post-cover">
+                    <span class="post-cover-kicker"></span>
+                    <span class="post-cover-line"></span>
+                    <span class="post-cover-line post-cover-line-short"></span>
+                    <span class="post-cover-page"></span>
+                    <span class="post-cover-page"></span>
+                  </div>
+                  <p class="post-title">Using Claude Code: The Unreasonable Effectiveness of HTML</p>
+                </div>
+                <div class="post-actions">${POST_ACTIONS}</div>
+              </div>`
+
+/**
+ * The hero's demo: the product's one action. The card opens on the post as
+ * x.com renders it, "mdfrom" arrives in front of the host, the tag flips to
+ * `text/markdown`, and a scan line passes down the card, leaving Markdown
+ * behind it. The markup is the finished state, which is what readers without
  * JavaScript or with reduced motion get; the load animation is CSS keyed off
  * `html[data-motion]` (set in index.html), so it starts with the first paint.
- * `main.ts` mirrors the converter's URL into `data-card-path`.
+ * `main.ts` mirrors the converter's URL into `data-card-path`, and with a mouse
+ * the scan line follows the pointer (`pointer.ts`).
  */
 const heroDemo = `<div class="float-card hero-demo">
             <div class="float-card-bar">
               <span class="card-url"><span class="card-url-prefix">mdfrom</span><span class="card-url-rest">x.com<span data-card-path>${EXAMPLE_PATH}</span></span></span>
               <span class="card-tag"><span class="pane-tag pane-tag-bad card-tag-from" aria-hidden="true">text/html</span><span class="pane-tag pane-tag-good card-tag-to">text/markdown</span></span>
             </div>
-            <pre class="stream">${streamLines(heroCard)}</pre>
+            <div class="card-body">
+              ${postView}
+              <pre class="stream">${streamLines(heroCard)}</pre>
+              <span class="card-scan" aria-hidden="true"></span>
+            </div>
           </div>`
 
 type Excerpt = { id: string; label: string; title: string; blurb: string; request: string; markdown: string }
@@ -210,7 +264,7 @@ const EXCERPT_TABS = EXCERPTS.map(
 ).join('\n            ')
 
 const EXCERPT_PANELS = EXCERPTS.map(
-  (item) => `<div id="panel-${item.id}" class="tab-panel">
+  (item) => `<div id="panel-${item.id}" class="tab-panel spot">
             <div class="tab-copy">
               <h3 class="tab-title text-[21px] font-bold text-ink">${item.title}</h3>
               <p class="mt-3 max-w-[44ch] text-[15.5px] leading-relaxed text-ink-2">
@@ -236,6 +290,15 @@ const orbitBand = (classes: string, content: string) => `<section class="night o
       </div>
       ${content}
     </section>`
+
+/**
+ * The closing band ends on the product's name at full size, on the horizon.
+ * One box per letter of "mdfrom", so `motion.ts` can type them in front of the
+ * host, the way the product is used. The markup is the finished name.
+ */
+const hostMark = `<p class="host-mark" aria-hidden="true"><span class="host-mark-prefix">${[...'mdfrom']
+  .map((letter, i) => `<span style="--i:${i}">${letter}</span>`)
+  .join('')}</span><span class="host-mark-caret"></span><span class="host-mark-host">x.com</span></p>`
 
 type Resource = { href: string; title: string; blurb: string; hint: string; external?: boolean }
 
@@ -281,7 +344,7 @@ const RESOURCES: Resource[] = [
 ]
 
 const RESOURCE_CARDS = RESOURCES.map(
-  (item) => `<a href="${item.href}" class="res-card"${item.external ? ' target="_blank" rel="noreferrer"' : ''}>
+  (item) => `<a href="${item.href}" class="res-card spot"${item.external ? ' target="_blank" rel="noreferrer"' : ''}>
             <h3 class="text-[17px] font-bold text-ink">${item.title}</h3>
             <p class="mt-2.5 text-[14.5px] leading-relaxed text-ink-2">${item.blurb}</p>
             <span class="res-card-hint">${item.hint}</span>
@@ -411,28 +474,28 @@ export function landingHtml(chrome: ChromeData = {}): string {
           You see the same post either way. Your agent doesn't.
         </h2>
         <div class="bento mt-12">
-          <article class="bento-card bento-a bento-dark">
+          <article class="bento-card bento-a bento-dark spot">
             <div class="flex items-center justify-between gap-3">
               <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl x.com${EXAMPLE_PATH}</p>
               <span class="pane-tag pane-tag-bad shrink-0">no content</span>
             </div>
-            <pre data-stream-view class="stream mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre max-sm:whitespace-pre-wrap max-sm:[overflow-wrap:anywhere]" style="color: var(--color-code-ink); --stagger: 35ms">${streamLines(xComOutput)}</pre>
+            <pre data-stream-view data-rain class="stream mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre max-sm:whitespace-pre-wrap max-sm:[overflow-wrap:anywhere]" style="color: var(--color-code-ink); --stagger: 35ms">${streamLines(xComOutput)}</pre>
           </article>
-          <article class="bento-card bento-b bento-dark">
+          <article class="bento-card bento-b bento-dark spot">
             <div class="flex items-center justify-between gap-3">
               <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl mdfromx.com${EXAMPLE_PATH}</p>
               <span class="pane-tag pane-tag-good shrink-0">markdown</span>
             </div>
             <pre data-stream-view class="stream mt-6 overflow-x-auto font-mono text-[12.5px] leading-[1.8] whitespace-pre max-sm:whitespace-pre-wrap max-sm:[overflow-wrap:anywhere]" style="color: var(--color-code-ink); --stagger: 65ms">${streamLines(mdOutput)}</pre>
           </article>
-          <article class="bento-card bento-c bento-tint">
+          <article class="bento-card bento-c bento-tint spot">
             <h3 class="text-[19px] font-bold text-ink">One host swap, nothing else</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
               Same path, same status ID. That's a real post converted live:
               <a href="${EXAMPLE_PATH}?thread=full" target="_blank" rel="noreferrer" class="font-bold text-accent hover:text-accent-deep">see the full conversion →</a>
             </p>
           </article>
-          <article class="bento-card bento-d">
+          <article class="bento-card bento-d spot">
             <h3 class="text-[19px] font-bold text-ink">Pipe it anywhere</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
               The response is plain <code class="code-chip">text/markdown</code>, so
@@ -479,7 +542,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
           Three ways to point an agent at it.
         </h2>
         <div class="mt-12 grid gap-4 lg:grid-cols-[1fr_1.4fr_1fr]">
-          <article class="way-card">
+          <article class="way-card spot">
             <p class="way-label">for any agent</p>
             <h3 class="mt-3 text-[20px] font-bold text-ink">Say it in the prompt</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
@@ -489,7 +552,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
               <p class="way-quote">"To read an X post, swap x.com for mdfromx.com."</p>
             </div>
           </article>
-          <article class="way-card way-card-accent">
+          <article class="way-card way-card-accent spot">
             <p class="way-label">for skills-aware agents</p>
             <h3 class="mt-3 text-[20px] font-bold text-ink">Install the skill</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
@@ -502,7 +565,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
               </div>
             </div>
           </article>
-          <article class="way-card">
+          <article class="way-card spot">
             <p class="way-label">for scripts</p>
             <h3 class="mt-3 text-[20px] font-bold text-ink">Call the API</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
@@ -561,6 +624,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
           MIT-licensed. Fork it, deploy to Vercel, and the same swap works on
           <a href="/docs/self-hosting" class="font-medium text-accent hover:text-accent-deep">your own domain</a>.
         </p>
+        ${hostMark}
       </div>`,
     )}
   </main>

@@ -108,6 +108,9 @@ async function enhanceLanding() {
   // The "what comes through" panels are stacked in the markup; the tabs are an
   // enhancement in their own small chunk, kept out of the first render.
   void import('./tabs').then(({ setupTabs }) => setupTabs(app)).catch(() => {})
+  if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
+    void import('./pointer').then(({ setupPointer }) => setupPointer(app)).catch(() => {})
+  }
   // The Orbit bands already paint a CSS arc, so the live gradient is optional
   // and waits with the other deferred bundles instead of competing with them.
   whenUseful(() => import('./orbit-canvas').then(({ setupOrbit }) => setupOrbit(app)))

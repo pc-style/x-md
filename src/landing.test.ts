@@ -37,11 +37,19 @@ test('the hero card ships its finished state for readers without JavaScript or m
   const card = html.match(/<div class="float-card hero-demo">[\s\S]*?<\/pre>/)![0]
   expect(text(card.match(/<span class="card-url">[\s\S]*?<\/span><\/span><\/span>/)![0])).toBe('mdfromx.com/trq212/status/2052809885763747935')
   expect(card).toContain('<span class="pane-tag pane-tag-bad card-tag-from" aria-hidden="true">text/html</span>')
+  // The post as x.com shows it is a decorative double of the Markdown.
+  expect(card).toMatch(/<div class="post-view" aria-hidden="true">/)
+})
+
+test('the closing name ships whole, one box per typed letter', () => {
+  const mark = html.match(/<p class="host-mark" aria-hidden="true">[\s\S]*?<\/p>/)![0]
+  expect(text(mark)).toBe('mdfromx.com')
+  expect([...mark.matchAll(/<span style="--i:(\d)">/g)].map(match => Number(match[1]))).toEqual([0, 1, 2, 3, 4, 5])
 })
 
 test('every "what comes through" panel is in the markup, stacked, with the tablist hidden until tabs.ts runs', () => {
   expect(html).toMatch(/<div role="tablist"[^>]*\bhidden>/)
-  const panels = [...html.matchAll(/<div id="panel-([a-z]+)" class="tab-panel">/g)].map(match => match[1])
+  const panels = [...html.matchAll(/<div id="panel-([a-z]+)" class="tab-panel spot">/g)].map(match => match[1])
   expect(panels).toEqual(['threads', 'media', 'quotes', 'articles', 'obsidian'])
   for (const id of panels) expect(html).toContain(`aria-controls="panel-${id}"`)
 })

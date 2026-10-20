@@ -16,6 +16,41 @@ function splitWords(el: HTMLElement) {
   el.replaceChildren(...nodes)
 }
 
+/**
+ * What x.com sends instead of the post, for the #how pane's scroll-by:
+ * plausible markup from a fixed seed. Decorative, and never shown as output.
+ */
+function markupRain(): string {
+  let seed = 20528
+  const id = () => (seed = (seed * 48271) % 2147483647).toString(36).slice(-6)
+  const pieces = [
+    () => `<div class="css-175oi2r r-${id()} r-${id()} r-${id()}">`,
+    () => `<script nonce="${id()}${id()}">window.__SCRIPTS_LOADED__={"main":false};</script>`,
+    () => `<link rel="preload" as="script" crossorigin="anonymous" href="https://abs.twimg.com/responsive-web/client-web/vendor.${id()}.js"/>`,
+    () => `<style>.r-${id()}{flex-shrink:0}.r-${id()}{display:flex}.r-${id()}{min-height:0px}</style>`,
+    () => `</div><div dir="ltr" class="css-146c3p1 r-${id()}" style="color:rgb(231,233,234)">`,
+    () => `<meta name="twitter-site-verification" content="${id()}${id()}"/>`,
+  ]
+  return Array.from({ length: 96 }, (_, i) => pieces[(i * 5 + (i >> 2)) % pieces.length]()).join('')
+}
+
+/** Runs the #how x.com pane's markup scroll-by, then lets its lines print. */
+function rain(pane: HTMLElement) {
+  const card = pane.parentElement
+  if (!card) return
+  const layer = document.createElement('div')
+  layer.className = 'markup-rain'
+  layer.setAttribute('aria-hidden', 'true')
+  const text = document.createElement('span')
+  text.textContent = markupRain()
+  layer.append(text)
+  layer.addEventListener('animationend', (event) => {
+    if (event.target === layer) layer.remove()
+  })
+  card.append(layer)
+  pane.style.setProperty('--start', '1080ms')
+}
+
 export function setupMotion(root: HTMLElement) {
   // A late chunk or an anchor visit must not hide content already on screen:
   // only what is still below the fold gets a reveal.
@@ -43,6 +78,7 @@ export function setupMotion(root: HTMLElement) {
         start: 'top 85%',
         once: true,
         onEnter: () => {
+          if ('rain' in pane.dataset) rain(pane)
           pane.dataset.stream = 'play'
         },
       })
@@ -71,6 +107,21 @@ export function setupMotion(root: HTMLElement) {
       watch.observe(root)
     }
 
+    // The closing band ends on the product's name: once it is in view,
+    // "mdfrom" is typed in front of the host, as the product is used.
+    const mark = root.querySelector<HTMLElement>('.host-mark')
+    if (mark && below(mark)) {
+      mark.dataset.type = 'armed'
+      ScrollTrigger.create({
+        trigger: mark,
+        start: 'top 80%',
+        once: true,
+        onEnter: () => {
+          mark.dataset.type = 'play'
+        },
+      })
+    }
+
     const words = gsap.utils.toArray<HTMLElement>('[data-scrub-text] .reveal-word')
     if (words.length) {
       gsap.to(words, {
@@ -89,6 +140,7 @@ export function setupMotion(root: HTMLElement) {
     return () => {
       watch?.disconnect()
       for (const pane of streams) delete pane.dataset.stream
+      if (mark) delete mark.dataset.type
     }
   })
 }
