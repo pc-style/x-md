@@ -84,17 +84,17 @@ export function setupMotion(root: HTMLElement) {
       })
     }
 
-    // The closing horizon rises a little as the band arrives, answering the
-    // hero's. Decorative and transform-only, so it may start mid-way.
-    const closing = root.querySelector<HTMLElement>('.orbit-band-closing')
-    const sky = closing?.querySelector<HTMLElement>('.orbit-sky')
+    // The closing dawn rises a little as the band arrives, answering the
+    // hero's horizon. Decorative and transform-only, so it may start mid-way.
+    const closing = root.querySelector<HTMLElement>('.sky-band-closing')
+    const sky = closing?.querySelector<HTMLElement>('.dawn-sky')
     let watch: ResizeObserver | undefined
     if (closing && sky) {
       gsap.fromTo(sky, { yPercent: 14 }, {
         yPercent: 0,
         ease: 'none',
-        // Keyed to the band's bottom: the arc sits low in it, so this is the
-        // stretch of scrolling in which the arc itself comes into view.
+        // Keyed to the band's bottom: the light sits low in it, so this is the
+        // stretch of scrolling in which the light itself comes into view.
         scrollTrigger: { trigger: closing, start: 'bottom 125%', end: 'bottom bottom', scrub: 0.4 },
       })
       // The sections above it render lazily (`content-visibility: auto`) and

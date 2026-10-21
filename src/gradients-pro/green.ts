@@ -11,6 +11,13 @@ export const GREEN: Record<ColorScheme, readonly string[]> = {
 }
 
 /**
+ * The converter's beams (`border-beam.ts`): the same green, more saturated in
+ * the middle, so the light reads as colour along the border rather than
+ * white. It only ever runs on the hero's dark band.
+ */
+export const BEAM: readonly string[] = ['#0e3d28', '#1f9e62', '#5ff0a8', '#f2fff8']
+
+/**
  * The cards' light (`spotlight-grid.ts`) falls under their text, so it stays
  * close to each surface. Spotlight Grid's light peaks at 0.66, so it reaches
  * the third stop at most; there, at the canvas's 0.8 opacity, every text

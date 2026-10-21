@@ -41,16 +41,17 @@ export function spotlightGrid(
   })
 
   // x-md: each card takes the ramp for its own surface rather than the page's:
-  // the `.bento-dark` code panes stay dark in the light theme. (Read from the
-  // class, not the computed background, which is mid-transition when the
-  // theme flips.) The ring takes the page's accent in CSS (.spot-ring).
+  // the `.bento-dark` code panes and `.night` cards stay dark in the light
+  // theme. (Read from the class, not the computed background, which is
+  // mid-transition when the theme flips.) The ring takes the page's accent in
+  // CSS (.spot-ring).
   const theme = () => {
     const page = readScheme()
     const ramps = {
       dark: resolveRamp(palette.dark, 'dark', root),
       light: resolveRamp(palette.light, 'light', root),
     }
-    for (const entry of cards) entry.ramp = ramps[entry.card.matches('.bento-dark') ? 'dark' : page]
+    for (const entry of cards) entry.ramp = ramps[entry.card.matches('.bento-dark, .night') ? 'dark' : page]
     schedule()
   }
 

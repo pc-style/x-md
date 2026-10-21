@@ -1,8 +1,11 @@
 import type { GradientKindDefinition } from "./kind";
+import { aurora } from "./shaders/aurora";
 import { chrome } from "./shaders/chrome";
+import { fluted } from "./shaders/fluted";
 import { limb } from "./shaders/limb";
 import { mesh } from "./shaders/mesh";
-import { spectrum } from "./shaders/spectrum";
+import { radialGlow } from "./shaders/radial-glow";
+import { rise } from "./shaders/rise";
 import type { GradientKind, GradientParams } from "./types";
 
 export type { GradientKindDefinition } from "./kind";
@@ -17,8 +20,11 @@ export function registerKind(definition: GradientKindDefinition): void {
 for (const definition of [
   mesh,
   limb,
-  spectrum,
   chrome,
+  aurora,
+  radialGlow,
+  rise,
+  fluted,
 ]) {
   registerKind(definition);
 }

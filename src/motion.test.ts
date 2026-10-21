@@ -53,7 +53,7 @@ test.each([false, true])('the closing horizon only moves inside the motion gate,
   motion.toArray.mockReturnValue([])
   const sky = {}
   const closing = { querySelector: () => sky }
-  const root = { querySelector: (selector: string) => selector === '.orbit-band-closing' ? closing : null }
+  const root = { querySelector: (selector: string) => selector === '.sky-band-closing' ? closing : null }
   setupMotion(root as unknown as HTMLElement)
   expect(motion.fromTo).toHaveBeenCalledTimes(reduced ? 0 : 1)
   expect(motion.from).not.toHaveBeenCalled()
