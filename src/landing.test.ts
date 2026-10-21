@@ -1,4 +1,5 @@
 import { expect, test } from 'vitest'
+import { GRADIENTS } from './gradients'
 import { landingHtml } from './landing'
 
 const html = landingHtml()
@@ -45,6 +46,14 @@ test('the closing name ships whole, one box per typed letter', () => {
   const mark = html.match(/<p class="host-mark" aria-hidden="true">[\s\S]*?<\/p>/)![0]
   expect(text(mark)).toBe('mdfromx.com')
   expect([...mark.matchAll(/<span style="--i:(\d)">/g)].map(match => Number(match[1]))).toEqual([0, 1, 2, 3, 4, 5])
+})
+
+test('every live gradient names a preset, and every band paints its stand-in without JavaScript', () => {
+  const names = [...html.matchAll(/<canvas class="gradient-canvas[^"]*" data-gradient="([a-z]+)">/g)].map(match => match[1])
+  expect(names).toEqual(['orbit', 'thread', 'orbit', 'name'])
+  for (const name of names) expect(GRADIENTS).toHaveProperty(name)
+  expect(html.match(/<div class="orbit-sky" style="background: [^"]+"/g)).toHaveLength(2)
+  expect(html).toMatch(/<div class="thread-still" style="background: [^"]+">/)
 })
 
 test('every "what comes through" panel is in the markup, stacked, with the tablist hidden until tabs.ts runs', () => {

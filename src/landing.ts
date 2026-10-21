@@ -6,7 +6,7 @@
  * the full page from the raw HTML; `main.ts` only wires up behaviour on top.
  */
 import { footerHtml, headerHtml, type ChromeData } from './chrome'
-import { ORBIT_FALLBACK } from './orbit'
+import { ORBIT_FALLBACK, THREAD_FALLBACK } from './gradients'
 
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
@@ -282,11 +282,11 @@ const EXCERPT_PANELS = EXCERPTS.map(
  * An always-dark band with the Orbit gradient in its lower part, where the arc's
  * crest clears the copy. The sky box paints the CSS fallback itself, so the arc
  * is there with JavaScript off, and the canvas fades in over it once
- * `orbit-canvas.ts` has rendered a frame.
+ * `gradient-canvas.ts` has rendered a frame.
  */
 const orbitBand = (classes: string, content: string) => `<section class="night orbit-band ${classes}">
       <div class="orbit-sky" style="background: ${ORBIT_FALLBACK}" aria-hidden="true">
-        <canvas class="orbit-canvas" data-orbit></canvas>
+        <canvas class="gradient-canvas" data-gradient="orbit"></canvas>
       </div>
       ${content}
     </section>`
@@ -294,9 +294,10 @@ const orbitBand = (classes: string, content: string) => `<section class="night o
 /**
  * The closing band ends on the product's name at full size, on the horizon.
  * One box per letter of "mdfrom", so `motion.ts` can type them in front of the
- * host, the way the product is used. The markup is the finished name.
+ * host, the way the product is used. The markup is the finished name; the
+ * canvas fills the letters with live chrome where the browser can mask to text.
  */
-const hostMark = `<p class="host-mark" aria-hidden="true"><span class="host-mark-prefix">${[...'mdfrom']
+const hostMark = `<p class="host-mark" aria-hidden="true"><span class="host-mark-prefix"><canvas class="gradient-canvas host-mark-fill" data-gradient="name"></canvas>${[...'mdfrom']
   .map((letter, i) => `<span style="--i:${i}">${letter}</span>`)
   .join('')}</span><span class="host-mark-caret"></span><span class="host-mark-host">x.com</span></p>`
 
@@ -434,7 +435,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
           </p>
 
           <div id="convert" class="mt-9 max-w-[600px] scroll-mt-28">
-            <form data-convert-form class="convert-shell">
+            <form data-convert-form data-beam class="convert-shell">
               <label for="x-url" class="sr-only">X status URL</label>
               <input
                 id="x-url"
@@ -473,7 +474,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
         <h2 class="max-w-[22ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           You see the same post either way. Your agent doesn't.
         </h2>
-        <div class="bento mt-12">
+        <div class="bento mt-12" data-spotlight>
           <article class="bento-card bento-a bento-dark spot">
             <div class="flex items-center justify-between gap-3">
               <p class="min-w-0 truncate font-mono text-[12px]" style="color: var(--color-code-dim)">$ curl x.com${EXAMPLE_PATH}</p>
@@ -506,9 +507,13 @@ export function landingHtml(chrome: ChromeData = {}): string {
       </div>
     </section>
 
-    <!-- desire: scrubbing statement -->
-    <section>
-      <div class="section-pad mx-auto max-w-[1000px]">
+    <!-- desire: scrubbing statement, on a thread of the horizon's light -->
+    <section class="night thread-band">
+      <div class="thread-sky" aria-hidden="true">
+        <div class="thread-still" style="background: ${THREAD_FALLBACK}"></div>
+        <canvas class="gradient-canvas" data-gradient="thread"></canvas>
+      </div>
+      <div class="section-pad relative mx-auto max-w-[1000px]">
         <p data-scrub-text class="text-[clamp(1.6rem,3.4vw,2.7rem)] leading-[1.35] font-bold tracking-tight text-ink">
           Your notes, your scripts, and your agents all speak Markdown. X speaks JavaScript. x.md is the translation layer: keep the URL, change the host, read the post.
         </p>
@@ -528,7 +533,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
           <div role="tablist" aria-label="What comes through" class="tablist" hidden>
             ${EXCERPT_TABS}
           </div>
-          <div class="tab-panels">
+          <div class="tab-panels" data-spotlight>
           ${EXCERPT_PANELS}
           </div>
         </div>
@@ -541,7 +546,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
         <h2 class="max-w-[20ch] text-[clamp(1.9rem,3.6vw,3rem)] leading-[1.1] font-black tracking-tight text-ink">
           Three ways to point an agent at it.
         </h2>
-        <div class="mt-12 grid gap-4 lg:grid-cols-[1fr_1.4fr_1fr]">
+        <div class="mt-12 grid gap-4 lg:grid-cols-[1fr_1.4fr_1fr]" data-spotlight>
           <article class="way-card spot">
             <p class="way-label">for any agent</p>
             <h3 class="mt-3 text-[20px] font-bold text-ink">Say it in the prompt</h3>
@@ -591,7 +596,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
           Every route, query parameter, response format, error code, and rate limit is documented.
           Read it yourself, or hand one of the machine-readable descriptions to your tooling.
         </p>
-        <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-spotlight>
           ${RESOURCE_CARDS}
         </div>
       </div>
