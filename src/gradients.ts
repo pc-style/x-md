@@ -68,7 +68,11 @@ export const ORBIT = mergeParams(kindDefaults('limb'), {
   seed: 4,
 })
 
-/** Jade Eclipse with a larger disc (scale) on the page's surface. */
+/**
+ * Jade Eclipse with a slightly smaller disc (scale: the shader divides the
+ * radius by it), so the disc clears the statement above it, on the page's
+ * surface.
+ */
 export const ECLIPSE = mergeParams(kindDefaults('radial-glow'), {
   kind: 'radial-glow',
   colors: ['#dcfff4', '#55e6bd', '#0e9a7e', '#04332b'],
@@ -82,7 +86,10 @@ export const ECLIPSE = mergeParams(kindDefaults('radial-glow'), {
   seed: 12,
 })
 
-/** Green Dawn with a larger dome (scale) on the page's surface, and no pointer pull. */
+/**
+ * Green Dawn with a larger dome (scale down from 1.35: the shader divides the
+ * radius by it), on the page's surface, and no pointer pull.
+ */
 export const DAWN = mergeParams(kindDefaults('rise'), {
   kind: 'rise',
   colors: ['#e6ffe9', '#86efa0', '#17a862', '#05361f'],
