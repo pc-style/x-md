@@ -11,11 +11,12 @@ export const GREEN: Record<ColorScheme, readonly string[]> = {
 }
 
 /**
- * The cards' light (`spotlight-grid.ts`) falls under their text, so its
- * hottest stop stays a mid green in both schemes and the copy keeps its
- * contrast where the light is brightest.
+ * The cards' light (`spotlight-grid.ts`) falls under their text, so it stays
+ * close to each surface: under its hottest cell, body copy keeps at least
+ * 7:1 and the dimmest code text at least 3.6:1. Each card takes the ramp for
+ * its own surface, so the code panes use the dark one in either theme.
  */
 export const CARD_LIGHT: Record<ColorScheme, readonly string[]> = {
-  dark: ['#0f2b1e', '#1d5639', '#2c7d52', '#4fa877'],
-  light: ['#e6f2eb', '#c9e4d4', '#a3d1b7', '#78b993'],
+  dark: ['#091711', '#0e2419', '#133322', '#19432c'],
+  light: ['#f3f9f5', '#e9f4ee', '#dcede3', '#cbe5d6'],
 }

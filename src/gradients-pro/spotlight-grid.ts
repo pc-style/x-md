@@ -2,7 +2,7 @@
 // x-md: a vanilla port of the SpotlightGrid component. The light, its easing
 // and the drawing are as served; the cards are the existing `.spot` elements,
 // and their canvas and ring are added here instead of rendered by React.
-import { DitherSurface, falloff, readScheme, resolveRamp, subscribeScheme } from './dither-kit'
+import { DitherSurface, falloff, readScheme, resolveColor, resolveRamp, subscribeScheme } from './dither-kit'
 import type { ColorScheme, DitherPalette, Rgba } from './dither-kit'
 
 export interface SpotlightGridOptions {
@@ -37,14 +37,23 @@ export function spotlightGrid(
     ring.setAttribute('aria-hidden', 'true')
     card.prepend(layer)
     card.append(ring)
-    return { card, ring, surface: new DitherSurface(canvas, cell) }
+    return { card, ring, surface: new DitherSurface(canvas, cell), ramp: [] as Rgba[] }
   })
 
-  let ramp: Rgba[] = []
+  // x-md: each card takes the ramp for its own surface rather than the page's,
+  // since the code panes stay dark in the light theme. The ring takes the
+  // page's accent in CSS (.spot-ring), not the ramp's.
+  const surfaceScheme = (card: HTMLElement): ColorScheme => {
+    const [r, g, b, a] = resolveColor(getComputedStyle(card).backgroundColor, card)
+    if (!a) return readScheme()
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128 ? 'dark' : 'light'
+  }
   const theme = () => {
-    const scheme = readScheme()
-    ramp = resolveRamp(palette[scheme], scheme, root)
-    // x-md: the ring takes the page's accent in CSS (.spot-ring), not the ramp's.
+    const ramps = {
+      dark: resolveRamp(palette.dark, 'dark', root),
+      light: resolveRamp(palette.light, 'light', root),
+    }
+    for (const entry of cards) entry.ramp = ramps[surfaceScheme(entry.card)]
     schedule()
   }
 
@@ -66,7 +75,7 @@ export function spotlightGrid(
     }
 
     const rootRect = root.getBoundingClientRect()
-    for (const { card, ring, surface } of cards) {
+    for (const { card, ring, surface, ramp } of cards) {
       const rect = card.getBoundingClientRect()
       const lx = light.x - rect.left
       const ly = light.y - rect.top
