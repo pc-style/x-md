@@ -138,10 +138,14 @@ export const NAME_FILL = mergeParams(kindDefaults('chrome'), {
   interaction: { pointer: 0, scroll: 0.2 },
 })
 
-/** The headline's word in a deeper, greener metal: it sits on the darkest part of the sky. */
+/**
+ * The headline's word in a greener metal. It is the headline's text, so even
+ * its darkest folds (the background colour, darkened up to about a fifth by
+ * the kind's vignette in the box's corners) stay above 3:1 on the sky.
+ */
 export const MARK_FILL = mergeParams(NAME_FILL, {
   colors: ['#5fe0a0', '#ffffff', '#b4ffd8'],
-  background: '#11603b',
+  background: '#2f9e68',
   scale: 0.55,
   seed: 23,
 })

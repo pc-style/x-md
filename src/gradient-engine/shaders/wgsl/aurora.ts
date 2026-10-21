@@ -29,7 +29,9 @@ fn auroraSheet(p: vec2f, layer: f32, hem0: f32, detail: bool) -> vec2f {
 fn kindColor(p: vec2f, uv: vec2f) -> vec3f {
   var h = frameHalf();
   var lab = u.bg;
-  lab.x += 0.035 * smoothstep(0.3, -h.y, p.y);
+  // x-md: smoothstep() is undefined with its edges reversed, so the ramp is
+  // flipped instead (the same values).
+  lab.x += 0.035 * (1.0 - smoothstep(-h.y, 0.3, p.y));
   var back = auroraSheet(p * vec2f(0.75, 1.0) + vec2f(0.9, 0.0), 11.0, -0.02, false);
   var front = auroraSheet(p, 13.0, -0.3, true);
   lab = labMix(lab, ramp(0.3 + 0.7 * back.y), clamp(back.x * 0.35, 0.0, 1.0));

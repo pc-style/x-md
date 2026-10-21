@@ -49,7 +49,9 @@ vec2 auroraSheet(vec2 p, float layer, float hem0, bool detail) {
 vec3 kindColor(vec2 p, vec2 uv) {
   vec2 h = frameHalf();
   vec3 lab = u_bg;
-  lab.x += 0.035 * smoothstep(0.3, -h.y, p.y);
+  // x-md: smoothstep() is undefined with its edges reversed, so the ramp is
+  // flipped instead (the same values).
+  lab.x += 0.035 * (1.0 - smoothstep(-h.y, 0.3, p.y));
   vec2 back = auroraSheet(p * vec2(0.75, 1.0) + vec2(0.9, 0.0), 11.0, -0.02, false);
   vec2 front = auroraSheet(p, 13.0, -0.3, true);
   lab = labMix(lab, ramp(0.3 + 0.7 * back.y), clamp(back.x * 0.35, 0.0, 1.0));
