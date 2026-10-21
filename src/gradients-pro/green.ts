@@ -12,11 +12,12 @@ export const GREEN: Record<ColorScheme, readonly string[]> = {
 
 /**
  * The cards' light (`spotlight-grid.ts`) falls under their text, so it stays
- * close to each surface: under its hottest cell, body copy keeps at least
- * 7:1 and the dimmest code text at least 3.6:1. Each card takes the ramp for
- * its own surface, so the code panes use the dark one in either theme.
+ * close to each surface. Spotlight Grid's light peaks at 0.66, so it reaches
+ * the third stop at most; there, at the canvas's 0.8 opacity, every text
+ * colour on the cards that meets 4.5:1 unlit still does. Each card takes the
+ * ramp for its own surface, so the code panes use the dark one in either theme.
  */
 export const CARD_LIGHT: Record<ColorScheme, readonly string[]> = {
-  dark: ['#091711', '#0e2419', '#133322', '#19432c'],
-  light: ['#f3f9f5', '#e9f4ee', '#dcede3', '#cbe5d6'],
+  dark: ['#07130e', '#0b1d14', '#0f281b', '#153524'],
+  light: ['#f5faf7', '#edf6f0', '#e3f1e8', '#d6ebdf'],
 }
