@@ -111,9 +111,17 @@ async function enhanceLanding() {
   if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
     void import('./pointer').then(({ setupPointer }) => setupPointer(app)).catch(() => {})
   }
-  // The Orbit bands already paint a CSS arc, so the live gradient is optional
-  // and waits with the other deferred bundles instead of competing with them.
-  whenUseful(() => import('./orbit-canvas').then(({ setupOrbit }) => setupOrbit(app)))
+  // The light running round the converter is gradients.sh's Border Beam; the
+  // form reads the same without it, so it waits for the deferred bundles too.
+  whenUseful(() =>
+    Promise.all([import('./gradients-pro/border-beam'), import('./gradients-pro/green')]).then(([{ borderBeam }, { GREEN }]) => {
+      const form = app.querySelector<HTMLElement>('[data-beam]')
+      if (form) borderBeam(form, { palette: GREEN.dark, duration: 8, length: 0.3 })
+    }),
+  )
+  // Every live gradient already has a CSS stand-in painted, so the engine is
+  // optional and waits with the other deferred bundles instead of competing with them.
+  whenUseful(() => import('./gradient-canvas').then(({ setupGradients }) => setupGradients(app)))
   if (matchMedia('(prefers-reduced-motion: no-preference)').matches) {
     void import('./motion').then(({ setupMotion }) => setupMotion(app)).catch(() => {
       // Optional motion must not stop the already-readable page or its controls.

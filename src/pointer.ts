@@ -1,21 +1,17 @@
+import { CARD_LIGHT } from './gradients-pro/green'
+import { spotlightGrid } from './gradients-pro/spotlight-grid'
+
 /**
  * Touches for a mouse or trackpad, in a chunk that touch screens never load
- * (`main.ts`): a light that follows the pointer across the cards, and, when
- * motion is allowed, the hero card's scan line following the pointer, so the
- * post as x.com shows it and its Markdown can be compared line by line.
+ * (`main.ts`): one dithered light under each grid of cards that follows the
+ * pointer across them (gradients.sh's Spotlight Grid), and, when motion is
+ * allowed, the hero card's scan line following the pointer, so the post as
+ * x.com shows it and its Markdown can be compared line by line.
  */
 export function setupPointer(root: HTMLElement) {
-  root.addEventListener(
-    'pointermove',
-    (event) => {
-      const card = (event.target as Element).closest<HTMLElement>('.spot')
-      if (!card) return
-      const box = card.getBoundingClientRect()
-      card.style.setProperty('--mx', `${event.clientX - box.left}px`)
-      card.style.setProperty('--my', `${event.clientY - box.top}px`)
-    },
-    { passive: true },
-  )
+  for (const grid of root.querySelectorAll<HTMLElement>('[data-spotlight]')) {
+    spotlightGrid(grid, { palette: CARD_LIGHT })
+  }
 
   const card = root.querySelector<HTMLElement>('.hero-demo')
   const body = card?.querySelector<HTMLElement>('.card-body')

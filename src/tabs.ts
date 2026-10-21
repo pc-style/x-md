@@ -1,3 +1,6 @@
+import { GREEN } from './gradients-pro/green'
+import { glowTabs } from './gradients-pro/glow-tabs'
+
 /**
  * Turns the stacked "what comes through" panels into tabs (the WAI-ARIA tabs
  * pattern with automatic activation: arrows, Home and End move and select).
@@ -7,7 +10,8 @@
  * panels become `role="tabpanel"`; `data-tabs-ready` stacks them in one grid
  * cell (style.css) so switching is a crossfade and never changes the height.
  * Inactive panels are `visibility: hidden`, which also takes them out of the
- * tab order and the accessibility tree.
+ * tab order and the accessibility tree. The selected tab is lit from its
+ * underline by gradients.sh's Glow Tabs light, which slides between tabs.
  */
 export function setupTabs(root: HTMLElement) {
   root.querySelectorAll<HTMLElement>('[data-tabs]').forEach((tabs) => {
@@ -16,6 +20,7 @@ export function setupTabs(root: HTMLElement) {
     const panels = buttons.map((button) => document.getElementById(button.getAttribute('aria-controls') ?? ''))
     if (!list || !buttons.length || panels.some((panel) => !panel)) return
 
+    const light = glowTabs(list, { palette: GREEN })
     const select = (index: number) => {
       buttons.forEach((button, i) => {
         const selected = i === index
@@ -23,6 +28,7 @@ export function setupTabs(root: HTMLElement) {
         button.tabIndex = selected ? 0 : -1
         panels[i]!.toggleAttribute('data-inactive', !selected)
       })
+      light(buttons[index])
     }
 
     panels.forEach((panel, i) => {

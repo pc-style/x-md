@@ -412,6 +412,16 @@
     @apply flex flex-col gap-2 rounded-2xl border border-line bg-raised p-2 sm:flex-row sm:items-center sm:rounded-full sm:p-1.5;
   }
 
+  /* gradients.sh's Border Beam (`main.ts`) runs a dithered light round the
+     shell's border; its canvas sits under the field and the button. */
+  [data-beam] {
+    @apply relative isolate;
+  }
+
+  .beam-canvas {
+    @apply pointer-events-none absolute -z-10;
+  }
+
   .convert-shell:focus-within {
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px var(--color-accent-soft);
@@ -480,15 +490,53 @@
     background: linear-gradient(to bottom, transparent, var(--color-surface));
   }
 
-  /* The sky paints ORBIT_FALLBACK; the live canvas fades in over it once the
-     engine has copied a real frame. */
-  .orbit-canvas {
-    @apply absolute inset-0 block h-full w-full opacity-0;
+  /* Every live gradient (`gradient-canvas.ts`) sits over what already paints
+     there, the sky's CSS fallback or the name's static fill, and fades in once
+     the engine has copied a real frame. */
+  .gradient-canvas {
+    @apply pointer-events-none absolute inset-0 block h-full w-full opacity-0;
     transition: opacity 1.4s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .orbit-canvas[data-painted] {
+  .gradient-canvas[data-painted] {
     opacity: 1;
+  }
+
+  /* The statement runs over one thread of the horizon's light (THREAD in
+     gradients.ts). The thread passes behind the words, so each line carries a
+     soft halo of the band's dark to keep it legible where the light crosses. */
+  .thread-band {
+    @apply relative isolate overflow-hidden;
+  }
+
+  .thread-sky {
+    @apply pointer-events-none absolute inset-0 -z-10;
+    mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  }
+
+  /* On a phone the statement is a tall column the thread would cross line
+     after line, so the light runs under it instead, like the horizon bands. */
+  @media (max-width: 639px) {
+    .thread-band .section-pad {
+      padding-bottom: 13rem;
+    }
+
+    .thread-sky {
+      top: auto;
+      height: 19rem;
+    }
+  }
+
+  /* The still stand-in is a broad arc rather than one filament, so it stays
+     dim enough to read the statement over. */
+  .thread-still {
+    @apply absolute inset-0 opacity-40;
+  }
+
+  .thread-band [data-scrub-text] {
+    text-shadow:
+      0 0 0.6em var(--color-surface),
+      0 0 1.6em var(--color-surface);
   }
 
   /* The closing band ends on the product's name at full size, standing on the
@@ -506,7 +554,27 @@
   }
 
   .host-mark-prefix {
-    @apply flex;
+    @apply relative isolate flex;
+  }
+
+  /* Live chrome inside "mdfrom" (NAME_FILL in gradients.ts): the prefix is
+     masked to its own letters, so the canvas over them shows only through the
+     glyphs, typed or not. The mask stops at the box, so the box overhangs the
+     letters by as much as their tallest stroke. Without text masks the canvas
+     is never mounted and the letters keep their static fill. */
+  .host-mark-fill {
+    @apply z-10;
+  }
+
+  @supports (mask-clip: text) or (-webkit-mask-clip: text) {
+    .host-mark-prefix {
+      padding-block: 0.12em;
+      margin-block: -0.12em;
+      -webkit-mask-image: linear-gradient(#000 0 0);
+      mask-image: linear-gradient(#000 0 0);
+      -webkit-mask-clip: text;
+      mask-clip: text;
+    }
   }
 
   .host-mark-prefix > span,
@@ -998,46 +1066,34 @@
 
   /* ---------- Pointer light on cards ---------- */
 
-  /* A soft light that follows the pointer (`pointer.ts` sets --mx/--my): a
-     glow inside the card and a brighter rim. Hover-capable pointers only. */
+  /* gradients.sh's Spotlight Grid (`pointer.ts`, mouse and trackpad only):
+     one dithered light under each `[data-spotlight]` grid, drawn into every
+     card's own canvas, and a ring that catches the card's border near it. */
   .spot {
     @apply relative isolate;
   }
 
-  .spot::before,
-  .spot::after {
-    @apply pointer-events-none absolute inset-0 opacity-0;
-    content: "";
+  .spot-light {
+    @apply pointer-events-none absolute inset-0 -z-10 overflow-hidden;
     border-radius: inherit;
-    transition: opacity 400ms cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .spot::before {
+  .spot-light canvas {
+    @apply block opacity-80;
+  }
+
+  .spot-ring {
+    @apply pointer-events-none absolute inset-0 opacity-0;
+    border-radius: inherit;
     padding: 1px;
     background: radial-gradient(
-      16rem circle at var(--mx, 50%) var(--my, 50%),
-      color-mix(in oklab, var(--color-accent) 75%, transparent),
+      220px circle at var(--spot-x, -999px) var(--spot-y, -999px),
+      color-mix(in oklab, var(--color-accent) 90%, transparent),
       transparent 70%
     );
     mask:
       linear-gradient(#000 0 0) content-box exclude,
       linear-gradient(#000 0 0);
-  }
-
-  .spot::after {
-    z-index: -1;
-    background: radial-gradient(
-      30rem circle at var(--mx, 50%) var(--my, 50%),
-      color-mix(in oklab, var(--color-accent) 8%, transparent),
-      transparent 65%
-    );
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .spot:hover::before,
-    .spot:hover::after {
-      opacity: 1;
-    }
   }
 
   /* ---------- Copy command ---------- */
@@ -1066,12 +1122,16 @@
 
   /* ---------- What comes through (tabs) ---------- */
 
+  /* Underline tabs. The selected one is lit from its line by gradients.sh's
+     Glow Tabs light (`tabs.ts`), which slides between them; the row scrolls
+     sideways on narrow screens rather than wrapping. */
   .tablist {
-    @apply flex flex-wrap gap-2;
+    @apply relative flex items-end gap-1 overflow-x-auto overflow-y-hidden border-b border-line;
+    scrollbar-width: none;
   }
 
   .tab {
-    @apply inline-flex h-10 cursor-pointer items-center rounded-full border border-line bg-transparent px-4 text-[14px] font-medium text-ink-3;
+    @apply relative z-10 inline-flex h-11 shrink-0 cursor-pointer items-center rounded-md bg-transparent px-3.5 text-[14px] font-medium whitespace-nowrap text-ink-3;
   }
 
   .tab:hover {
@@ -1079,8 +1139,20 @@
   }
 
   .tab[aria-selected="true"] {
-    @apply border-transparent bg-raised-2 font-bold text-ink;
-    box-shadow: inset 0 0 0 1px var(--color-hair-strong);
+    @apply text-ink;
+  }
+
+  .tab:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  .tab-glow {
+    @apply pointer-events-none absolute bottom-0 left-0 overflow-hidden;
+  }
+
+  .tab-glow canvas {
+    @apply absolute bottom-0 left-0;
   }
 
   .tab-panels {
