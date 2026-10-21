@@ -102,14 +102,13 @@ export function spotlightGrid(
     if (light.level !== light.target) frame = requestAnimationFrame(draw)
   }
 
+  // x-md: with the light off and settled there is nothing to draw, so a
+  // scroll, a resize or a theme change skips the per-card layout reads.
   function schedule() {
+    if (light.level === 0 && light.target === 0) return
     if (!frame) frame = requestAnimationFrame(draw)
   }
 
-  // x-md: scrolling only moves a light that is on; the page is long.
-  const onScroll = () => {
-    if (light.level > 0) schedule()
-  }
   const onMove = (event: PointerEvent) => {
     if (event.pointerType === 'touch') return
     light.x = event.clientX
@@ -137,7 +136,7 @@ export function spotlightGrid(
   root.addEventListener('pointerleave', onLeave)
   root.addEventListener('focusin', onFocusIn)
   root.addEventListener('focusout', onLeave)
-  window.addEventListener('scroll', onScroll, { passive: true })
+  window.addEventListener('scroll', schedule, { passive: true })
   new ResizeObserver(schedule).observe(root)
   subscribeScheme(theme)
   theme()

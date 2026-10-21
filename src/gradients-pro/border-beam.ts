@@ -1,7 +1,10 @@
 // gradients.sh Pro · licensed to aSfr5hJDvmXsLCCPcmVsZdRBfRJCGrW0 (p***@duck.com) · 2026-10-21 · https://gradients.sh/license
-// x-md: a vanilla port of the BorderBeam component, always running. The
-// border geometry and the beam are as served; the canvas is added here, and
-// the beam fades in once instead of starting at full strength.
+// x-md: a vanilla port of the BorderBeam component, always running, with one
+// beam. The border geometry and the light are as served; the canvas is added
+// here, the beam fades in once instead of starting at full strength, and each
+// frame paints only the cells under the beam, at most 30 times a second (the
+// served loop works out every cell of the band on every frame, which the
+// trace bench measured at about a tenth of the main thread at 4x CPU).
 import { DitherSurface, resolveRamp } from './dither-kit'
 import type { DitherPalette } from './dither-kit'
 
@@ -12,8 +15,6 @@ export interface BorderBeamOptions {
   duration?: number
   /** Length of the beam's tail as a fraction of the perimeter, 0.05-0.45. */
   length?: number
-  /** 1 beam, or 2 on opposite sides. */
-  beams?: 1 | 2
   /** Size of one dither cell in CSS pixels. */
   cell?: number
 }
@@ -67,7 +68,7 @@ function locate(x: number, y: number, w: number, h: number, r: number): BandCell
  */
 export function borderBeam(
   root: HTMLElement,
-  { palette, duration = 7, length = 0.34, beams = 1, cell = 2 }: BorderBeamOptions,
+  { palette, duration = 7, length = 0.34, cell = 2 }: BorderBeamOptions,
 ): void {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)')
   const canvas = document.createElement('canvas')
@@ -78,8 +79,14 @@ export function borderBeam(
   const surface = new DitherSurface(canvas, cell)
   const tail = Math.min(Math.max(length, 0.05), 0.45)
   const glow = 18
-  let band: BandCell[] = []
-  let cells = new Uint32Array(0)
+  // The band's cells in perimeter order: where each sits along the border,
+  // the light it takes when the beam is on it, and its index in the grid.
+  let along = new Float32Array(0)
+  let edge = new Float32Array(0)
+  let index = new Uint32Array(0)
+  // This frame's lit cells and their values.
+  let lit = new Uint32Array(0)
+  let value = new Float32Array(0)
   let frame = 0
   let visible = true
   let level = 0
@@ -97,47 +104,74 @@ export function borderBeam(
     canvas.style.left = `${-border}px`
     canvas.style.top = `${-border}px`
     surface.fit(w, h)
-    const next: BandCell[] = []
-    const indices: number[] = []
+    const band: (BandCell & { index: number })[] = []
     for (let row = 0; row < surface.rows; row++) {
       for (let col = 0; col < surface.cols; col++) {
         const hit = locate((col + 0.5) * cell, (row + 0.5) * cell, w, h, r)
         if (!hit || hit.depth > glow) continue
-        next.push(hit)
-        indices.push(row * surface.cols + col)
+        band.push({ ...hit, index: row * surface.cols + col })
       }
     }
-    band = next
-    cells = Uint32Array.from(indices)
+    band.sort((a, b) => a.s - b.s)
+    along = Float32Array.from(band, (c) => c.s)
+    // Full light on the border line, a dithered spill fading inward.
+    edge = Float32Array.from(band, (c) =>
+      Math.max(c.depth < cell * 1.5 ? 1 : 0, Math.max(0, 1 - c.depth / glow) ** 2.2 * 0.62),
+    )
+    index = Uint32Array.from(band, (c) => c.index)
+    lit = new Uint32Array(band.length)
+    value = new Float32Array(band.length)
+  }
+
+  /** The first cell at or past `s` along the border. */
+  const seek = (s: number) => {
+    let lo = 0
+    let hi = along.length
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1
+      if ((along[mid] ?? 0) < s) lo = mid + 1
+      else hi = mid
+    }
+    return lo
   }
 
   const draw = (now: number) => {
     frame = 0
+    const moving = visible && !reduced.matches
+    if (moving) frame = requestAnimationFrame(draw)
+    if (moving && last && now - last < 30) return
     const dt = last ? Math.min(64, now - last) / 1000 : 0
     last = now
     if (!reduced.matches) phase = (phase + dt / duration) % 1
     level = reduced.matches ? 1 : level + (1 - level) * Math.min(1, dt * 2)
     if (Math.abs(level - 1) < 0.01) level = 1
-    surface.paintCells(ramp, cells, (k) => {
-      const cellInfo = band[k]
-      if (!cellInfo) return 0
-      let v = 0
-      for (let b = 0; b < beams; b++) {
-        const head = (phase + b / beams) % 1
-        let behind = head - cellInfo.s
+    let count = 0
+    const take = (from: number, to: number) => {
+      for (let i = seek(from), end = seek(to); i < end; i++) {
+        let behind = phase - (along[i] ?? 0)
         if (behind < -0.5) behind += 1
         if (behind > 0.5) behind -= 1
-        if (behind > tail || behind < -LEAD) continue
         // A short soft lead in front of the head, a long tail behind it.
         const t = behind < 0 ? 1 + behind / LEAD : 1 - behind / tail
-        v = Math.max(v, t ** 2.2)
+        lit[count] = index[i] ?? 0
+        value[count] = level * Math.max(0, t) ** 2.2 * (edge[i] ?? 0)
+        count++
       }
-      // Full light on the border line, a dithered spill fading inward.
-      const onLine = cellInfo.depth < cell * 1.5 ? 1 : 0
-      const spill = Math.max(0, 1 - cellInfo.depth / glow) ** 2.2 * 0.62
-      return level * v * Math.max(onLine, spill)
-    })
-    if (visible && !reduced.matches) frame = requestAnimationFrame(draw)
+    }
+    // The beam covers the border from its tail to just past its head, which
+    // can wrap past the top-left corner.
+    const from = phase - tail
+    const to = phase + LEAD
+    if (from < 0) {
+      take(from + 1, Infinity)
+      take(0, to)
+    } else if (to > 1) {
+      take(from, Infinity)
+      take(0, to - 1)
+    } else {
+      take(from, to)
+    }
+    surface.paintCells(ramp, lit.subarray(0, count), (k) => value[k] ?? 0)
   }
 
   const start = () => {
