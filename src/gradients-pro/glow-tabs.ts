@@ -68,13 +68,18 @@ export function glowTabs(list: HTMLElement, { palette, cell = 2 }: GlowTabsOptio
     })
   }
 
-  new ResizeObserver(place).observe(list)
+  // x-md: the selected tab is watched too, since a webfont arriving after
+  // setup changes its width without changing the list's.
+  const resize = new ResizeObserver(place)
+  resize.observe(list)
   subscribeScheme(() => {
     placed = false
     place()
   })
   return (tab) => {
+    if (active && active !== tab) resize.unobserve(active)
     active = tab
+    resize.observe(tab)
     place()
   }
 }

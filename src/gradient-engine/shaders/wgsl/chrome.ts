@@ -17,13 +17,18 @@ fn chromeStudio(r: vec3f, sa: f32) -> vec3f {
   let t = r.y * 0.9 + 0.3 * r.x * cos(sa);
   let soft = 0.04 + 0.12 * u.blur;
   var floorC = labMix(u.bg, paletteColor(0), 0.08 + 0.5 * smoothstep(0.9, 1.0, r.z));
-  floorC = labMix(floorC, paletteColor(0), 0.7 * exp(-pow((t + 0.5) / (0.18 + soft), 2.0)));
+  // x-md: squared by hand, as in chrome.ts; pow() is indeterminate for a negative base.
+  let fz = (t + 0.5) / (0.18 + soft);
+  floorC = labMix(floorC, paletteColor(0), 0.7 * exp(-fz * fz));
   var env = labMix(floorC, paletteColor(0), smoothstep(0.1, 0.3, t));
-  let horizon = exp(-pow((t - 0.12) / (soft * 1.3), 2.0));
+  let hz = (t - 0.12) / (soft * 1.3);
+  let horizon = exp(-hz * hz);
   env = labMix(env, u.bg, 0.92 * horizon);
-  let cool = exp(-pow((t - 0.4) / (soft * 0.9), 2.0));
+  let cz = (t - 0.4) / (soft * 0.9);
+  let cool = exp(-cz * cz);
   env = labMix(env, paletteColor(select(1, 2, u.count > 2)), 0.55 * cool);
-  let key = exp(-pow((t - 0.58) / soft, 2.0));
+  let kz = (t - 0.58) / soft;
+  let key = exp(-kz * kz);
   env = labMix(env, paletteColor(1), key);
   env.x += 0.16 * key * key;
   env = labMix(env, u.bg, 0.6 * smoothstep(0.75, 1.0, t));

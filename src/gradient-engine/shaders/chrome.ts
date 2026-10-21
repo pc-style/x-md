@@ -49,14 +49,20 @@ vec3 chromeStudio(vec3 r, float sa) {
   float t = r.y * 0.9 + 0.3 * r.x * cos(sa);
   float soft = 0.04 + 0.12 * u_blur;
   vec3 floorC = labMix(u_bg, paletteColor(0), 0.08 + 0.5 * smoothstep(0.9, 1.0, r.z));
+  // x-md: these bands are squared by hand, since t - c goes negative and
+  // pow() with a negative base is undefined.
   // A broad, dimmer bounce off the floor, so downward slopes still read as metal.
-  floorC = labMix(floorC, paletteColor(0), 0.7 * exp(-pow((t + 0.5) / (0.18 + soft), 2.0)));
+  float fz = (t + 0.5) / (0.18 + soft);
+  floorC = labMix(floorC, paletteColor(0), 0.7 * exp(-fz * fz));
   vec3 env = labMix(floorC, paletteColor(0), smoothstep(0.1, 0.3, t));
-  float horizon = exp(-pow((t - 0.12) / (soft * 1.3), 2.0));
+  float hz = (t - 0.12) / (soft * 1.3);
+  float horizon = exp(-hz * hz);
   env = labMix(env, u_bg, 0.92 * horizon);
-  float cool = exp(-pow((t - 0.4) / (soft * 0.9), 2.0));
+  float cz = (t - 0.4) / (soft * 0.9);
+  float cool = exp(-cz * cz);
   env = labMix(env, paletteColor(u_count > 2 ? 2 : 1), 0.55 * cool);
-  float key = exp(-pow((t - 0.58) / soft, 2.0));
+  float kz = (t - 0.58) / soft;
+  float key = exp(-kz * kz);
   env = labMix(env, paletteColor(1), key);
   env.x += 0.16 * key * key;
   env = labMix(env, u_bg, 0.6 * smoothstep(0.75, 1.0, t));

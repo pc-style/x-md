@@ -1,10 +1,11 @@
 // gradients.sh Pro · licensed to aSfr5hJDvmXsLCCPcmVsZdRBfRJCGrW0 (p***@duck.com) · 2026-10-21 · https://gradients.sh/license
 // x-md: a vanilla port of the BorderBeam component, always running, with one
-// beam. The border geometry and the light are as served; the canvas is added
-// here, the beam fades in once instead of starting at full strength, and each
-// frame paints only the cells under the beam, at most 30 times a second (the
-// served loop works out every cell of the band on every frame, which the
-// trace bench measured at about a tenth of the main thread at 4x CPU).
+// beam. The light is as served, and so is the border geometry apart from its
+// two bottom corners (see locate). The canvas is added here, the beam fades in
+// once instead of starting at full strength, and each frame paints only the
+// cells under the beam, at most 30 times a second (the served loop works out
+// every cell of the band on every frame, which the trace bench measured at
+// about a tenth of the main thread at 4x CPU).
 import { DitherSurface, resolveRamp } from './dither-kit'
 import type { DitherPalette } from './dither-kit'
 
@@ -49,8 +50,11 @@ function locate(x: number, y: number, w: number, h: number, r: number): BandCell
   }
   if (x < r && y < r) return corner(r, r, 2 * top + 2 * side + 3 * arc, Math.PI)
   if (x > w - r && y < r) return corner(w - r, r, top, -Math.PI / 2)
-  if (x > w - r && y > h - r) return corner(w - r, h - r, top + side + arc * 2, 0)
-  if (x < r && y > h - r) return corner(r, h - r, 2 * top + side + arc * 3, Math.PI / 2)
+  // x-md: the bottom corners start where the edge before them ends; as served
+  // each started one arc later, so the beam went dark across the bottom-right
+  // curve and both bottom corners lit a stretch early.
+  if (x > w - r && y > h - r) return corner(w - r, h - r, top + side + arc, 0)
+  if (x < r && y > h - r) return corner(r, h - r, 2 * top + side + arc * 2, Math.PI / 2)
   const edges = [
     { depth: y, s: x - r },
     { depth: w - x, s: top + arc + (y - r) },
