@@ -17,8 +17,15 @@ function softwareRendered(): boolean {
   return SOFTWARE_RENDERER.test(renderer)
 }
 
-/** The name's fill shows only through its own letters, which needs a text mask. */
+/** The chrome fills show only through their own letters, which needs a text mask. */
 const textMask = () => CSS.supports('mask-clip', 'text') || CSS.supports('-webkit-mask-clip', 'text')
+const TEXT_FILLS = new Set(['mark', 'name'])
+
+/**
+ * Full-band skies with no hard edge in them: at one canvas pixel per CSS pixel
+ * they look the same on a high-density screen and cost less than half as much.
+ */
+const SOFT = new Set(['aurora', 'dawn'])
 
 /**
  * Mounts the live gradients on every `canvas[data-gradient]`, each with the
@@ -34,12 +41,13 @@ const textMask = () => CSS.supports('mask-clip', 'text') || CSS.supports('-webki
  */
 export async function setupGradients(root: HTMLElement) {
   const canvases = [...root.querySelectorAll<HTMLCanvasElement>('canvas[data-gradient]')].filter(
-    (canvas) => canvas.dataset.gradient !== 'name' || textMask(),
+    (canvas) => !TEXT_FILLS.has(canvas.dataset.gradient ?? '') || textMask(),
   )
   if (!canvases.length || softwareRendered()) return
   const [{ mountGradient }, { GRADIENTS }] = await Promise.all([import('./gradient-engine/mount'), import('./gradients')])
   canvases.forEach((canvas, index) => {
-    const params = GRADIENTS[canvas.dataset.gradient ?? '']
-    if (params) mountGradient(canvas, params, { primary: index === 0 })
+    const name = canvas.dataset.gradient ?? ''
+    const params = GRADIENTS[name]
+    if (params) mountGradient(canvas, params, { primary: index === 0, maxDpr: SOFT.has(name) ? 1 : undefined })
   })
 }

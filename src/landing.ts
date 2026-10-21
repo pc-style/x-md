@@ -6,7 +6,7 @@
  * the full page from the raw HTML; `main.ts` only wires up behaviour on top.
  */
 import { footerHtml, headerHtml, type ChromeData } from './chrome'
-import { ORBIT_FALLBACK, THREAD_FALLBACK } from './gradients'
+import { DAWN_FALLBACK, ECLIPSE_FALLBACK, GLASS_FALLBACK, ORBIT_FALLBACK } from './gradients'
 
 const EXAMPLE_HANDLE = 'trq212'
 const EXAMPLE_ID = '2052809885763747935'
@@ -279,20 +279,33 @@ const EXCERPT_PANELS = EXCERPTS.map(
 ).join('\n          ')
 
 /**
- * An always-dark band with the Orbit gradient in its lower part, where the arc's
- * crest clears the copy. The sky box paints the CSS fallback itself, so the arc
+ * A box of live sky: it paints the gradient's CSS fallback itself, so the light
  * is there with JavaScript off, and the canvas fades in over it once
- * `gradient-canvas.ts` has rendered a frame.
+ * `gradient-canvas.ts` has rendered a frame. A sky without a fallback is extra
+ * light that the band reads the same without.
  */
-const orbitBand = (classes: string, content: string) => `<section class="night orbit-band ${classes}">
-      <div class="orbit-sky" style="background: ${ORBIT_FALLBACK}" aria-hidden="true">
-        <canvas class="gradient-canvas" data-gradient="orbit"></canvas>
-      </div>
+const sky = (className: string, gradient: string, fallback?: string) => `<div class="${className}"${fallback ? ` style="background: ${fallback}"` : ''} aria-hidden="true">
+        <canvas class="gradient-canvas" data-gradient="${gradient}"></canvas>
+      </div>`
+
+/**
+ * An always-dark band with light low in it, under the copy. The hero's is a
+ * planet's lit edge with aurora hanging over it; the closing band's is dawn.
+ */
+const skyBand = (classes: string, skies: string, content: string) => `<section class="night sky-band ${classes}">
+      ${skies}
       ${content}
     </section>`
 
 /**
- * The closing band ends on the product's name at full size, on the horizon.
+ * The headline's "markdown" in live chrome. The word keeps its static fill
+ * (and stays the headline's text) until the canvas has painted, and the canvas
+ * shows only through its letters where the browser can mask to text.
+ */
+const headlineMark = `<span class="chrome-word"><canvas class="gradient-canvas chrome-word-fill" data-gradient="mark" aria-hidden="true"></canvas><span>markdown</span></span>`
+
+/**
+ * The closing band ends on the product's name at full size, at dawn.
  * One box per letter of "mdfrom", so `motion.ts` can type them in front of the
  * host, the way the product is used. The markup is the finished name; the
  * canvas fills the letters with live chrome where the browser can mask to text.
@@ -420,13 +433,15 @@ export function landingHtml(chrome: ChromeData = {}): string {
 
   <main id="top" class="w-full max-w-full overflow-x-clip">
 
-    <!-- hero: the page opens over a planet's lit edge -->
-    ${orbitBand(
-      'orbit-band-hero',
+    <!-- hero: the page opens over a planet's lit edge, under aurora -->
+    ${skyBand(
+      'sky-band-hero',
+      `${sky('orbit-sky', 'orbit', ORBIT_FALLBACK)}
+      ${sky('aurora-sky', 'aurora')}`,
       `<div class="relative mx-auto grid max-w-[1200px] items-start gap-12 px-6 pt-12 pb-(--band-pad) sm:px-8 sm:pt-20 lg:grid-cols-12 lg:gap-10 lg:pt-24">
         <div class="lg:col-span-7">
           <h1 class="hero-h max-w-[15ch] text-[clamp(2.75rem,5.4vw,4.6rem)] leading-[1.02] font-black text-ink">
-            Tweets are just markdown now.
+            Tweets are just ${headlineMark} now.
           </h1>
           <p class="mt-6 max-w-[46ch] text-[16px] leading-[1.7] text-ink-2 sm:text-[17.5px]">
             Treat them that way. Swap <code class="code-chip">x.com</code> for
@@ -507,12 +522,9 @@ export function landingHtml(chrome: ChromeData = {}): string {
       </div>
     </section>
 
-    <!-- desire: scrubbing statement, on a thread of the horizon's light -->
-    <section class="night thread-band">
-      <div class="thread-sky" aria-hidden="true">
-        <div class="thread-still" style="background: ${THREAD_FALLBACK}"></div>
-        <canvas class="gradient-canvas" data-gradient="thread"></canvas>
-      </div>
+    <!-- desire: scrubbing statement, over an eclipse rising below it -->
+    <section class="night eclipse-band">
+      ${sky('eclipse-sky', 'eclipse', ECLIPSE_FALLBACK)}
       <div class="section-pad relative mx-auto max-w-[1000px]">
         <p data-scrub-text class="text-[clamp(1.6rem,3.4vw,2.7rem)] leading-[1.35] font-bold tracking-tight text-ink">
           Your notes, your scripts, and your agents all speak Markdown. X speaks JavaScript. x.md is the translation layer: keep the URL, change the host, read the post.
@@ -557,7 +569,8 @@ export function landingHtml(chrome: ChromeData = {}): string {
               <p class="way-quote">"To read an X post, swap x.com for mdfromx.com."</p>
             </div>
           </article>
-          <article class="way-card way-card-accent spot">
+          <article class="way-card way-card-accent night spot">
+            ${sky('card-sky', 'glass', GLASS_FALLBACK)}
             <p class="way-label">for skills-aware agents</p>
             <h3 class="mt-3 text-[20px] font-bold text-ink">Install the skill</h3>
             <p class="mt-3 text-[14.5px] leading-relaxed text-ink-2">
@@ -614,9 +627,10 @@ export function landingHtml(chrome: ChromeData = {}): string {
       </div>
     </section>
 
-    <!-- action: the page closes back in orbit -->
-    ${orbitBand(
-      'orbit-band-closing deferred-section',
+    <!-- action: the page closes at dawn, on the name -->
+    ${skyBand(
+      'sky-band-closing deferred-section',
+      sky('dawn-sky', 'dawn', DAWN_FALLBACK),
       `<div class="relative mx-auto max-w-[1200px] px-6 pt-24 pb-(--band-pad) text-center sm:px-8 md:pt-32">
         <h2 class="mx-auto max-w-[18ch] text-[clamp(2.2rem,5vw,4rem)] leading-[1.05] font-black tracking-tight text-ink">
           Read a post the way your agent does.

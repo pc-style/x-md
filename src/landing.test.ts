@@ -48,12 +48,20 @@ test('the closing name ships whole, one box per typed letter', () => {
   expect([...mark.matchAll(/<span style="--i:(\d)">/g)].map(match => Number(match[1]))).toEqual([0, 1, 2, 3, 4, 5])
 })
 
-test('every live gradient names a preset, and every band paints its stand-in without JavaScript', () => {
-  const names = [...html.matchAll(/<canvas class="gradient-canvas[^"]*" data-gradient="([a-z]+)">/g)].map(match => match[1])
-  expect(names).toEqual(['orbit', 'thread', 'orbit', 'name'])
+test('every live gradient names a preset, and every sky but the aurora paints its stand-in without JavaScript', () => {
+  const names = [...html.matchAll(/<canvas class="gradient-canvas[^"]*" data-gradient="([a-z]+)"/g)].map(match => match[1])
+  expect(names).toEqual(['orbit', 'aurora', 'mark', 'eclipse', 'glass', 'dawn', 'name'])
   for (const name of names) expect(GRADIENTS).toHaveProperty(name)
-  expect(html.match(/<div class="orbit-sky" style="background: [^"]+"/g)).toHaveLength(2)
-  expect(html).toMatch(/<div class="thread-still" style="background: [^"]+">/)
+  const skies = [...html.matchAll(/<div class="([a-z]+)-sky" style="background: [^"]+" aria-hidden="true">\s*<canvas class="gradient-canvas" data-gradient="([a-z]+)">/g)]
+  // The aurora is extra light over the arc's stand-in, with none of its own.
+  expect(skies.map(match => match[2])).toEqual(['orbit', 'eclipse', 'glass', 'dawn'])
+  expect(html).toMatch(/<div class="aurora-sky" aria-hidden="true">/)
+})
+
+test('the headline reads the same with its word in chrome', () => {
+  const headline = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)![1]
+  expect(text(headline).replace(/\s+/g, ' ').trim()).toBe('Tweets are just markdown now.')
+  expect(headline).toContain('data-gradient="mark" aria-hidden="true"')
 })
 
 test('every "what comes through" panel is in the markup, stacked, with the tablist hidden until tabs.ts runs', () => {

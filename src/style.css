@@ -439,7 +439,7 @@
     @apply text-ink-4;
   }
 
-  /* ---------- Orbit bands (always dark, both themes) ---------- */
+  /* ---------- Night bands (always dark, both themes) ---------- */
 
   .night {
     background-color: var(--color-surface);
@@ -449,7 +449,7 @@
 
   /* `--band-pad` is the space under the band's copy; the arc's crest lands
      `--crest-gap` below the last line of it at every width. */
-  .orbit-band {
+  .sky-band {
     @apply relative isolate overflow-hidden;
     --band-pad: clamp(12rem, 22vw, 19rem);
     --crest-gap: 6rem;
@@ -474,16 +474,57 @@
     }
   }
 
+  /* In the hero the arc is lit over aurora (AURORA in gradients.ts), so once
+     the aurora is live the arc adds its light to the sky behind it instead of
+     covering it with its own dark. Only then: blending the band costs the
+     throttled trace bench, which never runs the live canvases, about 450 ms
+     of first paint. */
+  .sky-band-hero:has(.aurora-sky > [data-painted]) .orbit-sky {
+    mix-blend-mode: screen;
+  }
+
+  /* The aurora fills the band. Its curtains hang from hems a little above the
+     arc's crest and fade upward; the top fades into the header, and the glow
+     under the hems fades out before the crest, so the planet's night side
+     stays dark. A pocket of the mask dims it behind the copy, where the hems
+     and the back curtain's edge would otherwise run under the paragraph and
+     the proof line. It has no CSS stand-in: the arc's carries the band
+     without it, and a full-band masked stand-in (with a fade-in) cost the
+     throttled trace bench about 400 ms of first paint. */
+  .aurora-sky {
+    @apply pointer-events-none absolute inset-0 -z-30;
+    --copy-pocket: radial-gradient(42% 46% at 30% 44%, rgb(0 0 0 / 0.2) 62%, #000);
+    mask-image:
+      linear-gradient(to bottom, transparent, #000 30%, #000 60%, transparent 80%),
+      var(--copy-pocket);
+    mask-composite: intersect;
+  }
+
+  /* One column: the copy runs the width of the band, above the card. */
+  @media (max-width: 1023px) {
+    .aurora-sky {
+      --copy-pocket: radial-gradient(100% 40% at 50% 32%, rgb(0 0 0 / 0.2) 62%, #000);
+    }
+  }
+
+  /* The quiet proof line sits where the curtains are brightest. */
+  .sky-band-hero .proof-line {
+    @apply text-ink-2;
+    text-shadow:
+      0 0 0.5em var(--color-surface),
+      0 0 1.2em var(--color-surface);
+  }
+
   /* The hero runs up under the sticky header, which is transparent over it at
      the top of the page. */
-  .orbit-band-hero {
+  .sky-band-hero {
     margin-top: calc(-1 * var(--spacing-chrome-height));
     padding-top: var(--spacing-chrome-height);
   }
 
   /* The band fades into the page below the crest instead of cutting the
      planet off; the rim itself stays clear of the fade at every width. */
-  .orbit-band::after {
+  .sky-band::after {
     @apply pointer-events-none absolute inset-x-0 bottom-0 -z-10;
     height: calc(var(--band-pad) - var(--crest-gap));
     content: "";
@@ -502,48 +543,69 @@
     opacity: 1;
   }
 
-  /* The statement runs over one thread of the horizon's light (THREAD in
-     gradients.ts). The thread passes behind the words, so each line carries a
-     soft halo of the band's dark to keep it legible where the light crosses. */
-  .thread-band {
+  /* The statement sits over an eclipse (ECLIPSE in gradients.ts): a dark disc
+     rising from the bottom of the band with its corona round it. The disc's
+     top lands about halfway down the box, so the band leaves room under the
+     copy for it; each line keeps a soft halo of the band's dark against the
+     corona's haze. */
+  .eclipse-band {
     @apply relative isolate overflow-hidden;
   }
 
-  .thread-sky {
+  .eclipse-band > .section-pad {
+    padding-bottom: clamp(19rem, 30vw, 27rem);
+  }
+
+  .eclipse-sky {
     @apply pointer-events-none absolute inset-0 -z-10;
-    mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 88%, transparent);
   }
 
-  /* On a phone the statement is a tall column the thread would cross line
-     after line, so the light runs under it instead, like the horizon bands. */
+  /* On a phone the statement is a tall column, so the eclipse gets its own
+     box under it instead of sharing the band's height. */
   @media (max-width: 639px) {
-    .thread-band .section-pad {
-      padding-bottom: 13rem;
+    .eclipse-band > .section-pad {
+      padding-bottom: 17rem;
     }
 
-    .thread-sky {
+    .eclipse-sky {
       top: auto;
-      height: 19rem;
+      height: 24rem;
+      mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 88%, transparent);
     }
   }
 
-  /* The still stand-in is a broad arc rather than one filament, so it stays
-     dim enough to read the statement over. */
-  .thread-still {
-    @apply absolute inset-0 opacity-40;
-  }
-
-  .thread-band [data-scrub-text] {
+  .eclipse-band [data-scrub-text] {
     text-shadow:
       0 0 0.6em var(--color-surface),
       0 0 1.6em var(--color-surface);
   }
 
-  /* The closing band ends on the product's name at full size, standing on the
-     horizon: lit from above, fading into the arc's glow below. With motion,
-     "mdfrom" is typed in front of the host as the band arrives (`motion.ts`). */
-  .orbit-band-closing {
+  /* The closing band ends on the product's name at full size, at dawn (DAWN
+     in gradients.ts): the light rises behind the name from below the band.
+     With motion, "mdfrom" is typed in front of the host as the band arrives
+     and the light comes up with it (`motion.ts`). */
+  .sky-band-closing {
     --crest-gap: 1.5rem;
+  }
+
+  .dawn-sky {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-20;
+    top: 32%;
+    mask-image: linear-gradient(to bottom, transparent, #000 30%);
+  }
+
+  /* The dawn burns brightest at the foot of the band, so the fade into the
+     footer is shorter than the hero's and eased, not a dark bar. */
+  .sky-band-closing::after {
+    height: 11rem;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in oklab, var(--color-surface) 25%, transparent) 40%,
+      color-mix(in oklab, var(--color-surface) 70%, transparent) 75%,
+      var(--color-surface)
+    );
   }
 
   .host-mark {
@@ -555,6 +617,37 @@
 
   .host-mark-prefix {
     @apply relative isolate flex;
+  }
+
+  /* Live chrome inside the headline's "markdown" (MARK_FILL in gradients.ts),
+     masked to the word's letters the same way as the closing name below. */
+  .chrome-word {
+    @apply relative isolate inline-block;
+  }
+
+  .chrome-word > span {
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--color-accent) 35%, #fff) 20%,
+      color-mix(in oklab, var(--color-accent) 80%, #fff) 85%
+    );
+    background-clip: text;
+    color: transparent;
+  }
+
+  .chrome-word-fill {
+    @apply z-10;
+  }
+
+  @supports (mask-clip: text) or (-webkit-mask-clip: text) {
+    .chrome-word {
+      padding-block: 0.12em;
+      margin-block: -0.12em;
+      -webkit-mask-image: linear-gradient(#000 0 0);
+      mask-image: linear-gradient(#000 0 0);
+      -webkit-mask-clip: text;
+      mask-clip: text;
+    }
   }
 
   /* Live chrome inside "mdfrom" (NAME_FILL in gradients.ts): the prefix is
@@ -984,7 +1077,7 @@
 
     /* The hero horizon rises with the first paint, so the CSS arc and the live
        canvas that later fades in over it read as one arrival. */
-    html[data-motion] .orbit-band-hero .orbit-sky {
+    html[data-motion] .sky-band-hero .orbit-sky {
       animation: sky-rise 1000ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
     }
   }
@@ -1222,11 +1315,25 @@
     @apply flex flex-col rounded-2xl border border-line bg-raised p-7;
   }
 
+  /* The card for installing the skill is always dark, lit from behind a
+     wall of fluted glass (GLASS in gradients.ts) low in the card, under its
+     copy; the command row keeps its own solid ground. */
   .way-card-accent {
-    background:
-      linear-gradient(155deg, rgb(20 108 67 / 0.09), transparent 60%),
-      var(--color-raised);
-    border-color: rgb(20 108 67 / 0.28);
+    @apply relative isolate overflow-hidden;
+    background-color: var(--color-surface);
+    border-color: color-mix(in oklab, var(--color-accent) 35%, transparent);
+  }
+
+  /* The glass starts under the copy, so the light stays low at every width;
+     a phone's narrower card would otherwise lift the arc behind the text. */
+  .card-sky {
+    @apply pointer-events-none absolute inset-x-0 bottom-0 -z-20;
+    top: 38%;
+    mask-image: linear-gradient(to bottom, transparent, #000 35%);
+  }
+
+  .way-card-accent .way-label {
+    @apply text-ink-3;
   }
 
   .way-label {

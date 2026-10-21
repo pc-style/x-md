@@ -113,10 +113,12 @@ async function enhanceLanding() {
   }
   // The light running round the converter is gradients.sh's Border Beam; the
   // form reads the same without it, so it waits for the deferred bundles too.
+  // Two short beams light about as much of the border as one long one, so the
+  // cost per frame (it paints only the lit cells) stays where one beam had it.
   whenUseful(() =>
-    Promise.all([import('./gradients-pro/border-beam'), import('./gradients-pro/green')]).then(([{ borderBeam }, { GREEN }]) => {
+    Promise.all([import('./gradients-pro/border-beam'), import('./gradients-pro/green')]).then(([{ borderBeam }, { BEAM }]) => {
       const form = app.querySelector<HTMLElement>('[data-beam]')
-      if (form) borderBeam(form, { palette: GREEN.dark, duration: 8, length: 0.3 })
+      if (form) borderBeam(form, { palette: BEAM, duration: 9, length: 0.16, beams: 2 })
     }),
   )
   // Every live gradient already has a CSS stand-in painted, so the engine is

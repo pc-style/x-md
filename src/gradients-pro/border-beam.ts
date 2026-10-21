@@ -1,11 +1,11 @@
 // gradients.sh Pro · licensed to aSfr5hJDvmXsLCCPcmVsZdRBfRJCGrW0 (p***@duck.com) · 2026-10-21 · https://gradients.sh/license
-// x-md: a vanilla port of the BorderBeam component, always running, with one
-// beam. The light is as served, and so is the border geometry apart from its
-// two bottom corners (see locate). The canvas is added here, the beam fades in
-// once instead of starting at full strength, and each frame paints only the
-// cells under the beam, at most 30 times a second (the served loop works out
-// every cell of the band on every frame, which the trace bench measured at
-// about a tenth of the main thread at 4x CPU).
+// x-md: a vanilla port of the BorderBeam component, always running. The light
+// is as served, and so is the border geometry apart from its two bottom
+// corners (see locate). The canvas is added here, the beam fades in once
+// instead of starting at full strength, and each frame paints only the cells
+// under the beams, at most 30 times a second (the served loop works out every
+// cell of the band on every frame, which the trace bench measured at about a
+// tenth of the main thread at 4x CPU).
 import { DitherSurface, resolveRamp } from './dither-kit'
 import type { DitherPalette } from './dither-kit'
 
@@ -16,6 +16,8 @@ export interface BorderBeamOptions {
   duration?: number
   /** Length of the beam's tail as a fraction of the perimeter, 0.05-0.45. */
   length?: number
+  /** 1 beam, or 2 on opposite sides. */
+  beams?: 1 | 2
   /** Size of one dither cell in CSS pixels. */
   cell?: number
 }
@@ -72,7 +74,7 @@ function locate(x: number, y: number, w: number, h: number, r: number): BandCell
  */
 export function borderBeam(
   root: HTMLElement,
-  { palette, duration = 7, length = 0.34, cell = 2 }: BorderBeamOptions,
+  { palette, duration = 7, length = 0.34, beams = 1, cell = 2 }: BorderBeamOptions,
 ): void {
   const reduced = matchMedia('(prefers-reduced-motion: reduce)')
   const canvas = document.createElement('canvas')
@@ -150,9 +152,9 @@ export function borderBeam(
     level = reduced.matches ? 1 : level + (1 - level) * Math.min(1, dt * 2)
     if (Math.abs(level - 1) < 0.01) level = 1
     let count = 0
-    const take = (from: number, to: number) => {
+    const take = (head: number, from: number, to: number) => {
       for (let i = seek(from), end = seek(to); i < end; i++) {
-        let behind = phase - (along[i] ?? 0)
+        let behind = head - (along[i] ?? 0)
         if (behind < -0.5) behind += 1
         if (behind > 0.5) behind -= 1
         // A short soft lead in front of the head, a long tail behind it.
@@ -162,18 +164,22 @@ export function borderBeam(
         count++
       }
     }
-    // The beam covers the border from its tail to just past its head, which
-    // can wrap past the top-left corner.
-    const from = phase - tail
-    const to = phase + LEAD
-    if (from < 0) {
-      take(from + 1, Infinity)
-      take(0, to)
-    } else if (to > 1) {
-      take(from, Infinity)
-      take(0, to - 1)
-    } else {
-      take(from, to)
+    // Each beam covers the border from its tail to just past its head, which
+    // can wrap past the top-left corner. With two, they sit half a lap apart,
+    // and a tail is at most 0.45 of a lap, so their stretches never overlap.
+    for (let b = 0; b < beams; b++) {
+      const head = (phase + b / beams) % 1
+      const from = head - tail
+      const to = head + LEAD
+      if (from < 0) {
+        take(head, from + 1, Infinity)
+        take(head, 0, to)
+      } else if (to > 1) {
+        take(head, from, Infinity)
+        take(head, 0, to - 1)
+      } else {
+        take(head, from, to)
+      }
     }
     surface.paintCells(ramp, lit.subarray(0, count), (k) => value[k] ?? 0)
   }
