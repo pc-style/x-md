@@ -290,6 +290,15 @@
     opacity: 0.14;
   }
 
+  /* Each word carries the statement's halo (two wide text-shadows), so
+     fading it in painted would redraw both blurs on every scroll frame. On
+     its own layer the fade only changes the layer's opacity. */
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal-word {
+      will-change: opacity;
+    }
+  }
+
   /* ---------- Buttons (pill interactives, 16px containers) ---------- */
 
   /* A lit top edge, so the pill reads as a raised key rather than a flat shape. */
