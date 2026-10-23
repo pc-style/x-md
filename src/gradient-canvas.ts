@@ -24,8 +24,11 @@ const TEXT_FILLS = new Set(['mark', 'name'])
 /**
  * Full-band skies with no hard edge in them: at one canvas pixel per CSS pixel
  * they look the same on a high-density screen and cost less than half as much.
+ * It also keeps the eclipse inside the engine's pixel budget: at 1.5 its band
+ * is over it on a laptop, so it rendered at one size and changed to another
+ * whenever a scroll started or stopped.
  */
-const SOFT = new Set(['aurora', 'dawn'])
+const SOFT = new Set(['aurora', 'eclipse', 'dawn'])
 
 /**
  * Mounts the live gradients on every `canvas[data-gradient]`, each with the
