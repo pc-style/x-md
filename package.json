@@ -46,7 +46,7 @@
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.5",
-    "@vercel/build-utils": "14.21.2",
+    "@vercel/build-utils": "15.0.1",
     "@vercel/node": "24.0.2",
     "blume": "^2.2.2",
     "typescript": "~7.0.2",
