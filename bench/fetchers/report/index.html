@@ -1,0 +1,449 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>X fetcher prototypes vs production — bench 2026-10-29</title>
+<style>
+:root{--bg:#0b0d0c;--panel:#131715;--line:#26302b;--ink:#e8ece9;--dim:#8d9a93;--good:#3fbf7f;--part:#d9a441;--bad:#e06464;--p50:#5aa9e6;--p95:#2c4e6b}
+@media (prefers-color-scheme:light){:root{--bg:#f7f6f2;--panel:#fff;--line:#e2e0d8;--ink:#1b1f1d;--dim:#6b736e;--p95:#bcd6ec}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,sans-serif}
+main{max-width:1280px;margin:0 auto;padding:32px 20px 64px}h1{font-size:24px;margin:0 0 4px}h2{font-size:17px;margin:36px 0 10px}
+.dim{color:var(--dim)}.small{font-size:12px}.tag{font-size:11px;border:1px solid var(--line);border-radius:999px;padding:1px 7px;color:var(--dim);font-weight:500}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}thead th{font-size:12px;color:var(--dim);font-weight:600}
+tbody th{font-weight:600}code{font:12px ui-monospace,monospace}
+.bar{position:relative;display:inline-block;width:110px;height:8px;border-radius:4px;background:var(--line);vertical-align:middle;margin-right:8px;overflow:hidden}
+.bar span{position:absolute;left:0;top:0;bottom:0;border-radius:4px}.p95{background:var(--p95)}.p50{background:var(--p50)}.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.matrix td{font-size:12px}.pass{box-shadow:inset 3px 0 var(--good)}.part{box-shadow:inset 3px 0 var(--part)}.fail{box-shadow:inset 3px 0 var(--bad)}
+.key span{display:inline-block;margin-right:14px}.key i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+ul{padding-left:18px}li{margin:4px 0}.wrap{overflow-x:auto}
+</style></head><body><main>
+<h1>X fetcher prototypes vs production</h1>
+<p class="dim">Run 2026-10-29T15:41:01.267Z → 2026-10-29T15:42:09.767Z UTC, from one VM in Europe. Same 20 posts and 10 handles for every target, one request at a time per target. Harness: <code>bench/fetchers/bench.ts</code> on branch <code>bench/fetcher-prototypes</code>.</p>
+
+<h2>Summary</h2>
+<div class="wrap"><table><thead><tr><th>Target</th><th>Success</th><th>Post p50 · p95</th><th>Profile p50 · p95</th><th>Repeat p50</th><th>Post completeness</th><th>Profile completeness</th><th>Burst (2xx / 429)</th></tr></thead><tbody>
+<tr><th>production <span class="tag">baseline</span><div class="dim small">mdfromx.com</div></th>
+<td>70% <span class="dim">(21/30)</span></td><td><span class="bar"><span class="p95" style="width:16.5%"></span><span class="p50" style="width:11.5%"></span></span><span class="num">1.01 s · 1.45 s</span></td><td><span class="bar"><span class="p95" style="width:100.0%"></span><span class="p50" style="width:69.6%"></span></span><span class="num">6.12 s · 8.79 s</span></td><td>44 ms</td>
+<td><span class="dim">reference</span></td><td><span class="dim">reference</span></td>
+<td>28 / 0<span class="dim"> of 32</span></td></tr>
+<tr><th>graphql-session<div class="dim small">x-graphql-proto-portal.pcstyle.dev</div></th>
+<td>93% <span class="dim">(28/30)</span></td><td><span class="bar"><span class="p95" style="width:18.7%"></span><span class="p50" style="width:12.8%"></span></span><span class="num">1.13 s · 1.64 s</span></td><td><span class="bar"><span class="p95" style="width:24.9%"></span><span class="p50" style="width:10.8%"></span></span><span class="num">947 ms · 2.19 s</span></td><td>23 ms</td>
+<td>77%</td><td>83%</td>
+<td>24 / 6<span class="dim"> of 32</span></td></tr>
+<tr><th>syndication<div class="dim small">x-md-syndication-portal.pcstyle.dev</div></th>
+<td>83% <span class="dim">(25/30)</span></td><td><span class="bar"><span class="p95" style="width:6.4%"></span><span class="p50" style="width:2.6%"></span></span><span class="num">228 ms · 559 ms</span></td><td><span class="bar"><span class="p95" style="width:52.0%"></span><span class="p50" style="width:46.3%"></span></span><span class="num">4.08 s · 4.57 s</span></td><td>43 ms</td>
+<td>79%</td><td>83%</td>
+<td>24 / 0<span class="dim"> of 32</span></td></tr>
+<tr><th>fx-selfhost<div class="dim small">xmd-fx-proto-portal.pcstyle.dev</div></th>
+<td>93% <span class="dim">(28/30)</span></td><td><span class="bar"><span class="p95" style="width:17.5%"></span><span class="p50" style="width:11.7%"></span></span><span class="num">1.03 s · 1.54 s</span></td><td><span class="bar"><span class="p95" style="width:13.8%"></span><span class="p50" style="width:10.8%"></span></span><span class="num">950 ms · 1.22 s</span></td><td>900 ms</td>
+<td>100%</td><td>95%</td>
+<td>30 / 0<span class="dim"> of 32</span></td></tr>
+</tbody></table></div>
+<p class="dim small">Latency is wall time from the client over successful (2xx) uncached requests; bars run to the slowest p95 on the page, blue is p50, pale is p95. Production was asked with <code>nocache=1</code>, <code>thread=full</code>, <code>replies=off</code>. "Success" means the right answer for the fixture: the item; a clean 4xx for the deleted and never-existing posts and the missing handle; the profile header with its protected flag for @emma. Completeness is the share of per-item checks that match production's own output (found, text, photo and video counts, quoted post, thread chain, metrics, author profile; for profiles: protected flag, counts, bio, images, join date, and at least 8 of production's 10 newest posts). "Repeat" is the immediate second request for the same item without <code>nocache</code>; production does not store a <code>nocache</code> answer, so its repeat is usually a miss too.</p>
+
+<h2>Posts, per fixture</h2>
+<p class="key small dim"><span><i style="background:var(--good)"></i>every check matches production</span><span><i style="background:var(--part)"></i>found, some fields differ (listed)</span><span><i style="background:var(--bad)"></i>wrong answer or failure</span> Hover a cell for every check.</p>
+<div class="wrap"><table class="matrix"><thead><tr><th>Post</th><th>Kind</th><th>Production returned</th><th>graphql-session</th><th>syndication</th><th>fx-selfhost</th></tr></thead><tbody>
+<tr><th><code>20</code><div class="dim small">@jack, first post</div></th><td>text</td><td class="dim">text · 1.22 s</td><td class="part" title="✓ found
+✓ text
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.64 s</div></td><td class="part" title="✓ found
+✓ text
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 559 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.42 s</div></td></tr>
+<tr><th><code>2115538945844850813</code><div class="dim small">@NASA</div></th><td>photo</td><td class="dim">1 photo · 1.12 s</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.01 s</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 278 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.09 s</div></td></tr>
+<tr><th><code>2094470456472728011</code><div class="dim small">@dril</div></th><td>photo</td><td class="dim">1 photo · 956 ms</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 792 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 216 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.04 s</div></td></tr>
+<tr><th><code>2111139227761266699</code><div class="dim small">@sama</div></th><td>photo</td><td class="dim">1 photo · 1.23 s</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.22 s</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 234 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.54 s</div></td></tr>
+<tr><th><code>2115476295169814978</code><div class="dim small">@SpaceX</div></th><td>video</td><td class="dim">2 video · 1.45 s</td><td class="part" title="✓ found
+✓ text
+✓ video (2/2)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.17 s</div></td><td class="part" title="✓ found
+✓ text
+✓ video (2/2)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 211 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (2/2)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.04 s</div></td></tr>
+<tr><th><code>2110788459803938944</code><div class="dim small">@vercel</div></th><td>video</td><td class="dim">1 video · 1.01 s</td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.20 s</div></td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 186 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 798 ms</div></td></tr>
+<tr><th><code>2096357785093156932</code><div class="dim small">@dril</div></th><td>gif</td><td class="dim">1 video · 779 ms</td><td class="fail" title="✗ found (status 503 sessions_unavailable)">found status 503 sessions_unavailable<div class="small dim">503 · 156 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 234 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 778 ms</div></td></tr>
+<tr><th><code>2079610838143623371</code><div class="dim small">@karpathy note tweet</div></th><td>long</td><td class="dim">text · 1.32 s</td><td class="part" title="✓ found
+✓ text
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.37 s</div></td><td class="part" title="✓ found
+✓ text
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 211 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.16 s</div></td></tr>
+<tr><th><code>2113776971603689874</code><div class="dim small">@NASA note tweet with video</div></th><td>long+video</td><td class="dim">1 video · 1.23 s</td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.13 s</div></td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 228 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.16 s</div></td></tr>
+<tr><th><code>2115414609570255080</code><div class="dim small">@paulg</div></th><td>quote</td><td class="dim">quote · 970 ms</td><td class="part" title="✓ found
+✓ text
+✓ quote
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.04 s</div></td><td class="part" title="✓ found
+✓ text
+✓ quote
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 208 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ quote
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.03 s</div></td></tr>
+<tr><th><code>2115796587351810138</code><div class="dim small">@levelsio</div></th><td>quote+photo</td><td class="dim">1 photo, quote · 864 ms</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✗ quote
+✓ metrics
+✗ author profile">quote, author profile<div class="small dim">200 · 871 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ quote
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 263 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ quote
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.05 s</div></td></tr>
+<tr><th><code>2115798739977712039</code><div class="dim small">@levelsio note tweet</div></th><td>quote+video</td><td class="dim">1 video, quote · 842 ms</td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ quote
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 824 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✓ quote
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 218 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (1/1)
+✓ quote
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 772 ms</div></td></tr>
+<tr><th><code>2114815685960618081</code><div class="dim small">@paulg self-reply under a quote</div></th><td>thread</td><td class="dim">1 in thread · 744 ms</td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 590 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 262 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 613 ms</div></td></tr>
+<tr><th><code>2110803382239945130</code><div class="dim small">@vercel thread, part 4, photo</div></th><td>thread</td><td class="dim">1 photo, 4 in thread · 912 ms</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✗ thread (3/4)
+✓ metrics
+✗ author profile">thread 3/4, author profile<div class="small dim">200 · 545 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✗ thread (3/4)
+✓ metrics
+✗ author profile">thread 3/4, author profile<div class="small dim">200 · 397 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ thread (4/4)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 811 ms</div></td></tr>
+<tr><th><code>2112638276389790102</code><div class="dim small">@SpaceX self-reply, photo</div></th><td>thread</td><td class="dim">1 photo, 1 in thread · 1.29 s</td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.28 s</div></td><td class="part" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 197 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ photos (1/1)
+✓ thread (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.49 s</div></td></tr>
+<tr><th><code>2115791291988750550</code><div class="dim small">@NASA reply to another account, video</div></th><td>reply</td><td class="dim">1 video, 3 in thread · 791 ms</td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✗ thread (2/3)
+✓ metrics
+✗ author profile">thread 2/3, author profile<div class="small dim">200 · 760 ms</div></td><td class="part" title="✓ found
+✓ text
+✓ video (1/1)
+✗ thread (2/3)
+✓ metrics
+✗ author profile">thread 2/3, author profile<div class="small dim">200 · 373 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ video (1/1)
+✓ thread (3/3)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 906 ms</div></td></tr>
+<tr><th><code>2083948654377996480</code><div class="dim small">@karpathy</div></th><td>reply</td><td class="dim">1 in thread · 1.27 s</td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.13 s</div></td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 192 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 971 ms</div></td></tr>
+<tr><th><code>2107924677801001381</code><div class="dim small">@sama</div></th><td>reply</td><td class="dim">1 in thread · 1.17 s</td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 1.22 s</div></td><td class="part" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✗ author profile">author profile<div class="small dim">200 · 237 ms</div></td><td class="pass" title="✓ found
+✓ text
+✓ thread (1/1)
+✓ metrics
+✓ author profile">all<div class="small dim">200 · 1.03 s</div></td></tr>
+<tr><th><code>869766994899468288</code><div class="dim small">deleted 2017 post</div></th><td>deleted</td><td class="dim">502 firecrawl_error · 1.59 s</td><td class="pass" title="✓ clean not found (status 404 not_found)">clean not found<div class="small dim">404 · 350 ms</div></td><td class="pass" title="✓ clean not found (status 404 not_found)">clean not found<div class="small dim">404 · 1.32 s</div></td><td class="pass" title="✓ clean not found (status 404 syndication_empty)">clean not found<div class="small dim">404 · 1.33 s</div></td></tr>
+<tr><th><code>1234567890123456789</code><div class="dim small">id that never existed</div></th><td>missing</td><td class="dim">502 firecrawl_error · 2.00 s</td><td class="pass" title="✓ clean not found (status 404 not_found)">clean not found<div class="small dim">404 · 295 ms</div></td><td class="pass" title="✓ clean not found (status 404 not_found)">clean not found<div class="small dim">404 · 180 ms</div></td><td class="pass" title="✓ clean not found (status 404 syndication_error)">clean not found<div class="small dim">404 · 1.20 s</div></td></tr>
+</tbody></table></div>
+
+<h2>Profiles, per handle</h2>
+<div class="wrap"><table class="matrix"><thead><tr><th>Handle</th><th>Kind</th><th>Production returned</th><th>graphql-session</th><th>syndication</th><th>fx-selfhost</th></tr></thead><tbody>
+<tr><th><code>jack</code></th><td>profile</td><td class="dim">20 posts · 8.79 s</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✗ recent posts (3/10)">joined, recent posts 3/10<div class="small dim">200 · 921 ms</div></td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✗ recent posts (0/10)">recent posts 0/10<div class="small dim">200 · 2.73 s</div></td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✗ recent posts (3/10)">recent posts 3/10<div class="small dim">200 · 1.12 s</div></td></tr>
+<tr><th><code>NASA</code></th><td>profile</td><td class="dim">20 posts · 31 ms</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (9/10)">joined<div class="small dim">200 · 947 ms</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (9/10)">all<div class="small dim">200 · 4.08 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (9/10)">all<div class="small dim">200 · 1.22 s</div></td></tr>
+<tr><th><code>SpaceX</code></th><td>profile</td><td class="dim">20 posts · 35 ms</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 821 ms</div></td><td class="fail" title="✗ found (status 503 upstream_unavailable)">found status 503 upstream_unavailable<div class="small dim">503 · 6.04 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 872 ms</div></td></tr>
+<tr><th><code>paulg</code></th><td>profile</td><td class="dim">20 posts · 37 ms</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 793 ms</div></td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✗ recent posts (0/10)">recent posts 0/10<div class="small dim">200 · 4.23 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 856 ms</div></td></tr>
+<tr><th><code>levelsio</code></th><td>profile</td><td class="dim">20 posts · 3.86 s</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 979 ms</div></td><td class="fail" title="✗ found (status 503 upstream_unavailable)">found status 503 upstream_unavailable<div class="small dim">503 · 6.44 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 1.01 s</div></td></tr>
+<tr><th><code>karpathy</code></th><td>profile</td><td class="dim">20 posts · 6.12 s</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 2.06 s</div></td><td class="fail" title="✗ found (status 503 upstream_unavailable)">found status 503 upstream_unavailable<div class="small dim">503 · 2.71 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (9/10)">all<div class="small dim">200 · 967 ms</div></td></tr>
+<tr><th><code>dril</code></th><td>profile</td><td class="dim">20 posts · 40 ms</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 2.19 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 4.57 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 810 ms</div></td></tr>
+<tr><th><code>vercel</code></th><td>profile</td><td class="dim">20 posts · 3.56 s</td><td class="part" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✗ joined
+✓ recent posts (10/10)">joined<div class="small dim">200 · 1.90 s · retried after the 429 window</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 3.53 s</div></td><td class="pass" title="✓ found
+✓ protected flag
+✓ counts
+✓ bio
+✓ images
+✓ joined
+✓ recent posts (10/10)">all<div class="small dim">200 · 950 ms</div></td></tr>
+<tr><th><code>emma</code></th><td>protected</td><td class="dim">503 upstream_rate_limited · 2.00 s</td><td class="fail" title="✗ protected profile (protected=false)">protected profile protected=false<div class="small dim">200 · 433 ms · retried after the 429 window</div></td><td class="fail" title="✗ protected profile (status 503 upstream_unavailable)">protected profile status 503 upstream_unavailable<div class="small dim">503 · 2.67 s</div></td><td class="fail" title="✗ protected profile (status 503 upstream_unavailable)">protected profile status 503 upstream_unavailable<div class="small dim">503 · 660 ms</div></td></tr>
+<tr><th><code>xmdnosuchuser1</code></th><td>missing</td><td class="dim">503 upstream_rate_limited · 86 ms</td><td class="pass" title="✓ clean not found (status 404 not_found)">clean not found<div class="small dim">404 · 201 ms · retried after the 429 window</div></td><td class="fail" title="✗ clean not found (status 503 upstream_unavailable)">clean not found status 503 upstream_unavailable<div class="small dim">503 · 2.81 s</div></td><td class="fail" title="✗ clean not found (status 503 upstream_unavailable)">clean not found status 503 upstream_unavailable<div class="small dim">503 · 334 ms</div></td></tr>
+</tbody></table></div>
+
+<h2>Short burst</h2>
+<p class="dim small">Distinct uncached requests, 32 per target, concurrency 4, 15:58 UTC: the 20 posts, then profiles with page sizes no earlier request used so caches cannot answer.</p>
+<div class="wrap"><table><thead><tr><th>Target</th><th>Requests</th><th>Statuses</th><th>First 429 at</th><th>Retry-After</th><th>2xx p50 · p95 under load</th><th>Upstream retries seen</th></tr></thead><tbody>
+<tr><th>production</th><td>32</td><td><code>200</code>×28 <code>502</code>×2 <code>503</code>×2</td><td><span class="dim">none</span></td><td>30 s</td><td>1.39 s · 8.44 s</td><td><span class="dim">0</span></td></tr>
+<tr><th>graphql-session</th><td>32</td><td><code>200</code>×24 <code>404</code>×2 <code>429</code>×6</td><td>request 27</td><td>867 s</td><td>924 ms · 1.21 s</td><td><span class="dim">0</span></td></tr>
+<tr><th>syndication</th><td>32</td><td><code>200</code>×24 <code>404</code>×2 <code>503</code>×6</td><td><span class="dim">none</span></td><td>–</td><td>308 ms · 3.59 s</td><td>16</td></tr>
+<tr><th>fx-selfhost</th><td>32</td><td><code>200</code>×30 <code>404</code>×2</td><td><span class="dim">none</span></td><td>–</td><td>1.00 s · 1.50 s</td><td>5</td></tr>
+</tbody></table><p class="dim small">Burst run 2026-10-29T15:58:00.399Z → 2026-10-29T15:58:22.602Z. GraphQL ran the burst with 3 of its 30 uncached requests already spent on the retries.</p></div>
+
+<h2>Non-2xx answers in the main run</h2>
+<ul class="small"><li><b>production</b>: post <code>869766994899468288</code> → 502 firecrawl_error; post <code>1234567890123456789</code> → 502 firecrawl_error; user <code>NASA</code> → 503 upstream_unavailable; user <code>SpaceX</code> → 503 upstream_unavailable; user <code>paulg</code> → 503 upstream_unavailable; user <code>dril</code> → 503 upstream_unavailable; user <code>vercel</code> → 503 upstream_unavailable; user <code>emma</code> → 503 upstream_rate_limited; user <code>xmdnosuchuser1</code> → 503 upstream_rate_limited</li><li><b>graphql-session</b>: post <code>2096357785093156932</code> → 503 sessions_unavailable; post <code>869766994899468288</code> → 404 not_found; post <code>1234567890123456789</code> → 404 not_found; user <code>xmdnosuchuser1</code> → 404 not_found</li><li><b>syndication</b>: post <code>869766994899468288</code> → 404 not_found; post <code>1234567890123456789</code> → 404 not_found; user <code>SpaceX</code> → 503 upstream_unavailable; user <code>levelsio</code> → 503 upstream_unavailable; user <code>karpathy</code> → 503 upstream_unavailable; user <code>emma</code> → 503 upstream_unavailable; user <code>xmdnosuchuser1</code> → 503 upstream_unavailable</li><li><b>fx-selfhost</b>: post <code>869766994899468288</code> → 404 syndication_empty; post <code>1234567890123456789</code> → 404 syndication_error; user <code>emma</code> → 503 upstream_unavailable; user <code>xmdnosuchuser1</code> → 503 upstream_unavailable</li></ul>
+<h2>Notes</h2><div class="small"><ul>
+<li><b>Verdict:</b> the self-hosted fxtwitter fork (PR #98) is the only prototype that matches production's data (100% of post checks, 95% of profile checks), is about 6× faster than production on profiles, and absorbed the burst without a single error. Syndication (PR #102) is the fastest for posts (~5× faster than production) but loses author profile data on posts, its <code>/user</code> serves old popular posts instead of recent ones, and it 503s under load. Operator-session GraphQL (PR #99) is fast and reliable per request but drops author counts, one quote and a join date, and its 30-per-15-minute per-IP budget is the binding limit.</li>
+<li><b>Production itself was flaky:</b> 5 of 8 public profiles answered 503 <code>upstream_unavailable</code> on the first pass and needed a retry for a baseline; the deleted and never-existing posts return 502 <code>firecrawl_error</code> instead of 404; @emma (protected) and the missing handle return 503.</li>
+<li><b>Protected posts:</b> no public route exposes a protected post's id, so protected is covered at profile level (@emma). Only the GraphQL prototype returned @emma's header with <code>protected: true</code> (after the window reset); every other target, production included, answered 503.</li>
+<li><b>GraphQL budget:</b> the main run hit the prototype's own per-IP limit after 27 uncached requests (one 503 retry counted), so @vercel, @emma and the missing handle were retried 16 minutes later; those cells say so. In the burst it 429'd from request 27 with <code>Retry-After: 867</code>. Its 60 s cache answers repeats in ~20 ms.</li>
+<li><b>Syndication specifics:</b> GIFs arrive under <code>media.animated</code> (counted as video here); thread walk stops at parents, so a post's later self-replies are missing (2 fixtures); posts carry no author follower counts.</li>
+<li><b>fx self-host specifics:</b> its <code>/user/jack</code> returned only 3 posts in the main run (a short timeline page), the one profile miss. Its "repeat" is not cached (~0.9 s).</li>
+<li>Single region (EU VM), one sample per item per pass; p95 over ~18 posts / ~8 profiles is indicative, not tight.</li>
+</ul>
+</div>
+</main></body></html>

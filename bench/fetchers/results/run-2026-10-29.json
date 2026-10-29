@@ -1,0 +1,6566 @@
+{
+ "started": "2026-10-29T15:41:01.267Z",
+ "finished": "2026-10-29T15:42:09.767Z",
+ "targets": [
+  {
+   "name": "production",
+   "base": "https://mdfromx.com",
+   "api": "xmd"
+  },
+  {
+   "name": "graphql-session",
+   "base": "https://x-graphql-proto-portal.pcstyle.dev",
+   "api": "proto"
+  },
+  {
+   "name": "syndication",
+   "base": "https://x-md-syndication-portal.pcstyle.dev",
+   "api": "proto"
+  },
+  {
+   "name": "fx-selfhost",
+   "base": "https://xmd-fx-proto-portal.pcstyle.dev",
+   "api": "proto"
+  }
+ ],
+ "samples": [
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "20",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:01.269Z",
+   "status": 200,
+   "ms": 1223,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "authorFollowers": 12527469,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "20",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.491Z",
+   "status": 200,
+   "ms": 44,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308831,
+     "authorFollowers": 12527456,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:02.536Z",
+   "status": 200,
+   "ms": 1122,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://go.nasa.gov/4e2TBA1",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "authorFollowers": 92309650,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.659Z",
+   "status": 200,
+   "ms": 72,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://go.nasa.gov/4e2TBA1",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1110,
+     "authorFollowers": 92309627,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.731Z",
+   "status": 200,
+   "ms": 956,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:04.687Z",
+   "status": 200,
+   "ms": 39,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "authorFollowers": 1686480,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.726Z",
+   "status": 200,
+   "ms": 1229,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution:",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "authorFollowers": 6408425,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:05.955Z",
+   "status": 200,
+   "ms": 79,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution:",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "authorFollowers": 6408403,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.034Z",
+   "status": 200,
+   "ms": 1448,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "authorFollowers": 41942147,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:07.483Z",
+   "status": 200,
+   "ms": 48,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18834,
+     "authorFollowers": 41942099,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:07.531Z",
+   "status": 200,
+   "ms": 1012,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://vercel.com/blog/introducing-vercel-drives-persistent-storage-for-agents",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "authorFollowers": 468339,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:08.543Z",
+   "status": 200,
+   "ms": 45,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://vercel.com/blog/introducing-vercel-drives-persistent-storage-for-agents",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "authorFollowers": 468333,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:08.588Z",
+   "status": 200,
+   "ms": 779,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:09.367Z",
+   "status": 200,
+   "ms": 48,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "authorFollowers": 1686480,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:09.415Z",
+   "status": 200,
+   "ms": 1323,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "authorFollowers": 4402512,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:10.738Z",
+   "status": 200,
+   "ms": 51,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "authorFollowers": 4402491,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:10.790Z",
+   "status": 200,
+   "ms": 1225,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://go.nasa.gov/4jzartX and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://go.nasa.gov/4zV3TLc.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "authorFollowers": 92309653,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:12.015Z",
+   "status": 200,
+   "ms": 47,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://go.nasa.gov/4jzartX and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://go.nasa.gov/4zV3TLc.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7913,
+     "authorFollowers": 92309628,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:12.063Z",
+   "status": 200,
+   "ms": 970,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:13.033Z",
+   "status": 200,
+   "ms": 32,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "authorFollowers": 5426757,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:13.065Z",
+   "status": 200,
+   "ms": 864,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://hotelist.com/mcp",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:13.929Z",
+   "status": 200,
+   "ms": 39,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://hotelist.com/mcp",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "authorFollowers": 983539,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:13.968Z",
+   "status": 200,
+   "ms": 842,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at http://q1.pieter.com has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://hub.quakeworld.nu/qtv/?address=65.109.238.95:27500\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:14.810Z",
+   "status": 200,
+   "ms": 42,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at http://q1.pieter.com has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://hub.quakeworld.nu/qtv/?address=65.109.238.95:27500\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 118,
+     "authorFollowers": 983537,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:14.853Z",
+   "status": 200,
+   "ms": 744,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:15.598Z",
+   "status": 200,
+   "ms": 43,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "authorFollowers": 5426757,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:15.641Z",
+   "status": 200,
+   "ms": 912,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent.",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "authorFollowers": 468339,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578",
+     "2110803394990686626"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:16.553Z",
+   "status": 200,
+   "ms": 65,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent.",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "authorFollowers": 468333,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578",
+     "2110803394990686626"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:16.618Z",
+   "status": 200,
+   "ms": 1289,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "authorFollowers": 41942145,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:17.907Z",
+   "status": 200,
+   "ms": 40,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "authorFollowers": 41942104,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:17.947Z",
+   "status": 200,
+   "ms": 791,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "authorFollowers": 92309652,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042",
+     "2115813044055884093"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:18.739Z",
+   "status": 200,
+   "ms": 47,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 252,
+     "authorFollowers": 92309628,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042",
+     "2115813044055884093"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:18.785Z",
+   "status": 200,
+   "ms": 1272,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://simonwillison.net/2025/Jun/6/six-months-in-llms/\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://karpathy.ai/lotr-movie/\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "authorFollowers": 4402513,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:20.057Z",
+   "status": 200,
+   "ms": 36,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://simonwillison.net/2025/Jun/6/six-months-in-llms/\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://karpathy.ai/lotr-movie/\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "authorFollowers": 4402492,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:20.094Z",
+   "status": 200,
+   "ms": 1168,
+   "cache": "bypass",
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "authorFollowers": 6408425,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:21.262Z",
+   "status": 200,
+   "ms": 41,
+   "cache": "miss",
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "authorFollowers": 6408404,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:21.303Z",
+   "status": 502,
+   "ms": 1586,
+   "errorCode": "firecrawl_error"
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:22.889Z",
+   "status": 502,
+   "ms": 1656,
+   "errorCode": "firecrawl_error"
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:24.546Z",
+   "status": 502,
+   "ms": 1999,
+   "errorCode": "firecrawl_error"
+  },
+  {
+   "target": "production",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:26.545Z",
+   "status": 502,
+   "ms": 1593,
+   "errorCode": "firecrawl_error"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "jack",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:28.138Z",
+   "status": 200,
+   "ms": 8794,
+   "cache": "bypass",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527470,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115147589767016752",
+     "2114121702515114234",
+     "2114120704136458600",
+     "2113767788435341556",
+     "2113765812268052630",
+     "2113761335041294749",
+     "2113760339128897919",
+     "2113758314777452560",
+     "2113738686756241660",
+     "2113724552861880761",
+     "2113707181644378332",
+     "2113707022256402598",
+     "2113706907915399514",
+     "2113705157695537605",
+     "2113697902916751661",
+     "2113697820222042296",
+     "2113623547318779981",
+     "2113617365711892937",
+     "2113237597007040888",
+     "2112257612347568293"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "jack",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:36.933Z",
+   "status": 200,
+   "ms": 66,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527457,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115147589767016752",
+     "2114121702515114234",
+     "2114120704136458600",
+     "2113767788435341556",
+     "2113765812268052630",
+     "2113761335041294749",
+     "2113760339128897919",
+     "2113758314777452560",
+     "2113738686756241660",
+     "2113724552861880761",
+     "2113707181644378332",
+     "2113707022256402598",
+     "2113706907915399514",
+     "2113705157695537605",
+     "2113697902916751661",
+     "2113697820222042296",
+     "2113623547318779981",
+     "2113617365711892937",
+     "2113237597007040888",
+     "2112257612347568293"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:36.999Z",
+   "status": 503,
+   "ms": 2735,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:39.734Z",
+   "status": 200,
+   "ms": 31,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309631,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115753332958433574",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2113776971603689874",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113358139999265160",
+     "2112959650551173522",
+     "2112604875452223824",
+     "2112560723603632217",
+     "2112553116390269175",
+     "2111180963661435219",
+     "2111093273800356092",
+     "2110823965954637903",
+     "2110815671512682509",
+     "2110798512795377741",
+     "2110717473372749989",
+     "2110491624337760703"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:39.765Z",
+   "status": 503,
+   "ms": 2741,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:42.506Z",
+   "status": 200,
+   "ms": 35,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942107,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113400239017378069",
+     "2112641741937635789",
+     "2112637394654822514",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751",
+     "2112497542114214023",
+     "2112488927101661622"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:42.542Z",
+   "status": 503,
+   "ms": 2755,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:45.297Z",
+   "status": 200,
+   "ms": 37,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426756,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115449886086770709",
+     "2115414609570255080",
+     "2115256658611839207",
+     "2115238485619835266",
+     "2115199307548864774",
+     "2115192100127948984",
+     "2115174476589441450",
+     "2115169785084604880",
+     "2114814292096700906",
+     "2114795869081939998",
+     "2114791686761247162",
+     "2114787151619485852",
+     "2114470032214208687",
+     "2114401303677817065",
+     "2114149948916703491",
+     "2113365071652872339",
+     "2113284574172135639",
+     "2112582455551041891",
+     "2112524653163839991",
+     "2112211561091858537"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:45.334Z",
+   "status": 200,
+   "ms": 3859,
+   "cache": "bypass",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924",
+     "2115445726289260775",
+     "2115417533457006656",
+     "2115406004297077033"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:49.192Z",
+   "status": 200,
+   "ms": 55,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983541,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924",
+     "2115445726289260775",
+     "2115417533457006656",
+     "2115406004297077033"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:49.248Z",
+   "status": 200,
+   "ms": 6123,
+   "cache": "bypass",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Andrej Karpathy",
+    "description": true,
+    "followers": 4402513,
+    "statuses": 10163,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2109361546505966046",
+     "2105909609487872075",
+     "2105819303471976479",
+     "2083749667410727319",
+     "2079610838143623371",
+     "2069547676849557725",
+     "2065490793092337691",
+     "2064409694761054332",
+     "2056753169888334312",
+     "2053872850101285137",
+     "2049907410303865030",
+     "2049903821095354523",
+     "2042334451611693415",
+     "2040470801506541998",
+     "2040572272944324650",
+     "2040549459193704852",
+     "2039805659525644595",
+     "2038849654423798197",
+     "2037921699824607591",
+     "2037200624450936940"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:55.371Z",
+   "status": 503,
+   "ms": 2928,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "dril",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:58.299Z",
+   "status": 503,
+   "ms": 2794,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "dril",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:01.093Z",
+   "status": 200,
+   "ms": 40,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686480,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769",
+     "2048883491027476508",
+     "2047461735540695223",
+     "2045214303129829619",
+     "2043926323517894953"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "cold",
+   "at": "2026-10-29T15:42:01.133Z",
+   "status": 503,
+   "ms": 2824,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:03.957Z",
+   "status": 200,
+   "ms": 3562,
+   "cache": "miss",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Vercel",
+    "description": true,
+    "followers": 468340,
+    "statuses": 1966,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115571121622073355",
+     "2113397272943976560",
+     "2112653833382027729",
+     "2112204091216847249",
+     "2110808586389766404",
+     "2110803325012824167",
+     "2110790963300045063",
+     "2110788459803938944",
+     "2110786348131258456",
+     "2110782262480670819",
+     "2110777476972761512",
+     "2110766047842476111",
+     "2110509321939509421",
+     "2108636435507269725",
+     "2106139101422567748",
+     "2106094197468205371",
+     "2104653657216012791",
+     "2103560561577636126",
+     "2103541839399907424",
+     "2102176023207166256"
+    ]
+   }
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "emma",
+   "pass": "cold",
+   "at": "2026-10-29T15:42:07.519Z",
+   "status": 503,
+   "ms": 2000,
+   "errorCode": "upstream_rate_limited",
+   "retryAfter": "59"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "emma",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:09.519Z",
+   "status": 503,
+   "ms": 89,
+   "errorCode": "upstream_rate_limited",
+   "retryAfter": "59"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "cold",
+   "at": "2026-10-29T15:42:09.608Z",
+   "status": 503,
+   "ms": 86,
+   "errorCode": "upstream_rate_limited",
+   "retryAfter": "59"
+  },
+  {
+   "target": "production",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:09.694Z",
+   "status": 503,
+   "ms": 72,
+   "errorCode": "upstream_rate_limited",
+   "retryAfter": "59"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "20",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:01.269Z",
+   "status": 200,
+   "ms": 1641,
+   "serverMs": 1471,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "20",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.910Z",
+   "status": 200,
+   "ms": 35,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:02.945Z",
+   "status": 200,
+   "ms": 1015,
+   "serverMs": 940,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://t.co/BAgJK9NMRk https://t.co/KKAfpg5QYf",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.960Z",
+   "status": 200,
+   "ms": 64,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://t.co/BAgJK9NMRk https://t.co/KKAfpg5QYf",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.025Z",
+   "status": 200,
+   "ms": 792,
+   "serverMs": 740,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit https://t.co/ptAWtxikrh",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:04.817Z",
+   "status": 200,
+   "ms": 56,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit https://t.co/ptAWtxikrh",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.873Z",
+   "status": 200,
+   "ms": 1218,
+   "serverMs": 1163,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution: https://t.co/W7mK8WmCz1",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:06.092Z",
+   "status": 200,
+   "ms": 51,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution: https://t.co/W7mK8WmCz1",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.143Z",
+   "status": 200,
+   "ms": 1165,
+   "serverMs": 1138,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn https://t.co/I7Ip89Bmey",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:07.308Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn https://t.co/I7Ip89Bmey",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:07.329Z",
+   "status": 200,
+   "ms": 1195,
+   "serverMs": 1176,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://t.co/tbogIYouct https://t.co/etKyIfIQr4",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:08.524Z",
+   "status": 200,
+   "ms": 120,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://t.co/tbogIYouct https://t.co/etKyIfIQr4",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:08.644Z",
+   "status": 503,
+   "ms": 156,
+   "serverMs": 136,
+   "upstreamCalls": 1,
+   "upstreamFailures": 1,
+   "errorCode": "sessions_unavailable",
+   "retryAfter": "1"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:08.800Z",
+   "status": 200,
+   "ms": 627,
+   "serverMs": 603,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad https://t.co/ZkbnvVkHGS",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:09.427Z",
+   "status": 200,
+   "ms": 1373,
+   "serverMs": 1293,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:10.799Z",
+   "status": 200,
+   "ms": 20,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:10.820Z",
+   "status": 200,
+   "ms": 1127,
+   "serverMs": 1107,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://t.co/G5CkHbQhFR and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://t.co/zEDKEcLpXY.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:11.946Z",
+   "status": 200,
+   "ms": 19,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://t.co/G5CkHbQhFR and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://t.co/zEDKEcLpXY.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:11.965Z",
+   "status": 200,
+   "ms": 1044,
+   "serverMs": 992,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:13.009Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:13.030Z",
+   "status": 200,
+   "ms": 871,
+   "serverMs": 820,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://t.co/QtnZA1ppYm https://t.co/JLtYll9GK4",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "likes": 89,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:13.901Z",
+   "status": 200,
+   "ms": 49,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://t.co/QtnZA1ppYm https://t.co/JLtYll9GK4",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "likes": 89,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:13.950Z",
+   "status": 200,
+   "ms": 824,
+   "serverMs": 805,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at https://t.co/UbEhUtQb5I has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://t.co/ExHPdeGIJ3\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:14.774Z",
+   "status": 200,
+   "ms": 18,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at https://t.co/UbEhUtQb5I has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://t.co/ExHPdeGIJ3\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:14.792Z",
+   "status": 200,
+   "ms": 590,
+   "serverMs": 565,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:15.382Z",
+   "status": 200,
+   "ms": 19,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:15.401Z",
+   "status": 200,
+   "ms": 545,
+   "serverMs": 526,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent. https://t.co/9MqCG4ZUW6",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:15.946Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent. https://t.co/9MqCG4ZUW6",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:15.968Z",
+   "status": 200,
+   "ms": 1280,
+   "serverMs": 1232,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:17.248Z",
+   "status": 200,
+   "ms": 20,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:17.268Z",
+   "status": 200,
+   "ms": 760,
+   "serverMs": 738,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane. https://t.co/MOioARTftp",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:18.028Z",
+   "status": 200,
+   "ms": 32,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane. https://t.co/MOioARTftp",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:18.060Z",
+   "status": 200,
+   "ms": 1128,
+   "serverMs": 1101,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://t.co/OXmtODyTKj\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://t.co/w3Nctc888d\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:19.187Z",
+   "status": 200,
+   "ms": 23,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://t.co/OXmtODyTKj\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://t.co/w3Nctc888d\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:19.211Z",
+   "status": 200,
+   "ms": 1219,
+   "serverMs": 1198,
+   "cache": "miss",
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:20.430Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 0,
+   "cache": "hit",
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:20.451Z",
+   "status": 404,
+   "ms": 350,
+   "serverMs": 293,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:20.801Z",
+   "status": 404,
+   "ms": 364,
+   "serverMs": 311,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:21.165Z",
+   "status": 404,
+   "ms": 295,
+   "serverMs": 261,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:21.461Z",
+   "status": 404,
+   "ms": 283,
+   "serverMs": 254,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "jack",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:21.744Z",
+   "status": 200,
+   "ms": 921,
+   "serverMs": 901,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527470,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "1833951636005552366",
+     "2115772677939990829",
+     "2115489742930526506",
+     "2115147589767016752",
+     "2115146954162249918",
+     "2115145816113320245",
+     "2115144904808480807",
+     "2114126580138303725",
+     "2114125874807406897",
+     "2114121702515114234",
+     "2114120704136458600",
+     "2114119527961419943",
+     "2114036605807956378",
+     "2113947690807746914",
+     "2113943212574536128",
+     "2113936946288624026",
+     "2113935218650546682",
+     "2113934699152154951",
+     "2113792383355850956",
+     "2113791019988983977"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "jack",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:22.665Z",
+   "status": 200,
+   "ms": 20,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527470,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "1833951636005552366",
+     "2115772677939990829",
+     "2115489742930526506",
+     "2115147589767016752",
+     "2115146954162249918",
+     "2115145816113320245",
+     "2115144904808480807",
+     "2114126580138303725",
+     "2114125874807406897",
+     "2114121702515114234",
+     "2114120704136458600",
+     "2114119527961419943",
+     "2114036605807956378",
+     "2113947690807746914",
+     "2113943212574536128",
+     "2113936946288624026",
+     "2113935218650546682",
+     "2113934699152154951",
+     "2113792383355850956",
+     "2113791019988983977"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:22.685Z",
+   "status": 200,
+   "ms": 947,
+   "serverMs": 930,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309651,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115753332958433574",
+     "2115753332958433574",
+     "2115791291988750550",
+     "2115813044055884093",
+     "2115685371140792533",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2114463017043624059",
+     "2114436576789082161",
+     "2114130258912043194",
+     "2114037724076552597",
+     "2113776971603689874",
+     "2113763713463496930",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113385206946390428",
+     "2113358139999265160",
+     "2113324686436126957"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:23.633Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309651,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115753332958433574",
+     "2115753332958433574",
+     "2115791291988750550",
+     "2115813044055884093",
+     "2115685371140792533",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2114463017043624059",
+     "2114436576789082161",
+     "2114130258912043194",
+     "2114037724076552597",
+     "2113776971603689874",
+     "2113763713463496930",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113385206946390428",
+     "2113358139999265160",
+     "2113324686436126957"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:23.653Z",
+   "status": 200,
+   "ms": 821,
+   "serverMs": 801,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942147,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113400239017378069",
+     "2113410488319262924",
+     "2112641741937635789",
+     "2112637394654822514",
+     "2112638276389790102",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:24.475Z",
+   "status": 200,
+   "ms": 24,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942147,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113400239017378069",
+     "2113410488319262924",
+     "2112641741937635789",
+     "2112637394654822514",
+     "2112638276389790102",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:24.499Z",
+   "status": 200,
+   "ms": 793,
+   "serverMs": 768,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426764,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115612881492283495",
+     "2115449886086770709",
+     "2115414609570255080",
+     "2115257084824449036",
+     "2115256658611839207",
+     "2115238485619835266",
+     "2115199307548864774",
+     "2115192100127948984",
+     "2115174476589441450",
+     "2115169785084604880",
+     "2115057664220639659",
+     "2114814292096700906",
+     "2114815685960618081",
+     "2114795869081939998",
+     "2114797163372847446",
+     "2114791686761247162",
+     "2114787151619485852",
+     "2114674921360314398",
+     "2114470032214208687",
+     "2114401303677817065"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:25.293Z",
+   "status": 200,
+   "ms": 17,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426764,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2115612881492283495",
+     "2115449886086770709",
+     "2115414609570255080",
+     "2115257084824449036",
+     "2115256658611839207",
+     "2115238485619835266",
+     "2115199307548864774",
+     "2115192100127948984",
+     "2115174476589441450",
+     "2115169785084604880",
+     "2115057664220639659",
+     "2114814292096700906",
+     "2114815685960618081",
+     "2114795869081939998",
+     "2114797163372847446",
+     "2114791686761247162",
+     "2114787151619485852",
+     "2114674921360314398",
+     "2114470032214208687",
+     "2114401303677817065"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:25.309Z",
+   "status": 200,
+   "ms": 979,
+   "serverMs": 957,
+   "cache": "miss",
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2112686345617547538",
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786561292026142",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115535106358309144",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:26.289Z",
+   "status": 200,
+   "ms": 23,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2112686345617547538",
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786561292026142",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115535106358309144",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:26.313Z",
+   "status": 200,
+   "ms": 2057,
+   "serverMs": 2036,
+   "cache": "miss",
+   "upstreamCalls": 3,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Andrej Karpathy",
+    "description": true,
+    "followers": 4402513,
+    "statuses": 10163,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2114384346815820050",
+     "2109361546505966046",
+     "2105909609487872075",
+     "2105819303471976479",
+     "2098187194024476764",
+     "2095535021146992835",
+     "2083749667410727319",
+     "2083948654377996480",
+     "2079610838143623371",
+     "2075266731170537506",
+     "2073496962566164990",
+     "2072051876816945486",
+     "2069579404163031082",
+     "2069547676849557725",
+     "2065490793092337691",
+     "2064409694761054332",
+     "2061930040003280905",
+     "2061928642029158853",
+     "2056753169888334312",
+     "2053872850101285137"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:28.370Z",
+   "status": 200,
+   "ms": 30,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Andrej Karpathy",
+    "description": true,
+    "followers": 4402513,
+    "statuses": 10163,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2114384346815820050",
+     "2109361546505966046",
+     "2105909609487872075",
+     "2105819303471976479",
+     "2098187194024476764",
+     "2095535021146992835",
+     "2083749667410727319",
+     "2083948654377996480",
+     "2079610838143623371",
+     "2075266731170537506",
+     "2073496962566164990",
+     "2072051876816945486",
+     "2069579404163031082",
+     "2069547676849557725",
+     "2065490793092337691",
+     "2064409694761054332",
+     "2061930040003280905",
+     "2061928642029158853",
+     "2056753169888334312",
+     "2053872850101285137"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "dril",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:28.400Z",
+   "status": 200,
+   "ms": 2191,
+   "serverMs": 2162,
+   "cache": "miss",
+   "upstreamCalls": 3,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2091966586680975452",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2054017166509584790",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769",
+     "2048883491027476508",
+     "2047461735540695223"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "dril",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:30.591Z",
+   "status": 200,
+   "ms": 20,
+   "serverMs": 0,
+   "cache": "hit",
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": false,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2091966586680975452",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2054017166509584790",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769",
+     "2048883491027476508",
+     "2047461735540695223"
+    ]
+   }
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:30.612Z",
+   "status": 429,
+   "ms": 26,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:30.638Z",
+   "status": 429,
+   "ms": 17,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "emma",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:30.655Z",
+   "status": 429,
+   "ms": 20,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "emma",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:30.675Z",
+   "status": 429,
+   "ms": 17,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:30.693Z",
+   "status": 429,
+   "ms": 36,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "graphql-session",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:30.728Z",
+   "status": 429,
+   "ms": 16,
+   "errorCode": "rate_limited",
+   "retryAfter": "871"
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "20",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:01.269Z",
+   "status": 200,
+   "ms": 559,
+   "serverMs": 176,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "20",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:01.828Z",
+   "status": 200,
+   "ms": 78,
+   "serverMs": 3,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:01.907Z",
+   "status": 200,
+   "ms": 278,
+   "serverMs": 209,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://t.co/BAgJK9NMRk https://t.co/KKAfpg5QYf",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.185Z",
+   "status": 200,
+   "ms": 22,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://t.co/BAgJK9NMRk https://t.co/KKAfpg5QYf",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:02.208Z",
+   "status": 200,
+   "ms": 216,
+   "serverMs": 162,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit https://t.co/ptAWtxikrh",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.424Z",
+   "status": 200,
+   "ms": 82,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit https://t.co/ptAWtxikrh",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:02.505Z",
+   "status": 200,
+   "ms": 234,
+   "serverMs": 209,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution: https://t.co/W7mK8WmCz1",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.740Z",
+   "status": 200,
+   "ms": 52,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution: https://t.co/W7mK8WmCz1",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:02.792Z",
+   "status": 200,
+   "ms": 211,
+   "serverMs": 161,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn https://t.co/I7Ip89Bmey",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.003Z",
+   "status": 200,
+   "ms": 74,
+   "serverMs": 3,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn https://t.co/I7Ip89Bmey",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.077Z",
+   "status": 200,
+   "ms": 186,
+   "serverMs": 166,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://t.co/tbogIYouct https://t.co/etKyIfIQr4",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.264Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 3,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://t.co/tbogIYouct https://t.co/etKyIfIQr4",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.285Z",
+   "status": 200,
+   "ms": 234,
+   "serverMs": 176,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad https://t.co/ZkbnvVkHGS",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.519Z",
+   "status": 200,
+   "ms": 43,
+   "serverMs": 4,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad https://t.co/ZkbnvVkHGS",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.561Z",
+   "status": 200,
+   "ms": 211,
+   "serverMs": 183,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:03.773Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.794Z",
+   "status": 200,
+   "ms": 228,
+   "serverMs": 168,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://t.co/jSHP2lHuOx and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis https://t.co/m8taK5B7Oy",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:04.021Z",
+   "status": 200,
+   "ms": 341,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://t.co/jSHP2lHuOx and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis https://t.co/m8taK5B7Oy",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.362Z",
+   "status": 200,
+   "ms": 208,
+   "serverMs": 193,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:04.571Z",
+   "status": 200,
+   "ms": 32,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.603Z",
+   "status": 200,
+   "ms": 263,
+   "serverMs": 190,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://t.co/QtnZA1ppYm https://t.co/JLtYll9GK4",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:04.867Z",
+   "status": 200,
+   "ms": 24,
+   "serverMs": 3,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://t.co/QtnZA1ppYm https://t.co/JLtYll9GK4",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:04.892Z",
+   "status": 200,
+   "ms": 218,
+   "serverMs": 199,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at https://t.co/uckE83TUzM has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch https://t.co/01hiwxbF3c",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:05.110Z",
+   "status": 200,
+   "ms": 20,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at https://t.co/uckE83TUzM has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch https://t.co/01hiwxbF3c",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:05.130Z",
+   "status": 200,
+   "ms": 262,
+   "serverMs": 200,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:05.392Z",
+   "status": 200,
+   "ms": 23,
+   "serverMs": 4,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:05.415Z",
+   "status": 200,
+   "ms": 397,
+   "serverMs": 378,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent. https://t.co/9MqCG4ZUW6",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:05.812Z",
+   "status": 200,
+   "ms": 26,
+   "serverMs": 4,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent. https://t.co/9MqCG4ZUW6",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:05.838Z",
+   "status": 200,
+   "ms": 197,
+   "serverMs": 178,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added https://t.co/Qr94io6PiW",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:06.035Z",
+   "status": 200,
+   "ms": 25,
+   "serverMs": 2,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added https://t.co/Qr94io6PiW",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.060Z",
+   "status": 200,
+   "ms": 373,
+   "serverMs": 349,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane. https://t.co/MOioARTftp",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:06.433Z",
+   "status": 200,
+   "ms": 41,
+   "serverMs": 10,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane. https://t.co/MOioARTftp",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.474Z",
+   "status": 200,
+   "ms": 192,
+   "serverMs": 169,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://t.co/OXmtODyTKj\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://t.co/w3Nctc888d\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:06.666Z",
+   "status": 200,
+   "ms": 29,
+   "serverMs": 5,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://t.co/OXmtODyTKj\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://t.co/w3Nctc888d\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.695Z",
+   "status": 200,
+   "ms": 237,
+   "serverMs": 219,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:06.932Z",
+   "status": 200,
+   "ms": 21,
+   "serverMs": 3,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.953Z",
+   "status": 404,
+   "ms": 1320,
+   "serverMs": 1305,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:08.273Z",
+   "status": 404,
+   "ms": 1034,
+   "serverMs": 1014,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:09.308Z",
+   "status": 404,
+   "ms": 180,
+   "serverMs": 151,
+   "upstreamCalls": 1,
+   "upstreamFailures": 1,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "syndication",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:09.488Z",
+   "status": 404,
+   "ms": 25,
+   "serverMs": 5,
+   "upstreamCalls": 1,
+   "upstreamFailures": 1,
+   "errorCode": "not_found"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "jack",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:09.513Z",
+   "status": 200,
+   "ms": 2730,
+   "serverMs": 2706,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527469,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "1833951636005552366",
+     "1247616214769086465",
+     "1189634360472829952",
+     "20",
+     "1903073813236957455",
+     "1465347002426867720",
+     "1269077097294688256",
+     "1267621973300875265",
+     "1675230141792886784",
+     "1265837138114830336",
+     "1316897044972306440",
+     "1593011838429822976",
+     "1588913276980633600",
+     "1517968787609333760",
+     "1445080782335365125",
+     "1511329369473564677",
+     "1349510769268850690",
+     "1403487211857797121",
+     "1283571658339397632",
+     "1883976555686420844"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "jack",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:12.244Z",
+   "status": 200,
+   "ms": 782,
+   "serverMs": 759,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527469,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "1833951636005552366",
+     "1247616214769086465",
+     "1189634360472829952",
+     "20",
+     "1903073813236957455",
+     "1465347002426867720",
+     "1269077097294688256",
+     "1267621973300875265",
+     "1675230141792886784",
+     "1265837138114830336",
+     "1316897044972306440",
+     "1593011838429822976",
+     "1588913276980633600",
+     "1517968787609333760",
+     "1445080782335365125",
+     "1511329369473564677",
+     "1349510769268850690",
+     "1403487211857797121",
+     "1283571658339397632",
+     "1883976555686420844"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:13.026Z",
+   "status": 200,
+   "ms": 4076,
+   "serverMs": 4056,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309649,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115753332958433574",
+     "2115813044055884093",
+     "2115791291988750550",
+     "2115779022722630042",
+     "2115685371140792533",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2114463017043624059",
+     "2114436576789082161",
+     "2114130258912043194",
+     "2114037724076552597",
+     "2113776971603689874",
+     "2113763713463496930",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113385206946390428",
+     "2113358139999265160",
+     "2113324686436126957"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:17.102Z",
+   "status": 200,
+   "ms": 863,
+   "serverMs": 834,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309655,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115753332958433574",
+     "2115813044055884093",
+     "2115791291988750550",
+     "2115779022722630042",
+     "2115685371140792533",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2114463017043624059",
+     "2114436576789082161",
+     "2114130258912043194",
+     "2114037724076552597",
+     "2113776971603689874",
+     "2113763713463496930",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113385206946390428",
+     "2113358139999265160",
+     "2113324686436126957"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:17.965Z",
+   "status": 503,
+   "ms": 6040,
+   "serverMs": 6021,
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:24.005Z",
+   "status": 200,
+   "ms": 1653,
+   "serverMs": 1631,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942147,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113410488319262924",
+     "2113400239017378069",
+     "2112641741937635789",
+     "2112638276389790102",
+     "2112637394654822514",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:25.658Z",
+   "status": 200,
+   "ms": 4227,
+   "serverMs": 4204,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426764,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "1962512489452618056",
+     "1879968688356642917",
+     "1841518360275648977",
+     "1924056837680247115",
+     "1650383234511908865",
+     "1592852796185128961",
+     "1844049262126195021",
+     "1957567774882164784",
+     "1897598625850577163",
+     "1655702842194243584",
+     "1744854539734249887",
+     "1860000732730347685",
+     "1744417949216030773",
+     "1959866534102446505",
+     "1952017198907814211",
+     "1930191120962670722",
+     "1604069050220519424",
+     "1884210705223802925",
+     "1872370930724507909",
+     "1877109333269360719"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:29.885Z",
+   "status": 200,
+   "ms": 1225,
+   "serverMs": 1204,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426765,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "1962512489452618056",
+     "1879968688356642917",
+     "1841518360275648977",
+     "1924056837680247115",
+     "1650383234511908865",
+     "1592852796185128961",
+     "1844049262126195021",
+     "1957567774882164784",
+     "1897598625850577163",
+     "1655702842194243584",
+     "1744854539734249887",
+     "1860000732730347685",
+     "1744417949216030773",
+     "1959866534102446505",
+     "1952017198907814211",
+     "1930191120962670722",
+     "1604069050220519424",
+     "1884210705223802925",
+     "1872370930724507909",
+     "1877109333269360719"
+    ],
+    "degraded": false
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:31.111Z",
+   "status": 503,
+   "ms": 6440,
+   "serverMs": 6421,
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:37.551Z",
+   "status": 200,
+   "ms": 3909,
+   "serverMs": 3879,
+   "upstreamCalls": 3,
+   "upstreamFailures": 1,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924",
+     "2115445726289260775"
+    ],
+    "degraded": true
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:41.460Z",
+   "status": 503,
+   "ms": 2705,
+   "serverMs": 2686,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:44.165Z",
+   "status": 503,
+   "ms": 2812,
+   "serverMs": 2792,
+   "upstreamCalls": 3,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "dril",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:46.977Z",
+   "status": 200,
+   "ms": 4570,
+   "serverMs": 4540,
+   "upstreamCalls": 3,
+   "upstreamFailures": 1,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769"
+    ],
+    "degraded": true
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "dril",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:51.548Z",
+   "status": 200,
+   "ms": 1916,
+   "serverMs": 1889,
+   "upstreamCalls": 3,
+   "upstreamFailures": 1,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769"
+    ],
+    "degraded": true
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:53.464Z",
+   "status": 200,
+   "ms": 3531,
+   "serverMs": 3502,
+   "upstreamCalls": 3,
+   "upstreamFailures": 1,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Vercel",
+    "description": true,
+    "followers": 468340,
+    "statuses": 1966,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115571121622073355",
+     "2113397272943976560",
+     "2112653833382027729",
+     "2112204091216847249",
+     "2110808586389766404",
+     "2110803325012824167",
+     "2110803382239945130",
+     "2110803394990686626",
+     "2110790963300045063",
+     "2110790975203516766",
+     "2110788459803938944",
+     "2110786348131258456",
+     "2110782262480670819",
+     "2110777476972761512",
+     "2110766047842476111",
+     "2110509321939509421",
+     "2108636435507269725"
+    ],
+    "degraded": true
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:56.995Z",
+   "status": 200,
+   "ms": 1304,
+   "serverMs": 1285,
+   "upstreamCalls": 3,
+   "upstreamFailures": 1,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Vercel",
+    "description": true,
+    "followers": 468340,
+    "statuses": 1966,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115571121622073355",
+     "2113397272943976560",
+     "2112653833382027729",
+     "2112204091216847249",
+     "2110808586389766404",
+     "2110803325012824167",
+     "2110803382239945130",
+     "2110803394990686626",
+     "2110790963300045063",
+     "2110790975203516766",
+     "2110788459803938944",
+     "2110786348131258456",
+     "2110782262480670819",
+     "2110777476972761512",
+     "2110766047842476111",
+     "2110509321939509421",
+     "2108636435507269725"
+    ],
+    "degraded": true
+   }
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "emma",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:58.299Z",
+   "status": 503,
+   "ms": 2666,
+   "serverMs": 2600,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "emma",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:00.965Z",
+   "status": 503,
+   "ms": 2804,
+   "serverMs": 2747,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "cold",
+   "at": "2026-10-29T15:42:03.768Z",
+   "status": 503,
+   "ms": 2806,
+   "serverMs": 2779,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "syndication",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "warm",
+   "at": "2026-10-29T15:42:06.574Z",
+   "status": 503,
+   "ms": 2681,
+   "serverMs": 2660,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "20",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:01.269Z",
+   "status": 200,
+   "ms": 1416,
+   "serverMs": 1162,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "authorFollowers": 12527469,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "20",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:02.685Z",
+   "status": 200,
+   "ms": 1244,
+   "serverMs": 1157,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "20",
+     "text": "just setting up my twttr",
+     "author": "jack",
+     "photos": 0,
+     "videos": 0,
+     "likes": 308832,
+     "authorFollowers": 12527469,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:03.929Z",
+   "status": 200,
+   "ms": 1092,
+   "serverMs": 1026,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://go.nasa.gov/4e2TBA1",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "authorFollowers": 92309651,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115538945844850813",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:05.021Z",
+   "status": 200,
+   "ms": 1059,
+   "serverMs": 1002,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115538945844850813",
+     "text": "What would it be like to live on Mars?\n\nThe CHAPEA 2 crew share their final thoughts before their yearlong simulation mission ends on Houston We Have a Podcast: https://go.nasa.gov/4e2TBA1",
+     "author": "NASA",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1115,
+     "authorFollowers": 92309650,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:06.080Z",
+   "status": 200,
+   "ms": 1040,
+   "serverMs": 934,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2094470456472728011",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:07.120Z",
+   "status": 200,
+   "ms": 693,
+   "serverMs": 631,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2094470456472728011",
+     "text": "people ask me if i listen to bieber and i smile simply and say simply yes. Then I show them this and they lose their fucking shit",
+     "author": "dril",
+     "photos": 1,
+     "videos": 0,
+     "likes": 1371,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:07.813Z",
+   "status": 200,
+   "ms": 1536,
+   "serverMs": 1514,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution:",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "authorFollowers": 6408425,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2111139227761266699",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:09.349Z",
+   "status": 200,
+   "ms": 1011,
+   "serverMs": 952,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2111139227761266699",
+     "text": "The back of the Navier-Stokes milestone shirt is the last line of the chain-of-thought from the solution:",
+     "author": "sama",
+     "photos": 1,
+     "videos": 0,
+     "likes": 11070,
+     "authorFollowers": 6408425,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:10.360Z",
+   "status": 200,
+   "ms": 1045,
+   "serverMs": 976,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "authorFollowers": 41942145,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115476295169814978",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:11.405Z",
+   "status": 200,
+   "ms": 970,
+   "serverMs": 916,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115476295169814978",
+     "text": "Ship 42 static fires complete. The Starship preparing for Flight 15 performed a full duration, six-engine static fire, and fired a single Raptor engine to simulate a deorbit burn",
+     "author": "SpaceX",
+     "photos": 0,
+     "videos": 2,
+     "likes": 18880,
+     "authorFollowers": 41942145,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:12.376Z",
+   "status": 200,
+   "ms": 798,
+   "serverMs": 718,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://vercel.com/blog/introducing-vercel-drives-persistent-storage-for-agents",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "authorFollowers": 468339,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2110788459803938944",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:13.174Z",
+   "status": 200,
+   "ms": 874,
+   "serverMs": 854,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110788459803938944",
+     "text": "Vercel Drives is generally available. You can now run stateful agents on Vercel.\n\nhttps://vercel.com/blog/introducing-vercel-drives-persistent-storage-for-agents",
+     "author": "vercel",
+     "photos": 0,
+     "videos": 1,
+     "likes": 663,
+     "authorFollowers": 468339,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:14.048Z",
+   "status": 200,
+   "ms": 778,
+   "serverMs": 735,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2096357785093156932",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:14.826Z",
+   "status": 200,
+   "ms": 649,
+   "serverMs": 628,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2096357785093156932",
+     "text": "you dont wanna see me get Bad",
+     "author": "dril",
+     "photos": 0,
+     "videos": 1,
+     "likes": 1040,
+     "authorFollowers": 1686482,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:15.475Z",
+   "status": 200,
+   "ms": 1164,
+   "serverMs": 1144,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "authorFollowers": 4402513,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2079610838143623371",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:16.640Z",
+   "status": 200,
+   "ms": 1156,
+   "serverMs": 1130,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2079610838143623371",
+     "text": "One pattern I find useful for working with LLMs is a nice long ramble session. Sometimes the LLM needs more bits to understand what you're trying to achieve, but you're too lazy to type them. In these cases I like to lean back, switch to /voice and just ramble for like 10 minutes, total mess, anything goes, full stream of consciousness. Sometimes I declare it up top, something like \"switching to speech recognition sorry for any typos...\". Sometimes I turn it into a small interview of a few turns. But I find that the LLMs are somehow very good at reconstructing long incoherent rambles and often their echo of your own tangle of thoughts comes out quite a bit cleaner than what you started with. The result is that you improve the mind meld and have to correct things less from that point on.",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "likes": 50276,
+     "authorFollowers": 4402513,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:17.796Z",
+   "status": 200,
+   "ms": 1160,
+   "serverMs": 1138,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://go.nasa.gov/4jzartX and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://go.nasa.gov/4zV3TLc.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "authorFollowers": 92309655,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2113776971603689874",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:18.956Z",
+   "status": 200,
+   "ms": 1067,
+   "serverMs": 1050,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2113776971603689874",
+     "text": "We are not slowing down. 🚀\n\nOur Artemis III mission will send four astronauts to low Earth orbit next year to test critical systems needed for future lunar landings https://go.nasa.gov/4jzartX and we’re accelerating efforts to ensure the success of Artemis IV, the first Artemis mission on the lunar surface https://go.nasa.gov/4zV3TLc.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "likes": 7918,
+     "authorFollowers": 92309651,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:20.023Z",
+   "status": 200,
+   "ms": 1028,
+   "serverMs": 996,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115414609570255080",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:21.051Z",
+   "status": 200,
+   "ms": 925,
+   "serverMs": 869,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115414609570255080",
+     "text": "Nothing says a country's not a dictatorship like having to issue grovelling apologies for mentioning that it was in the past.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "quoteId": "2115032693456970110",
+     "likes": 1960,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:21.976Z",
+   "status": 200,
+   "ms": 1047,
+   "serverMs": 1024,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://hotelist.com/mcp",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115796587351810138",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:23.023Z",
+   "status": 200,
+   "ms": 760,
+   "serverMs": 743,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115796587351810138",
+     "text": "Also it works as an MCP connector so you can find, book and review hotels via your favorite AI agent\n\nhttps://hotelist.com/mcp",
+     "author": "levelsio",
+     "photos": 1,
+     "videos": 0,
+     "quoteId": "2115771822499049773",
+     "likes": 89,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:23.784Z",
+   "status": 200,
+   "ms": 772,
+   "serverMs": 748,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at http://q1.pieter.com has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://hub.quakeworld.nu/qtv/?address=65.109.238.95:27500\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115798739977712039",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:24.556Z",
+   "status": 200,
+   "ms": 769,
+   "serverMs": 745,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115798739977712039",
+     "text": "In a very unexpected twist\n\nMy web-based port of Quake 1 (powered by FTE) at http://q1.pieter.com has become one of the most popular servers in the QuakeWorld community\n\n@dsvensson messaged me and asked me to add some missing features like WebRTC and QTV so people can watch the games online:\n\n\"Your server raised many questions in the small community when it started showing up. :)\"\n\n\"A new server showed up on the hub and, while small, the community is very active with tournaments, LANs etc, and hub is a gathering place to see what's up for the evening, then your server showed up there full every day with complete newbies and people started talking about what it might be, until the url to the web page was eventually found. \"\n\n\"Lots of people have been talking about your server, would be amazing if at least some of the people your server attracts gets introduced to competitive play.\"\n\nYou can watch the live games here https://hub.quakeworld.nu/qtv/?address=65.109.238.95:27500\n\nMaybe we should organize a tournament? 🏟️",
+     "author": "levelsio",
+     "photos": 0,
+     "videos": 1,
+     "quoteId": "2108957488410161442",
+     "likes": 125,
+     "authorFollowers": 983543,
+     "created": true,
+     "context": "post"
+    },
+    "chain": []
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:25.325Z",
+   "status": 200,
+   "ms": 613,
+   "serverMs": 592,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2114815685960618081",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:25.937Z",
+   "status": 200,
+   "ms": 549,
+   "serverMs": 515,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2114815685960618081",
+     "text": "This was unexpected even to me. When we started YC, we thought that after helping startups get rolling, we'd hand them over to their next investors, who'd take it from there. But it didn't work out that way. Being there at the beginning made things different.",
+     "author": "paulg",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2114814292096700906",
+     "likes": 105,
+     "authorFollowers": 5426764,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2114814292096700906"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:26.487Z",
+   "status": 200,
+   "ms": 811,
+   "serverMs": 778,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent.",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "authorFollowers": 468340,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578",
+     "2110803394990686626"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2110803382239945130",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:27.298Z",
+   "status": 200,
+   "ms": 888,
+   "serverMs": 839,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2110803382239945130",
+     "text": "4. US providers are doing big business on Chinese models, taking $2.50 of every $3.50 spent.",
+     "author": "vercel",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2110803363269058578",
+     "likes": 10,
+     "authorFollowers": 468340,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2110803325012824167",
+     "2110803345309053144",
+     "2110803363269058578",
+     "2110803394990686626"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:28.187Z",
+   "status": 200,
+   "ms": 1491,
+   "serverMs": 1472,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "authorFollowers": 41942150,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2112638276389790102",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:29.677Z",
+   "status": 200,
+   "ms": 1396,
+   "serverMs": 1370,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2112638276389790102",
+     "text": "Q3 2026 highlights:\n- Delivered revenue of $14.6 billion, up 161% year-over-year\n\n- Successfully launched our first revenue-generating Starship mission, delivering 26 Starlink V3 satellites to our broadband constellation, representing approximately 10x the downlink capacity added by a Falcon 9 Starlink launch\n\n- Added $6.7 billion of incremental Super Intelligence solutions and infrastructure revenue year-over-year, driven by cloud services agreements, the acquisition of Cursor, and our growing SI models and software applications, including @Grok @Bot\n\n- Delivered year-over-year revenue growth of 69% and income from operations growth of 99% for the Connectivity segment, supported by strong momentum in enterprise and government adoption, and continued @Starlink consumer subscriber growth\n\n- Continued to scale nameplate compute, reaching 1.7 GW as of September 30, 2026",
+     "author": "SpaceX",
+     "photos": 1,
+     "videos": 0,
+     "replyTo": "2112637394654822514",
+     "likes": 4866,
+     "authorFollowers": 41942146,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2112637394654822514"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:31.073Z",
+   "status": 200,
+   "ms": 906,
+   "serverMs": 882,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "authorFollowers": 92309655,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042",
+     "2115813044055884093"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2115791291988750550",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:31.979Z",
+   "status": 200,
+   "ms": 837,
+   "serverMs": 804,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2115791291988750550",
+     "text": "@csa_asc @Space_Station How large is the solar array that we are installing today? This type of solar array measures around 63 feet in length—only a little longer than a bowling lane.",
+     "author": "NASA",
+     "photos": 0,
+     "videos": 1,
+     "replyTo": "2115779022722630042",
+     "likes": 258,
+     "authorFollowers": 92309651,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2115753332958433574",
+     "2115779022722630042",
+     "2115813044055884093"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:32.817Z",
+   "status": 200,
+   "ms": 971,
+   "serverMs": 950,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://simonwillison.net/2025/Jun/6/six-months-in-llms/\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://karpathy.ai/lotr-movie/\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "authorFollowers": 4402513,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2083948654377996480",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:33.789Z",
+   "status": 200,
+   "ms": 916,
+   "serverMs": 892,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2083948654377996480",
+     "text": "More on the pelican on the bicycle test from @simonw:\nhttps://simonwillison.net/2025/Jun/6/six-months-in-llms/\n\nI uploaded the source here so it's playable in the browser, forkable etc.\nhttps://karpathy.ai/lotr-movie/\n\nLook out for GTA Hobbiton dropping before GTA VI :)",
+     "author": "karpathy",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2083749667410727319",
+     "likes": 972,
+     "authorFollowers": 4402513,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2083749667410727319"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:34.704Z",
+   "status": 200,
+   "ms": 1032,
+   "serverMs": 1010,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "authorFollowers": 6408427,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "2107924677801001381",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:35.737Z",
+   "status": 200,
+   "ms": 983,
+   "serverMs": 964,
+   "upstreamCalls": 1,
+   "upstreamFailures": 0,
+   "post": {
+    "focal": {
+     "id": "2107924677801001381",
+     "text": "Have been waiting for this one for a long time, and I would hate to have to go back to the old version of Chat!",
+     "author": "sama",
+     "photos": 0,
+     "videos": 0,
+     "replyTo": "2107924408597950702",
+     "likes": 1035,
+     "authorFollowers": 6408425,
+     "created": true,
+     "context": "post"
+    },
+    "chain": [
+     "2107924408597950702"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:36.720Z",
+   "status": 404,
+   "ms": 1329,
+   "serverMs": 1315,
+   "upstreamCalls": 3,
+   "upstreamFailures": 2,
+   "errorCode": "syndication_empty"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "869766994899468288",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:38.049Z",
+   "status": 404,
+   "ms": 1341,
+   "serverMs": 1315,
+   "upstreamCalls": 3,
+   "upstreamFailures": 2,
+   "errorCode": "syndication_empty"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:39.390Z",
+   "status": 404,
+   "ms": 1202,
+   "serverMs": 1177,
+   "upstreamCalls": 3,
+   "upstreamFailures": 3,
+   "errorCode": "syndication_error"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "post",
+   "key": "1234567890123456789",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:40.592Z",
+   "status": 404,
+   "ms": 1359,
+   "serverMs": 1339,
+   "upstreamCalls": 3,
+   "upstreamFailures": 3,
+   "errorCode": "syndication_error"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "jack",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:41.951Z",
+   "status": 200,
+   "ms": 1118,
+   "serverMs": 1089,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527469,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115147589767016752",
+     "2114121702515114234",
+     "2114120704136458600"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "jack",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:43.069Z",
+   "status": 200,
+   "ms": 1043,
+   "serverMs": 1013,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "jack",
+    "description": true,
+    "followers": 12527469,
+    "statuses": 31112,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115147589767016752",
+     "2114121702515114234",
+     "2114120704136458600"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:44.112Z",
+   "status": 200,
+   "ms": 1217,
+   "serverMs": 1187,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309655,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115753332958433574",
+     "2115791291988750550",
+     "2115813044055884093",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2113776971603689874",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113358139999265160"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "NASA",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:45.329Z",
+   "status": 200,
+   "ms": 1140,
+   "serverMs": 1105,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "NASA",
+    "description": true,
+    "followers": 92309659,
+    "statuses": 74467,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115753332958433574",
+     "2115791291988750550",
+     "2115813044055884093",
+     "2115538945844850813",
+     "2115129428158087498",
+     "2114801524358406570",
+     "2114484649430798432",
+     "2113776971603689874",
+     "2113693409772761305",
+     "2113655288687431819",
+     "2113358139999265160"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:46.469Z",
+   "status": 200,
+   "ms": 872,
+   "serverMs": 841,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942153,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113400239017378069",
+     "2113410488319262924",
+     "2112641741937635789",
+     "2112637394654822514",
+     "2112638276389790102",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "SpaceX",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:47.341Z",
+   "status": 200,
+   "ms": 832,
+   "serverMs": 811,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "SpaceX",
+    "description": true,
+    "followers": 41942153,
+    "statuses": 11912,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115476295169814978",
+     "2115004840321659292",
+     "2114998002129440995",
+     "2114979142638960965",
+     "2114444137067844004",
+     "2113786051009696177",
+     "2113780307904381100",
+     "2113761872264712327",
+     "2113400239017378069",
+     "2113410488319262924",
+     "2112641741937635789",
+     "2112637394654822514",
+     "2112638276389790102",
+     "2112592291147747809",
+     "2112559638579499258",
+     "2112543527481876848",
+     "2112514626256884044",
+     "2112502543947325773",
+     "2112500266289213814",
+     "2112498759854661751"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:48.173Z",
+   "status": 200,
+   "ms": 856,
+   "serverMs": 836,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426764,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115449886086770709",
+     "2115414609570255080",
+     "2115256658611839207",
+     "2115238485619835266",
+     "2115199307548864774",
+     "2115192100127948984",
+     "2115174476589441450",
+     "2115169785084604880",
+     "2114814292096700906",
+     "2114815685960618081",
+     "2114795869081939998",
+     "2114797163372847446",
+     "2114791686761247162",
+     "2114787151619485852",
+     "2114470032214208687",
+     "2114401303677817065"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "paulg",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:49.029Z",
+   "status": 200,
+   "ms": 885,
+   "serverMs": 856,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Paul Graham",
+    "description": true,
+    "followers": 5426764,
+    "statuses": 55147,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115449886086770709",
+     "2115414609570255080",
+     "2115256658611839207",
+     "2115238485619835266",
+     "2115199307548864774",
+     "2115192100127948984",
+     "2115174476589441450",
+     "2115169785084604880",
+     "2114814292096700906",
+     "2114815685960618081",
+     "2114795869081939998",
+     "2114797163372847446",
+     "2114791686761247162",
+     "2114787151619485852",
+     "2114470032214208687",
+     "2114401303677817065"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:49.914Z",
+   "status": 200,
+   "ms": 1011,
+   "serverMs": 987,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924",
+     "2115445726289260775"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "levelsio",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:50.926Z",
+   "status": 200,
+   "ms": 1107,
+   "serverMs": 1073,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "@levelsio",
+    "description": true,
+    "followers": 983543,
+    "statuses": 182160,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115811417961963724",
+     "2115808064087732305",
+     "2115805396753383750",
+     "2115798739977712039",
+     "2115796587351810138",
+     "2115795975553913329",
+     "2115786353300353063",
+     "2115771822499049773",
+     "2115594451217187315",
+     "2115586985888825445",
+     "2115568914054729744",
+     "2115541852958916728",
+     "2115514133713997842",
+     "2115512638176420063",
+     "2115505515275206770",
+     "2115507596006228328",
+     "2115450177716985924",
+     "2115445726289260775"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:52.033Z",
+   "status": 200,
+   "ms": 967,
+   "serverMs": 938,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Andrej Karpathy",
+    "description": true,
+    "followers": 4402513,
+    "statuses": 10163,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2109361546505966046",
+     "2105909609487872075",
+     "2105819303471976479",
+     "2083749667410727319",
+     "2083948654377996480",
+     "2079610838143623371",
+     "2069547676849557725",
+     "2065490793092337691",
+     "2064409694761054332",
+     "2056753169888334312"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "karpathy",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:53.000Z",
+   "status": 200,
+   "ms": 900,
+   "serverMs": 875,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Andrej Karpathy",
+    "description": true,
+    "followers": 4402513,
+    "statuses": 10163,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2109361546505966046",
+     "2105909609487872075",
+     "2105819303471976479",
+     "2083749667410727319",
+     "2083948654377996480",
+     "2079610838143623371",
+     "2069547676849557725",
+     "2065490793092337691",
+     "2064409694761054332",
+     "2056753169888334312"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "dril",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:53.900Z",
+   "status": 200,
+   "ms": 810,
+   "serverMs": 792,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "dril",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:54.710Z",
+   "status": 200,
+   "ms": 632,
+   "serverMs": 615,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "wint",
+    "description": true,
+    "followers": 1686482,
+    "statuses": 14623,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2112192263879311461",
+     "2112190670698062264",
+     "2096357785093156932",
+     "2094470456472728011",
+     "2093771957431050597",
+     "2085978017311125857",
+     "2084734184602611911",
+     "2083843017686081572",
+     "2078210862020734980",
+     "2075063497101373630",
+     "2074402938269884600",
+     "2055040104054555014",
+     "2054737703615582333",
+     "2053949977102258322",
+     "2051165864804884506",
+     "2050308892509470769"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:55.342Z",
+   "status": 200,
+   "ms": 950,
+   "serverMs": 931,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Vercel",
+    "description": true,
+    "followers": 468340,
+    "statuses": 1966,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115571121622073355",
+     "2113397272943976560",
+     "2112653833382027729",
+     "2112204091216847249",
+     "2110808586389766404",
+     "2110803325012824167",
+     "2110803382239945130",
+     "2110803394990686626",
+     "2110790963300045063",
+     "2110790975203516766",
+     "2110788459803938944",
+     "2110786348131258456",
+     "2110782262480670819",
+     "2110777476972761512",
+     "2110766047842476111",
+     "2110509321939509421",
+     "2108636435507269725"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "vercel",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:56.292Z",
+   "status": 200,
+   "ms": 832,
+   "serverMs": 799,
+   "upstreamCalls": 2,
+   "upstreamFailures": 0,
+   "profile": {
+    "found": true,
+    "protected": false,
+    "name": "Vercel",
+    "description": true,
+    "followers": 468340,
+    "statuses": 1966,
+    "avatar": true,
+    "banner": true,
+    "joined": true,
+    "posts": [
+     "2115571121622073355",
+     "2113397272943976560",
+     "2112653833382027729",
+     "2112204091216847249",
+     "2110808586389766404",
+     "2110803325012824167",
+     "2110803382239945130",
+     "2110803394990686626",
+     "2110790963300045063",
+     "2110790975203516766",
+     "2110788459803938944",
+     "2110786348131258456",
+     "2110782262480670819",
+     "2110777476972761512",
+     "2110766047842476111",
+     "2110509321939509421",
+     "2108636435507269725"
+    ]
+   }
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "emma",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:57.124Z",
+   "status": 503,
+   "ms": 660,
+   "serverMs": 637,
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "emma",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:57.785Z",
+   "status": 503,
+   "ms": 587,
+   "serverMs": 567,
+   "upstreamCalls": 2,
+   "upstreamFailures": 1,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "cold",
+   "at": "2026-10-29T15:41:58.371Z",
+   "status": 503,
+   "ms": 334,
+   "serverMs": 316,
+   "upstreamCalls": 2,
+   "upstreamFailures": 2,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  },
+  {
+   "target": "fx-selfhost",
+   "kind": "user",
+   "key": "xmdnosuchuser1",
+   "pass": "warm",
+   "at": "2026-10-29T15:41:58.706Z",
+   "status": 503,
+   "ms": 362,
+   "serverMs": 334,
+   "upstreamCalls": 1,
+   "upstreamFailures": 1,
+   "errorCode": "upstream_unavailable",
+   "retryAfter": "30"
+  }
+ ]
+}
