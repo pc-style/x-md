@@ -1,6 +1,8 @@
 /**
- * x-md's fetcher on Cloudflare Workers, pointed only at the self-hosted FxEmbed
- * fork (`xmd-fx`) instead of the public api.fxtwitter.com pool.
+ * x-md's fetcher on Cloudflare Workers, with the self-hosted FxEmbed fork
+ * (`xmd-fx`) as its only FxTwitter base instead of the public api.fxtwitter.com
+ * pool. The fetcher's syndication fallback for posts stays, as in production;
+ * `source` says which one served.
  *
  *   GET /post/:id        fetchPosts() output (thread=full|off, replies=off|top|recent)
  *   GET /user/:handle    fetchFxProfile() + fetchFxProfileStatuses() (count, replies=true, cursor)
