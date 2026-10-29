@@ -47,7 +47,7 @@
     "@changesets/cli": "^3.0.3",
     "@types/node": "^26.6.5",
     "@vercel/build-utils": "15.0.1",
-    "@vercel/node": "27.0.1",
+    "@vercel/node": "27.0.2",
     "blume": "^2.2.4",
     "typescript": "~7.0.2",
     "vite": "^8.3.5",
