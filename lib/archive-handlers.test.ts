@@ -25,7 +25,8 @@ function exchange(method = 'GET', resource = 'search') {
 }
 async function events() {
   await Promise.all(vi.mocked(waitUntil).mock.calls.map(call => call[0]))
-  return fetchMock.mock.calls.map(call => JSON.parse(call[1].body))
+  // Server events arrive in batches; the archive keeps its own single-event call.
+  return fetchMock.mock.calls.map(call => JSON.parse(call[1].body)).flatMap(body => body.batch ?? [body])
 }
 beforeEach(() => {
   vi.clearAllMocks(); vi.stubGlobal('fetch', fetchMock)

@@ -4,7 +4,7 @@ import { IncomingMessage, ServerResponse } from 'node:http'
 import { Socket } from 'node:net'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { waitUntil } from '@vercel/functions'
-import { withServerEvents, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback, errorTypeFor, UPSTREAM_CANCELLED } from './server-events.js'
+import { withServerEvents, noteRequestError, trackResult, trackRateLimit, providerFetch, reportProviderResponse, trackFallback, errorTypeFor, UPSTREAM_CANCELLED } from './server-events.js'
 import { problemDetails, sendProblem } from './apierror.js'
 import { ConvertError } from './errors.js'
 import { trackRequest } from './analytics.js'
@@ -27,8 +27,15 @@ beforeEach(() => {
   vi.stubEnv('VERCEL_ENV', 'production'); vi.stubEnv('POSTHOG_PROJECT_TOKEN', 'phc_test'); vi.stubEnv('POSTHOG_HOST', 'https://eu.i.posthog.com')
   vi.stubEnv('CACHE_PERSIST', 'false'); vi.stubEnv('CACHE_DISABLED', 'false')
   upstream = async () => new Response('{}')
+  // Keep every sampled event; sampling itself has its own test.
+  vi.spyOn(Math, 'random').mockReturnValue(0)
   vi.stubGlobal('fetch', vi.fn(async (url, init) => {
-    if (String(url).startsWith('https://eu.i.posthog.com/')) { sent.push(JSON.parse(init.body)); return new Response('{}') }
+    if (String(url).startsWith('https://eu.i.posthog.com/')) {
+      expect(url).toBe('https://eu.i.posthog.com/batch/')
+      const body = JSON.parse(init.body)
+      sent.push(...body.batch.map((event: object) => ({ api_key: body.api_key, ...event })))
+      return new Response('{}')
+    }
     return upstream()
   }))
 })
@@ -121,6 +128,7 @@ test.each([400, 401, 404, 405, 429, 500, 502, 503])('records a completed %s once
 
 test.each([
   ['http_error', 503, async () => new Response('bad', { status: 503 })],
+  ['quota_exhausted', 402, async () => new Response('{"success":false,"error":"private-error"}', { status: 402 })],
   ['parse_failure', 200, async () => new Response('bad')],
   ['empty_response', 200, async () => new Response('{}')],
   ['http_error', 200, async () => new Response('{"success":false,"error":"private-error"}')],
@@ -138,6 +146,58 @@ test.each([
   expect(events('upstream_error')).toEqual([expect.objectContaining({ provider: 'fxtwitter', route: 'convert', error_type: kind, upstream_status: status, duration_ms: expect.any(Number) })])
   expect(events('fallback_used')[0].reason).toBe(kind === 'timeout' ? 'primary_timeout' : kind === 'empty_response' ? 'primary_empty' : 'primary_error')
   expect(JSON.stringify(sent)).not.toContain('private-')
+})
+
+test('a request sends its events in one batch, and sampled events carry their rate', async () => {
+  const { req, res } = exchange({ resource: 'profile', via: 'route' })
+  await withServerEvents('browse', async () => {
+    trackRateLimit('ip', 'browse-ip')
+    await withCache(crypto.randomUUID(), false, async () => 1)
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  const calls = vi.mocked(fetch).mock.calls.map(call => JSON.parse(String(call[1]!.body)).batch.map((event: { event: string }) => event.event))
+  expect(calls).toEqual([['endpoint_called'], ['rate_limit_applied', 'cache_miss']])
+  expect(events('endpoint_called')[0].sample_rate).toBe(0.1)
+  expect(events('cache_miss')[0].sample_rate).toBe(0.1)
+  expect(events('rate_limit_applied')[0]).not.toHaveProperty('sample_rate')
+})
+
+test('a wrapped request sends its completion events in the same batch as the rest', async () => {
+  const { req, res } = exchange({ resource: 'search', via: 'route' })
+  await withServerEvents('browse', () => {
+    trackRequest(req, res, 'browse', 'search')
+    trackRateLimit('ip', 'search-ip')
+    res.statusCode = 429
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  const calls = vi.mocked(fetch).mock.calls.map(call => JSON.parse(String(call[1]!.body)).batch.map((event: { event: string }) => event.event))
+  expect(calls).toEqual([['endpoint_called'], ['rate_limit_applied', 'search_executed', 'request_completed', 'request_failed']])
+})
+
+test('unsampled requests skip endpoint_called and cache events but keep the rest', async () => {
+  vi.mocked(Math.random).mockReturnValue(0.1)
+  const { req, res } = exchange({ resource: 'profile', via: 'route' })
+  await withServerEvents('browse', async () => {
+    trackRateLimit('ip', 'browse-ip')
+    await withCache(crypto.randomUUID(), false, async () => 1)
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  expect(sent.map(e => e.event)).toEqual(['rate_limit_applied'])
+})
+
+test('request_failed names the raised error code, never free text', async () => {
+  for (const code of ['firecrawl_error', 'Private Detail']) {
+    sent.length = 0
+    const { req, res } = exchange()
+    trackRequest(req, res, 'browse', 'search')
+    noteRequestError(res, code, 503)
+    res.statusCode = 503; res.emit('finish')
+    await flush()
+    expect(events('request_failed')[0].error_code).toBe(code === 'firecrawl_error' ? code : null)
+  }
 })
 
 test('records semantic emptiness once with the real HTTP status', async () => {

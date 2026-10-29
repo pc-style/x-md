@@ -1,5 +1,5 @@
-import { captureServerEvent, notedErrorType } from './server-events.js'
-import { createHmac, randomUUID } from 'node:crypto'
+import { notedErrorCode, notedErrorType, requestBatch, serverEvent } from './server-events.js'
+import { createHmac } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
 
@@ -27,6 +27,7 @@ export function trackRequest(
   if (process.env.VERCEL_ENV !== 'production' || !token || !host?.startsWith('https://') || req.method === 'OPTIONS') return identity
 
   const started = performance.now()
+  const send = requestBatch()
   const route = endpoint === 'browse' && ['profile', 'search', 'followers', 'following'].includes(String(resource))
     ? String(resource) : endpoint
   const method = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method ?? '') ? req.method : 'OTHER'
@@ -41,47 +42,6 @@ export function trackRequest(
     return header === 'valid' || header === 'invalid' || header === 'unverified' ? header : 'anonymous'
   }
 
-  async function send() {
-    try {
-      const cacheHeader = res.getHeader('X-Cache')
-      const cache = cacheHeader === 'HIT' ? 'hit' : cacheHeader === 'MISS' ? 'miss' : cacheHeader === 'BYPASS' ? 'bypass' : 'unknown'
-      const auth = keyStatus()
-      const uuid = randomUUID()
-      const response = await fetch(`${host!.replace(/\/$/, '')}/i/v0/e/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(3000),
-        body: JSON.stringify({
-          api_key: token,
-          event: 'request_completed',
-          uuid,
-          distinct_id: auth === 'valid' && identity.keyId
-            ? `key:${createHmac('sha256', token!).update(identity.keyId).digest('hex')}`
-            : `anonymous:${uuid}`,
-          timestamp: new Date().toISOString(),
-          properties: {
-            route,
-            method,
-            status: res.statusCode,
-            duration_ms: Math.max(0, Math.round(performance.now() - started)),
-            cache,
-            access: auth === 'valid' ? 'key' : 'public',
-            key_status: auth,
-            degraded: res.getHeader('X-Search-Degraded') === 'true',
-            environment: 'production',
-            $process_person_profile: false,
-            $geoip_disable: true,
-            $ip: null,
-          },
-        }),
-      })
-      if (!response.ok) console.warn('[analytics] PostHog rejected an event')
-    } catch {
-      // Analytics must never change an API response or log request details.
-      console.warn('[analytics] PostHog event delivery failed')
-    }
-  }
-
   // Register before returning the response so Vercel keeps the send alive.
   // A disconnected request without a completed response isn't counted.
   waitUntil(new Promise<void>((resolve) => {
@@ -90,14 +50,23 @@ export function trackRequest(
       res.off('close', onClose)
       const status = res.statusCode
       const auth = keyStatus()
-      const failed = status >= 400 ? captureServerEvent('request_failed', {
-        route, status,
-        error_type: notedErrorType(res, status),
-        duration_ms: Math.max(0, Math.round(performance.now() - started)),
-        access: auth === 'valid' ? 'key' : 'public',
-        key_status: auth,
-      }) : Promise.resolve()
-      void Promise.all([failed, send()]).finally(resolve)
+      const access = auth === 'valid' ? 'key' : 'public'
+      const duration_ms = Math.max(0, Math.round(performance.now() - started))
+      const cacheHeader = res.getHeader('X-Cache')
+      const cache = cacheHeader === 'HIT' ? 'hit' : cacheHeader === 'MISS' ? 'miss' : cacheHeader === 'BYPASS' ? 'bypass' : 'unknown'
+      // Public callers share one ID: no person profiles are made, so it carries no
+      // identity, and PostHog doesn't count every request as a new user.
+      const distinctId = auth === 'valid' && identity.keyId
+        ? `key:${createHmac('sha256', token!).update(identity.keyId).digest('hex')}`
+        : 'anonymous'
+      const batch = [serverEvent('request_completed', {
+        route, method: method ?? 'OTHER', status, duration_ms, cache, access, key_status: auth,
+        degraded: res.getHeader('X-Search-Degraded') === 'true',
+      }, distinctId)]
+      if (status >= 400) batch.push(serverEvent('request_failed', {
+        route, status, error_type: notedErrorType(res, status), error_code: notedErrorCode(res), duration_ms, access, key_status: auth,
+      }))
+      void send(batch).finally(resolve)
     }
     res.once('finish', onFinish)
     res.once('close', onClose)

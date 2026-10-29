@@ -52,9 +52,9 @@ both are absent from local and preview builds.
   milliseconds, cache outcome, whether the caller used a key, and the
   environment. The request URL, query, headers, body, and error text are never
   serialised. Person profiles and GeoIP enrichment are disabled and the IP field
-  is explicitly sent as null. Anonymous callers get a fresh random identifier per
-  request, so events cannot be linked across requests; API-key callers get an
-  HMAC of the internal key ID, never the key itself.
+  is explicitly sent as null. Anonymous callers all share one fixed identifier, so
+  their events cannot be told apart; API-key callers get an HMAC of the internal
+  key ID, never the key itself.
 - **Landing-page analytics.** The homepage — and only the homepage — may load
   PostHog to count page views, page leaves, and two interactions: requesting a
   conversion and copying the skill install command. Properties are reduced to an
