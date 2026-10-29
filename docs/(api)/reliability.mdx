@@ -102,7 +102,7 @@ If the shared counter store is unreachable, the front door fails open and report
 
 ## Caching
 
-Successful responses cache for about one hour by default. Degraded search results are rechecked after about one minute.
+Successful post conversions cache for about one hour by default. Profiles cache for 30 minutes, search and replies for 10 minutes, and follower lists for 6 hours. Degraded search results are rechecked after about one minute.
 
 `nocache=true` skips x.md's application cache. It cannot bypass a provider's own cache. Use it when freshness matters, rather than on every request — a cached read is faster and costs you no search allowance.
 

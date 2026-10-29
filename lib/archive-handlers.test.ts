@@ -74,5 +74,6 @@ test('verified key actor never enters public response or payload', async () => {
   const archive = (await events()).find(event => event.event === 'xmd_data_captured')
   expect(archive.distinct_id).toMatch(/^key:[a-f0-9]{64}$/)
   expect(res.getHeader('Cache-Control')).toBe('private, no-store')
+  expect(res.getHeader('Vercel-CDN-Cache-Control')).toBe('no-store')
   expect(JSON.stringify(archive)).not.toContain('private-')
 })

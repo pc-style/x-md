@@ -46,7 +46,11 @@ export async function resolveCaller(headers: Record<string, string | string[] | 
 /** Response headers describing the key outcome. Keyed responses are also marked private. */
 export function callerHeaders(resolved: ResolvedCaller): Record<string, string> {
   const headers: Record<string, string> = { 'X-Api-Key-Status': resolved.status }
-  if (resolved.status === 'valid') headers['Cache-Control'] = 'private, no-store'
+  if (resolved.status === 'valid') {
+    headers['Cache-Control'] = 'private, no-store'
+    // Vercel's CDN reads its own header before Cache-Control, so a keyed answer must override it too.
+    headers['Vercel-CDN-Cache-Control'] = 'no-store'
+  }
   return headers
 }
 

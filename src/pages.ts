@@ -223,7 +223,8 @@ export function privacyHtml(chrome: ChromeData = {}): string {
         <h2>Caching</h2>
         <p>
           Conversion and browse results are cached under a key derived from the request parameters, in the
-          serverless instance&rsquo;s memory and at Vercel&rsquo;s CDN, for one hour by default. What is
+          serverless instance&rsquo;s memory and at Vercel&rsquo;s CDN, for an hour by default for posts and
+          from ten minutes (searches) to six hours (follower lists) for browse results. What is
           cached is public X content, not anything about you, and <strong>?nocache=true</strong> bypasses
           it. Responses to requests that carry an API key are marked <strong>private, no-store</strong> so
           they can never be served from a shared cache to somebody else.
