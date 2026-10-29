@@ -12,27 +12,53 @@ interface Context {
   endpoint: string
   resultCount: number
   media?: Properties
+  /** Events wait here until the response finishes, then leave in one batch call. */
+  queue: ServerEvent[]
+  flushed: boolean
   pending: Promise<void>[]
   failures: Map<Provider, string>
 }
+export interface ServerEvent {
+  event: string
+  properties: Properties
+  timestamp: string
+  distinct_id?: string
+}
 const context = new AsyncLocalStorage<Context>()
 
-/** Same capture transport and production gate as request_completed. No caller data. */
-export async function captureServerEvent(event: string, properties: Properties): Promise<void> {
+/**
+ * The one capture transport, with the production gate. No caller data. Every event
+ * a request produces goes in a single call to PostHog's batch endpoint, so a busy
+ * request costs one round trip instead of one per event.
+ */
+export async function sendServerEvents(batch: ServerEvent[]): Promise<void> {
   const token = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
   const host = process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST
-  if (process.env.VERCEL_ENV !== 'production' || !token || !host?.startsWith('https://')) return
+  if (process.env.VERCEL_ENV !== 'production' || !token || !host?.startsWith('https://') || !batch.length) return
   try {
-    const response = await fetch(`${host.replace(/\/$/, '')}/i/v0/e/`, {
+    const response = await fetch(`${host.replace(/\/$/, '')}/batch/`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(3000),
-      body: JSON.stringify({ api_key: token, event, uuid: randomUUID(), distinct_id: 'server', timestamp: new Date().toISOString(),
-        properties: { ...properties, environment: 'production', $process_person_profile: false, $geoip_disable: true, $ip: null } }),
+      body: JSON.stringify({ api_key: token, batch: batch.map(({ event, properties, timestamp, distinct_id = 'server' }) => ({
+        event, uuid: randomUUID(), distinct_id, timestamp,
+        properties: { ...properties, environment: 'production', $process_person_profile: false, $geoip_disable: true, $ip: null },
+      })) }),
     })
     if (!response.ok) console.warn('[analytics] PostHog rejected an event')
   } catch {
     console.warn('[analytics] PostHog event delivery failed')
   }
 }
+
+export function serverEvent(event: string, properties: Properties, distinct_id?: string): ServerEvent {
+  return { event, properties, timestamp: new Date().toISOString(), ...(distinct_id ? { distinct_id } : {}) }
+}
+
+/**
+ * High-volume events that only feed distributions (formats, options, cache hit rate)
+ * are kept for one request in ten and carry `sample_rate`; weight counts by its
+ * inverse. Volume and hit rate stay exact on `request_completed`.
+ */
+export const SAMPLE_RATE = 0.1
 
 export type RequestErrorType = 'not_found' | 'rate_limited' | 'parse_error' | 'upstream_error' | 'validation_error'
 
@@ -47,20 +73,35 @@ export function errorTypeFor(code: string | undefined, status: number): RequestE
   return 'validation_error'
 }
 
-const notedErrors = new WeakMap<object, RequestErrorType>()
+const notedErrors = new WeakMap<object, { type: RequestErrorType; code: string | null }>()
 
 /** Called by sendProblem so request_failed can classify by catalog code, not just status. */
 export function noteRequestError(res: object, code: string | undefined, status: number): void {
-  notedErrors.set(res, errorTypeFor(code, status))
+  // Codes are source-defined identifiers like `firecrawl_error`; anything else is dropped.
+  notedErrors.set(res, { type: errorTypeFor(code, status), code: code && /^[a-z0-9_]{1,48}$/.test(code) ? code : null })
 }
 
 export function notedErrorType(res: object, status: number): RequestErrorType {
-  return notedErrors.get(res) ?? errorTypeFor(undefined, status)
+  return notedErrors.get(res)?.type ?? errorTypeFor(undefined, status)
 }
 
-function capture(event: string, properties: Properties, state = context.getStore()): void {
-  if (!state) return
-  state.pending.push(captureServerEvent(event, properties))
+/** The raised error code, which names the failing provider where `error_type` only gives the class. */
+export function notedErrorCode(res: object): string | null {
+  return notedErrors.get(res)?.code ?? null
+}
+
+function capture(event: string, properties: Properties, state = context.getStore(), sampleRate = 1): void {
+  if (!state || (sampleRate < 1 && Math.random() >= sampleRate)) return
+  const queued = serverEvent(event, sampleRate < 1 ? { ...properties, sample_rate: sampleRate } : properties)
+  // Work that outlives the response still reports, just in its own call.
+  if (state.flushed) state.pending.push(sendServerEvents([queued]))
+  else state.queue.push(queued)
+}
+
+function flush(state: Context): Promise<unknown> {
+  state.flushed = true
+  state.pending.push(sendServerEvents(state.queue.splice(0)))
+  return Promise.all(state.pending)
 }
 
 export function trackCache(hit: boolean): void {
@@ -68,7 +109,7 @@ export function trackCache(hit: boolean): void {
   if (!state) return
   capture(hit ? 'cache_hit' : 'cache_miss', {
     route: state.route, endpoint: state.endpoint, cache_key_type: state.route === 'convert' ? 'status' : state.route,
-  })
+  }, state, SAMPLE_RATE)
 }
 
 /**
@@ -92,7 +133,7 @@ export function trackFallback(primary_provider: Provider, fallback_provider: Pro
   }
 }
 
-export function trackUpstream(provider: Provider, error_type: 'timeout' | 'http_error' | 'parse_failure' | 'empty_response' | 'network_error', upstream_status: number | null, started: number): void {
+export function trackUpstream(provider: Provider, error_type: 'timeout' | 'http_error' | 'quota_exhausted' | 'parse_failure' | 'empty_response' | 'network_error', upstream_status: number | null, started: number): void {
   const state = context.getStore()
   if (state) state.failures.set(provider, error_type)
   if (state) capture('upstream_error', { provider, route: state.route, error_type, upstream_status, duration_ms: Math.max(0, Math.round(performance.now() - started)) })
@@ -126,7 +167,8 @@ export async function providerFetch(provider: Provider, input: Parameters<typeof
   responseReports.set(response, report)
   // A 404 is a missing resource, not a provider failure; callers that treat a
   // not-found as an outage (FxTwitter search) report it themselves.
-  if (!response.ok && response.status !== 404) report('http_error')
+  // 402 is the provider's billing wall (Firecrawl out of credits), not an outage.
+  if (!response.ok && response.status !== 404) report(response.status === 402 ? 'quota_exhausted' : 'http_error')
   const json = response.json.bind(response)
   response.json = async () => {
     let data: unknown
@@ -187,22 +229,27 @@ export function withServerEvents(handlerKind: 'convert' | 'browse' | 'import' | 
     const aggregate = handlerKind === 'browse' && (req.url ?? '').split('?')[0] === '/api/browse' && param('via') !== 'route'
     const endpoint = handlerKind === 'convert' ? (param('handle') && param('id') ? 'status_convert' : 'generic_convert')
       : handlerKind === 'oembed' ? 'oembed' : handlerKind === 'import' ? 'profile_import' : aggregate || !resource ? 'api_browse' : `${resource}_browse`
-    const state: Context = { route: handlerKind === 'browse' && resource ? resource : handlerKind, endpoint, resultCount: 0, pending: [], failures: new Map() }
+    const state: Context = { route: handlerKind === 'browse' && resource ? resource : handlerKind, endpoint, resultCount: 0, queue: [], flushed: false, pending: [], failures: new Map() }
     // Imports have no Markdown representation: json unless ndjson was asked for.
     const format = handlerKind === 'import' ? (param('format') === 'ndjson' ? 'ndjson' : 'json') : handlerKind === 'oembed' || wantsJson(param('format'), String(req.headers.accept ?? '')) ? 'json' : param('format') === 'obsidian' && handlerKind === 'convert' ? 'obsidian' : 'markdown'
     return context.run(state, () => {
-      capture('endpoint_called', { endpoint, format, full: param('full') === 'true',
-        thread: /^(off|full|conversation|[0-9]{1,3})$/.test(param('thread')) ? param('thread') : 'full',
-        replies: ['top', 'recent', 'off'].includes(param('replies')) ? param('replies') : 'top',
-        nocache: ['true', '1', ...(handlerKind === 'convert' ? ['yes'] : [])].includes(param('nocache')) || ['1', 'true'].includes(process.env.CACHE_DISABLED ?? ''),
-        has_handle: Boolean(param('handle')) })
+      if (Math.random() < SAMPLE_RATE) {
+        // Sent on arrival, not batched: a function that crashes or times out still counts.
+        state.pending.push(sendServerEvents([serverEvent('endpoint_called', {
+          endpoint, format, full: param('full') === 'true',
+          thread: /^(off|full|conversation|[0-9]{1,3})$/.test(param('thread')) ? param('thread') : 'full',
+          replies: ['top', 'recent', 'off'].includes(param('replies')) ? param('replies') : 'top',
+          nocache: ['true', '1', ...(handlerKind === 'convert' ? ['yes'] : [])].includes(param('nocache')) || ['1', 'true'].includes(process.env.CACHE_DISABLED ?? ''),
+          has_handle: Boolean(param('handle')), sample_rate: SAMPLE_RATE,
+        })]))
+      }
       if (handlerKind === 'oembed') {
         const ua = String(req.headers['user-agent'] ?? '')
         const bot = ['Discordbot', 'Slackbot', 'TelegramBot'].find(name => ua.toLowerCase().includes(name.toLowerCase())) ?? null
         capture('oEmbed_requested', { requester_bot: bot, format: param('format') === 'xml' ? 'xml' : 'json' })
       }
       waitUntil(new Promise<void>(resolve => {
-        const close = () => { res.off('finish', finish); void Promise.all(state.pending).then(() => resolve()) }
+        const close = () => { res.off('finish', finish); void flush(state).then(() => resolve()) }
         const finish = () => {
           res.off('close', close)
           if (aggregate && resource) capture('batch_browse_called', { resource, format, result_count: state.resultCount, has_cursor: Boolean(param('cursor')) }, state)
@@ -211,7 +258,7 @@ export function withServerEvents(handlerKind: 'convert' | 'browse' | 'import' | 
             capture('search_executed', { feed_type: feed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(feed) ? feed : 'latest', has_query: Boolean(param('q').trim()), result_count: state.resultCount }, state)
           }
           if (res.statusCode < 400 && req.method !== 'HEAD' && state.media) capture('media_resolved', { ...state.media, route: state.route }, state)
-          void Promise.all(state.pending).then(() => resolve())
+          void flush(state).then(() => resolve())
         }
         res.once('finish', finish)
         res.once('close', close)

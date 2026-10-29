@@ -18,8 +18,10 @@ async function finish(res: ServerResponse) {
   res.emit('finish')
   res.emit('close')
   await vi.mocked(waitUntil).mock.calls.at(-1)?.[0]
-  return JSON.parse(fetchMock.mock.calls.at(-1)![1].body)
+  const body = JSON.parse(fetchMock.mock.calls.at(-1)![1].body)
+  return { api_key: body.api_key, ...body.batch[0] }
 }
+function batches() { return fetchMock.mock.calls.map((call) => JSON.parse(call[1].body).batch.map((event: { event: string }) => event.event)) }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -49,8 +51,8 @@ describe('production request analytics', () => {
     res.setHeader('X-Search-Degraded', 'true')
     const event = await finish(res)
     res.emit('finish')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(fetchMock.mock.calls[0][0]).toBe('https://eu.i.posthog.com/i/v0/e/')
+    expect(batches()).toEqual([['request_completed', 'request_failed']])
+    expect(fetchMock.mock.calls[0][0]).toBe('https://eu.i.posthog.com/batch/')
     expect(timeout).toHaveBeenCalledWith(3000)
     expect(event.event).toBe('request_completed')
     expect(event.properties).toEqual({
@@ -68,8 +70,8 @@ describe('production request analytics', () => {
     res.statusCode = 429
     res.setHeader('X-Api-Key-Status', 'valid')
     await finish(res)
-    const failed = fetchMock.mock.calls.map((call) => JSON.parse(call[1].body)).find((event) => event.event === 'request_failed')
-    expect(failed.properties).toMatchObject({ route: 'search', status: 429, error_type: 'rate_limited', access: 'key', key_status: 'valid' })
+    const failed = JSON.parse(fetchMock.mock.calls[0][1].body).batch.find((event: { event: string }) => event.event === 'request_failed')
+    expect(failed.properties).toMatchObject({ route: 'search', status: 429, error_type: 'rate_limited', error_code: null, access: 'key', key_status: 'valid' })
   })
 
   test.each(['preview', 'development', ''])('does not track %s', (environment) => {
@@ -115,8 +117,7 @@ describe('production request analytics', () => {
     }
     expect(ids[0]).toMatch(/^key:[a-f0-9]{64}$/)
     expect(ids[0]).toBe(ids[1])
-    expect(new Set(ids.slice(2)).size).toBe(4)
-    expect(ids.slice(2).every(id => id.startsWith('anonymous:'))).toBe(true)
+    expect(ids.slice(2)).toEqual(['anonymous', 'anonymous', 'anonymous', 'anonymous'])
   })
 
   test('normalizes unknown fields and supports server-only configuration', async () => {
@@ -127,7 +128,7 @@ describe('production request analytics', () => {
     res.setHeader('X-Cache', 'private-cache-value')
     res.setHeader('X-Api-Key-Status', 'private-status')
     const event = await finish(res)
-    expect(fetchMock.mock.calls[0][0]).toBe('https://us.i.posthog.com/i/v0/e/')
+    expect(fetchMock.mock.calls[0][0]).toBe('https://us.i.posthog.com/batch/')
     expect(event.api_key).toBe('phc_override')
     expect(event.properties).toMatchObject({ route: 'browse', method: 'OTHER', cache: 'unknown', key_status: 'anonymous' })
     expect(JSON.stringify(event)).not.toContain('private-')
