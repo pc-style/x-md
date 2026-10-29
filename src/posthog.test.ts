@@ -82,8 +82,8 @@ test('enables web analytics through the proxy without replay or interaction capt
   const { captureLandingEvent } = await loadAnalytics()
   expect(posthog.init).toHaveBeenCalledWith('phc_test', expect.objectContaining({
     api_host: 'https://p.pcstyle.dev', ui_host: 'https://eu.posthog.com',
-    capture_pageview: true, capture_pageleave: true, persistence: 'localStorage',
-    person_profiles: 'never', autocapture: { dom_event_allowlist: [] }, capture_exceptions: false,
+    capture_pageview: 'history_change', capture_pageleave: true, persistence: 'localStorage',
+    person_profiles: 'never', autocapture: { dom_event_allowlist: [] }, capture_exceptions: true,
     disable_session_recording: true,
     capture_performance: { web_vitals: true, web_vitals_attribution: false }, enable_heatmaps: false,
   }))
@@ -98,13 +98,19 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
   const result = beforeSend({ event: '$pageview', properties: {
     token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
     $lib_custom_api_host: 'https://p.pcstyle.dev',
-    $current_url: window.location.href, $referrer: 'private-referrer', $initial_current_url: window.location.href,
+    $current_url: window.location.href, $referrer: 'https://news.example/private-path?private=1', $initial_current_url: window.location.href,
+    $referring_domain: 'news.example', utm_source: 'newsletter', utm_campaign: 'launch', utm_term: 42,
+    gclid: 'private-click-id', $initial_referrer: 'not a url private-text', $initial_utm_medium: 'email',
     $set: { email: 'private-email' }, form_content: 'private-form',
   }, $set: { email: 'private-email' }, $set_once: { name: 'private-name' } })
   expect(result.properties).toMatchObject({ token: 'phc_test', distinct_id: 'anonymous-device', $session_id: 'session', $browser: 'Chrome',
     $lib_custom_api_host: 'https://p.pcstyle.dev',
-    $current_url: 'https://mdfromx.com/', $host: 'mdfromx.com', $pathname: '/', $ip: null, $process_person_profile: false })
-  expect(JSON.stringify(result)).not.toContain('private-')
+    $current_url: 'https://mdfromx.com/', $host: 'mdfromx.com', $pathname: '/', $ip: null, $process_person_profile: false,
+    $referrer: 'https://news.example', $referring_domain: 'news.example', utm_source: 'newsletter', utm_campaign: 'launch',
+    $initial_utm_medium: 'email', route: 'landing' })
+  expect(result.properties).not.toHaveProperty('utm_term')
+  expect(result.properties).not.toHaveProperty('$initial_referrer')
+  expect(JSON.stringify(result)).not.toContain('private')
 
   const pageleave = beforeSend({ event: '$pageleave', properties: {
     $prev_pageview_max_content_percentage: 0.75,
@@ -133,12 +139,85 @@ test('sanitizes URLs and user properties while preserving session metrics', asyn
   })
   expect(JSON.stringify(webVitals)).not.toContain('private')
   expect(beforeSend({ event: '$autocapture', properties: {} })).toBeNull()
-  expect(beforeSend({ event: '$exception', properties: {} })).toBeNull()
+  expect(beforeSend({ event: '$pageview', properties: { $exception_list: [{ value: 'private' }] } }).properties)
+    .not.toHaveProperty('$exception_list')
   window.location.pathname = '/admin'
   expect(beforeSend({ event: '$pageview', properties: {} })).toBeNull()
 })
 
-test.each(['/admin', '/admin.html', '/docs', '/search'])('does not initialize on %s', async (pathname) => {
+test('sanitizes exceptions to their type, message, and stack frames', async () => {
+  await loadAnalytics()
+  const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
+  const result = beforeSend({ event: '$exception', properties: {
+    $exception_level: 'error',
+    $exception_message: 'Failed to fetch https://mdfromx.com/api/v1/posts?url=private-query#private-hash',
+    $exception_steps: [{ $message: 'private-step' }],
+    $exception_list: [{
+      type: 'TypeError',
+      value: 'Failed to fetch https://mdfromx.com/api/v1/posts?url=private-query#private-hash',
+      mechanism: { type: 'onerror', handled: false, synthetic: false, source: 'private-source' },
+      private_extra: 'private-extra',
+      stacktrace: { type: 'raw', frames: [{
+        platform: 'web:javascript', filename: 'https://mdfromx.com/docs/analytics.js?v=private-version',
+        function: 'load', lineno: 1, colno: 22, in_app: true,
+        context_line: 'private-source-line', vars: { token: 'private-var' },
+      }] },
+    }],
+    $sentry_exception: 'private-sentry',
+  } })
+  expect(result.properties).toMatchObject({
+    $exception_level: 'error',
+    $exception_message: 'Failed to fetch https://mdfromx.com/api/v1/posts',
+    $exception_list: [{
+      type: 'TypeError',
+      value: 'Failed to fetch https://mdfromx.com/api/v1/posts',
+      mechanism: { type: 'onerror', handled: false, synthetic: false },
+      stacktrace: { type: 'raw', frames: [{
+        platform: 'web:javascript', filename: 'https://mdfromx.com/docs/analytics.js',
+        function: 'load', lineno: 1, colno: 22, in_app: true,
+      }] },
+    }],
+  })
+  expect(JSON.stringify(result)).not.toContain('private')
+})
+
+test.each([
+  ['https://example.com/a(b)?token=private#private', 'https://example.com/a(b)'],
+  ['https://example.com/search?q=(private)#private', 'https://example.com/search'],
+  ['/docs/self-hosting?secret=private#private', '/docs/self-hosting'],
+  ['docs/analytics.js?v=private', 'docs/analytics.js'],
+  ['https://x.test/a(?token=private', 'https://x.test/a('],
+  ['/docs/(#private', '/docs/('],
+  ['fetch(?x=private)', 'fetch('],
+])('strips the query and fragment from %s in exception text and frames', async (url, kept) => {
+  await loadAnalytics()
+  const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
+  const result = beforeSend({ event: '$exception', properties: {
+    $exception_message: `Failed to fetch ${url} (status 0)`,
+    $exception_list: [{ type: 'TypeError', value: `at ${url}`, stacktrace: { type: 'raw', frames: [{ filename: url, abs_path: url, lineno: 1 }] } }],
+  } })
+  expect(result.properties.$exception_message).toBe(`Failed to fetch ${kept} (status 0)`)
+  expect(result.properties.$exception_list[0].value).toBe(`at ${kept}`)
+  expect(JSON.stringify(result)).not.toContain('private')
+})
+
+test('reports the docs page path without its query string', async () => {
+  window.location.pathname = '/docs/self-hosting'
+  window.location.href = 'https://mdfromx.com/docs/self-hosting?secret=private-value#private-hash'
+  const { captureLandingEvent } = await loadAnalytics()
+  expect(posthog.init).toHaveBeenCalled()
+  const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
+  const result = beforeSend({ event: '$pageview', properties: { $current_url: window.location.href, $pathname: '/docs/self-hosting' } })
+  expect(result.properties).toMatchObject({
+    $current_url: 'https://mdfromx.com/docs/self-hosting', $pathname: '/docs/self-hosting', route: 'docs',
+  })
+  expect(JSON.stringify(result)).not.toContain('private')
+  // The landing interactions stay landing-only.
+  captureLandingEvent('conversion_requested')
+  expect(posthog.capture).not.toHaveBeenCalled()
+})
+
+test.each(['/admin', '/admin.html', '/docsearch', '/search', '/about', '/privacy'])('does not initialize on %s', async (pathname) => {
   window.location.pathname = pathname
   const { captureLandingEvent } = await loadAnalytics()
   captureLandingEvent('conversion_requested')

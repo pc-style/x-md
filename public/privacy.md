@@ -1,8 +1,8 @@
 ---
 title: "x.md privacy"
-description: "x.md has no sign-in and no user accounts. What happens to a request: IP used only for rate-limit counters, short-lived caching of public content, optional metadata-only analytics, one optional cookie, and an opt-in public-result archive that is disabled by default."
+description: "x.md has no sign-in and no user accounts. What happens to a request: IP used only for rate-limit counters and a daily-rotating analytics hash, short-lived caching of public content, optional metadata-only analytics, one optional cookie, and an opt-in public-result archive that is disabled by default."
 canonical: https://mdfromx.com/privacy
-last-updated: 2026-09-08
+last-updated: 2026-10-29
 ---
 
 # No accounts, no profiles, very little kept
@@ -58,14 +58,19 @@ both are absent from local and preview builds.
   changes every UTC day, so callers can be counted per day but not identified,
   reversed, or linked from one day to the next. API-key callers get an HMAC of the
   internal key ID, never the key itself.
-- **Landing-page analytics.** The homepage — and only the homepage — may load
-  PostHog to count page views, page leaves, and two interactions: requesting a
-  conversion and copying the skill install command. Properties are reduced to an
-  allowlist of browser, device, viewport, and session fields; the reported URL is
-  rewritten to the bare origin so query strings and referrers are not sent.
-  Autocapture, session recording, heatmaps, surveys, exception capture, and
-  person profiles are all switched off. Vercel Web Analytics is also injected on
-  the landing page.
+- **Homepage and docs analytics.** The homepage and the documentation pages
+  under `/docs` may load PostHog to count page views and page leaves, plus two
+  homepage interactions: requesting a conversion and copying the skill install
+  command. Properties are reduced to an allowlist of browser, device, viewport,
+  and session fields, plus where the visit came from: the referring site's
+  origin (never its path or query) and the standard `utm_source`, `utm_medium`,
+  `utm_campaign`, `utm_content`, and `utm_term` campaign tags. The reported URL
+  is the page's origin and path; every other query parameter and the fragment
+  are removed. Uncaught JavaScript errors are reported too, reduced to the error
+  type, message, and stack frames, with query strings and fragments stripped
+  from any URL inside them. Autocapture, session recording, heatmaps, surveys,
+  and person profiles are all switched off. Vercel Web Analytics is also
+  injected on the homepage and the documentation pages.
 
 ## Cookies and local storage
 
@@ -92,7 +97,7 @@ protected authors are excluded entirely.
 
 - Send `DNT: 1`, `Sec-GPC: 1`, or `X-Xmd-Archive-Opt-Out: 1` with a request, or
   set the `__Host-xmd_archive_optout=1` cookie: archive capture is skipped and
-  the landing-page analytics do not initialise.
+  the homepage and docs analytics do not initialise.
 - Use `?nocache=true` to bypass the application cache for a request.
 - Block the third-party requests listed below, or run the service yourself — a
   [self-hosted deployment](https://mdfromx.com/docs/self-hosting) with no
@@ -116,4 +121,4 @@ attached.
 This page describes the behaviour of the code in the public repository, which is
 the authoritative record — every claim above can be checked against
 [the source](https://github.com/pc-style/x-md). Questions and corrections go to
-[contact](https://mdfromx.com/contact). Last reviewed 8 September 2026.
+[contact](https://mdfromx.com/contact). Last reviewed 29 October 2026.
