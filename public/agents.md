@@ -104,7 +104,8 @@ takes `since` and `until`.
 - `503` with `Retry-After: 30` means an upstream provider is down.
 - Errors are RFC 9457 problem documents (`application/problem+json`) with a
   stable machine `code` and a `resolution` hint that says what to do next.
-- Successful anonymous responses stay cacheable for about an hour; `X-Cache`
+- Successful anonymous responses stay cacheable for about an hour (search
+  10 minutes, profiles 30 minutes, follower lists 6 hours); `X-Cache`
   reports the outcome and `X-Source` names the upstream provider. A keyed
   response is `Cache-Control: private, no-store` and never enters a shared
   cache, though x.md's own result cache still spares the upstream call.

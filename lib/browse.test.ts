@@ -49,7 +49,7 @@ vi.mock('./fxtwitter.js', () => ({
 import { browse, browseResponse, isOriginalPost, resetSearchBreaker } from './browse.js'
 import { decodeTimelineCursor, snowflakeTime } from './fx-cursor.js'
 import { waitUntil } from '@vercel/functions'
-import { buildCacheKey, withCache } from './cache.js'
+import { buildCacheKey, vercelCacheControlHeader, withCache } from './cache.js'
 import { ConvertError } from './errors.js'
 import { firecrawlSearchConfigured, searchFirecrawlStatuses } from './firecrawl.js'
 import { rateLimit } from './ratelimit.js'
@@ -192,13 +192,6 @@ describe('browse', () => {
       .rejects.toBeInstanceOf(ConvertError)
   })
 
-  test('includes output format in the cache identity', async () => {
-    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
-    await browse({ resource: 'search', q: 'x-md', format: 'json' })
-    expect(vi.mocked(buildCacheKey)).toHaveBeenCalledWith(
-      expect.objectContaining({ format: 'json', v: 7 }),
-    )
-  })
 })
 
 test('provider filtering identifies replies and reposts', () => {
@@ -378,10 +371,69 @@ describe('cache lookup and admission', () => {
   })
   afterEach(() => {
     vi.mocked(withCache).mockImplementation(passthroughCache)
+    vi.mocked(buildCacheKey).mockImplementation(() => 'browse-test')
+    vi.mocked(vercelCacheControlHeader).mockImplementation(() => 'public, s-maxage=300')
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     vi.useRealTimers()
   })
+  test('presentation and handle spelling share one cache entry and still render per request', async () => {
+    vi.mocked(buildCacheKey).mockImplementation(realCache.buildCacheKey)
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'Ada', name: 'Ada', followers: 7 })
+    vi.mocked(fetchFxProfileStatuses).mockResolvedValue({ results: posts(3), cursor: { bottom: 'next' } })
+    const variants = [
+      { handle: 'ada' },
+      { handle: 'Ada', full: 'true' },
+      { handle: '@ADA', format: 'json' },
+      { handle: 'ada', full: '1', format: 'markdown', q: 'ignored', feed: 'top', since: '2025-01-01', require_live: 'true', id: '9' },
+    ]
+    const served = []
+    for (const variant of variants) served.push(await browse({ resource: 'profile', limit: 2, ...variant }))
+    expect(fetchFxProfile).toHaveBeenCalledTimes(1)
+    expect(served.map((result) => result.cache)).toEqual(['miss', 'hit', 'hit', 'hit'])
+    for (const [index, variant] of variants.entries()) {
+      const fresh = await browse({ resource: 'profile', limit: 2, ...variant, nocache: true })
+      expect(JSON.stringify({ ...served[index], cache: 'bypass' })).toBe(JSON.stringify(fresh))
+    }
+    expect(served[2].markdown).toContain('(/ADA?')
+    expect(served[1].markdown).toContain('Followers: 7')
+    expect(served[0].markdown).not.toContain('Followers: 7')
+  })
+
+  test('search keys normalize the feed and query whitespace but keep the query', async () => {
+    vi.mocked(buildCacheKey).mockImplementation(realCache.buildCacheKey)
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    await browse({ resource: 'search', q: 'x-md', ip: '1.2.3.4' })
+    expect(await browse({ resource: 'search', q: ' x-md ', feed: 'Latest', full: 'true', ip: '1.2.3.4' })).toMatchObject({ cache: 'hit' })
+    expect(await browse({ resource: 'search', q: 'x-md', feed: 'top', ip: '1.2.3.4' })).toMatchObject({ cache: 'miss' })
+    expect(await browse({ resource: 'search', q: 'X-MD', ip: '1.2.3.4' })).toMatchObject({ cache: 'miss' })
+  })
+
+  test('each resource keeps its own TTL in the app cache and at the CDN', async () => {
+    const ttls: number[] = []
+    vi.mocked(withCache).mockImplementation(async (_key, _nocache, fn, ttlFor) => {
+      const value = await fn()
+      ttls.push(ttlFor?.(value) ?? 0)
+      return { value, status: 'miss' }
+    })
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada' })
+    vi.mocked(fetchFxProfileStatuses).mockResolvedValue({ results: [] })
+    vi.mocked(fetchFxConnections).mockResolvedValue({ results: [] })
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
+    const results = [
+      await browse({ resource: 'profile', handle: 'ada' }),
+      await browse({ resource: 'search', q: 'x-md' }),
+      await browse({ resource: 'followers', handle: 'ada' }),
+    ]
+    expect(ttls).toEqual([30 * 60_000, 10 * 60_000, 6 * 3600_000])
+    vi.mocked(vercelCacheControlHeader).mockImplementation(realCache.vercelCacheControlHeader)
+    expect(results.map((result) => browseResponse(result, false).headers['Vercel-CDN-Cache-Control'])).toEqual([
+      'public, s-maxage=1800, stale-while-revalidate=7200',
+      'public, s-maxage=600, stale-while-revalidate=2400',
+      'public, s-maxage=21600, stale-while-revalidate=86400',
+    ])
+  })
+
   /** A shared store that remembers nothing but records every command it is sent. */
   const sharedStore = () => {
     vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
