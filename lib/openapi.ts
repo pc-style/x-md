@@ -14,7 +14,7 @@ import { ERROR_CATALOG, LEGACY_DEPRECATION, LEGACY_SUNSET, LEGACY_SUNSET_ISO, pr
 import type { ErrorCode, ProblemDetails } from './apierror.js'
 
 export const SITE = 'https://mdfromx.com'
-export const SPEC_VERSION = '1.1.0'
+export const SPEC_VERSION = '1.2.0'
 
 /**
  * ISO form of the `Deprecation` header `lib/apierror.ts` actually sends, derived
