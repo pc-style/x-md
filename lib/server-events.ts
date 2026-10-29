@@ -98,6 +98,20 @@ function capture(event: string, properties: Properties, state = context.getStore
   else state.queue.push(queued)
 }
 
+/**
+ * Where trackRequest hands its finish-time events: into this request's batch when
+ * withServerEvents wraps it, so the request costs one call, or straight out otherwise.
+ * Read at call time, while the request's context is still current.
+ */
+export function requestBatch(): (events: ServerEvent[]) => Promise<void> {
+  const state = context.getStore()
+  return events => {
+    if (!state || state.flushed) return sendServerEvents(events)
+    state.queue.push(...events)
+    return Promise.resolve()
+  }
+}
+
 function flush(state: Context): Promise<unknown> {
   state.flushed = true
   state.pending.push(sendServerEvents(state.queue.splice(0)))
@@ -258,7 +272,8 @@ export function withServerEvents(handlerKind: 'convert' | 'browse' | 'import' | 
             capture('search_executed', { feed_type: feed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(feed) ? feed : 'latest', has_query: Boolean(param('q').trim()), result_count: state.resultCount }, state)
           }
           if (res.statusCode < 400 && req.method !== 'HEAD' && state.media) capture('media_resolved', { ...state.media, route: state.route }, state)
-          void flush(state).then(() => resolve())
+          // After the other finish listeners, so trackRequest's events join this batch.
+          queueMicrotask(() => void flush(state).then(() => resolve()))
         }
         res.once('finish', finish)
         res.once('close', close)

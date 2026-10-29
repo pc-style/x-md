@@ -163,6 +163,19 @@ test('a request sends its events in one batch, and sampled events carry their ra
   expect(events('rate_limit_applied')[0]).not.toHaveProperty('sample_rate')
 })
 
+test('a wrapped request sends its completion events in the same batch as the rest', async () => {
+  const { req, res } = exchange({ resource: 'search', via: 'route' })
+  await withServerEvents('browse', () => {
+    trackRequest(req, res, 'browse', 'search')
+    trackRateLimit('ip', 'search-ip')
+    res.statusCode = 429
+    res.emit('finish')
+  })(req, res)
+  await flush()
+  const calls = vi.mocked(fetch).mock.calls.map(call => JSON.parse(String(call[1]!.body)).batch.map((event: { event: string }) => event.event))
+  expect(calls).toEqual([['endpoint_called'], ['rate_limit_applied', 'search_executed', 'request_completed', 'request_failed']])
+})
+
 test('unsampled requests skip endpoint_called and cache events but keep the rest', async () => {
   vi.mocked(Math.random).mockReturnValue(0.1)
   const { req, res } = exchange({ resource: 'profile', via: 'route' })

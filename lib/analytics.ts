@@ -1,4 +1,4 @@
-import { notedErrorCode, notedErrorType, sendServerEvents, serverEvent } from './server-events.js'
+import { notedErrorCode, notedErrorType, requestBatch, serverEvent } from './server-events.js'
 import { createHmac } from 'node:crypto'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
@@ -27,6 +27,7 @@ export function trackRequest(
   if (process.env.VERCEL_ENV !== 'production' || !token || !host?.startsWith('https://') || req.method === 'OPTIONS') return identity
 
   const started = performance.now()
+  const send = requestBatch()
   const route = endpoint === 'browse' && ['profile', 'search', 'followers', 'following'].includes(String(resource))
     ? String(resource) : endpoint
   const method = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method ?? '') ? req.method : 'OTHER'
@@ -65,7 +66,7 @@ export function trackRequest(
       if (status >= 400) batch.push(serverEvent('request_failed', {
         route, status, error_type: notedErrorType(res, status), error_code: notedErrorCode(res), duration_ms, access, key_status: auth,
       }))
-      void sendServerEvents(batch).finally(resolve)
+      void send(batch).finally(resolve)
     }
     res.once('finish', onFinish)
     res.once('close', onClose)

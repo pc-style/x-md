@@ -241,9 +241,9 @@ export function privacyHtml(chrome: ChromeData = {}): string {
             response, carrying only the route name, HTTP method, status code, duration in milliseconds,
             cache outcome, whether the caller used a key, and the environment. The request URL, query,
             headers, body, and error text are never serialised. Person profiles and GeoIP enrichment are
-            disabled and the IP field is explicitly sent as null. Anonymous callers get a fresh random
-            identifier per request, so events cannot be linked across requests; API-key callers get an HMAC
-            of the internal key ID, never the key itself.
+            disabled and the IP field is explicitly sent as null. Anonymous callers all share one fixed
+            identifier, so their events cannot be told apart; API-key callers get an HMAC of the internal
+            key ID, never the key itself.
           </li>
           <li>
             <strong>Landing-page analytics.</strong> The homepage &mdash; and only the homepage &mdash; may
