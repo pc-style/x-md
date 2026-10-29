@@ -213,11 +213,12 @@ export function privacyHtml(chrome: ChromeData = {}): string {
         <p>
           Like any website, your request reaches Vercel&rsquo;s edge with an IP address and ordinary HTTP
           headers, and Vercel operates the hosting and CDN under its own terms. Inside the application, the
-          client IP address is read from the standard proxy headers for one purpose: rate limiting. It
+          client IP address is read from the standard proxy headers for two purposes. For rate limiting it
           becomes part of a counter key in a key/value store, the counter holds only a number, and the key
           expires automatically &mdash; roughly two minutes for the per-minute search gate and about half an
           hour for the fifteen-minute search budget. No URL, query, response, or header is written beside
-          it. Rate limits protect scarce upstream capacity, above all for live search.
+          it. Rate limits protect scarce upstream capacity, above all for live search. For analytics the IP is
+          only ever used as the input to a daily caller hash, described below, and is never stored.
         </p>
 
         <h2>Caching</h2>
@@ -243,8 +244,10 @@ export function privacyHtml(chrome: ChromeData = {}): string {
             cache outcome, whether the caller used a key, and the environment. The request URL, query,
             headers, body, and error text are never serialised. Person profiles and GeoIP enrichment are
             disabled and the IP field is explicitly sent as null. Anonymous callers all share one fixed
-            identifier, so their events cannot be told apart; API-key callers get an HMAC of the internal
-            key ID, never the key itself.
+            identifier, and each event carries a caller ID: a keyed hash of the IP under a secret salt that
+            changes every UTC day, so callers can be counted per day but not identified, reversed, or
+            linked from one day to the next. API-key callers get an HMAC of the internal key ID, never the
+            key itself.
           </li>
           <li>
             <strong>Landing-page analytics.</strong> The homepage &mdash; and only the homepage &mdash; may
