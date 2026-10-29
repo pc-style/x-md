@@ -1,5 +1,5 @@
 import { defineConfig } from 'blume'
-import { vercel } from 'blume/analytics'
+import { script, vercel } from 'blume/analytics'
 import { orama } from 'blume/search'
 import type { LocalFontConfig } from 'blume'
 
@@ -73,7 +73,10 @@ export default defineConfig({
   github: { owner: 'pc-style', repo: 'x-md', branch: 'main' },
   lastModified: 'git',
   search: orama(),
-  analytics: [vercel()],
+  // PostHog loads through the landing page's own module (`src/posthog.ts`), under
+  // the same production and privacy gating; `vite.docs-analytics.config.ts`
+  // builds its loader to `/docs/analytics.js` after this build.
+  analytics: [vercel(), script({ src: '/docs/analytics.js', attributes: { type: 'module' } })],
   agents: {
     llmsTxt: true,
     skills: './skills',
