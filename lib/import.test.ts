@@ -348,6 +348,10 @@ test('a third profile copy goes out when the first two miss', async () => {
   const result = await importProfilePosts({ handle: 'ada', until: new Date(NOW), maxPosts: 50 })
   expect(result.profile).toEqual({ screen_name: 'ada' })
   expect(fetchFxProfile).toHaveBeenCalledTimes(3)
+  // All three copies share one list of bases already asked.
+  const lists = vi.mocked(fetchFxProfile).mock.calls.map((call) => call[3])
+  expect(Array.isArray(lists[0])).toBe(true)
+  expect(new Set(lists).size).toBe(1)
 })
 
 test('old thread roots above their replies: the walk stops once the newest 100 are settled', async () => {
