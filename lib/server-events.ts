@@ -27,9 +27,10 @@ export interface ServerEvent {
 const context = new AsyncLocalStorage<Context>()
 
 /**
- * The one capture transport, with the production gate. No caller data. Every event
- * a request produces goes in a single call to PostHog's batch endpoint, so a busy
- * request costs one round trip instead of one per event.
+ * The one capture transport, with the production gate. No caller data. A request's
+ * events, completion included, leave in one call to PostHog's batch endpoint when
+ * it finishes, so a busy request costs one round trip instead of one per event.
+ * `endpoint_called` alone is sent on arrival, so a crashed request still counts.
  */
 export async function sendServerEvents(batch: ServerEvent[]): Promise<void> {
   const token = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
@@ -55,8 +56,9 @@ export function serverEvent(event: string, properties: Properties, distinct_id?:
 
 /**
  * High-volume events that only feed distributions (formats, options, cache hit rate)
- * are kept for one request in ten and carry `sample_rate`; weight counts by its
- * inverse. Volume and hit rate stay exact on `request_completed`.
+ * are sampled and carry `sample_rate`; weight counts by its inverse. `endpoint_called`
+ * is kept for one request in ten, each `cache_hit`/`cache_miss` one time in ten on
+ * its own. Volume and hit rate stay exact on `request_completed`.
  */
 export const SAMPLE_RATE = 0.1
 
