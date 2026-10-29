@@ -56,6 +56,13 @@ describe('hedged connections pages', () => {
     expect(hosts).toEqual(['fx-a.example'])
   })
 
+  test('a miss X confirmed on one base outranks another base failing first', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => new URL(String(input)).host === 'fx-a.example'
+      ? new Response('bad gateway', { status: 502 })
+      : new Response(JSON.stringify({ code: 404, message: 'User not found', reason: 'not_found' }), { status: 404 })))
+    await expect(fetchFxConnections('nobody', 'followers')).rejects.toMatchObject({ status: 404, code: 'not_found' })
+  })
+
   test('a base failure before the hedge sends it at once; two bases missing the account is a 404', async () => {
     vi.useFakeTimers()
     const hosts: string[] = []

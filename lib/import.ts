@@ -33,7 +33,7 @@ import { withImportSlot } from './import-admission.js'
 import { ConvertError } from './errors.js'
 import { UPSTREAM_CANCELLED } from './server-events.js'
 import { cursorAt, decodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
-import { FX_BASES, FX_SHORT_PAGE, confirmedProfileMiss, fetchFxProfile, fetchFxProfileStatuses, isFxBaseFailure, isFxProfileMiss, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
+import { FX_BASES, FX_SHORT_PAGE, confirmedProfileMiss, fetchFxProfile, fetchFxProfileStatuses, isFxAccountMissing, isFxBaseFailure, isFxProfileMiss, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
 
 export const IMPORT_DEFAULT_MAX_POSTS = 500
 export const IMPORT_MAX_POSTS = 5000
@@ -222,7 +222,8 @@ export function estimateRate(page: FxTweet[], handle: string): number {
  * has failed, and an error that is not about one base (see isFxBaseFailure)
  * sends no more copies, as it would end a single request. That error is also
  * the one reported, over any miss: a throttle's Retry-After is what the caller
- * has to wait. Misses from two different bases settle it: the account is gone.
+ * has to wait, unless a base reports a miss X confirmed. Misses from two
+ * different bases settle it at once: the account is gone.
  */
 function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
   return new Promise((resolve, reject) => {
@@ -254,7 +255,7 @@ function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
         if (!final && pending === 0 && launched < PROFILE_ATTEMPTS) return launch()
         if (pending > 0) return
         settled = true
-        reject(errors.find((error) => !isFxProfileMiss(error)) ?? errors[0])
+        reject(errors.find(isFxAccountMissing) ?? errors.find((error) => !isFxProfileMiss(error)) ?? errors[0])
       })
     }
     for (let i = 0; i < PROFILE_COPIES; i += 1) launch()
