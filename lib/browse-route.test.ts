@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 vi.mock('@vercel/functions', () => ({ waitUntil: vi.fn() }))
 vi.mock('./fxtwitter.js', async original => {
   const actual = await original<typeof import('./fxtwitter.js')>()
-  return { ...actual, fetchFxConnections: vi.fn() }
+  return { ...actual, fetchFxConnections: vi.fn(), searchFxStatuses: vi.fn() }
 })
 vi.mock('./ratelimit-headers.js', async original => {
   const actual = await original<typeof import('./ratelimit-headers.js')>()
@@ -15,8 +15,10 @@ vi.mock('./ratelimit-headers.js', async original => {
 
 import handler from '../api/browse.js'
 import { resetMemoryCache } from './cache.js'
-import { fetchFxConnections } from './fxtwitter.js'
+import { fetchFxConnections, searchFxStatuses } from './fxtwitter.js'
 import { chargeRequestQuota, type RequestQuota } from './ratelimit-headers.js'
+import { SEARCH_IP, searchIpKey } from './quotas.js'
+import { rateLimit, resetRateLimits } from './ratelimit.js'
 
 const verdict = (allowed: boolean): RequestQuota => ({
   allowed,
@@ -144,4 +146,30 @@ test('a charge that fails while browse is rejecting the input is not an unhandle
   }
   expect(rejections).toEqual([])
   expect(fetchFxConnections).not.toHaveBeenCalled()
+})
+
+test('an uncached search reports the search units it just spent', async () => {
+  resetRateLimits()
+  const actual = await vi.importActual<typeof import('./ratelimit-headers.js')>('./ratelimit-headers.js')
+  vi.mocked(chargeRequestQuota).mockImplementation(actual.chargeRequestQuota)
+  vi.mocked(searchFxStatuses).mockResolvedValue({ results: [{ id: '1', text: 'hi', url: 'https://x.com/ada/status/1', author: { screen_name: 'ada' } }] })
+  const search = async (q: string) => {
+    const { req, res } = exchange({ resource: 'search', q }, 'application/json')
+    await handler(req, res)
+    return res
+  }
+  const first = await search('hello')
+  expect(first.statusCode).toBe(200)
+  expect(String(first.getHeader('RateLimit'))).toContain(`"search-ip";r=${SEARCH_IP.quota - 1};`)
+  // A cache hit spends nothing, so it reports the same position.
+  const hit = await search('hello')
+  expect(hit.getHeader('X-Cache')).toBe('HIT')
+  expect(String(hit.getHeader('RateLimit'))).toContain(`"search-ip";r=${SEARCH_IP.quota - 1};`)
+  for (let i = 2; i < SEARCH_IP.quota; i++) await search(`q${i}`)
+  // The last allowed search says none are left, so a client pacing on `r` stops here instead of drawing a 429.
+  const last = await search('last')
+  expect(last.statusCode).toBe(200)
+  expect(last.getHeader('RateLimit-Remaining')).toBe('0')
+  expect((await search('over')).statusCode).toBe(429)
+  vi.mocked(chargeRequestQuota).mockReset()
 })
