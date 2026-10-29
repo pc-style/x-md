@@ -17,7 +17,8 @@ import handler from '../api/browse.js'
 import { resetMemoryCache } from './cache.js'
 import { fetchFxConnections, searchFxStatuses } from './fxtwitter.js'
 import { chargeRequestQuota, type RequestQuota } from './ratelimit-headers.js'
-import { SEARCH_IP, searchIpKey } from './quotas.js'
+import { ACCOUNT_IP, SEARCH_IP, searchIpKey } from './quotas.js'
+import { ConvertError } from './errors.js'
 import { rateLimit, resetRateLimits } from './ratelimit.js'
 
 const verdict = (allowed: boolean): RequestQuota => ({
@@ -171,5 +172,21 @@ test('an uncached search reports the search units it just spent', async () => {
   expect(last.statusCode).toBe(200)
   expect(last.getHeader('RateLimit-Remaining')).toBe('0')
   expect((await search('over')).statusCode).toBe(429)
+  vi.mocked(chargeRequestQuota).mockReset()
+})
+
+test('a search 429 raised below the handler reports that policy spent, timed like Retry-After', async () => {
+  resetRateLimits()
+  const actual = await vi.importActual<typeof import('./ratelimit-headers.js')>('./ratelimit-headers.js')
+  vi.mocked(chargeRequestQuota).mockImplementation(actual.chargeRequestQuota)
+  // The shared pool is spent while this caller still has search-ip quota left.
+  vi.mocked(searchFxStatuses).mockRejectedValue(new ConvertError(429, 'Public search capacity is used up for this window.', 'rate_limited', 42, ACCOUNT_IP.name))
+  const { req, res } = exchange({ resource: 'search', q: 'pool' }, 'application/json')
+  await handler(req, res)
+  expect(res.statusCode).toBe(429)
+  expect(res.getHeader('Retry-After')).toBe('42')
+  const rateLimit = String(res.getHeader('RateLimit'))
+  expect(rateLimit).toContain(`"${ACCOUNT_IP.name}";r=0;t=42`)
+  expect(rateLimit).toContain(`"search-ip";r=${SEARCH_IP.quota - 1};`)
   vi.mocked(chargeRequestQuota).mockReset()
 })
