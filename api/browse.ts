@@ -7,7 +7,7 @@ import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apia
 import { browse, browseResponse } from '../lib/browse.js'
 import { ConvertError } from '../lib/errors.js'
 import { requestOrigin, setCorsHeaders, wantsJson } from '../lib/http.js'
-import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller, type QuotaScope } from '../lib/ratelimit-headers.js'
+import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, settleRequestQuota, type QuotaCaller, type QuotaScope } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 
@@ -105,6 +105,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await pending
+    // A cache hit spends no search quota, so the earlier report still holds.
+    if (scope === 'search' && result.cache !== 'hit') applyRequestQuota(res, await settleRequestQuota(quota, scope, quotaCaller))
     trackResult(result)
     const response = browseResponse(result, wantsJson(param('format'), accept))
     for (const [key, header] of Object.entries(response.headers)) res.setHeader(key, header)
@@ -130,6 +132,11 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       return req.method === 'HEAD' ? res.status(status).end() : res.status(status).send(body)
     }
     if (!(error instanceof ConvertError)) console.error(error)
+    // A search limit rejected below the handler: report that policy spent, and
+    // the others as this request left them.
+    if (error instanceof ConvertError && error.status === 429 && error.policy && error.retryAfter !== undefined) {
+      applyExhaustedQuota(res, await settleRequestQuota(quota, scope, quotaCaller), error.policy, error.retryAfter)
+    }
     return sendProblem(res, problemFrom(error, instance), accept, req.method)
   }
 }

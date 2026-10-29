@@ -98,6 +98,9 @@ takes `since` and `until`.
   key, one unit per import however many posts it returns.
 - `429` carries `Retry-After` in seconds. Wait that long. Do not retry in a
   loop, and do not fan out across IPs.
+- Scripted or sustained search outgrows the anonymous allowance. Ask a human
+  to request an API key, which carries its own search allowance; keys are
+  issued by hand ([/auth.md](https://mdfromx.com/auth.md)).
 - `503` with `Retry-After: 30` means an upstream provider is down.
 - Errors are RFC 9457 problem documents (`application/problem+json`) with a
   stable machine `code` and a `resolution` hint that says what to do next.

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { ACCOUNT_IP, API_IP, SEARCH_IP, searchIpKey } from './quotas.js'
+import { ACCOUNT_IP, API_IP, SEARCH_IP, accountIpKey, searchIpKey } from './quotas.js'
 import { rateLimit, resetRateLimits } from './ratelimit.js'
 import {
   applyExhaustedQuota,
@@ -11,6 +11,7 @@ import {
   rateLimitHeaders,
   setRateLimitHeaders,
   setRetryAfter,
+  settleRequestQuota,
   stateField,
   tightestState,
   type QuotaState,
@@ -151,6 +152,27 @@ describe('chargeRequestQuota', () => {
     const res = sink()
     applyRequestQuota(res, quota)
     expect(res.headers['RateLimit']).toBe('"api-ip";r=600;t=60, "search-ip";r=5;t=60, "account-ip";r=10;t=900')
+  })
+})
+
+describe('settled requests', () => {
+  test('an uncached search reports the units it spent, not the state before them', async () => {
+    const caller = { ip: '1.2.3.4' }
+    const quota = await chargeRequestQuota('search', caller)
+    // What the search layer charges after the handler's peek.
+    await rateLimit(searchIpKey(caller.ip), SEARCH_IP.quota, SEARCH_IP.windowSec)
+    await rateLimit(accountIpKey(caller.ip), ACCOUNT_IP.quota, ACCOUNT_IP.windowSec)
+    const settled = await settleRequestQuota(quota, 'search', caller)
+    expect(settled.states.map((s) => s.remaining)).toEqual([599, 4, 9])
+    expect(settled.allowed).toBe(true)
+  })
+
+  test('a failed re-read keeps the earlier report', async () => {
+    const quota = await chargeRequestQuota('search', { ip: '1.2.3.4' })
+    vi.stubEnv('KV_REST_API_URL', 'https://kv.example')
+    vi.stubEnv('KV_REST_API_TOKEN', 'tok')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')))
+    expect(await settleRequestQuota(quota, 'search', { ip: '1.2.3.4' })).toBe(quota)
   })
 })
 

@@ -165,7 +165,7 @@ export const ERROR_CATALOG = {
   rate_limited: {
     status: 429,
     title: 'Rate limit exceeded',
-    resolution: 'Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.',
+    resolution: `Wait the number of seconds in the \`Retry-After\` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: ${SITE}/auth.md.`,
   },
   internal_error: {
     status: 500,
