@@ -46,3 +46,5 @@ accounts.local.json
 .blume-verify/
 # X session tokens for a self-hosted FxEmbed pool; never commit
 accss.json
+
+.wrangler/

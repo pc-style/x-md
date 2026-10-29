@@ -146,6 +146,15 @@ describe('fetchFxProfileStatuses transient cursor misses', () => {
     await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable', retryAfter: 30 })
   })
 
+  test('a profile 404 whose reason X gave is a 404 from one base', async () => {
+    for (const reason of ['not_found', 'suspended']) {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify({ code: 404, message: 'User not found', reason }), { status: 404 }))
+      vi.stubGlobal('fetch', fetchMock)
+      await expect(fetchFxProfile('nobody')).rejects.toMatchObject({ status: 404, code: 'not_found' })
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    }
+  })
+
   test('maps a missing profile payload to a retryable upstream failure', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ code: 200, message: 'OK' }), { status: 200 })))
     await expect(fetchFxProfile('theo')).rejects.toMatchObject({ status: 503, code: 'upstream_unavailable' })

@@ -1,0 +1,14 @@
+# x-md's fetcher on Workers, reading only from the self-hosted FxEmbed fork (xmd-fx).
+# Deploy: bunx wrangler@4 deploy -c workers/fx-proto/wrangler.toml
+name = "xmd-fetch"
+main = "index.ts"
+compatibility_date = "2026-04-11"
+compatibility_flags = ["nodejs_compat"]
+send_metrics = false
+
+# A Worker cannot fetch another Worker on the same account by its workers.dev URL,
+# so calls to the fork's host go through this binding (see index.ts).
+services = [{ binding = "FX", service = "xmd-fx" }]
+
+[vars]
+FXTWITTER_BASE_URL = "https://xmd-fx.pcstyle.workers.dev"

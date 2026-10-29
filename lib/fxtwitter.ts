@@ -309,8 +309,14 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal, base = pickFxB
 
   if (data.code === 404 || data.message === 'NOT_FOUND') {
     // "User not found" is also returned during provider outages. It does not
-    // establish that X deleted, suspended, or protected the account.
-    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) throw new FxProfileMissError(base)
+    // establish that X deleted, suspended, or protected the account, unless the
+    // base says X itself gave the reason: `suspended`, or `not_found` from our
+    // FxEmbed fork, which sets it only when X answered cleanly with no user.
+    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) {
+      const reason = (data as { reason?: unknown }).reason
+      if (reason === 'not_found' || reason === 'suspended') throw missingAccountError()
+      throw new FxProfileMissError(base)
+    }
     throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
   }
 
@@ -376,7 +382,11 @@ export function isFxBaseFailure(error: unknown): boolean {
  */
 export function confirmedProfileMiss(errors: readonly unknown[]): ConvertError | undefined {
   const bases = new Set(errors.flatMap((error) => error instanceof FxProfileMissError ? [error.base] : []))
-  return bases.size > 1 ? new ConvertError(404, 'The X account is missing or unavailable. It may be suspended, renamed, protected, or never have existed.', 'not_found') : undefined
+  return bases.size > 1 ? missingAccountError() : undefined
+}
+
+function missingAccountError(): ConvertError {
+  return new ConvertError(404, 'The X account is missing or unavailable. It may be suspended, renamed, protected, or never have existed.', 'not_found')
 }
 
 /** Bases one profile lookup may ask before it reports the failure. */
