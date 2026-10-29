@@ -99,6 +99,8 @@ async function fetchStatusWithFallback(handle: string, id: string): Promise<Fetc
         if (index > 0) trackFallback(sources[index - 1], sources[index], lastError instanceof ConvertError && lastError.code?.endsWith('_empty') ? 'primary_empty' : 'primary_error')
         return result
       } catch (error) {
+        // An out-of-credits skip says nothing about the post; keep the real failure.
+        if (error instanceof ConvertError && error.code === 'firecrawl_unavailable') continue
         lastError = error
         if (isHardNotFound(error)) throw error
       }

@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { firecrawlHitToPost, searchFirecrawlStatuses } from './firecrawl.js'
+import { fetchFirecrawlStatus, firecrawlHitToPost, resetFirecrawlCooldown, searchFirecrawlStatuses } from './firecrawl.js'
 
-afterEach(() => {
+afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
+  vi.restoreAllMocks()
+  await resetFirecrawlCooldown()
 })
 
 describe('firecrawlHitToPost', () => {
@@ -61,9 +63,30 @@ describe('searchFirecrawlStatuses', () => {
 
   test('omits the recency filter for top and maps upstream failures to 503', async () => {
     vi.stubEnv('FIRECRAWL_API_KEY', 'fc-test')
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: false, error: 'quota' }), { status: 402 }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: false, error: 'boom' }), { status: 500 }))
     vi.stubGlobal('fetch', fetchMock)
-    await expect(searchFirecrawlStatuses('supabase', 'top', 5)).rejects.toMatchObject({ status: 503, code: 'firecrawl_error', message: 'quota' })
+    await expect(searchFirecrawlStatuses('supabase', 'top', 5)).rejects.toMatchObject({ status: 503, code: 'firecrawl_error', message: 'boom' })
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).tbs).toBeUndefined()
+  })
+
+  test('a 402 reports the provider unavailable, warns once, and skips Firecrawl during the cooldown', async () => {
+    vi.stubEnv('FIRECRAWL_API_KEY', 'fc-test')
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: false, error: 'Insufficient credits' }), { status: 402 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(searchFirecrawlStatuses('supabase', 'top', 5)).rejects.toMatchObject({ status: 503, code: 'firecrawl_unavailable' })
+    await expect(searchFirecrawlStatuses('supabase', 'top', 5)).rejects.toMatchObject({ code: 'firecrawl_unavailable' })
+    await expect(fetchFirecrawlStatus('a', '1')).rejects.toMatchObject({ status: 502, code: 'firecrawl_unavailable' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn.mock.calls[0][0]).toMatch(/^\[firecrawl\] out of credits \(402\); skipping/)
+
+    vi.useFakeTimers({ now: Date.now() + 15 * 60_000 + 1 })
+    try {
+      await expect(fetchFirecrawlStatus('a', '1')).rejects.toMatchObject({ code: 'firecrawl_unavailable' })
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
