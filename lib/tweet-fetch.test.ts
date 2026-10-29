@@ -130,6 +130,17 @@ describe('fetchPosts provider fallbacks', () => {
     expect(fetchFirecrawlStatus).toHaveBeenCalledWith('alice', '123')
   })
 
+  test('an out-of-credits Firecrawl skip keeps the earlier provider failure', async () => {
+    process.env.CONTEXT_DEV_API_KEY = 'ctxt_secret_test'
+    process.env.FIRECRAWL_API_KEY = 'fc_test'
+    vi.mocked(fetchFxStatus).mockRejectedValue(new ConvertError(502, 'fx down', 'fxtwitter_error'))
+    vi.mocked(fetchSyndicationStatus).mockRejectedValue(new ConvertError(502, 'syndication down', 'syndication_error'))
+    vi.mocked(fetchContextDevStatus).mockRejectedValue(new ConvertError(502, 'context down', 'contextdev_error'))
+    vi.mocked(fetchFirecrawlStatus).mockRejectedValue(new ConvertError(502, 'out of credits', 'firecrawl_unavailable'))
+
+    await expect(fetchPosts('alice', '123', 'off')).rejects.toMatchObject({ code: 'contextdev_error' })
+  })
+
   test('does not try optional scrape providers when keys are absent', async () => {
     vi.mocked(fetchFxStatus).mockRejectedValue(new ConvertError(502, 'fx down', 'fxtwitter_error'))
     vi.mocked(fetchSyndicationStatus).mockResolvedValue({ id: '123', text: 'from syndication' })

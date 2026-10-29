@@ -233,6 +233,12 @@ describe('search fallback', () => {
     expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
   })
 
+  test('an out-of-credits web index answers with the live outage', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchFirecrawlStatuses).mockRejectedValue(new ConvertError(503, 'out of credits', 'firecrawl_unavailable'))
+    await expect(browse({ resource: 'search', q: 'hello', nocache: true })).rejects.toBe(outage)
+  })
+
   test('does not fall back on other errors', async () => {
     const other = new ConvertError(502, 'boom', 'fxtwitter_error')
     vi.mocked(searchFxStatuses).mockRejectedValue(other)

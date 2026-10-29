@@ -89,6 +89,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // an error, so the endpoint is legible without speaking JSON-RPC first.
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('Cache-Control', 'public, max-age=300')
+    // Vercel's CDN ignores `Vary: Accept` here: a stored manifest was replayed as
+    // a 200 to clients asking for the SSE stream, which must get the 405 above.
+    res.setHeader('Vercel-CDN-Cache-Control', 'no-store')
     const manifest = JSON.stringify({
       ...serverCard(site),
       protocolVersions: MCP_SUPPORTED_PROTOCOLS,
