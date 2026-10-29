@@ -47,3 +47,20 @@ test('a profile miss and then a throttle fail the import with the throttle and i
   const onHead = await importProfilePosts(input).then(() => undefined, (error: unknown) => error)
   expect(onHead).toMatchObject({ status: 503, code: (onMain as { code: string }).code, retryAfter: (onMain as { retryAfter: number }).retryAfter })
 })
+
+test('a miss X confirmed waits for the other profile copy, which wins if it finds the account', async () => {
+  const confirmed = () => Response.json({ code: 404, message: 'User not found', reason: 'not_found' }, { status: 404 })
+  const later = (response: () => Response) => async () => {
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    return response()
+  }
+  const input = { handle: 'ada', until: new Date(NOW), maxPosts: 20 }
+
+  stubUpstream([confirmed, later(() => Response.json({ code: 200, user: { screen_name: 'ada' } }))])
+  await expect(importProfilePosts(input)).resolves.toMatchObject({ posts: expect.any(Array) })
+
+  // The other copy failing first must not hide the confirmed miss.
+  resetFxPool()
+  stubUpstream([() => new Response('bad gateway', { status: 502 }), later(confirmed)])
+  await expect(importProfilePosts(input)).rejects.toMatchObject({ status: 404, code: 'not_found' })
+})
