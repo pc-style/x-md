@@ -71,6 +71,8 @@ describe('problem documents', () => {
     expect(response.headers['Cache-Control']).toBe('no-store')
     expect(problemFrom(new ConvertError(429, 'slow down', 'rate_limited'), 'https://mdfromx.com/search').retry_after).toBe(60)
     expect(problemFrom(new ConvertError(503, 'no sessions', 'search_unavailable'), 'https://mdfromx.com/search').retry_after).toBe(30)
+    // 0 is the provider layer's "try another base now"; it is no wait a caller can use.
+    expect(problemFrom(new ConvertError(503, 'The data source is temporarily unavailable.', 'upstream_rate_limited', 0), 'https://mdfromx.com/jack').retry_after).toBe(30)
   })
 
   test('problem links use the serving host', () => {

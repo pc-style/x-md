@@ -316,7 +316,7 @@
       "upstream_unavailable": {
         "status": 503,
         "title": "Upstream profile unavailable",
-        "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+        "resolution": "The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
         "type": "https://mdfromx.com/docs/reliability#upstream-unavailable"
       },
       "upstream_rate_limited": {
@@ -1451,7 +1451,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1991,7 +1991,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3171,7 +3171,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3749,7 +3749,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5718,7 +5718,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -6898,7 +6898,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -7476,7 +7476,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -10291,7 +10291,7 @@
           "detail": "Upstream profile unavailable",
           "instance": "https://mdfromx.com/api/v1/posts",
           "code": "upstream_unavailable",
-          "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+          "resolution": "The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
           "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Upstream profile unavailable",
           "retry_after": 30

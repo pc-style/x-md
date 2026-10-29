@@ -27,12 +27,12 @@ export function pickFxBase(): string {
   return [...FX_BASES].sort((a, b) => (coolUntil.get(a) ?? 0) - (coolUntil.get(b) ?? 0))[0]
 }
 
-/** The next base that is neither cooling down nor `avoid`; nothing when every other base is cooling. */
-function pickFxBaseAvoiding(avoid: string): string | undefined {
+/** The next base that is neither cooling down nor in `avoid`; nothing when every other base is cooling. */
+function pickFxBaseAvoiding(avoid: readonly string[]): string | undefined {
   const now = Date.now()
   for (let i = 0; i < FX_BASES.length; i += 1) {
     const base = FX_BASES[(rotation + i) % FX_BASES.length]
-    if (base !== avoid && (coolUntil.get(base) ?? 0) <= now) {
+    if (!avoid.includes(base) && (coolUntil.get(base) ?? 0) <= now) {
       rotation = (rotation + i + 1) % FX_BASES.length
       return base
     }
@@ -276,6 +276,9 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal, base = pickFxB
     })
   } catch (error) {
     if (signal?.aborted) throw error
+    // A base that cannot be reached or times out sits out like one answering 5xx,
+    // so the rest of the pool stops sending it traffic.
+    if (FX_BASES.length > 1) coolUntil.set(base, Math.max(coolUntil.get(base) ?? 0, Date.now() + FX_UPSTREAM_ERROR_COOLDOWN_MS))
     throw new ConvertError(502, 'Failed to reach FxTwitter API.', 'fxtwitter_network')
   }
 
@@ -291,7 +294,7 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal, base = pickFxB
   // 429; in a pool that base sits out briefly and the page moves to the next one.
   if (response.status >= 500 && FX_BASES.length > 1) {
     coolUntil.set(base, Math.max(coolUntil.get(base) ?? 0, Date.now() + Math.max(FX_UPSTREAM_ERROR_COOLDOWN_MS, (retryAfterSeconds(response.headers.get('retry-after')) ?? 0) * 1000)))
-    throw new ConvertError(503, `FxTwitter upstream ${new URL(base).host} answered ${response.status}.`, 'upstream_rate_limited', 0)
+    throw new ConvertError(503, 'The data source is temporarily unavailable.', 'upstream_rate_limited', 0)
   }
 
   if (response.status >= 500) throw new ConvertError(503, 'The data source is temporarily unavailable.', 'upstream_unavailable', retryAfterSeconds(response.headers.get('retry-after')) ?? 30)
@@ -307,9 +310,7 @@ async function fxFetchJson<T>(path: string, signal?: AbortSignal, base = pickFxB
   if (data.code === 404 || data.message === 'NOT_FOUND') {
     // "User not found" is also returned during provider outages. It does not
     // establish that X deleted, suspended, or protected the account.
-    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) {
-      throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
-    }
+    if (/^2\/profile\/[^/?]+(?:\/(?:followers|following))?(?:\?|$)/.test(path)) throw new FxProfileMissError(base)
     throw new ConvertError(404, 'Post not found or unavailable.', 'not_found')
   }
 
@@ -344,23 +345,70 @@ function encodeQuery(params: Record<string, string | number | undefined>): strin
   return query.toString()
 }
 
+/** A profile NOT_FOUND from one base, which alone says nothing about the account. */
+class FxProfileMissError extends ConvertError {
+  readonly base: string
+
+  constructor(base: string) {
+    super(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
+    this.base = base
+  }
+}
+
 /** The profile endpoint's spurious NOT_FOUND, which says nothing about the account. */
 export function isFxProfileMiss(error: unknown): boolean {
   return error instanceof ConvertError && error.code === 'upstream_unavailable' && error.message.startsWith('X profile')
 }
 
-/** `retry: false` makes one request and leaves the miss to the caller (lib/import.ts sends its own copies). */
-export async function fetchFxProfile(handle: string, signal?: AbortSignal, retry = true): Promise<FxAuthor> {
-  for (let attempt = 0; ; attempt += 1) {
+/**
+ * A failure that is about the base that answered, not the request: a miss, a
+ * pooled base's 429 or 5xx (sent with no wait, see fxFetchJson), or a base that
+ * could not be reached. Another base may well serve the same request.
+ */
+export function isFxBaseFailure(error: unknown): boolean {
+  return isFxProfileMiss(error) || (error instanceof ConvertError && (error.code === 'fxtwitter_network' || (error.code === 'upstream_rate_limited' && error.retryAfter === 0)))
+}
+
+/**
+ * The account does not exist when two different bases both say so. A lone
+ * NOT_FOUND also shows up in provider outages, but separate deployments on
+ * separate accounts agreeing is what a missing or suspended account looks like.
+ */
+export function confirmedProfileMiss(errors: readonly unknown[]): ConvertError | undefined {
+  const bases = new Set(errors.flatMap((error) => error instanceof FxProfileMissError ? [error.base] : []))
+  return bases.size > 1 ? new ConvertError(404, 'The X account is missing or unavailable. It may be suspended, renamed, protected, or never have existed.', 'not_found') : undefined
+}
+
+/** Bases one profile lookup may ask before it reports the failure. */
+const FX_PROFILE_TRIES = 3
+
+/**
+ * Each failure that is about the base moves to a base not yet asked, so one bad
+ * deployment never surfaces as a 503. A lone base gets one more try after a
+ * short pause, which recovers its intermittent NOT_FOUND. `retry: false` makes
+ * one request and leaves all of this to the caller (lib/import.ts sends its own copies).
+ * `asked` is shared by those copies, so each one starts on a base none has asked yet.
+ */
+export async function fetchFxProfile(handle: string, signal?: AbortSignal, retry = true, asked: string[] = []): Promise<FxAuthor> {
+  const tried: string[] = []
+  const errors: unknown[] = []
+  let base = pickFxBaseAvoiding(asked) ?? pickFxBase()
+  asked.push(base)
+  for (;;) {
+    tried.push(base)
     try {
-      const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`, signal)
+      const data = await fxFetchJson<{ user?: FxAuthor }>(`2/profile/${encodeURIComponent(handle)}`, signal, base)
       if (!data.user) throw new ConvertError(503, 'X profile could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30)
       return data.user
     } catch (error) {
-      // NOT_FOUND is intermittently returned for real profiles. One bounded
-      // retry recovers it; an actual provider Retry-After must be surfaced.
-      if (attempt || !retry || !isFxProfileMiss(error)) throw error
-      await abortableDelay(250, signal)
+      errors.push(error)
+      const missing = confirmedProfileMiss(errors)
+      if (missing) throw missing
+      if (!retry || tried.length >= FX_PROFILE_TRIES || !isFxBaseFailure(error)) throw error
+      const other = pickFxBaseAvoiding(tried)
+      if (other) base = other
+      else if (tried.length === 1 && isFxProfileMiss(error)) await abortableDelay(250, signal)
+      else throw error
     }
   }
 }
@@ -545,10 +593,12 @@ export const FX_CONNECTIONS_HEDGE_MS = 800
  * run it again on another base that is not cooling down. The first fulfilment
  * wins. The loser is left to finish rather than aborted: the upstream has
  * already done the work, and an abort would be recorded as a provider timeout.
- * A failure before the hedge fires is reported at once, as it would be without
- * one; once both are in flight the first failure is reported only if the other
- * fails too. When no other base is available the hedge does not fire: a second
- * copy on the same base would be a duplicate, not a route around it.
+ * A failure before the hedge fires sends the hedge at once when it is about the
+ * base (see isFxBaseFailure) and is reported at once otherwise; once both are in
+ * flight the first failure is reported only if the other fails too, unless both
+ * bases agree the account does not exist. When no other base is available the
+ * hedge does not fire: a second copy on the same base would be a duplicate, not
+ * a route around it.
  */
 async function hedged<T>(attempt: (base: string) => Promise<T>, delayMs: number): Promise<T> {
   const first = pickFxBase()
@@ -558,6 +608,16 @@ async function hedged<T>(attempt: (base: string) => Promise<T>, delayMs: number)
     let started = 0
     let timer: ReturnType<typeof setTimeout> | undefined
     let settled = false
+    const asked = [first]
+    const hedge = () => {
+      timer = undefined
+      if (asked.length >= FX_PROFILE_TRIES) return
+      const other = pickFxBaseAvoiding(asked)
+      if (other) {
+        asked.push(other)
+        run(other)
+      }
+    }
     const run = (base: string) => {
       started += 1
       attempt(base).then(
@@ -572,21 +632,22 @@ async function hedged<T>(attempt: (base: string) => Promise<T>, delayMs: number)
           failures.push(error)
           if (timer) {
             clearTimeout(timer)
-            timer = undefined
+            // The first base failed in a way another base may not: ask it now.
+            if (isFxBaseFailure(error)) hedge()
+            else timer = undefined
+          } else if (failures.length === started && isFxBaseFailure(error) && !confirmedProfileMiss(failures)) {
+            // Every base asked so far failed on its own account: try one more.
+            hedge()
           }
           if (failures.length === started) {
             settled = true
-            reject(failures[0])
+            reject(confirmedProfileMiss(failures) ?? failures[0])
           }
         },
       )
     }
     run(first)
-    timer = setTimeout(() => {
-      timer = undefined
-      const other = pickFxBaseAvoiding(first)
-      if (other) run(other)
-    }, delayMs)
+    timer = setTimeout(hedge, delayMs)
   })
 }
 

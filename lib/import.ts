@@ -33,7 +33,7 @@ import { withImportSlot } from './import-admission.js'
 import { ConvertError } from './errors.js'
 import { UPSTREAM_CANCELLED } from './server-events.js'
 import { cursorAt, decodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
-import { FX_BASES, FX_SHORT_PAGE, fetchFxProfile, fetchFxProfileStatuses, isFxProfileMiss, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
+import { FX_BASES, FX_SHORT_PAGE, confirmedProfileMiss, fetchFxProfile, fetchFxProfileStatuses, isFxBaseFailure, isFxProfileMiss, type FxAuthor, type FxProfileStatusesOptions, type FxTweet } from './fxtwitter.js'
 
 export const IMPORT_DEFAULT_MAX_POSTS = 500
 export const IMPORT_MAX_POSTS = 5000
@@ -219,13 +219,16 @@ export function estimateRate(page: FxTweet[], handle: string): number {
 /**
  * The account's profile (see PROFILE_COPIES). A copy that loses is left to
  * finish, as with hedged pages; the profile fails only once every copy sent
- * has failed, and an error other than the spurious miss sends no more copies,
- * as it would end a single request. That error is also the one reported, over
- * any miss: a throttle's Retry-After is what the caller has to wait.
+ * has failed, and an error that is not about one base (see isFxBaseFailure)
+ * sends no more copies, as it would end a single request. That error is also
+ * the one reported, over any miss: a throttle's Retry-After is what the caller
+ * has to wait. Misses from two different bases settle it: the account is gone.
  */
 function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
   return new Promise((resolve, reject) => {
     const errors: unknown[] = []
+    // Shared by every copy, so the next one asks a base none of them has asked.
+    const asked: string[] = []
     let launched = 0
     let pending = 0
     let final = false
@@ -233,7 +236,7 @@ function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
     const launch = () => {
       launched += 1
       pending += 1
-      fetchFxProfile(handle, signal, false).then((author) => {
+      fetchFxProfile(handle, signal, false, asked).then((author) => {
         pending -= 1
         if (settled) return
         settled = true
@@ -242,7 +245,12 @@ function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
         pending -= 1
         if (settled) return
         errors.push(error)
-        if (!isFxProfileMiss(error) || signal.aborted) final = true
+        const missing = confirmedProfileMiss(errors)
+        if (missing) {
+          settled = true
+          return reject(missing)
+        }
+        if (!isFxBaseFailure(error) || signal.aborted) final = true
         if (!final && pending === 0 && launched < PROFILE_ATTEMPTS) return launch()
         if (pending > 0) return
         settled = true
