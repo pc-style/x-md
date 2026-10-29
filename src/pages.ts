@@ -250,13 +250,18 @@ export function privacyHtml(chrome: ChromeData = {}): string {
             key itself.
           </li>
           <li>
-            <strong>Landing-page analytics.</strong> The homepage &mdash; and only the homepage &mdash; may
-            load PostHog to count page views, page leaves, and two interactions: requesting a conversion and
-            copying the skill install command. Properties are reduced to an allowlist of browser, device,
-            viewport, and session fields; the reported URL is rewritten to the bare origin so query strings
-            and referrers are not sent. Autocapture, session recording, heatmaps, surveys, exception
-            capture, and person profiles are all switched off. Vercel Web Analytics is also injected on the
-            landing page.
+            <strong>Homepage and docs analytics.</strong> The homepage and the documentation pages under
+            /docs may load PostHog to count page views and page leaves, plus two homepage interactions:
+            requesting a conversion and copying the skill install command. Properties are reduced to an
+            allowlist of browser, device, viewport, and session fields, plus where the visit came from: the
+            referring site&rsquo;s origin (never its path or query) and the standard
+            <strong>utm_source</strong>, <strong>utm_medium</strong>, <strong>utm_campaign</strong>,
+            <strong>utm_content</strong>, and <strong>utm_term</strong> campaign tags. The reported URL is the
+            page&rsquo;s origin and path; every other query parameter and the fragment are removed. Uncaught
+            JavaScript errors are reported too, reduced to the error type, message, and stack frames, with
+            query strings and fragments stripped from any URL inside them. Autocapture, session recording,
+            heatmaps, surveys, and person profiles are all switched off. Vercel Web Analytics is also
+            injected on the homepage and the documentation pages.
           </li>
         </ul>
 
@@ -284,7 +289,7 @@ export function privacyHtml(chrome: ChromeData = {}): string {
 
         <h2>Your controls</h2>
         <ul>
-          <li>Send <strong>DNT: 1</strong>, <strong>Sec-GPC: 1</strong>, or <strong>X-Xmd-Archive-Opt-Out: 1</strong> with a request, or set the <strong>__Host-xmd_archive_optout=1</strong> cookie: archive capture is skipped and the landing-page analytics do not initialise.</li>
+          <li>Send <strong>DNT: 1</strong>, <strong>Sec-GPC: 1</strong>, or <strong>X-Xmd-Archive-Opt-Out: 1</strong> with a request, or set the <strong>__Host-xmd_archive_optout=1</strong> cookie: archive capture is skipped and the homepage and docs analytics do not initialise.</li>
           <li>Use <strong>?nocache=true</strong> to bypass the application cache for a request.</li>
           <li>Block the third-party requests listed below, or run the service yourself &mdash; a <a href="/docs/self-hosting">self-hosted deployment</a> with no analytics variables configured sends nothing anywhere unless an agent calls the MCP <strong>submit_feedback</strong> tool.</li>
         </ul>
@@ -306,7 +311,7 @@ export function privacyHtml(chrome: ChromeData = {}): string {
           record &mdash; every claim above can be checked against
           <a href="${REPO}" target="_blank" rel="noreferrer">the source</a>. Questions and corrections go to
           <a href="/contact">contact</a>. Last reviewed
-          <time datetime="2026-09-08">8 September 2026</time>.
+          <time datetime="2026-10-29">29 October 2026</time>.
         </p>`,
   })
 }

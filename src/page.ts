@@ -3,7 +3,7 @@ import { setupLinkPrefetch, setupMobileMenu, setupTheme } from './chrome-setup'
 import type { PageSlug } from './pages'
 
 // Shared entry for the static content pages (about, contact, privacy, terms).
-// Deliberately does not load analytics: only the landing page is instrumented.
+// Deliberately does not load analytics: only the landing and docs pages are instrumented.
 const app = document.querySelector<HTMLDivElement>('#app')!
 
 // The body is pre-rendered into each root HTML file at build time so the page

@@ -104,13 +104,13 @@ Production API functions send a `request_completed` event with the route categor
 
 These statistics cover completed function responses, not requests served by Vercel's CDN, aborted requests, or platform errors before the handler runs. They are not billing-grade totals. Local development, previews, admin routes, and CORS preflights are excluded. Redis remains the source of truth for live limits and capacity; PostHog is only for historical analysis.
 
-### Landing-page web analytics
+### Homepage and docs web analytics
 
 Set `VITE_POSTHOG_KEY` to the project token and `VITE_POSTHOG_HOST` to its ingestion host or managed reverse proxy (this deployment uses `https://p.pcstyle.dev`). These are public build-time values, not personal API credentials. Rebuild after changing them. Capture requires a production build with `VERCEL_ENV=production`; local development and previews do not send events. The SDK's `ui_host` points to EU PostHog. In PostHog's Web Analytics settings, add your public site URL (for this deployment, `https://mdfromx.com`).
 
-The landing page sends pageviews, page leaves, `conversion_requested`, and `skill_install_command_copied`. Anonymous browser IDs persist in local storage to measure returning visitors; session and browser/device properties support Web Analytics. No person profiles are created. Event URLs contain only the landing-page origin and `/`, without query strings or fragments. Referrers, form contents, automatic clicks, errors, and recordings are excluded; traffic-source attribution and geographic reports are therefore limited. The proxy receives the browser's source IP, while event properties disable IP-based enrichment.
+The homepage and the `/docs` pages send pageviews and page leaves, including navigations between docs pages; the homepage also sends `conversion_requested` and `skill_install_command_copied`. Anonymous browser IDs persist in local storage to measure returning visitors; session and browser/device properties support Web Analytics. No person profiles are created. Event URLs contain only the origin and the page path, without fragments or query strings. Traffic sources are kept: the referrer reduced to its origin, the referring domain, and the `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` tags; every other query parameter is dropped. Uncaught errors are sent as `$exception` events carrying only the exception type, message, and stack frames, with query strings and fragments removed from any URL inside them. Form contents, automatic clicks, and recordings are excluded. The proxy receives the browser's source IP, while event properties disable IP-based enrichment.
 
-This covers the landing page only, not docs, converted posts, or admin. API events remain separate from browser visits. Existing Vercel Web Analytics on the public landing page is unchanged. The admin dashboard includes no analytics scripts.
+This covers the homepage and docs only, not converted posts, the about, contact, privacy, and terms pages, or admin. API events remain separate from browser visits. Vercel Web Analytics on the homepage and docs is unchanged. The admin dashboard includes no analytics scripts.
 
 ## Optional configuration
 
