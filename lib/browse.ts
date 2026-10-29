@@ -512,12 +512,14 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const withReposts = truthy(input.with_reposts)
     const until = input.until ? parseDateInput(input.until) : undefined
     if (input.until && !until) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_option')
-    const [profile, list] = await Promise.all([
-      shareBrowseLookup(JSON.stringify(['profile', handle]), truthy(input.nocache), () => fetchFxProfile(handle)),
-      input.include_posts === false || input.include_posts === 'false' || input.include_posts === '0'
-        ? Promise.resolve({ results: [] } as FxListResponse<FxTweet>)
-        : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts, truthy(input.nocache)),
-    ])
+    const profileLookup = shareBrowseLookup(JSON.stringify(['profile', handle]), truthy(input.nocache), () => fetchFxProfile(handle))
+    const listLookup = input.include_posts === false || input.include_posts === 'false' || input.include_posts === '0'
+      ? Promise.resolve({ results: [] } as FxListResponse<FxTweet>)
+      : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts, truthy(input.nocache))
+    // The profile decides a missing account; a timeline failure alone only ever says "retry".
+    void listLookup.catch(() => {})
+    const profile = await profileLookup
+    const list = await listLookup
     return { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
   }
 

@@ -81,6 +81,12 @@ describe('browse', () => {
     expect(result.markdown).toContain('page=2')
   })
 
+  test('a missing account is a 404 even when its timeline fails first', async () => {
+    vi.mocked(fetchFxProfile).mockImplementation(() => new Promise((_, reject) => setTimeout(() => reject(new ConvertError(404, 'The X account is missing or unavailable.', 'not_found')), 20)))
+    vi.mocked(fetchFxProfileStatuses).mockRejectedValue(new ConvertError(503, 'X profile timeline could not be resolved upstream. Retry shortly.', 'upstream_unavailable', 30))
+    await expect(browse({ resource: 'profile', handle: 'nobody', nocache: true })).rejects.toMatchObject({ status: 404, code: 'not_found' })
+  })
+
   test('walks cursors sequentially for page=N and cuts blocks exactly at the limit', async () => {
     vi.mocked(searchFxStatuses)
       .mockResolvedValueOnce({ results: posts(20, 'a'), cursor: { bottom: 'page-2' } })
