@@ -39,6 +39,8 @@ async function outOfCreditsUntil(): Promise<number> {
   } catch {
     // Probing is the safe failure mode.
   }
+  // A 402 noted while this read was in flight is newer than what it returned.
+  until = Math.max(until, outOfCredits?.until ?? 0)
   outOfCredits = { until, at: now }
   return until
 }
@@ -50,10 +52,10 @@ async function noteOutOfCredits(): Promise<void> {
   await kv().set(OUT_OF_CREDITS_KEY, String(until)).catch(() => undefined)
 }
 
-/** Test hook. */
-export async function resetFirecrawlCooldown(): Promise<void> {
+/** Test hook. `keepShared` drops only the cache, as a cold instance inheriting the stored state would. */
+export async function resetFirecrawlCooldown(keepShared = false): Promise<void> {
   outOfCredits = undefined
-  await kv().del(OUT_OF_CREDITS_KEY).catch(() => undefined)
+  if (!keepShared) await kv().del(OUT_OF_CREDITS_KEY).catch(() => undefined)
 }
 
 interface FirecrawlSearchHit {

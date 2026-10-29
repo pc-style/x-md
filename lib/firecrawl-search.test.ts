@@ -81,6 +81,12 @@ describe('searchFirecrawlStatuses', () => {
     expect(warn).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0][0]).toMatch(/^\[firecrawl\] out of credits \(402\); skipping/)
 
+    // A cold instance reads the cooldown from the shared store.
+    await resetFirecrawlCooldown(true)
+    await expect(fetchFirecrawlStatus('a', '1')).rejects.toMatchObject({ code: 'firecrawl_unavailable' })
+    await expect(searchFirecrawlStatuses('supabase', 'top', 5)).rejects.toMatchObject({ code: 'firecrawl_unavailable' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
     vi.useFakeTimers({ now: Date.now() + 15 * 60_000 + 1 })
     try {
       await expect(fetchFirecrawlStatus('a', '1')).rejects.toMatchObject({ code: 'firecrawl_unavailable' })
