@@ -450,6 +450,8 @@ describe('the HTTP transport', () => {
     expect(manifest).toMatchObject({ name: MCP_SERVER_NAME, serverUrl: 'https://mdfromx.com/mcp', transport: 'streamable-http' })
     expect(manifest.protocolVersions).toContain(MCP_MODERN_PROTOCOL)
     expect(manifest.tools).toHaveLength(MCP_TOOLS.length)
+    // Kept out of the CDN, which would otherwise replay it to an SSE GET.
+    expect(held.res.getHeader('Vercel-CDN-Cache-Control')).toBe('no-store')
   })
 
   test('a client opening the optional SSE stream gets a parseable 405', async () => {
