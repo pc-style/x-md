@@ -6,6 +6,7 @@ const SYNDICATION_BASE = 'https://cdn.syndication.twimg.com/tweet-result'
 const UA = 'Mozilla/5.0 (compatible; x-md/1.0)'
 
 interface SyndicationUser {
+  id_str?: string
   name?: string
   screen_name?: string
   profile_image_url_https?: string
@@ -16,6 +17,7 @@ interface SyndicationUser {
   statuses_count?: number
   created_at?: string
   verified?: boolean
+  is_blue_verified?: boolean
   url?: string
   entities?: { url?: { urls?: Array<{ display_url?: string; expanded_url?: string }> } }
 }
@@ -45,7 +47,14 @@ interface SyndicationTweet {
   created_at?: string
   favorite_count?: number
   conversation_count?: number
+  reply_count?: number
+  retweet_count?: number
   lang?: string
+  possibly_sensitive?: boolean
+  in_reply_to_status_id_str?: string
+  in_reply_to_screen_name?: string
+  /** The post this one replies to, one level up, with no `parent` of its own. */
+  parent?: SyndicationTweet
   user?: SyndicationUser
   mediaDetails?: SyndicationMedia[]
   photos?: SyndicationMedia[]
@@ -120,6 +129,7 @@ function mapUser(user?: SyndicationUser): FxTweet['author'] {
   if (!user) return undefined
   const website = user.entities?.url?.urls?.[0]
   return {
+    id: user.id_str,
     name: user.name,
     screen_name: user.screen_name,
     url: user.screen_name ? `https://x.com/${user.screen_name}` : user.url,
@@ -131,7 +141,7 @@ function mapUser(user?: SyndicationUser): FxTweet['author'] {
     joined: user.created_at,
     avatar_url: user.profile_image_url_https,
     website: website ? { url: website.expanded_url, display_url: website.display_url } : undefined,
-    verification: { verified: user.verified },
+    verification: { verified: user.verified || user.is_blue_verified },
   }
 }
 
@@ -147,18 +157,36 @@ function mapSyndicationTweet(raw: SyndicationTweet, handle?: string, id?: string
     url: screenName && ownId ? `https://x.com/${screenName}/status/${ownId}` : undefined,
     author: mapUser(raw.user),
     likes: raw.favorite_count,
-    replies: raw.conversation_count,
+    replies: raw.conversation_count ?? raw.reply_count,
+    reposts: raw.retweet_count,
     lang: raw.lang,
+    possibly_sensitive: raw.possibly_sensitive,
+    replying_to: raw.in_reply_to_status_id_str
+      ? {
+          screen_name: raw.in_reply_to_screen_name,
+          status: raw.in_reply_to_status_id_str,
+          url: raw.in_reply_to_screen_name ? `https://x.com/${raw.in_reply_to_screen_name}/status/${raw.in_reply_to_status_id_str}` : undefined,
+        }
+      : undefined,
+    replying_to_status: raw.in_reply_to_status_id_str ? [raw.in_reply_to_status_id_str] : undefined,
     media: mapMedia(raw),
     article: mapArticle(raw.article),
     quote: quoted ? mapSyndicationTweet(quoted) : undefined,
   }
 }
 
-export async function fetchSyndicationStatus(handle: string, id: string, signal?: AbortSignal): Promise<FxTweet> {
+/**
+ * The token the embed widget sends. `token=0` still works for older posts, but
+ * recent ones answer `{}` without the real value (checked 2026-10-29).
+ */
+export function syndicationToken(id: string): string {
+  return ((Number(id) / 1e15) * Math.PI).toString(36).replace(/(0+|\.)/g, '')
+}
+
+async function fetchSyndicationRaw(id: string, signal?: AbortSignal): Promise<SyndicationTweet> {
   let response: Response
   try {
-    const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=0`
+    const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=${syndicationToken(id)}`
     response = await providerFetch('syndication', url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal })
   } catch {
     throw new ConvertError(502, 'Failed to reach X syndication API.', 'syndication_network')
@@ -178,5 +206,29 @@ export async function fetchSyndicationStatus(handle: string, id: string, signal?
     throw new ConvertError(404, 'Post not found via syndication API.', 'syndication_empty')
   }
 
-  return mapSyndicationTweet(data, handle, id)
+  return data
+}
+
+export async function fetchSyndicationStatus(handle: string, id: string, signal?: AbortSignal): Promise<FxTweet> {
+  return mapSyndicationTweet(await fetchSyndicationRaw(id, signal), handle, id)
+}
+
+/**
+ * The post and the chain of posts above it, oldest first. Each response
+ * carries its parent one level up, so a chain of n parents costs about n/2
+ * requests. Syndication has no way down: replies and later posts in a
+ * self-thread are not reachable from here.
+ */
+export async function fetchSyndicationChain(handle: string, id: string, maxParents = 10, signal?: AbortSignal): Promise<FxTweet[]> {
+  let current = await fetchSyndicationRaw(id, signal)
+  const chain: FxTweet[] = [mapSyndicationTweet(current, handle, id)]
+  while (current.in_reply_to_status_id_str && chain.length <= maxParents) {
+    const parent = current.parent?.text ? current.parent : await fetchSyndicationRaw(current.in_reply_to_status_id_str, signal)
+    chain.unshift(mapSyndicationTweet(parent))
+    if (!parent.in_reply_to_status_id_str || chain.length > maxParents) break
+    // The grandparent's own response embeds the next parent up.
+    current = await fetchSyndicationRaw(parent.in_reply_to_status_id_str, signal)
+    chain.unshift(mapSyndicationTweet(current))
+  }
+  return chain
 }

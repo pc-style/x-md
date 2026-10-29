@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { fetchSyndicationStatus } from './syndication.js'
+import { fetchSyndicationChain, fetchSyndicationStatus, syndicationToken } from './syndication.js'
 
 describe('syndication video mapping', () => {
   afterEach(() => vi.restoreAllMocks())
@@ -64,5 +64,27 @@ describe('syndication video mapping', () => {
       'https://img/one.jpg',
       'https://img/two.jpg',
     ])
+  })
+
+  test('sends the computed token, which recent posts need', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ id_str: '1585341984679469056', text: 'hi' }), { status: 200 }))
+    await fetchSyndicationStatus('elonmusk', '1585341984679469056')
+    expect(syndicationToken('1585341984679469056')).toBe('3uchycv2wqc')
+    expect(String(fetch.mock.calls[0][0])).toContain('token=3uchycv2wqc')
+  })
+
+  test('walks the parent chain two levels per request, oldest first', async () => {
+    const bodies: Record<string, unknown> = {
+      4: { id_str: '4', text: 'post', in_reply_to_status_id_str: '3', in_reply_to_screen_name: 'a', parent: { id_str: '3', text: 'three', in_reply_to_status_id_str: '2' } },
+      2: { id_str: '2', text: 'two', in_reply_to_status_id_str: '1', parent: { id_str: '1', text: 'one' } },
+    }
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const id = new URL(String(input)).searchParams.get('id') ?? ''
+      return new Response(JSON.stringify(bodies[id] ?? {}), { status: 200 })
+    })
+    const chain = await fetchSyndicationChain('a', '4')
+    expect(chain.map((tweet) => tweet.id)).toEqual(['1', '2', '3', '4'])
+    expect(chain[3].replying_to).toMatchObject({ status: '3', screen_name: 'a' })
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 })
