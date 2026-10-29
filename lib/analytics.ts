@@ -1,5 +1,6 @@
 import { notedErrorCode, notedErrorType, requestBatch, serverEvent } from './server-events.js'
 import { createHmac } from 'node:crypto'
+import { clientIp } from './ratelimit.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { waitUntil } from '@vercel/functions'
 
@@ -8,6 +9,19 @@ type Endpoint = 'convert' | 'browse' | 'import' | 'oembed' | 'mcp' | 'index' | '
 /** Only a verified, internal key ID may be assigned here. Never a bearer token. */
 interface RequestIdentity {
   keyId?: string
+}
+
+/**
+ * Anonymous callers are counted per UTC day: an HMAC of the IP under a salt that
+ * changes daily and derives from a server-only secret, so the ID can't be reversed
+ * or linked across days. Without a secret or an IP there is no ID.
+ */
+function dailyCallerId(req: IncomingMessage): string | null {
+  const secret = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN
+  const ip = clientIp(req.headers)
+  if (!secret || ip === 'unknown') return null
+  const salt = createHmac('sha256', secret).update(`xmd-caller-id:${new Date().toISOString().slice(0, 10)}`).digest()
+  return `ip:${createHmac('sha256', salt).update(ip).digest('hex').slice(0, 32)}`
 }
 
 /**
@@ -56,13 +70,15 @@ export function trackRequest(
       const cache = cacheHeader === 'HIT' ? 'hit' : cacheHeader === 'MISS' ? 'miss' : cacheHeader === 'BYPASS' ? 'bypass' : 'unknown'
       // Public callers share one ID: no person profiles are made, so it carries no
       // identity, and PostHog doesn't count every request as a new user.
-      const distinctId = auth === 'valid' && identity.keyId
+      const keyId = auth === 'valid' && identity.keyId
         ? `key:${createHmac('sha256', token!).update(identity.keyId).digest('hex')}`
-        : 'anonymous'
+        : null
       const batch = [serverEvent('request_completed', {
         route, method: method ?? 'OTHER', status, duration_ms, cache, access, key_status: auth,
+        // A property, not the person: counts unique callers without building profiles.
+        caller_id: keyId ?? dailyCallerId(req),
         degraded: res.getHeader('X-Search-Degraded') === 'true',
-      }, distinctId)]
+      }, keyId ?? 'anonymous')]
       if (status >= 400) batch.push(serverEvent('request_failed', {
         route, status, error_type: notedErrorType(res, status), error_code: notedErrorCode(res), duration_ms, access, key_status: auth,
       }))

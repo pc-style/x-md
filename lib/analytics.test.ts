@@ -57,7 +57,7 @@ describe('production request analytics', () => {
     expect(event.event).toBe('request_completed')
     expect(event.properties).toEqual({
       route: 'search', method: 'GET', status: 429, duration_ms: expect.any(Number),
-      cache: 'bypass', access: 'public', key_status: 'anonymous', degraded: true,
+      cache: 'bypass', access: 'public', key_status: 'anonymous', degraded: true, caller_id: null,
       environment: 'production', $process_person_profile: false, $geoip_disable: true, $ip: null,
     })
     const serialized = JSON.stringify(event)
@@ -118,6 +118,40 @@ describe('production request analytics', () => {
     expect(ids[0]).toMatch(/^key:[a-f0-9]{64}$/)
     expect(ids[0]).toBe(ids[1])
     expect(ids.slice(2)).toEqual(['anonymous', 'anonymous', 'anonymous', 'anonymous'])
+  })
+
+  test('counts anonymous callers per day by a salted IP hash that never contains the IP', async () => {
+    vi.stubEnv('KV_REST_API_TOKEN', 'server-only-secret')
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const caller = async (ip: string, day: string) => {
+      vi.setSystemTime(new Date(`${day}T12:00:00Z`))
+      const { req, res } = request()
+      req.headers['x-real-ip'] = ip
+      trackRequest(req, res, 'browse', 'profile')
+      return (await finish(res)).properties.caller_id as string
+    }
+    try {
+      const first = await caller('192.0.2.55', '2026-10-29')
+      expect(first).toMatch(/^ip:[a-f0-9]{32}$/)
+      expect(await caller('192.0.2.55', '2026-10-29')).toBe(first)
+      expect(await caller('192.0.2.56', '2026-10-29')).not.toBe(first)
+      expect(await caller('192.0.2.55', '2026-10-30')).not.toBe(first)
+      vi.stubEnv('KV_REST_API_TOKEN', 'another-secret')
+      expect(await caller('192.0.2.55', '2026-10-29')).not.toBe(first)
+      vi.stubEnv('KV_REST_API_TOKEN', '')
+      expect(await caller('192.0.2.55', '2026-10-29')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('verified keys use their pseudonym as caller_id too', async () => {
+    const { req, res } = request()
+    const identity = trackRequest(req, res, 'browse', 'profile')
+    identity.keyId = 'internal-key-id'
+    res.setHeader('X-Api-Key-Status', 'valid')
+    const event = await finish(res)
+    expect(event.properties.caller_id).toBe(event.distinct_id)
   })
 
   test('normalizes unknown fields and supports server-only configuration', async () => {
