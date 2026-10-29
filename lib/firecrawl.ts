@@ -1,5 +1,6 @@
 import { providerFetch, reportProviderResponse } from './server-events.js'
 import { ConvertError } from './errors.js'
+import { kv } from './kv.js'
 import type { FxTweet } from './fxtwitter.js'
 import { extractStatusTextFromMarkdown } from './scrape-text.js'
 
@@ -9,6 +10,52 @@ const UA = 'x-md/1.0'
 
 export function firecrawlSearchConfigured(): boolean {
   return Boolean(process.env.FIRECRAWL_API_KEY)
+}
+
+/**
+ * A 402 means the account is out of credits, which lasts until someone tops it
+ * up, so every call until then is a wasted round trip that fails the request.
+ * After one, Firecrawl is skipped for this long; the next call after it re-probes.
+ */
+const OUT_OF_CREDITS_COOLDOWN_MS = 15 * 60_000
+/** Shared so one instance's 402 cools down the fleet, not just itself. */
+const OUT_OF_CREDITS_KEY = 'firecrawl:out-of-credits'
+/** How long a read of the shared state is trusted before consulting the store again. */
+const OUT_OF_CREDITS_TTL_MS = 5_000
+let outOfCredits: { until: number; at: number } | undefined
+
+/** Thrown instead of calling Firecrawl while it is out of credits; callers fall through. */
+function unavailable(status: number): ConvertError {
+  return new ConvertError(status, 'Firecrawl is temporarily unavailable.', 'firecrawl_unavailable')
+}
+
+/** Same shape as the search breaker in browse.ts: a store outage reads as clear. */
+async function outOfCreditsUntil(): Promise<number> {
+  const now = Date.now()
+  if (outOfCredits && (now - outOfCredits.at < OUT_OF_CREDITS_TTL_MS || now < outOfCredits.until)) return outOfCredits.until
+  let until = 0
+  try {
+    until = Number(await kv().get(OUT_OF_CREDITS_KEY)) || 0
+  } catch {
+    // Probing is the safe failure mode.
+  }
+  // A 402 noted while this read was in flight is newer than what it returned.
+  until = Math.max(until, outOfCredits?.until ?? 0)
+  outOfCredits = { until, at: now }
+  return until
+}
+
+async function noteOutOfCredits(): Promise<void> {
+  console.warn(`[firecrawl] out of credits (402); skipping for ${OUT_OF_CREDITS_COOLDOWN_MS / 60_000} min`)
+  const until = Date.now() + OUT_OF_CREDITS_COOLDOWN_MS
+  outOfCredits = { until, at: Date.now() }
+  await kv().set(OUT_OF_CREDITS_KEY, String(until)).catch(() => undefined)
+}
+
+/** Test hook. `keepShared` drops only the cache, as a cold instance inheriting the stored state would. */
+export async function resetFirecrawlCooldown(keepShared = false): Promise<void> {
+  outOfCredits = undefined
+  if (!keepShared) await kv().del(OUT_OF_CREDITS_KEY).catch(() => undefined)
 }
 
 interface FirecrawlSearchHit {
@@ -69,6 +116,7 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
   if (!apiKey) {
     throw new ConvertError(503, 'Firecrawl search fallback not configured.', 'firecrawl_disabled')
   }
+  if (Date.now() < await outOfCreditsUntil()) throw unavailable(503)
 
   let response: Response
   try {
@@ -88,6 +136,10 @@ export async function searchFirecrawlStatuses(queryText: string, feed: string, l
     })
   } catch {
     throw new ConvertError(503, 'Failed to reach Firecrawl search.', 'firecrawl_network')
+  }
+  if (response.status === 402) {
+    await noteOutOfCredits()
+    throw unavailable(503)
   }
 
   let payload: FirecrawlSearchResponse
@@ -124,6 +176,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
   if (!apiKey) {
     throw new ConvertError(502, 'Firecrawl fallback not configured.', 'firecrawl_disabled')
   }
+  if (Date.now() < await outOfCreditsUntil()) throw unavailable(502)
 
   const canonicalUrl = `https://x.com/${handle}/status/${id}`
 
@@ -145,6 +198,10 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
     })
   } catch {
     throw new ConvertError(502, 'Failed to reach Firecrawl API.', 'firecrawl_network')
+  }
+  if (response.status === 402) {
+    await noteOutOfCredits()
+    throw unavailable(502)
   }
 
   const payload = (await response.json()) as FirecrawlResponse

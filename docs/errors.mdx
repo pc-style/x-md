@@ -114,7 +114,7 @@ The `404` document is the one error with more than one representation: it is neg
 
 | Code | Title | Meaning | What to do |
 | --- | --- | --- | --- |
-| `rate_limited` | Rate limit exceeded | A quota is exhausted. The response says which one in its `RateLimit` header, at `r=0`. | Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. |
+| `rate_limited` | Rate limit exceeded | A quota is exhausted. The response says which one in its `RateLimit` header, at `r=0`. | Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md. |
 
 `Retry-After` and `retry_after` are the same number of seconds. Sleep for it; do not poll. The quotas themselves are in [rate limits](/reliability#rate-limits).
 
@@ -126,7 +126,7 @@ x.md reads third-party providers that fail independently of it, so these are usu
 | --- | --- | --- | --- |
 | `internal_error` | Unexpected error | A bug or an unhandled condition in x.md itself. | Retry with exponential backoff. If it persists, open an issue at [github.com/pc-style/x-md/issues](https://github.com/pc-style/x-md/issues). |
 | `upstream_error` | Upstream provider error | A data provider failed or answered with something unusable. | Retry with backoff. x.md reads a third-party provider that can fail independently. |
-| `upstream_unavailable` | Upstream profile unavailable | The provider returned an ambiguous profile miss, such as `User not found`; it could not confirm whether the profile exists. | Wait for `Retry-After`, then retry. Do not treat the profile as deleted. |
+| `upstream_unavailable` | Upstream profile unavailable | The provider failed, or returned a profile miss such as `User not found` that x.md could not confirm with a second source. | Wait for `Retry-After`, then retry. Do not treat the profile as deleted: an account confirmed missing answers 404 `not_found`. |
 | `partial_upstream_failure` | Partial upstream failure | A timeline page stayed unavailable after retries and the stream could not finish. `streamed_posts` counts lines already delivered. | Wait for the error body's `retry_after`, then retry the import and deduplicate by post ID. |
 | `search_unavailable` | Search temporarily unavailable | Live search has no healthy session. Photos, Videos, and Users have no fallback. | Wait the number of seconds in `Retry-After`, then retry. Photos, Videos, and Users need configured sessions. |
 | `admin_unconfigured` | Admin is not configured | The deployment's private admin route has no token set. Not part of the public API. | Set `X_MD_ADMIN_TOKEN` on the deployment. This route is not part of the public API. |

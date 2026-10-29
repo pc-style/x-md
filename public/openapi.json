@@ -132,7 +132,7 @@
       "quota": 10,
       "window_seconds": 900,
       "partition": "client IP address",
-      "applies_to": "account-backed search feeds (photos, videos, users)",
+      "applies_to": "account-backed search feeds (photos, videos, users, and the latest/top live fallback)",
       "notes": "A shared public pool; key holders draw from their own allowance instead."
     },
     {
@@ -292,7 +292,7 @@
       "rate_limited": {
         "status": 429,
         "title": "Rate limit exceeded",
-        "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+        "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
         "type": "https://mdfromx.com/docs/reliability#rate-limited"
       },
       "internal_error": {
@@ -316,7 +316,7 @@
       "upstream_unavailable": {
         "status": 503,
         "title": "Upstream profile unavailable",
-        "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+        "resolution": "The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
         "type": "https://mdfromx.com/docs/reliability#upstream-unavailable"
       },
       "upstream_rate_limited": {
@@ -724,7 +724,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1304,7 +1304,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1451,7 +1451,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1844,7 +1844,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -1991,7 +1991,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -2443,7 +2443,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3024,7 +3024,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3171,7 +3171,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3602,7 +3602,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -3749,7 +3749,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -4178,7 +4178,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -4536,7 +4536,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -4991,7 +4991,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5571,7 +5571,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -5718,7 +5718,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -6170,7 +6170,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -6751,7 +6751,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -6898,7 +6898,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -7329,7 +7329,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -7476,7 +7476,7 @@
             }
           },
           "503": {
-            "description": "Upstream profile unavailable. The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+            "description": "Upstream profile unavailable. The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -7905,7 +7905,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -8263,7 +8263,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -8472,7 +8472,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -8965,7 +8965,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -9589,7 +9589,7 @@
             }
           },
           "429": {
-            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+            "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
               "RateLimit": {
                 "$ref": "#/components/headers/RateLimit"
@@ -10192,7 +10192,7 @@
           "detail": "Too many live search lookups from this IP. Slow down and retry shortly.",
           "instance": "https://mdfromx.com/api/v1/search?q=vercel",
           "code": "rate_limited",
-          "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.",
+          "resolution": "Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
           "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Too many live search lookups from this IP. Slow down and retry shortly.",
           "retry_after": 41
@@ -10291,7 +10291,7 @@
           "detail": "Upstream profile unavailable",
           "instance": "https://mdfromx.com/api/v1/posts",
           "code": "upstream_unavailable",
-          "resolution": "The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.",
+          "resolution": "The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.",
           "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Upstream profile unavailable",
           "retry_after": 30

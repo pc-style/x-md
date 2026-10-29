@@ -17,7 +17,7 @@ describe('resolveCaller', () => {
 
     const valid = await resolveCaller({ authorization: `Bearer ${secret}` })
     expect(valid).toMatchObject({ status: 'valid', caller: { kind: 'key', id: record.id, limit: 12 } })
-    expect(callerHeaders(valid)).toEqual({ 'X-Api-Key-Status': 'valid', 'Cache-Control': 'private, no-store' })
+    expect(callerHeaders(valid)).toEqual({ 'X-Api-Key-Status': 'valid', 'Cache-Control': 'private, no-store', 'Vercel-CDN-Cache-Control': 'no-store' })
     expect((await getApiKey(record.id))?.lastUsedAt).toBeTypeOf('number') // touched, and awaited
 
     // Only Authorization is honored; a header the CDN would cache on is ignored.

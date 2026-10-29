@@ -19,6 +19,17 @@ const ACCOUNT_SEARCH_LIMIT = 20
 const MAX_PAGE = 10
 /** Degraded search results are re-checked quickly so recovery of the live source shows up. */
 const DEGRADED_TTL_MS = 60_000
+/**
+ * How long a served result is reused by the app cache and the CDN. Latest posts
+ * and search move fast; follower lists change slowly and cost the most pages.
+ */
+const BROWSE_TTL_MS: Record<BrowseResource, number> = {
+  profile: 30 * 60_000,
+  search: 10 * 60_000,
+  followers: 6 * 3600_000,
+  following: 6 * 3600_000,
+  replies: 10 * 60_000,
+}
 const DEGRADED_NOTE = 'Live X search is unavailable right now. These are web-indexed snippets of x.com posts, not a live timeline: ordering and coverage differ, snippet text may be truncated, and no metrics are available.'
 
 const pendingBrowseLookups = new Map<string, Promise<unknown>>()
@@ -268,8 +279,12 @@ function truthy(value: string | boolean | null | undefined): boolean {
   return value === true || value === 'true' || value === '1'
 }
 
+function bareHandle(value: string | null | undefined): string {
+  return (value ?? '').replace(/^@/, '')
+}
+
 function validHandle(value: string | null | undefined): string {
-  const handle = (value ?? '').replace(/^@/, '')
+  const handle = bareHandle(value)
   if (!/^[A-Za-z0-9_]{1,15}$/.test(handle)) {
     throw new ConvertError(400, 'A valid X handle is required.', 'invalid_handle')
   }
@@ -358,6 +373,9 @@ function continuation(input: BrowseInput, result: Omit<BrowseResult, 'markdown' 
 }
 
 function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown' | 'cache'>, full: boolean): string {
+  if (result.resource === 'replies') {
+    return [`# Replies to ${input.id}`, '', ...(result.posts ?? []).map(post => postLine(post, full))].join('\n').trim() + '\n'
+  }
   const lines: string[] = []
   if (result.resource === 'profile' && result.profile) {
     const p = result.profile
@@ -380,14 +398,23 @@ function renderMarkdown(input: BrowseInput, result: Omit<BrowseResult, 'markdown
   return `${lines.join('\n').trim()}\n`
 }
 
-type BrowsePayload = Omit<BrowseResult, 'cache'>
+/**
+ * What the cache stores: the fetched result without its rendering. `full`,
+ * `format`, and the handle's spelling only change how a result is presented,
+ * so they are applied per request and every view shares one cache entry.
+ */
+type BrowsePayload = Omit<BrowseResult, 'markdown' | 'cache'>
+
+function searchFeed(value: string | null | undefined): string {
+  const requested = value?.toLowerCase() ?? 'latest'
+  return requested === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requested) ? requested : 'latest'
+}
 
 async function browseUncached(input: BrowseInput, resource: BrowseResource, page: number, limit: number): Promise<BrowsePayload> {
   const { parseDateInput, cursorAt } = await import('./fx-cursor.js')
   const { fetchFxConnections, fetchFxConversationReplies, fetchFxProfile, searchFxStatuses } = await import('./fxtwitter.js')
   const { searchXStatuses, searchXUsers, xsearchConfigured } = await import('./xsearch.js')
   const { trackRateLimit, trackFallback } = await import('./server-events.js')
-  const full = truthy(input.full)
   if (resource === 'search') {
     const typed = input.q?.trim()
     if (!typed) throw new ConvertError(400, 'Search query q is required.', 'missing_query')
@@ -398,8 +425,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (input.until && !untilDate) throw new ConvertError(400, '`until` must be an ISO date, ISO datetime, or unix timestamp.', 'invalid_option')
     if (sinceDate && untilDate && sinceDate >= untilDate) throw new ConvertError(400, '`since` must be earlier than `until`.', 'invalid_option')
     const query = [typed, sinceDate ? `since_time:${Math.floor(sinceDate.getTime() / 1000)}` : '', untilDate ? `until_time:${Math.floor(untilDate.getTime() / 1000)}` : ''].filter(Boolean).join(' ')
-    const requestedFeed = input.feed?.toLowerCase() ?? 'latest'
-    const feed = requestedFeed === 'media' ? 'photos' : ['latest', 'top', 'photos', 'videos', 'users'].includes(requestedFeed) ? requestedFeed : 'latest'
+    const feed = searchFeed(input.feed)
     // Front-door burst gate for every live search provider (FxTwitter, own accounts,
     // Firecrawl): anonymous callers per IP, key callers per key with a looser burst.
     const caller: SearchCaller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
@@ -423,8 +449,6 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
         throw new ConvertError(429, 'Too many live search lookups from this IP. Slow down and retry shortly.', 'rate_limited', verdict.retryAfter, SEARCH_IP.name)
       }
     }
-    const render = (base: Omit<BrowseResult, 'markdown' | 'cache'>): BrowsePayload => ({ ...base, markdown: renderMarkdown(input, base, full) })
-
     if (feed === 'users') {
       if (!xsearchConfigured() || (tagged && tagged.source !== 'xsearch')) {
         throw new ConvertError(503, 'X user search is temporarily unavailable. Retry shortly.', 'search_unavailable')
@@ -432,7 +456,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
       // Own-account searches spend a scarce per-account budget: one upstream page per request.
       const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
       const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, accountLimit, (cursor) => searchXUsers(query, cursor, accountLimit, caller), 1, true)
-      return render({ resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), warnings: list.warnings, source: 'xsearch' })
+      return { resource, users: list.results, query: typed, feed, page, limit: accountLimit, nextCursor: tagCursor('xsearch', list.next), warnings: list.warnings, source: 'xsearch' }
     }
 
     const accountLimit = Math.min(limit, ACCOUNT_SEARCH_LIMIT)
@@ -452,7 +476,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
         if (provider.source === 'fxtwitter') await clearSearchBreaker()
         // Report only once the fallback has served the request.
         if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
-        return render({ resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), warnings: list.warnings, source: provider.source })
+        return { resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), warnings: list.warnings, source: provider.source }
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
         if (provider.source === 'fxtwitter') await tripSearchBreaker()
@@ -464,9 +488,14 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const webIndexEligible = !truthy(input.require_live) && ['latest', 'top'].includes(feed) && page === 1 && !tagged
     const firecrawl = webIndexEligible ? await import('./firecrawl.js') : undefined
     if (firecrawl?.firecrawlSearchConfigured()) {
-      const posts = await firecrawl.searchFirecrawlStatuses(query, feed, limit)
-      trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
-      return render({ resource, posts, query: typed, feed, page, limit, source: 'firecrawl', degraded: true })
+      try {
+        const posts = await firecrawl.searchFirecrawlStatuses(query, feed, limit)
+        trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
+        return { resource, posts, query: typed, feed, page, limit, source: 'firecrawl', degraded: true }
+      } catch (error) {
+        // Out of credits: answer as if the web index were not configured.
+        if (!(error instanceof ConvertError && error.code === 'firecrawl_unavailable')) throw error
+      }
     }
     throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
@@ -475,8 +504,7 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (!input.id || !/^\d{1,25}$/.test(input.id)) throw new ConvertError(400, '`id` must be a numeric post id.', 'invalid_option')
     if (input.cursor || page !== 1) throw new ConvertError(400, 'Replies are a bounded sample and do not support pagination.', 'invalid_option')
     const posts = await fetchFxConversationReplies(input.id, 'recency', limit)
-    const base = { resource, posts, page, limit, source: 'fxtwitter' as const }
-    return { ...base, markdown: [`# Replies to ${input.id}`, '', ...posts.map(post => postLine(post, full))].join('\n').trim() + '\n' }
+    return { resource, posts, page, limit, source: 'fxtwitter' as const }
   }
   const handle = validHandle(input.handle)
   if (resource === 'profile') {
@@ -490,16 +518,14 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
         ? Promise.resolve({ results: [] } as FxListResponse<FxTweet>)
         : collectProfilePosts(handle, page, input.cursor ?? (until ? cursorAt(until) : undefined), limit, withReplies, withReposts, truthy(input.nocache)),
     ])
-    const base = { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
-    return { ...base, markdown: renderMarkdown(input, base, full) }
+    return { resource, profile, posts: list.results, handle, page, limit, nextCursor: list.cursor?.bottom, with_replies: withReplies, with_reposts: withReposts, source: 'fxtwitter' as const }
   }
 
   const start = input.cursor ? (({ raw, offset }) => ({ cursor: raw, offset }))(splitOffset(input.cursor)) : undefined
   const list = await collectList(page, start, limit, cursor => shareBrowseLookup(
     JSON.stringify(['connections', handle, resource, cursor ?? '', limit]), truthy(input.nocache),
     () => fetchFxConnections(handle, resource, cursor, limit)))
-  const base = { resource, users: list.results, handle, page, limit, nextCursor: joinOffset(list.next), source: 'fxtwitter' as const }
-  return { ...base, markdown: renderMarkdown(input, base, full) }
+  return { resource, users: list.results, handle, page, limit, nextCursor: joinOffset(list.next), source: 'fxtwitter' as const }
 }
 
 export interface BrowseOptions {
@@ -542,7 +568,27 @@ export async function browse(input: BrowseInput, options: BrowseOptions = {}): P
   }
   const page = Math.min(positiveInt(input.page, 1), MAX_PAGE)
   const limit = Math.min(positiveInt(input.limit, DEFAULT_LIMIT), resource === 'profile' ? PROFILE_MAX_LIMIT : MAX_LIMIT)
-  const key = buildCacheKey({ v: 7, id: input.id ?? '', require_live: truthy(input.require_live) ? 1 : 0, include_posts: String(input.include_posts ?? true), resource, handle: input.handle ?? '', q: input.q ?? '', feed: input.feed ?? '', cursor: input.cursor ?? '', until: input.until ?? '', since: input.since ?? '', page, limit, full: truthy(input.full) ? 1 : 0, replies: truthy(input.with_replies) ? 1 : 0, reposts: truthy(input.with_reposts) ? 1 : 0, format: input.format ?? 'markdown' })
+  // Only what changes the fetched result. Presentation is applied after the
+  // cache, and each resource ignores the others' parameters, so neither may
+  // split one result across entries. X handles are case-insensitive.
+  const search = resource === 'search'
+  const key = buildCacheKey({
+    v: 8,
+    resource,
+    id: resource === 'replies' ? input.id ?? '' : '',
+    handle: search || resource === 'replies' ? '' : bareHandle(input.handle).toLowerCase(),
+    q: search ? input.q?.trim() ?? '' : '',
+    feed: search ? searchFeed(input.feed) : '',
+    require_live: search && truthy(input.require_live) ? 1 : 0,
+    since: search ? input.since ?? '' : '',
+    until: search || resource === 'profile' ? input.until ?? '' : '',
+    include_posts: resource === 'profile' && !['false', '0', false].includes(input.include_posts ?? true) ? 1 : 0,
+    replies: resource === 'profile' && truthy(input.with_replies) ? 1 : 0,
+    reposts: resource === 'profile' && truthy(input.with_reposts) ? 1 : 0,
+    cursor: input.cursor ?? '',
+    page,
+    limit,
+  })
   // Search admission is caller-specific. Share settled cached content as before,
   // but never share a pending quota failure between different callers.
   const caller = input.caller ?? { kind: 'public', ip: input.ip ?? undefined }
@@ -553,14 +599,16 @@ export async function browse(input: BrowseInput, options: BrowseOptions = {}): P
     key,
     truthy(input.nocache),
     () => browseUncached(input, resource, page, limit),
-    (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : undefined),
+    (value) => (value.degraded || value.warnings?.length ? DEGRADED_TTL_MS : BROWSE_TTL_MS[resource]),
     flightKey,
     // The in-process copy is stored at once; the shared write is best-effort
     // and nothing in this response depends on it, so the caller does not wait
     // out its round trip. waitUntil keeps the function alive until it lands.
     { admission: admitted, defer: waitUntil },
   )
-  return { ...cached.value, cache: cached.status }
+  // The entry may have been filled by another spelling of the handle; echo this caller's.
+  const base = cached.value.handle === undefined ? cached.value : { ...cached.value, handle: validHandle(input.handle) }
+  return { ...base, markdown: renderMarkdown(input, base, truthy(input.full)), cache: cached.status }
 }
 
 export function browseResponse(result: BrowseResult, asJson: boolean): { status: number; headers: Record<string, string>; body: string } {
@@ -577,7 +625,7 @@ export function browseResponse(result: BrowseResult, asJson: boolean): { status:
     headers['Cache-Control'] = cacheControlHeader()
     headers['Vercel-CDN-Cache-Control'] = result.degraded || result.warnings?.length
       ? vercelCacheControlHeader(DEGRADED_TTL_MS / 1000)
-      : vercelCacheControlHeader()
+      : vercelCacheControlHeader(BROWSE_TTL_MS[result.resource] / 1000)
   }
   return { status: 200, headers, body: asJson ? JSON.stringify(result) : result.markdown }
 }

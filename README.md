@@ -185,11 +185,11 @@ The skills CLI command follows the repository's current default branch. For a re
 
 FxTwitter is the primary data provider and X's syndication endpoint is the fallback. Self-hosted deployments may additionally configure Context.dev and Firecrawl. `X-Source` reports `fxtwitter`, `syndication`, `contextdev`, or `firecrawl`; `X-Cache` reports cache status. Browse endpoints use FxTwitter directly.
 
-Successful responses are cached for about one hour by default (`CACHE_TTL_SECONDS=3600`) and send cache headers unless bypassed. `nocache=true` bypasses the application cache, but it cannot bypass upstream caches. Public X data can be missing, delayed, rate-limited, deleted, protected, or shaped differently by upstream providers, so context, counts, media variants, and pagination cursors are best effort. The API does not authenticate to private accounts and does not provide public lists.
+Successful post conversions are cached for about one hour by default (`CACHE_TTL_SECONDS=3600`). Browse results are cached for 30 minutes (profiles), 10 minutes (search and replies), or 6 hours (followers and following). Both send cache headers unless bypassed. `nocache=true` bypasses the application cache, but it cannot bypass upstream caches. Public X data can be missing, delayed, rate-limited, deleted, protected, or shaped differently by upstream providers, so context, counts, media variants, and pagination cursors are best effort. The API does not authenticate to private accounts and does not provide public lists.
 
 ## Trust and privacy boundaries
 
-- The hosted service receives the public X URL, handle, or search query you request and sends it to FxTwitter or X's public syndication service. Successful results are cached for about one hour and can be served to other callers requesting the same public resource.
+- The hosted service receives the public X URL, handle, or search query you request and sends it to FxTwitter or X's public syndication service. Successful results are cached for up to about one hour (follower lists up to 6 hours) and can be served to other callers requesting the same public resource.
 - Optional Context.dev and Firecrawl fallbacks are disabled unless a self-hosted operator configures their API keys. When enabled, the public X URL is sent to that provider.
 - The hosted `browse-x` skill sends its arguments to `mdfromx.com`. Do not put secrets or private-account information in URLs or search terms.
 - Optional, disabled-by-default PostHog dataset capture archives allowlisted structured public results, not just metrics. See the [archive/privacy policy](internal/archive.md) for actor pseudonyms, opt-out controls, retention duties, and delivery limits.
@@ -218,7 +218,7 @@ Optional environment variables:
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters, the per-account post archive, and durable app state. Falls back to per-instance memory |
 | `FXTWITTER_BASE_URL` | Optional upstream override: one FxEmbed base URL or a comma-separated pool. Requests rotate across the pool and a throttled base sits out its `Retry-After`. Default `https://api.fxtwitter.com` |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
-| `CACHE_TTL_SECONDS` | Cache TTL; default `3600` |
+| `CACHE_TTL_SECONDS` | Post conversion cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |
 | `CACHE_PERSIST` | Set to `0` for memory-only caching |
 

@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import { convertRewrites } from '@vercel/routing-utils'
+import { convertRewrites, getTransformedRoutes } from '@vercel/routing-utils'
 import config from '../vercel.json'
 import { convertTweet, markdownResponse, parseStatusUrl, STATUS_PATH } from './converter'
 
@@ -62,5 +62,36 @@ describe('status permalink routing', () => {
     expect(matched.length).toBeGreaterThan(0)
     expect(matched.some((route) => route.dest?.startsWith('/api/convert'))).toBe(false)
     expect(matched.every((route) => route.dest?.startsWith('/api/notfound'))).toBe(true)
+  })
+})
+
+describe('@handle paths', () => {
+  // The host-bound redirects (old vercel.app domain) never apply on mdfromx.com.
+  const redirects = (getTransformedRoutes({ redirects: config.redirects }).routes ?? []).filter((route) => !('has' in route && route.has))
+  test.each([
+    ['/@jack', '/jack'],
+    ['/@jack/followers', '/jack/followers'],
+    ['/@jack/status/20', '/jack/status/20'],
+    ['/api/v1/profiles/@jack', '/api/v1/profiles/jack'],
+    ['/api/v1/profiles/@jack/posts', '/api/v1/profiles/jack/posts'],
+  ])('redirects %s to %s', (path, location) => {
+    const route = redirects.find((route) => 'src' in route && new RegExp(route.src).test(path))
+    if (!route || !('src' in route)) throw new Error(`No redirect for ${path}`)
+    expect(route.status).toBe(308)
+    expect(path.replace(new RegExp(route.src), route.headers?.Location ?? '')).toBe(location)
+  })
+
+  test('a handle longer than X allows is not redirected', () => {
+    expect(redirects.some((route) => 'src' in route && new RegExp(route.src).test('/@abcdefghijklmnop'))).toBe(false)
+  })
+})
+
+describe('legacy host redirects', () => {
+  const redirects = getTransformedRoutes({ redirects: config.redirects }).routes ?? []
+  test.each(['/', '/elonmusk', '/motiondotdev/status/1998744066419302490'])('x.pcstyle.dev%s moves permanently to mdfromx.com', (path) => {
+    const route = redirects.find((route) => 'src' in route && route.has?.some((h) => h.type === 'host' && h.value === 'x.pcstyle.dev') && new RegExp(route.src).test(path))
+    if (!route || !('src' in route)) throw new Error('Missing x.pcstyle.dev redirect')
+    expect(route.status).toBe(301)
+    expect(path.replace(new RegExp(route.src), route.headers!.Location)).toBe(`https://mdfromx.com${path}`)
   })
 })

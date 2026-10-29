@@ -53,7 +53,7 @@ Limits exist so the service stays responsive, not to meter usage: it is free and
 | `account-ip` | 10 | 900s | client IP | Account-backed feeds (Photos, Videos, Users, and the Latest/Top live fallback), drawn from a shared public pool. |
 | `account-key` | the key's own | 900s | API key | A key holder's account-backed allowance, instead of the public one. |
 
-Cache hits are free: a response served from the application cache never reaches a counter. Only the policies that apply to the route you called are advertised, so a profile read reports `api-ip` alone and a search reports three.
+Cache hits are free: a response served from the application cache never reaches a counter. An uncached search's own response already counts that search, so `r=0` on a success means the next uncached search will be refused. Only the policies that apply to the route you called are advertised, so a profile read reports `api-ip` alone and a search reports three.
 
 ### Response headers
 
@@ -88,6 +88,8 @@ Cache-Control: no-store
 
 The response is `429` with a `rate_limited` problem document. `Retry-After` and the exhausted policy's `t` are the same number of seconds; if they ever disagree, `Retry-After` wins. Sleep for it — do not poll, and do not retry on a shorter interval hoping for a different answer. A `503` from live search carries `Retry-After` the same way.
 
+The anonymous allowance is sized for interactive use. A script or service that searches all day will keep hitting it; ask for an API key instead, which brings its own search allowance. Keys are issued by hand: open an issue describing the workload, as [auth.md](https://mdfromx.com/auth.md) explains.
+
 The `/api/*` routes list all five, plus `Retry-After`, in `Access-Control-Expose-Headers`, so a browser client can read them cross-origin.
 
 ### Cached responses lie about quota
@@ -100,7 +102,7 @@ If the shared counter store is unreachable, the front door fails open and report
 
 ## Caching
 
-Successful responses cache for about one hour by default. Degraded search results are rechecked after about one minute.
+Successful post conversions cache for about one hour by default. Profiles cache for 30 minutes, search and replies for 10 minutes, and follower lists for 6 hours. Degraded search results are rechecked after about one minute.
 
 `nocache=true` skips x.md's application cache. It cannot bypass a provider's own cache. Use it when freshness matters, rather than on every request — a cached read is faster and costs you no search allowance.
 

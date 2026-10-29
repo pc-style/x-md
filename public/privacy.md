@@ -1,6 +1,6 @@
 ---
 title: "x.md privacy"
-description: "x.md has no sign-in and no user accounts. What happens to a request: IP used only for rate-limit counters, one-hour caching of public content, optional metadata-only analytics, one optional cookie, and an opt-in public-result archive that is disabled by default."
+description: "x.md has no sign-in and no user accounts. What happens to a request: IP used only for rate-limit counters, short-lived caching of public content, optional metadata-only analytics, one optional cookie, and an opt-in public-result archive that is disabled by default."
 canonical: https://mdfromx.com/privacy
 last-updated: 2026-09-08
 ---
@@ -34,8 +34,9 @@ all for live search.
 ## Caching
 
 Conversion and browse results are cached under a key derived from the request
-parameters, in the serverless instance's memory and at Vercel's CDN, for one
-hour by default. What is cached is public X content, not anything about you, and
+parameters, in the serverless instance's memory and at Vercel's CDN, for an
+hour by default for posts and from ten minutes (searches) to six hours
+(follower lists) for browse results. What is cached is public X content, not anything about you, and
 `?nocache=true` bypasses it. Responses to requests that carry an API key are
 marked `private, no-store` so they can never be served from a shared cache to
 somebody else.

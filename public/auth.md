@@ -151,7 +151,7 @@ x.md answers errors as RFC 9457 problem documents
 | `401` | `invalid_key` | The presented bearer key is unknown or disabled | Drop the `Authorization` header and call anonymously, or ask for a replacement key. Never retry the same key in a loop |
 | `401` | `unauthorized` | You reached a private admin route | Not part of the public API. Use `/openapi.json` to find the public one |
 | `404` | `route_not_found` | No such API route | Discover the surface at `/api`, `/openapi.json`, or `/.well-known/api-catalog` |
-| `429` | rate limit | Allowance exhausted for this window | Read `Retry-After` and wait exactly that many seconds |
+| `429` | rate limit | Allowance exhausted for this window | Read `Retry-After` and wait exactly that many seconds. A scripted workload that keeps hitting it should ask for a key ([Register](#register)) |
 | `503` | upstream | A public X provider is down | Retry after `Retry-After: 30` |
 
 No public error carries a `WWW-Authenticate` header, so a `401` from x.md is

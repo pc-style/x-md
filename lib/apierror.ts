@@ -165,7 +165,7 @@ export const ERROR_CATALOG = {
   rate_limited: {
     status: 429,
     title: 'Rate limit exceeded',
-    resolution: 'Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance.',
+    resolution: `Wait the number of seconds in the \`Retry-After\` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: ${SITE}/auth.md.`,
   },
   internal_error: {
     status: 500,
@@ -185,7 +185,7 @@ export const ERROR_CATALOG = {
   upstream_unavailable: {
     status: 503,
     title: 'Upstream profile unavailable',
-    resolution: 'The provider could not confirm whether this profile exists. Wait for Retry-After, then retry.',
+    resolution: 'The provider failed or could not confirm whether this profile exists; this does not mean the account is gone. Wait for Retry-After, then retry. An account that does not exist answers 404 `not_found`.',
   },
   upstream_rate_limited: {
     status: 503,
@@ -324,7 +324,9 @@ export function problemFrom(error: unknown, instance: string): ProblemDetails {
       instance,
       detail: error.message,
       status: error.status,
-      retryAfter: error.retryAfter ?? (error.status === 429 ? 60 : error.status === 503 ? 30 : undefined),
+      // 0 means "another base, at once" inside the provider layer; once the pool
+      // has been tried it is no wait the caller can use.
+      retryAfter: error.retryAfter || (error.status === 429 ? 60 : error.status === 503 ? 30 : undefined),
     })
   }
   return problemDetails('internal_error', { instance })

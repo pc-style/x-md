@@ -1657,7 +1657,7 @@ export function openapiDocument(): OpenApiDocument {
       { name: 'search-key', quota: 30, window_seconds: 60, partition: 'API key', applies_to: 'live search lookups by key holders' },
       { name: 'import-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'bulk profile imports by anonymous callers', notes: 'One unit per import, however many posts it returns.' },
       { name: 'import-key', quota: 60, window_seconds: 900, partition: 'API key', applies_to: 'bulk profile imports by key holders; 60 is the default, a key can carry its own allowance and RateLimit-Policy shows it' },
-      { name: 'account-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'account-backed search feeds (photos, videos, users)', notes: 'A shared public pool; key holders draw from their own allowance instead.' },
+      { name: 'account-ip', quota: 10, window_seconds: 900, partition: 'client IP address', applies_to: 'account-backed search feeds (photos, videos, users, and the latest/top live fallback)', notes: 'A shared public pool; key holders draw from their own allowance instead.' },
       // `lib/ratelimit-headers.ts` advertises this one to key holders with the
       // key's own quota, so it appears in `RateLimit-Policy` without a fixed `q`.
       { name: 'account-key', quota: null, window_seconds: 900, partition: 'API key', applies_to: 'account-backed search feeds for key holders', notes: 'The quota is set per key when it is issued; read it from the `q` parameter of `RateLimit-Policy`.' },

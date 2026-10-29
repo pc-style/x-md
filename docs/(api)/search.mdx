@@ -90,7 +90,7 @@ for (const user of users) console.log(user.screen_name, user.name)
 
 ## Availability and limits
 
-Search is the one route with a tight allowance: **5 uncached requests per minute per IP** (`search-ip`), plus **10 account-backed lookups per IP per 15-minute window** (`account-ip`) for Photos, Videos, Users, and the Latest/Top live fallback. Issued keys instead have a burst allowance of 30 uncached requests per minute and their own account-backed allowance shown in `RateLimit-Policy`. Cache hits do not spend search quota, but still use the general API allowance. Each page of a numbered page walk counts as one request; a cursor costs one.
+Search is the one route with a tight allowance: **5 uncached requests per minute per IP** (`search-ip`), plus **10 account-backed lookups per IP per 15-minute window** (`account-ip`) for Photos, Videos, Users, and the Latest/Top live fallback. Issued keys instead have a burst allowance of 30 uncached requests per minute and their own account-backed allowance shown in `RateLimit-Policy`; scripted or sustained search should use one ([how to ask for a key](https://mdfromx.com/auth.md)). Cache hits do not spend search quota, but still use the general API allowance. Each page of a numbered page walk counts as one request; a cursor costs one.
 
 Every response reports what is left in its `RateLimit` headers, so a client can pace itself rather than discover the limit:
 

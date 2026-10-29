@@ -190,13 +190,31 @@ export async function chargeRequestQuota(scope: QuotaScope, caller: QuotaCaller)
       return undefined
     }),
   ])
-  const states: QuotaState[] = [{ ...front, remaining: verdict.remaining, resetSec: verdict.retryAfter }]
-  for (const [index, policy] of deeper.entries()) {
-    const used = counts?.[index] ?? 0
-    states.push({ ...policy, remaining: Math.max(0, policy.quota - used), resetSec: windowClock(policy.windowSec).remainingSec })
-  }
-
+  const states: QuotaState[] = [{ ...front, remaining: verdict.remaining, resetSec: verdict.retryAfter }, ...deeperStates(deeper, counts)]
   return { allowed: verdict.allowed, retryAfter: verdict.retryAfter, states, degraded: verdict.degraded || counts === undefined }
+}
+
+function deeperStates(deeper: readonly QuotaPolicy[], counts: readonly number[] | undefined): QuotaState[] {
+  return deeper.map((policy, index) => ({
+    ...policy,
+    remaining: Math.max(0, policy.quota - (counts?.[index] ?? 0)),
+    resetSec: windowClock(policy.windowSec).remainingSec,
+  }))
+}
+
+/**
+ * Re-read the deeper counters once the request has spent them. The peek in
+ * `chargeRequestQuota` runs before the search layer charges, so without this an
+ * uncached search reports the quota it had one request ago, and a client pacing
+ * on `r` sends one request per window that is bound to be refused. A failed
+ * read keeps the earlier report.
+ */
+export async function settleRequestQuota(quota: RequestQuota, scope: QuotaScope, caller: QuotaCaller): Promise<RequestQuota> {
+  const [, ...deeper] = quotaPolicies(scope, caller)
+  if (deeper.length === 0 || quota.states.length !== deeper.length + 1) return quota
+  const counts = await peekRateLimits(deeper.map((policy) => ({ key: counterFor(policy, caller), windowSec: policy.windowSec }))).catch(() => undefined)
+  if (!counts) return quota
+  return { ...quota, states: [quota.states[0]!, ...deeperStates(deeper, counts)] }
 }
 
 /** Advertise a charged request's quota. Safe to call more than once; the last call wins. */

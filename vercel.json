@@ -146,6 +146,26 @@
       "permanent": true
     },
     {
+      "source": "/@:handle([A-Za-z0-9_]{1,15})",
+      "destination": "/:handle",
+      "permanent": true
+    },
+    {
+      "source": "/@:handle([A-Za-z0-9_]{1,15})/:path+",
+      "destination": "/:handle/:path+",
+      "permanent": true
+    },
+    {
+      "source": "/api/v1/profiles/@:handle([A-Za-z0-9_]{1,15})",
+      "destination": "/api/v1/profiles/:handle",
+      "permanent": true
+    },
+    {
+      "source": "/api/v1/profiles/@:handle([A-Za-z0-9_]{1,15})/:path+",
+      "destination": "/api/v1/profiles/:handle/:path+",
+      "permanent": true
+    },
+    {
       "source": "/",
       "has": [
         {
@@ -166,6 +186,28 @@
       ],
       "destination": "https://mdfromx.com/:path*",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "x.pcstyle.dev"
+        }
+      ],
+      "destination": "https://mdfromx.com/",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "x.pcstyle.dev"
+        }
+      ],
+      "destination": "https://mdfromx.com/:path*",
+      "statusCode": 301
     }
   ],
   "headers": [
