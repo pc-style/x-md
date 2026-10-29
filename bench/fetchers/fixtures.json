@@ -1,0 +1,37 @@
+{
+  "picked": "2026-10-29 from public timelines; every target gets exactly this list",
+  "posts": [
+    { "id": "20", "kind": "text", "note": "@jack, first post" },
+    { "id": "2115538945844850813", "kind": "photo", "note": "@NASA" },
+    { "id": "2094470456472728011", "kind": "photo", "note": "@dril" },
+    { "id": "2111139227761266699", "kind": "photo", "note": "@sama" },
+    { "id": "2115476295169814978", "kind": "video", "note": "@SpaceX" },
+    { "id": "2110788459803938944", "kind": "video", "note": "@vercel" },
+    { "id": "2096357785093156932", "kind": "gif", "note": "@dril" },
+    { "id": "2079610838143623371", "kind": "long", "note": "@karpathy note tweet" },
+    { "id": "2113776971603689874", "kind": "long+video", "note": "@NASA note tweet with video" },
+    { "id": "2115414609570255080", "kind": "quote", "note": "@paulg" },
+    { "id": "2115796587351810138", "kind": "quote+photo", "note": "@levelsio" },
+    { "id": "2115798739977712039", "kind": "quote+video", "note": "@levelsio note tweet" },
+    { "id": "2114815685960618081", "kind": "thread", "note": "@paulg self-reply under a quote" },
+    { "id": "2110803382239945130", "kind": "thread", "note": "@vercel thread, part 4, photo" },
+    { "id": "2112638276389790102", "kind": "thread", "note": "@SpaceX self-reply, photo" },
+    { "id": "2115791291988750550", "kind": "reply", "note": "@NASA reply to another account, video" },
+    { "id": "2083948654377996480", "kind": "reply", "note": "@karpathy" },
+    { "id": "2107924677801001381", "kind": "reply", "note": "@sama" },
+    { "id": "869766994899468288", "kind": "deleted", "note": "deleted 2017 post" },
+    { "id": "1234567890123456789", "kind": "missing", "note": "id that never existed" }
+  ],
+  "handles": [
+    { "handle": "jack", "kind": "profile" },
+    { "handle": "NASA", "kind": "profile" },
+    { "handle": "SpaceX", "kind": "profile" },
+    { "handle": "paulg", "kind": "profile" },
+    { "handle": "levelsio", "kind": "profile" },
+    { "handle": "karpathy", "kind": "profile" },
+    { "handle": "dril", "kind": "profile" },
+    { "handle": "vercel", "kind": "profile" },
+    { "handle": "emma", "kind": "protected" },
+    { "handle": "xmdnosuchuser1", "kind": "missing" }
+  ]
+}
