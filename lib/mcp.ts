@@ -181,7 +181,7 @@ const POST_DEF = {
     url: { type: 'string', description: 'Canonical status URL on x.com.' },
     text: { type: 'string' },
     created_at: { type: 'string' },
-    lang: { type: 'string' },
+    lang: { type: ['string', 'null'], description: 'BCP 47 language tag detected by X, or null when it detected none.' },
     author: { $ref: '#/$defs/author' },
     quote: { $ref: '#/$defs/post' },
     replies: { type: 'integer' },
