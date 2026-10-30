@@ -197,6 +197,9 @@ test.each([
   ['#private', ''],
   ["'?token=private'", "''"],
   ['"?token=private"', '""'],
+  ["https://example.test/?name=O'Brien&token=private", 'https://example.test/'],
+  ["'https://example.test/?name=O'Brien&token=private'", "'https://example.test/'"],
+  ["?name=O'Brien&token=private", ''],
 ])('strips the query and fragment from %s in exception text and frames', async (url, kept) => {
   await loadAnalytics()
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any

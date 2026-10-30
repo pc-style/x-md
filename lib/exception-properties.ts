@@ -4,10 +4,10 @@ const exceptionFrameProperties = new Set(['platform', 'filename', 'abs_path', 'f
 const exceptionMechanismProperties = new Set(['type', 'handled', 'synthetic'])
 
 // Error text and stack frames can carry page URLs, absolute or relative; keep
-// what comes before a query or fragment. Cut from any `?` or `#` through to the
-// next space or quote, including query-only URLs and URLs inside parentheses.
+// what comes before a query or fragment. Apostrophes are valid query content;
+// preserve only a trailing one so single-quoted URLs keep their closing quote.
 function stripUrlQueries(text: string) {
-  return text.replace(/[?#][^\s'"`<>]*/g, '')
+  return text.replace(/[?#][^\s"`<>]*/g, suffix => suffix.endsWith("'") ? "'" : '')
 }
 
 function scalarsFrom(value: unknown, allowed: Set<string>) {
