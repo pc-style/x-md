@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
+import { withErrorTracking } from '../lib/error-tracking.js'
 import { requestOrigin, setCorsHeaders } from '../lib/http.js'
 import { applyQuotaPolicyOnly } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
@@ -12,7 +13,7 @@ import { notFoundResponse, safePath } from '../lib/notfound.js'
  * that every URL exists; this stays 404 in every branch and hands back a
  * recovery document in the media type the caller asked for.
  */
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'notfound')
   // Any method can land on a path that does not exist, so the preflight answer
   // is wider than the read-only routes'.
@@ -35,3 +36,5 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)
   return req.method === 'HEAD' ? res.status(status).end() : res.status(status).send(body)
 }
+
+export default withErrorTracking(handler)

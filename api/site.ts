@@ -1,10 +1,11 @@
-import notFoundHandler from './notfound.js'
+import { handler as notFoundHandler } from './notfound.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { withErrorTracking } from '../lib/error-tracking.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem } from '../lib/apierror.js'
 import { requestOrigin } from '../lib/http.js'
 import { siteResponse } from '../lib/site.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const origin = requestOrigin(req)
   const instance = requestInstance(req, origin)
   const accept = String(req.headers.accept ?? '')
@@ -26,3 +27,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return sendProblem(res, problemFrom(error, instance), accept, req.method)
   }
 }
+
+export default withErrorTracking(handler)

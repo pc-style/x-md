@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
+import posthog from '@posthog/rollup-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import { apiDevPlugin } from './src/vite-api-plugin'
 import { prerenderLandingPlugin } from './src/vite-prerender-plugin'
@@ -11,8 +12,21 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value
   }
 
+  const uploadSourceMaps = Boolean(process.env.POSTHOG_API_KEY && process.env.POSTHOG_PROJECT_ID)
+
   return {
-    plugins: [tailwindcss(), apiDevPlugin(), prerenderLandingPlugin(), inlineStylesheetPlugin()],
+    plugins: [
+      tailwindcss(),
+      apiDevPlugin(),
+      prerenderLandingPlugin(),
+      inlineStylesheetPlugin(),
+      posthog({
+        personalApiKey: process.env.POSTHOG_API_KEY ?? '',
+        projectId: process.env.POSTHOG_PROJECT_ID,
+        host: process.env.POSTHOG_API_HOST,
+        sourcemaps: { enabled: uploadSourceMaps, deleteAfterUpload: true },
+      }),
+    ],
     test: {
       setupFiles: ['./lib/test-setup.ts'],
     },
@@ -21,6 +35,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       emptyOutDir: false,
+      sourcemap: uploadSourceMaps ? 'hidden' : false,
       // Every page inlines its stylesheet and the entry chunks are a few kB, so
       // the modulepreload shim Vite ships for Safari < 17 is a dead request on
       // every cold load for no gain.

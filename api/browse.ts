@@ -1,4 +1,5 @@
 import { withServerEvents, trackResult } from '../lib/server-events.js'
+import { withErrorTracking } from '../lib/error-tracking.js'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
@@ -141,4 +142,4 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-export default withServerEvents('browse', handler)
+export default withErrorTracking(withServerEvents('browse', handler))

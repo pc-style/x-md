@@ -1,4 +1,5 @@
 import { resolve } from 'node:path'
+import posthog from '@posthog/rollup-plugin'
 import { defineConfig, loadEnv } from 'vite'
 
 /**
@@ -18,13 +19,24 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value
   }
 
+  const uploadSourceMaps = Boolean(process.env.POSTHOG_API_KEY && process.env.POSTHOG_PROJECT_ID)
+
   return {
     publicDir: false,
+    plugins: [
+      posthog({
+        personalApiKey: process.env.POSTHOG_API_KEY ?? '',
+        projectId: process.env.POSTHOG_PROJECT_ID,
+        host: process.env.POSTHOG_API_HOST,
+        sourcemaps: { enabled: uploadSourceMaps, deleteAfterUpload: true },
+      }),
+    ],
     define: {
       'import.meta.env.VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV ?? 'development'),
     },
     build: {
       emptyOutDir: false,
+      sourcemap: uploadSourceMaps ? 'hidden' : false,
       modulePreload: { polyfill: false },
       rollupOptions: {
         input: { 'docs-analytics': resolve(import.meta.dirname, 'src/docs-analytics.ts') },
