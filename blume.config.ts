@@ -54,6 +54,7 @@ export default defineConfig({
           '/search',
           '/profiles',
           '/bulk-import',
+          '/x-circle',
           '/pagination',
           '/responses',
           '/reliability',
