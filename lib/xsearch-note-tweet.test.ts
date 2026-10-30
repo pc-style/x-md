@@ -34,9 +34,11 @@ const searchTimeline = {
       { entryId: 'tweet-1', content: { itemContent: { tweetDisplayType: 'Tweet', tweet_results: { result: {
         rest_id: '1', core: { user_results: { result: user('7', 'ada') } },
         legacy: legacy('1', '7', cut(LONG)), ...note(LONG),
+        // The quoted legacy object has no id_str, only the conversation id. The parser
+        // must take the quote's id from rest_id, as the scraper's parseResult does.
         quoted_status_result: { result: {
           rest_id: '2', core: { user_results: { result: user('8', 'bob') } },
-          legacy: legacy('2', '8', cut(LONG_QUOTE)), ...note(LONG_QUOTE),
+          legacy: { ...legacy('2', '8', cut(LONG_QUOTE)), id_str: undefined, conversation_id_str: '99' }, ...note(LONG_QUOTE),
         } },
       } } } } },
       { entryId: 'tweet-3', content: { itemContent: { tweetDisplayType: 'Tweet', tweet_results: { result: {
@@ -59,13 +61,15 @@ async function search() {
 }
 
 describe('SearchTimeline long posts', () => {
-  test('use the full note_tweet text for the post and the quoted post', async () => {
+  test('use the full note_tweet text and the rest_id of the quoted post', async () => {
     const { tweets } = await search()
     const [long, short] = tweets.map(tweetToFx)
 
     expect(long.text).toBe(LONG)
     expect(long.raw_text?.text).toBe(LONG)
     expect(long.quote?.text).toBe(LONG_QUOTE)
+    expect(long.quote?.id).toBe('2')
+    expect(long.quote?.url).toBe('https://x.com/bob/status/2')
     expect(short.text).toBe('A short post.')
 
     const markdown = renderThreadMarkdown([long], { format: 'markdown', userinfo: 'off', canonicalUrl: 'https://x.com/ada/status/1' })
