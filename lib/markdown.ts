@@ -1,4 +1,5 @@
-import type { FxArticle, FxAuthor, FxMedia, FxMediaItem, FxTweet } from './fxtwitter.js'
+import { articleToMarkdown } from './article-markdown.js'
+import type { FxAuthor, FxMedia, FxMediaItem, FxTweet } from './fxtwitter.js'
 import type { OutputFormat } from './converter.js'
 
 export type UserinfoLevel = 'off' | 'author' | 'all'
@@ -45,38 +46,6 @@ function renderMedia(media?: FxMedia): string[] {
       lines.push(`> [media](${url})`)
     }
   }
-  return lines
-}
-
-function articleToMarkdown(article: FxArticle): string[] {
-  const lines: string[] = []
-  if (article.title) {
-    lines.push(`## ${article.title}`)
-    lines.push('')
-  }
-
-  const cover = article.cover_media?.media_info?.original_img_url
-  if (cover) {
-    lines.push(`![cover](${cover})`)
-    lines.push('')
-  }
-
-  const blocks = article.content?.blocks ?? []
-  for (const block of blocks) {
-    const text = block.text?.trim()
-    if (!text) continue
-    if (block.type === 'header-one') lines.push(`# ${text}`)
-    else if (block.type === 'header-two') lines.push(`## ${text}`)
-    else if (block.type === 'header-three') lines.push(`### ${text}`)
-    else lines.push(text)
-    lines.push('')
-  }
-
-  if (lines.length === 0 && article.preview_text) {
-    lines.push(article.preview_text)
-    lines.push('')
-  }
-
   return lines
 }
 

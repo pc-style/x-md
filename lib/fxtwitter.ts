@@ -123,14 +123,25 @@ export interface FxPoll {
 export interface FxArticleBlock {
   type?: string
   text?: string
+  depth?: number
+  entityRanges?: Array<{ offset: number; length: number; key: number | string }>
   inlineStyleRanges?: Array<{ offset: number; length: number; style: string }>
   data?: { urls?: Array<{ fromIndex: number; toIndex: number; text: string }> }
+}
+
+export interface FxArticleEntity {
+  type?: string
+  data?: { url?: string; mediaItems?: Array<{ mediaId: string }> }
 }
 
 export interface FxArticle {
   title?: string
   preview_text?: string
-  content?: { blocks?: FxArticleBlock[] }
+  content?: {
+    blocks?: FxArticleBlock[]
+    entityMap?: Array<{ key: string; value: FxArticleEntity }>
+  }
+  media_entities?: Array<{ media_id?: string; media_info?: { original_img_url?: string } }>
   cover_media?: {
     media_info?: { original_img_url?: string }
   }
