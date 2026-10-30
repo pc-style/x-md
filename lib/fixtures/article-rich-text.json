@@ -1,0 +1,138 @@
+{
+  "title": "what actually happened every time a model \"got nerfed\"",
+  "cover_media": {
+    "media_id": "2104190897596301312",
+    "media_info": {
+      "original_img_url": "https://pbs.twimg.com/media/HTOWeQ7WgAAdLdF.png"
+    }
+  },
+  "content": {
+    "blocks": [
+      {
+        "data": {},
+        "entityRanges": [
+          {
+            "key": 0,
+            "length": 15,
+            "offset": 53
+          }
+        ],
+        "inlineStyleRanges": [
+          {
+            "length": 30,
+            "offset": 0,
+            "style": "Bold"
+          }
+        ],
+        "key": "fai2s",
+        "text": "august-september 2025, claude. anthropic published a full postmortem. three infrastructure bugs: requests routed to the wrong servers (0.8% of sonnet 4 traffic, peaking around 16% after a load balancing change), a TPU misconfiguration that spat out random thai and chinese characters, and a compiler bug in token sampling. their words:",
+        "type": "unstyled"
+      },
+      {
+        "data": {},
+        "entityRanges": [],
+        "inlineStyleRanges": [],
+        "key": "fc53h",
+        "text": "We never reduce model quality due to demand, time of day, or server load.",
+        "type": "blockquote"
+      },
+      {
+        "data": {},
+        "entityRanges": [
+          {
+            "key": 4,
+            "length": 11,
+            "offset": 15
+          }
+        ],
+        "inlineStyleRanges": [
+          {
+            "length": 9,
+            "offset": 0,
+            "style": "Bold"
+          }
+        ],
+        "key": "2vcg0",
+        "text": "the math. theo put it well: if a model does something dumb 1 in 50 times and you send 20 prompts a day, you have a ~33% chance of seeing it on day one. by day five it's ~87%. the model didn't get worse. you just finally rolled the bad dice.",
+        "type": "unstyled"
+      },
+      {
+        "data": {},
+        "entityRanges": [
+          {
+            "key": 5,
+            "length": 1,
+            "offset": 0
+          }
+        ],
+        "inlineStyleRanges": [],
+        "key": "ekfku",
+        "text": " ",
+        "type": "atomic"
+      },
+      {
+        "data": {},
+        "entityRanges": [],
+        "inlineStyleRanges": [],
+        "key": "d887n",
+        "text": "look at your effort setting",
+        "type": "unordered-list-item"
+      },
+      {
+        "data": {},
+        "entityRanges": [],
+        "inlineStyleRanges": [],
+        "key": "chg3c",
+        "text": "check your harness version and what changed in it",
+        "type": "unordered-list-item"
+      }
+    ],
+    "entityMap": [
+      {
+        "key": "4",
+        "value": {
+          "data": {
+            "url": "https://x.com/theo/status/2103949446329532862"
+          },
+          "mutability": "Mutable",
+          "type": "LINK"
+        }
+      },
+      {
+        "key": "5",
+        "value": {
+          "data": {
+            "entityKey": "8d165714-75d5-4bed-8327-46a03d25b7fd",
+            "mediaItems": [
+              {
+                "localMediaId": "2",
+                "mediaCategory": "DraftTweetImage",
+                "mediaId": "2104191098256072705"
+              }
+            ]
+          },
+          "mutability": "Immutable",
+          "type": "MEDIA"
+        }
+      },
+      {
+        "key": "0",
+        "value": {
+          "data": {
+            "url": "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues"
+          },
+          "mutability": "Mutable",
+          "type": "LINK"
+        }
+      }
+    ]
+  },
+  "media_entities": [
+    {
+      "media_id": "2104191098256072705",
+      "media_info": {
+        "original_img_url": "https://pbs.twimg.com/media/HTOWp8cXoAE7LNe.jpg"
+      }
+    }
+  ]
+}
