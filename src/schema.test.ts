@@ -127,6 +127,12 @@ describe('homepage JSON-LD', () => {
     expect(api.termsOfService).toBe('https://mdfromx.com/terms')
   })
 
+  test('application links its source without SoftwareSourceCode-only properties', () => {
+    const app = nodeOf(graph, 'SoftwareApplication')
+    expect(app).not.toHaveProperty('codeRepository')
+    expect(app.sameAs).toContain('https://github.com/pc-style/x-md')
+  })
+
   test('shows mdfromx.com in the styled terminal comparison', () => {
     expect(landingHtml()).toContain('$ curl mdfromx.com/trq212/status/2052809885763747935')
   })
