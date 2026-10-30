@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { IncomingMessage, ServerResponse } from 'node:http'
 import { Socket } from 'node:net'
 import { buildFeedbackToolDescription } from '@usenotra/geo/feedback'
+import Ajv2020 from 'ajv/dist/2020'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 vi.mock('./browse.js', () => ({ browse: vi.fn() }))
@@ -215,6 +216,55 @@ describe('tools/call', () => {
     const result = ok(await dispatch({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'x_md_get_post', arguments: { url: 'https://x.com/pcstyle53/status/1', max_posts: 12 } } }))
     expect(convertMock).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://x.com/pcstyle53/status/1', thread: '12' }))
     expect((result.structuredContent as Record<string, unknown>).post_count).toBe(1)
+  })
+
+  test('a post whose lang is null still satisfies the tool output schema', async () => {
+    // FxTwitter sends `lang: null` for a post it could not tag with a language. The HTTP
+    // contract has always allowed that; the MCP schema has to as well, because a client that
+    // validates structured output against the published schema rejects the whole call.
+    convertMock.mockResolvedValue({
+      body: '# post',
+      warnings: [],
+      canonicalUrl: 'https://x.com/pcstyle53/status/1',
+      format: 'markdown',
+      postCount: 1,
+      source: 'fxtwitter',
+      cache: 'miss',
+      compact: true,
+      posts: [{
+        id: '1',
+        url: 'https://x.com/pcstyle53/status/1',
+        text: 'a post with no detected language',
+        created_at: 'Wed Oct 29 12:00:00 +0000 2026',
+        lang: null,
+        author: { id: 'a', screen_name: 'pcstyle53', url: 'https://x.com/pcstyle53' },
+        replies: 0,
+        retweets: 0,
+        likes: 0,
+        quotes: 0,
+        views: null,
+      }],
+    })
+    const result = ok(await dispatch({
+      jsonrpc: '2.0', id: 12, method: 'tools/call',
+      params: { name: 'x_md_get_post', arguments: { url: 'https://x.com/pcstyle53/status/1' } },
+    }))
+    const tool = MCP_TOOLS.find((candidate) => candidate.name === 'x_md_get_post')!
+    const validate = new Ajv2020({ strict: false }).compile(tool.outputSchema)
+    const valid = validate(result.structuredContent)
+    expect(valid, JSON.stringify(validate.errors)).toBe(true)
+  })
+
+  test('a profile whose posts carry a null lang still satisfies the tool output schema', async () => {
+    browseMock.mockResolvedValue({ ...profileResult, posts: [{ id: '1', text: 'hello', lang: null }] })
+    const result = ok(await dispatch({
+      jsonrpc: '2.0', id: 13, method: 'tools/call',
+      params: { name: 'x_md_get_profile', arguments: { handle: 'pcstyle53' } },
+    }))
+    const tool = MCP_TOOLS.find((candidate) => candidate.name === 'x_md_get_profile')!
+    const validate = new Ajv2020({ strict: false }).compile(tool.outputSchema)
+    const valid = validate(result.structuredContent)
+    expect(valid, JSON.stringify(validate.errors)).toBe(true)
   })
 
   test('malformed params are invalid-params errors, not crashes', async () => {

@@ -163,7 +163,7 @@ export interface FxTweet {
   views?: number | null
   bookmarks?: number
   quotes?: number
-  lang?: string
+  lang?: string | null
   source?: string
   replying_to?: FxReplyingTo
   replying_to_status?: string[] | null
