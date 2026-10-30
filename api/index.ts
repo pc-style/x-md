@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
+import { withErrorTracking } from '../lib/error-tracking.js'
 import {
   ERROR_CATALOG,
   ERRORS_DOC,
@@ -246,7 +247,7 @@ export function apiIndexMarkdown(origin: string): string {
   ].join('\n')
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'index')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
@@ -309,3 +310,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   )
   return req.method === 'HEAD' ? res.status(200).end() : res.status(200).send(body)
 }
+
+export default withErrorTracking(handler)

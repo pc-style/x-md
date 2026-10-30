@@ -45,6 +45,7 @@
   },
   "devDependencies": {
     "@changesets/cli": "^3.0.3",
+    "@posthog/rollup-plugin": "^1.6.2",
     "@types/node": "^26.6.5",
     "@vercel/build-utils": "15.0.1",
     "@vercel/node": "27.0.1",
@@ -61,6 +62,7 @@
     "@vercel/functions": "^3.10.3",
     "gsap": "^3.15.0",
     "posthog-js": "^1.442.0",
+    "posthog-node": "^5.60.1",
     "tailwindcss": "^4.3.3",
     "zod": "^4.6.7"
   },

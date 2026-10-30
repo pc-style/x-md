@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { withErrorTracking } from '../../lib/error-tracking.js'
 import { adminAuthorized, adminConfigured } from '../../lib/admin.js'
 import { handleKeysApi } from '../../lib/adminApi.js'
 import { problemDetails, requestInstance, sendProblem } from '../../lib/apierror.js'
@@ -6,7 +7,7 @@ import { parseJsonBody, requestOrigin, setCorsHeaders } from '../../lib/http.js'
 
 const METHODS = 'GET, POST, PATCH, DELETE, OPTIONS'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res, METHODS)
   if (req.method === 'OPTIONS') return res.status(204).end()
 
@@ -27,3 +28,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   return res.status(status).json(payload)
 }
+
+export default withErrorTracking(handler)

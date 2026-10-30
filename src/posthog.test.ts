@@ -149,6 +149,7 @@ test('sanitizes exceptions to their type, message, and stack frames', async () =
   await loadAnalytics()
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
   const result = beforeSend({ event: '$exception', properties: {
+    $release_id: 'test-release',
     $exception_level: 'error',
     $exception_message: 'Failed to fetch https://mdfromx.com/api/v1/posts?url=private-query#private-hash',
     $exception_steps: [{ $message: 'private-step' }],
@@ -160,12 +161,14 @@ test('sanitizes exceptions to their type, message, and stack frames', async () =
       stacktrace: { type: 'raw', frames: [{
         platform: 'web:javascript', filename: 'https://mdfromx.com/docs/analytics.js?v=private-version',
         function: 'load', lineno: 1, colno: 22, in_app: true,
+        chunk_id: '75197da3-6b4e-5a73-a7ff-e524feff0acc',
         context_line: 'private-source-line', vars: { token: 'private-var' },
       }] },
     }],
     $sentry_exception: 'private-sentry',
   } })
   expect(result.properties).toMatchObject({
+    $release_id: 'test-release',
     $exception_level: 'error',
     $exception_message: 'Failed to fetch https://mdfromx.com/api/v1/posts',
     $exception_list: [{
@@ -175,6 +178,7 @@ test('sanitizes exceptions to their type, message, and stack frames', async () =
       stacktrace: { type: 'raw', frames: [{
         platform: 'web:javascript', filename: 'https://mdfromx.com/docs/analytics.js',
         function: 'load', lineno: 1, colno: 22, in_app: true,
+        chunk_id: '75197da3-6b4e-5a73-a7ff-e524feff0acc',
       }] },
     }],
   })
@@ -189,6 +193,13 @@ test.each([
   ['https://x.test/a(?token=private', 'https://x.test/a('],
   ['/docs/(#private', '/docs/('],
   ['fetch(?x=private)', 'fetch('],
+  ['?token=private', ''],
+  ['#private', ''],
+  ["'?token=private'", "''"],
+  ['"?token=private"', '""'],
+  ["https://example.test/?name=O'Brien&token=private", 'https://example.test/'],
+  ["'https://example.test/?name=O'Brien&token=private'", "'https://example.test/'"],
+  ["?name=O'Brien&token=private", ''],
 ])('strips the query and fragment from %s in exception text and frames', async (url, kept) => {
   await loadAnalytics()
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any

@@ -112,6 +112,14 @@ The homepage and the `/docs` pages send pageviews and page leaves, including nav
 
 This covers the homepage and docs only, not converted posts, the about, contact, privacy, and terms pages, or admin. API events remain separate from browser visits. Vercel Web Analytics on the homepage and docs is unchanged. The admin dashboard includes no analytics scripts.
 
+### Error tracking
+
+Unexpected errors that escape an API handler are captured with `posthog-node` and flushed before the original error is rethrown. They use the server analytics token and ingestion host above, with the same production-only gate. Exception properties keep the type, message, and stack frames; URL queries, fragments, and source context are removed. Request headers, bodies, and caller identities are not attached.
+
+For browser source maps, set the build-only variables `POSTHOG_API_KEY` (a personal key permitted to upload error-tracking artifacts), `POSTHOG_PROJECT_ID`, and `POSTHOG_API_HOST` (for EU projects, `https://eu.posthog.com`). The API host is separate from the ingestion host in `POSTHOG_HOST`. `bun run build` uploads the landing and docs bundle maps and removes them from the output. Builds without upload credentials do not generate source maps.
+
+To test browser capture locally, use the same project token for `VITE_POSTHOG_KEY` and `POSTHOG_PROJECT_TOKEN`, then run `VERCEL_ENV=production bun run build` followed by `bun run preview`. Check `.env.local` after running the wizard: it overrides `.env`, and an older token sends events to a different project. This local build enables capture without deploying the site. Keep ordinary development and Vercel previews excluded from capture.
+
 ## Optional configuration
 
 | Variable | Purpose |

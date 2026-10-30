@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
+import { withErrorTracking } from '../lib/error-tracking.js'
 import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { parseJsonBody, requestOrigin } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
@@ -35,7 +36,7 @@ function transportError(res: VercelResponse, status: number, code: number, messa
  * sessions, so the server mints no `Mcp-Session-Id` and ignores any it is sent,
  * which is what the 2026-07-28 revision tells session-less servers to do.
  */
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   const identity = trackRequest(req, res, 'mcp')
   // Self-links name the domain the client connected to, so a card fetched on
   // mdfromx.com does not send the client back to mdfromx.com.
@@ -209,3 +210,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
   return res.status(200).send(JSON.stringify(envelope))
 }
+
+export default withErrorTracking(handler)

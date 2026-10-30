@@ -51,13 +51,18 @@ both are absent from local and preview builds.
 - **Server-side request counting.** One event per completed production function
   response, carrying only the route name, HTTP method, status code, duration in
   milliseconds, cache outcome, whether the caller used a key, and the
-  environment. The request URL, query, headers, body, and error text are never
-  serialised. Person profiles and GeoIP enrichment are disabled and the IP field
+  environment. Request-counting events exclude the request URL, query, headers,
+  body, and error text. Person profiles and GeoIP enrichment are disabled and the IP field
   is explicitly sent as null. Anonymous callers all share one fixed identifier, and
   each event carries a caller ID: a keyed hash of the IP under a secret salt that
   changes every UTC day, so callers can be counted per day but not identified,
   reversed, or linked from one day to the next. API-key callers get an HMAC of the
   internal key ID, never the key itself.
+  Unexpected errors that escape API handlers are reported separately with their
+  type, message, and stack frames. URL query strings and fragments are stripped,
+  source context is removed, and request data and caller identities are not
+  attached. Error events share a fixed server identifier, with person profiles
+  and GeoIP enrichment disabled.
 - **Homepage and docs analytics.** The homepage and the documentation pages
   under `/docs` may load PostHog to count page views and page leaves, plus two
   homepage interactions: requesting a conversion and copying the skill install

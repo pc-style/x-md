@@ -1,3 +1,4 @@
+import { exceptionKeys, sanitizeException } from '../lib/exception-properties'
 import type { PostHog } from 'posthog-js'
 
 let posthog: PostHog | undefined
@@ -71,7 +72,6 @@ function tracked(pathname: string) {
 
 const attributionProperties = ['$referrer', '$referring_domain', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']
   .flatMap(key => [key, `$initial_${key.replace(/^\$/, '')}`])
-const exceptionKeys = ['$exception_list', '$exception_level', '$exception_type', '$exception_message']
 const events = new Set(['$pageview', '$pageleave', '$web_vitals', '$exception', 'conversion_requested', 'skill_install_command_copied'])
 const properties = new Set([
   'token', 'distinct_id', '$device_id', '$session_id', '$window_id', '$pageview_id',
@@ -126,49 +126,6 @@ function sanitizeAttribution(eventProperties: Record<string, unknown>) {
     if (kept === undefined) delete eventProperties[key]
     else eventProperties[key] = kept
   }
-}
-
-const exceptionFrameProperties = new Set(['platform', 'filename', 'abs_path', 'function', 'module', 'lineno', 'colno', 'in_app'])
-const exceptionMechanismProperties = new Set(['type', 'handled', 'synthetic'])
-
-// Error text and stack frames can carry page URLs, absolute or relative; keep
-// what comes before a query or fragment. Any `?` or `#` attached to the text in
-// front of it is cut through to the next space or quote, so parentheses inside a
-// URL and relative paths can't carry one past a URL-shaped pattern.
-function stripUrlQueries(text: string) {
-  return text.replace(/([^\s'"`<])[?#][^\s'"`<>]*/g, '$1')
-}
-
-function scalarsFrom(value: unknown, allowed: Set<string>) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined
-  return Object.fromEntries(Object.entries(value)
-    .filter(([property, content]) => allowed.has(property) && ['string', 'number', 'boolean'].includes(typeof content))
-    .map(([property, content]) => [property, typeof content === 'string' ? stripUrlQueries(content) : content]))
-}
-
-function sanitizeException(eventProperties: Record<string, unknown>) {
-  for (const key of ['$exception_level', '$exception_type', '$exception_message']) {
-    const value = eventProperties[key]
-    if (typeof value === 'string') eventProperties[key] = stripUrlQueries(value)
-    else delete eventProperties[key]
-  }
-  const list = eventProperties.$exception_list
-  if (!Array.isArray(list)) { delete eventProperties.$exception_list; return }
-  eventProperties.$exception_list = list.filter(entry => entry && typeof entry === 'object').map(entry => {
-    const sanitized: Record<string, unknown> = {}
-    if (typeof entry.type === 'string') sanitized.type = stripUrlQueries(entry.type)
-    if (typeof entry.value === 'string') sanitized.value = stripUrlQueries(entry.value)
-    const mechanism = scalarsFrom(entry.mechanism, exceptionMechanismProperties)
-    if (mechanism) sanitized.mechanism = mechanism
-    const frames = entry.stacktrace?.frames
-    if (Array.isArray(frames)) {
-      sanitized.stacktrace = {
-        ...(entry.stacktrace.type === 'raw' && { type: 'raw' }),
-        frames: frames.map(frame => scalarsFrom(frame, exceptionFrameProperties)).filter(Boolean),
-      }
-    }
-    return sanitized
-  })
 }
 
 const configured = !blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production'

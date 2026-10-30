@@ -1,10 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { withErrorTracking } from '../../lib/error-tracking.js'
 import { adminAuthorized, adminConfigured } from '../../lib/admin.js'
 import { problemDetails, requestInstance, sendProblem } from '../../lib/apierror.js'
 import { requestOrigin, setCorsHeaders } from '../../lib/http.js'
 import { upstreamHealth } from '../../lib/upstream-health.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res, 'GET, OPTIONS')
   if (req.method === 'OPTIONS') return res.status(204).end()
   const accept = String(req.headers.accept ?? '')
@@ -16,3 +17,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Cache-Control', 'no-store')
   return res.status(200).json({ upstreams: await upstreamHealth(), generatedAt: new Date().toISOString() })
 }
+
+export default withErrorTracking(handler)
