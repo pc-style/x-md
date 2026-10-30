@@ -33,6 +33,8 @@ function inlineText(block: FxArticleBlock, entities: Map<string, FxArticleEntity
     const marker = style === 'bold' ? '**' : style === 'italic' ? '*' : style === 'strikethrough' ? '~~' : undefined
     if (marker) add(range.offset, range.length, marker, marker)
   }
+  // Keep enclosing formatting open when an inner link or style starts or ends.
+  spans.sort((a, b) => a.start - b.start || b.end - a.end)
   const points = [...new Set([0, text.length, ...spans.flatMap(span => [span.start, span.end])])].sort((a, b) => a - b)
   let active: Span[] = []
   let result = ''

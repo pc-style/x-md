@@ -54,3 +54,11 @@ test('renders multiline quotes and list continuations with inline emphasis', () 
   expect(output).toContain('    - Nested')
   expect(output).toContain('~~old~~')
 })
+
+test.each(['markdown', 'obsidian'] as const)('keeps enclosing bold open around a nested link in %s', format => {
+  const output = render({ content: {
+    blocks: [{ text: 'Read this now', entityRanges: [{ offset: 5, length: 4, key: 0 }], inlineStyleRanges: [{ offset: 0, length: 13, style: 'Bold' }] }],
+    entityMap: [{ key: '0', value: { type: 'LINK', data: { url: 'https://example.com' } } }],
+  } }, format)
+  expect(output).toContain('**Read [this](https://example.com) now**')
+})
