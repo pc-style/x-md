@@ -1,6 +1,6 @@
 {
   "name": "mdfromx",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Typed TypeScript and Effect client for the mdfromx (x.md) API: X posts, profiles and search as JSON or Markdown",
   "license": "MIT",
   "type": "module",
