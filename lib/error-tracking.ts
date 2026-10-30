@@ -13,6 +13,7 @@ export function withErrorTracking<T>(handler: VercelHandler<T>): VercelHandler<T
     try {
       return await handler(req, res)
     } catch (error) {
+      let flushTimeout: ReturnType<typeof setTimeout> | undefined
       try {
         const token = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
         const host = process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST
@@ -29,10 +30,17 @@ export function withErrorTracking<T>(handler: VercelHandler<T>): VercelHandler<T
             },
           })
           posthog.captureException(error, 'server')
-          await posthog.flush()
+          await Promise.race([
+            posthog.flush(),
+            new Promise<never>((_, reject) => {
+              flushTimeout = setTimeout(() => reject(new Error('PostHog flush timed out')), 3000)
+            }),
+          ])
         }
       } catch {
         console.warn('[analytics] PostHog exception delivery failed')
+      } finally {
+        clearTimeout(flushTimeout)
       }
       throw error
     }

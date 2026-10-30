@@ -32,7 +32,7 @@ beforeEach(() => {
   }))
 })
 
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
 test('flushes a rejected handler through the real SDK before rethrowing its original error', async () => {
   const { withErrorTracking } = await import('./error-tracking')
@@ -100,4 +100,17 @@ test('delivery failures never replace the handler error', async () => {
   const error = new Error('original failure')
   await expect(withErrorTracking(() => { throw error })(req, res)).rejects.toBe(error)
   expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+test('a stalled SDK flush cannot delay the original rejection past three seconds', async () => {
+  const { PostHog } = await import('posthog-node')
+  vi.spyOn(PostHog.prototype, 'flush').mockImplementation(() => new Promise(() => {}))
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const { withErrorTracking } = await import('./error-tracking')
+  vi.useFakeTimers()
+  const { req, res } = exchange()
+  const error = new Error('original failure')
+  const rejected = expect(withErrorTracking(() => { throw error })(req, res)).rejects.toBe(error)
+  await vi.advanceTimersByTimeAsync(3000)
+  await rejected
 })

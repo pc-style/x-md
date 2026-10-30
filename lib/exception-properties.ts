@@ -4,11 +4,10 @@ const exceptionFrameProperties = new Set(['platform', 'filename', 'abs_path', 'f
 const exceptionMechanismProperties = new Set(['type', 'handled', 'synthetic'])
 
 // Error text and stack frames can carry page URLs, absolute or relative; keep
-// what comes before a query or fragment. Any `?` or `#` attached to the text in
-// front of it is cut through to the next space or quote, so parentheses inside a
-// URL and relative paths can't carry one past a URL-shaped pattern.
+// what comes before a query or fragment. Cut from any `?` or `#` through to the
+// next space or quote, including query-only URLs and URLs inside parentheses.
 function stripUrlQueries(text: string) {
-  return text.replace(/([^\s'"`<])[?#][^\s'"`<>]*/g, '$1')
+  return text.replace(/[?#][^\s'"`<>]*/g, '')
 }
 
 function scalarsFrom(value: unknown, allowed: Set<string>) {
