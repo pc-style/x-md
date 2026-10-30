@@ -128,6 +128,22 @@ function sanitizeAttribution(eventProperties: Record<string, unknown>) {
   }
 }
 
+// Only exceptions our own scripts can act on are reported. In-app browsers and
+// extensions inject scripts into the page (`window.webkit.messageHandlers`,
+// `CONFIG`) whose errors carry no frame from this origin, and the browser's
+// ResizeObserver loop notice has no stack at all.
+const browserNotices = /^ResizeObserver loop (limit exceeded|completed with undelivered notifications)/
+
+function actionableException(eventProperties: Record<string, unknown>) {
+  const list = eventProperties.$exception_list
+  if (!Array.isArray(list)) return false
+  const own = `${window.location.origin}/`
+  return list.every(entry => !browserNotices.test(String(entry?.value ?? '')))
+    && list.some(entry => Array.isArray(entry?.stacktrace?.frames)
+      && entry.stacktrace.frames.some((frame: { filename?: unknown }) =>
+        typeof frame?.filename === 'string' && frame.filename.startsWith(own)))
+}
+
 const configured = !blocked && import.meta.env.PROD && import.meta.env.VERCEL_ENV === 'production'
   && posthogKey && posthogHost?.startsWith('https://') && tracked(window.location.pathname)
 if (!configured) {
@@ -171,6 +187,7 @@ export const analyticsReady: Promise<void> = configured ? import('posthog-js').t
         } catch { return null }
         const pathname = window.location.pathname
         if (!event || !events.has(event.event) || !tracked(pathname)) return null
+        if (event.event === '$exception' && !actionableException(event.properties)) return null
         // Keep session/browser metrics, referrer origins and UTM tags, not
         // SDK-enriched URLs, other query parameters or user data.
         event.properties = Object.fromEntries(Object.entries(event.properties).filter(([key]) => properties.has(key)))

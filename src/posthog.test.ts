@@ -205,11 +205,41 @@ test.each([
   const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
   const result = beforeSend({ event: '$exception', properties: {
     $exception_message: `Failed to fetch ${url} (status 0)`,
-    $exception_list: [{ type: 'TypeError', value: `at ${url}`, stacktrace: { type: 'raw', frames: [{ filename: url, abs_path: url, lineno: 1 }] } }],
+    $exception_list: [{ type: 'TypeError', value: `at ${url}`, stacktrace: { type: 'raw', frames: [
+      { filename: url, abs_path: url, lineno: 1 },
+      { filename: 'https://mdfromx.com/assets/main.js', lineno: 1 },
+    ] } }],
   } })
   expect(result.properties.$exception_message).toBe(`Failed to fetch ${kept} (status 0)`)
   expect(result.properties.$exception_list[0].value).toBe(`at ${kept}`)
   expect(JSON.stringify(result)).not.toContain('private')
+})
+
+test.each([
+  ['an in-app browser script', 'TypeError', "undefined is not an object (evaluating 'window.webkit.messageHandlers')", [{ filename: 'user-script:3', lineno: 1 }]],
+  ['an injected global', 'ReferenceError', "Can't find variable: CONFIG", [{ filename: '<anonymous>', lineno: 1 }]],
+  ['a lookalike origin', 'TypeError', 'boom', [{ filename: 'https://mdfromx.com.evil.test/a.js', lineno: 1 }]],
+  ['an extension', 'TypeError', 'boom', [{ filename: 'chrome-extension://abc/content.js', lineno: 1 }]],
+  ['a stackless error', 'Error', 'Script error.', undefined],
+  ['the ResizeObserver loop notice', 'Error', 'ResizeObserver loop completed with undelivered notifications.', [{ filename: 'https://mdfromx.com/assets/module.js', lineno: 1 }]],
+])('drops an exception from %s', async (_, type, value, frames) => {
+  await loadAnalytics()
+  const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
+  expect(beforeSend({ event: '$exception', properties: {
+    $exception_list: [{ type, value, ...(frames && { stacktrace: { type: 'raw', frames } }) }],
+  } })).toBeNull()
+})
+
+test('keeps an exception that passes through this origin\'s scripts', async () => {
+  await loadAnalytics()
+  const beforeSend = vi.mocked(posthog.init).mock.calls[0][1]!.before_send as (event: any) => any
+  const result = beforeSend({ event: '$exception', properties: {
+    $exception_list: [{ type: 'TypeError', value: "Cannot read properties of null (reading 'querySelectorAll')", stacktrace: { type: 'raw', frames: [
+      { filename: 'chrome-extension://abc/content.js', lineno: 1 },
+      { filename: 'https://mdfromx.com/assets/tabs-B8keuXVz.js', lineno: 2, colno: 1147 },
+    ] } }],
+  } })
+  expect(result.properties.$exception_list[0].value).toBe("Cannot read properties of null (reading 'querySelectorAll')")
 })
 
 test('reports the docs page path without its query string', async () => {
