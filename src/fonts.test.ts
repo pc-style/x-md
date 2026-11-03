@@ -150,12 +150,16 @@ test('the landing stylesheet declares the subset, not the unsubsetted faces', ()
   }
 })
 
-test('every public page preloads the exact face its stylesheet declares for 900', () => {
-  const face = FACES.find(f => f.weight === 900 && f.style === 'normal')!
-  const href = `/fonts/${nameOf(face)}`
-  for (const file of ['index.html', 'about.html', 'contact.html', 'privacy.html', 'terms.html']) {
-    expect(readFileSync(join(ROOT, file), 'utf8'), `${file} preloads a stale font`)
-      .toContain(`<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin />`)
+// Every face the stylesheet declares renders above the fold. Preloaded, they
+// start with the HTML instead of waiting for style recalculation to find them.
+test('every public page preloads the exact faces its stylesheet declares', () => {
+  for (const weight of [500, 700, 900]) {
+    const face = FACES.find(f => f.weight === weight && f.style === 'normal')!
+    const href = `/fonts/${nameOf(face)}`
+    for (const file of ['index.html', 'about.html', 'contact.html', 'privacy.html', 'terms.html']) {
+      expect(readFileSync(join(ROOT, file), 'utf8'), `${file} preloads a stale font`)
+        .toContain(`<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin />`)
+    }
   }
 })
 

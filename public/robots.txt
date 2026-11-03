@@ -68,4 +68,3 @@ Content-Signal: search=no, ai-input=no, ai-train=no
 Disallow: /
 
 Sitemap: https://mdfromx.com/sitemap.xml
-schemamap: https://mdfromx.com/schemamap.xml

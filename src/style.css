@@ -286,8 +286,11 @@
     @apply text-[12px] font-bold text-ink-4 uppercase;
   }
 
+  /* Words not yet scrubbed in still have to be readable: 0.4 of the ink on
+     the band's surface is 3.4:1, over the 3:1 WCAG asks of this large bold
+     statement. At 0.14 it was 1.4:1. */
   .reveal-word {
-    opacity: 0.14;
+    opacity: 0.4;
   }
 
   /* Each word carries the statement's halo (two wide text-shadows), so
