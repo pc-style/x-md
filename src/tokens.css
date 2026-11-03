@@ -51,7 +51,8 @@ html[data-top] [data-over="night"] {
   --color-ink: #f1f0e9;
   --color-ink-2: #c5c3ba;
   --color-ink-3: #99978f;
-  --color-ink-4: #747269;
+  /* 4.5:1 or better on surface, raised and raised-2: it sets 12px labels. */
+  --color-ink-4: #85837a;
 
   --color-line: #232924;
   --color-hair: rgb(255 255 255 / 0.08);

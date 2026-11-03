@@ -231,7 +231,7 @@ describe('retired docs pages', () => {
 describe('NLWeb schema feeds', () => {
   const map = read('schemamap.xml')
 
-  test('robots.txt points at a schema map that lists a real feed', () => {
+  test('the schema map lists a real feed', () => {
     expect(map).toContain('xmlns:sf="http://schema.org/schemas/schemafeed/0.1"')
     const loc = map.match(/<loc>([^<]+)<\/loc>/)?.[1]
     expect(loc).toBe(`${SITE}/feeds/x-md.jsonl`)
@@ -279,9 +279,21 @@ describe('robots.txt', () => {
     expect(robots).toMatch(/^Content-Signal: search=yes, ai-input=yes, ai-train=no$/m)
   })
 
-  test('advertises the sitemap and the NLWeb schema map', () => {
+  test('advertises the sitemap', () => {
     expect(directives).toContain(`Sitemap: ${SITE}/sitemap.xml`)
-    expect(directives).toContain(`schemamap: ${SITE}/schemamap.xml`)
+  })
+
+  // Lighthouse fails the whole robots.txt audit on any directive outside its
+  // safelist, which is why the NLWeb `schemamap:` line is not here.
+  test('uses only directives Lighthouse accepts', () => {
+    const known = new Set([
+      'user-agent', 'disallow', 'allow', 'sitemap', 'crawl-delay', 'clean-param', 'host',
+      'request-rate', 'visit-time', 'noindex', 'content-signal', 'license',
+    ])
+    for (const line of directives) {
+      expect(line, 'Lighthouse needs a colon on every directive').toContain(':')
+      expect(known, line).toContain(line.slice(0, line.indexOf(':')).trim().toLowerCase())
+    }
   })
 })
 
