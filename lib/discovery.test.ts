@@ -290,7 +290,10 @@ describe('robots.txt', () => {
       'user-agent', 'disallow', 'allow', 'sitemap', 'crawl-delay', 'clean-param', 'host',
       'request-rate', 'visit-time', 'noindex', 'content-signal', 'license',
     ])
-    for (const line of directives) expect(known, line).toContain(line.slice(0, line.indexOf(':')).trim().toLowerCase())
+    for (const line of directives) {
+      expect(line, 'Lighthouse needs a colon on every directive').toContain(':')
+      expect(known, line).toContain(line.slice(0, line.indexOf(':')).trim().toLowerCase())
+    }
   })
 })
 
