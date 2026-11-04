@@ -4,30 +4,55 @@ import { redisConfig, redisPipeline } from './redis.js'
 
 // Bound expensive fresh walks across serverless instances. Archive-only reads
 // do not acquire a slot. Leases outlive the route's 120-second deadline.
-const MAX_ACTIVE = 2
+// Each caller (an address or an API key) holds at most one lease, and
+// anonymous callers share all but KEYED_RESERVED slots, so neither one address
+// nor a few anonymous walkers can lock keyed callers out.
+export const IMPORT_MAX_ACTIVE = 3
+const KEYED_RESERVED = 1
+const PER_OWNER = 1
 const LEASE_MS = 150_000
 const KEY = 'import:active:v1'
-const local = new Set<string>()
+
+/** Who a walk is charged to. Walks without one (scripts, benchmarks) are trusted and uncapped per caller. */
+export interface ImportOwner { kind: 'ip' | 'key'; id: string }
+
+const local = new Map<string, string>()
+// Members are `<owner>|<uuid>`; anonymous owners start with `ip:`.
 const ACQUIRE = `
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
-if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+local leases = redis.call('ZRANGE', KEYS[1], 0, -1)
+local anonymous, mine = 0, 0
+for _, lease in ipairs(leases) do
+  if string.sub(lease, 1, 3) == 'ip:' then anonymous = anonymous + 1 end
+  if string.sub(lease, 1, #ARGV[6]) == ARGV[6] then mine = mine + 1 end
+end
+if #leases >= tonumber(ARGV[3]) then return 0 end
+if ARGV[6] ~= '' and mine >= tonumber(ARGV[8]) then return 0 end
+if ARGV[7] == '1' and anonymous >= tonumber(ARGV[3]) - tonumber(ARGV[9]) then return 0 end
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[4])
 redis.call('PEXPIRE', KEYS[1], ARGV[5])
 return 1`
 
-export async function withImportSlot<T>(work: () => Promise<T>): Promise<T> {
-  const id = randomUUID()
+const busy = () => new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
+
+export async function withImportSlot<T>(work: () => Promise<T>, owner?: ImportOwner): Promise<T> {
+  const prefix = owner ? `${owner.kind}:${owner.id}|` : ''
+  const id = `${prefix}${randomUUID()}`
+  const anonymous = owner?.kind === 'ip'
   const config = redisConfig()
   if (config) {
     let admitted = false
     try {
-      const [reply] = await redisPipeline<number>(config, [['EVAL', ACQUIRE, 1, KEY, Date.now(), Date.now() + LEASE_MS, MAX_ACTIVE, id, LEASE_MS]])
+      const [reply] = await redisPipeline<number>(config, [['EVAL', ACQUIRE, 1, KEY, Date.now(), Date.now() + LEASE_MS, IMPORT_MAX_ACTIVE, id, LEASE_MS, prefix, anonymous ? '1' : '0', PER_OWNER, KEYED_RESERVED]])
       admitted = reply?.result === 1 && !reply.error
     } catch { /* Fail closed: do not turn a store outage into unbounded fan-out. */ }
-    if (!admitted) throw new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
+    if (!admitted) throw busy()
   } else {
-    if (local.size >= MAX_ACTIVE) throw new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
-    local.add(id)
+    const leases = [...local.values()]
+    const mine = prefix ? leases.filter((lease) => lease === prefix).length : 0
+    const anonymousLeases = leases.filter((lease) => lease.startsWith('ip:')).length
+    if (leases.length >= IMPORT_MAX_ACTIVE || mine >= PER_OWNER || (anonymous && anonymousLeases >= IMPORT_MAX_ACTIVE - KEYED_RESERVED)) throw busy()
+    local.set(id, prefix)
   }
   try { return await work() } finally {
     local.delete(id)

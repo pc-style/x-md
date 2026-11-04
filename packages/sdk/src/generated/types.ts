@@ -615,7 +615,7 @@ export interface ImportProfilePostsQuery {
   readonly withReposts?: boolean
   /** Return only the account's replies. */
   readonly onlyReplies?: boolean
-  /** Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After. */
+  /** Upstream timeline chains walked at once, maximum 32. The service admits three fresh walks across instances, one per caller, with one held for API keys; excess demand returns 503 import_busy. Queue those requests and honor Retry-After. */
   readonly concurrency?: number
   /** Answer from the archive index alone, without walking upstream: what x.md already holds for this account and how far back it reaches. Not metered as an import. The body is an `ImportIndexResponse` instead of posts. */
   readonly index?: boolean

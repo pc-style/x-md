@@ -31,6 +31,13 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
+  // Only `path` selects a host-rendered asset. Any other parameter would make a
+  // fresh CDN cache key and force a render, so send it to the canonical URL.
+  if (url.pathname === '/api/site') {
+    const path = url.searchParams.get('path')
+    const canonical = path === null ? '' : `?${new URLSearchParams({ path })}`
+    if (url.search !== canonical) return Response.redirect(new URL(`/api/site${canonical}`, request.url), 308)
+  }
   const needsHost = url.hostname !== 'mdfromx.com'
   const variant = (path: string) => needsHost && domainFile(path)
     ? `/api/site?${new URLSearchParams({ path })}` : path

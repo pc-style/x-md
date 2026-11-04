@@ -114,6 +114,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     withReposts: flag(param('with_reposts'), true),
     onlyReplies: flag(param('only_replies'), false),
     refresh: flag(param('refresh'), false),
+    owner: resolved.caller.kind === 'key' ? { kind: 'key' as const, id: resolved.caller.id } : { kind: 'ip' as const, id: resolved.ip || 'unknown' },
   }
 
   // The import allowance is the deeper policy: spend one unit per walk.

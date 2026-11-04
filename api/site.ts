@@ -15,7 +15,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const path = typeof req.query.path === 'string' ? req.query.path : ''
   try {
-    const response = await siteResponse(path, origin)
+    const response = await siteResponse(path, origin, { head: req.method === 'HEAD' })
     if (response.status === 404) {
       return notFoundHandler(req, res)
     }
