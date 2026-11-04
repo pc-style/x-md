@@ -8,7 +8,7 @@ import { adminAuthorized, adminConfigured } from '../lib/admin'
 import { handleKeysApi, handlePoolApi } from '../lib/adminApi'
 import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth'
 import { ConvertError as BrowseError } from '../lib/errors'
-import { parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
+import { acceptedRepresentation, parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
 import {
   applyExhaustedQuota,
   applyQuotaPolicyOnly,
@@ -166,6 +166,10 @@ async function handleConvert(
   const keyFailure = keyRequirementFailure(resolved)
   if (keyFailure && !(asEmbed && !req.headers.authorization)) {
     fail(req, res, 'unauthorized', keyFailure)
+    return true
+  }
+  if (!requestedFormat && !asEmbed && acceptedRepresentation(accept, POST_REPRESENTATIONS) === null) {
+    fail(req, res, 'not_acceptable', 'Accept refuses text/markdown, application/json and text/html, the only representations of a post.')
     return true
   }
 

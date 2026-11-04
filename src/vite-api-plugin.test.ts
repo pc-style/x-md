@@ -133,3 +133,10 @@ test.each(['/api/v1/profiles/jack/posts?index=true', '/jack/posts?index=true', '
   expect(response.status).toBe(200)
   expect(JSON.parse(response.body)).toMatchObject({ handle: new URL(path, 'http://x').pathname.split('/').at(-2), archive: null })
 })
+
+test('dev answers 406 when Accept refuses every representation of a post', async () => {
+  const response = await request('/api/v1/posts?url=https://x.com/jack/status/20', { accept: 'text/markdown;q=0, application/json;q=0, text/html;q=0', 'x-forwarded-for': '198.51.100.11' })
+  expect(response.status).toBe(406)
+  expect(JSON.parse(response.body).code).toBe('not_acceptable')
+  expect(convertTweet).not.toHaveBeenCalled()
+})

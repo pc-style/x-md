@@ -42,6 +42,25 @@ test('a presented key that does not verify is refused even in public mode', asyn
   expect(convertTweet).not.toHaveBeenCalled()
 })
 
+test('an Accept that refuses every representation is 406, but a preview bot keeps its card', async () => {
+  vi.stubEnv('X_MD_REQUIRE_API_KEY', '')
+  const refused = exchange({ accept: 'text/markdown;q=0, application/json;q=0, text/html;q=0' })
+  await convertHandler(refused.req, refused.res)
+  expect(refused.res.statusCode).toBe(406)
+  expect(JSON.parse(refused.res.body).code).toBe('not_acceptable')
+  expect(convertTweet).not.toHaveBeenCalled()
+
+  const card = exchange({ 'user-agent': DISCORD, accept: '*/*;q=0' })
+  await convertHandler(card.req, card.res)
+  expect(card.res.statusCode).toBe(200)
+  expect(String(card.res.getHeader('Content-Type'))).toContain('text/html')
+
+  // An explicit format outranks Accept, as it always has.
+  const explicit = exchange({ accept: '*/*;q=0' }, { format: 'markdown' })
+  await convertHandler(explicit.req, explicit.res)
+  expect(explicit.res.statusCode).toBe(200)
+})
+
 test('private mode: a preview bot gets the Open Graph card without a key', async () => {
   const { req, res } = exchange({ 'user-agent': DISCORD, accept: '*/*' })
   await convertHandler(req, res)
