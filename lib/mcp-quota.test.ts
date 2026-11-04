@@ -25,7 +25,7 @@ function post(body: unknown, ip: string) {
   const req = new IncomingMessage(new Socket()) as never as Record<string, unknown>
   req.method = 'POST'
   req.query = {}
-  req.headers = { accept: 'application/json', 'x-real-ip': ip }
+  req.headers = { accept: 'application/json', 'x-forwarded-for': ip }
   req.body = body
   const chunks: string[] = []
   const res = new ServerResponse(req as never) as never as Record<string, unknown> & { statusCode: number; getHeader(name: string): unknown }
