@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { requestOrigin, wantsJson, wantsMarkdown } from './http.js'
+import { acceptedRepresentation, requestOrigin, wantsJson, wantsMarkdown } from './http.js'
 import { POST_REPRESENTATIONS, acceptPrefersHtml } from './converter.js'
 
 describe('requestOrigin', () => {
@@ -82,6 +82,14 @@ describe('Accept negotiation on data routes', () => {
     const accept = 'application/json;q=0.9,text/markdown;q=0,*/*;q=1'
     expect(wantsJson(undefined, accept, POST_REPRESENTATIONS)).toBe(true)
     expect(acceptPrefersHtml(accept)).toBe(false)
+  })
+
+  test('refusing every representation is null, not a preference', () => {
+    expect(acceptedRepresentation('text/markdown;q=0, application/json;q=0, text/html;q=0', POST_REPRESENTATIONS)).toBeNull()
+    expect(acceptedRepresentation('*/*;q=0', POST_REPRESENTATIONS)).toBeNull()
+    // Naming nothing on offer still leaves the route its default.
+    expect(acceptedRepresentation('image/png', POST_REPRESENTATIONS)).toBeUndefined()
+    expect(acceptedRepresentation('', POST_REPRESENTATIONS)).toBeUndefined()
   })
 
   test('a refused default falls to what a wildcard still accepts', () => {

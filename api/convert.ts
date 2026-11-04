@@ -6,7 +6,7 @@ import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecati
 import { captureArchive } from '../lib/archive.js'
 import { ConvertError, POST_REPRESENTATIONS, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
-import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
+import { acceptedRepresentation, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
 import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
@@ -86,6 +86,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const keyFailure = keyRequirementFailure(resolved)
   if (keyFailure && !(asEmbed && !req.headers.authorization)) {
     return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
+  }
+  // Accept refused every representation a post has. A preview bot still gets its card.
+  if (!requestedFormat && !asEmbed && acceptedRepresentation(accept, POST_REPRESENTATIONS) === null) {
+    return sendProblem(res, problemDetails('not_acceptable', { instance, detail: 'Accept refuses text/markdown, application/json and text/html, the only representations of a post.' }), accept, req.method)
   }
 
   try {

@@ -771,6 +771,54 @@
               }
             }
           },
+          "406": {
+            "description": "No acceptable representation. Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
@@ -5092,6 +5140,54 @@
               }
             }
           },
+          "406": {
+            "description": "No acceptable representation. Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
@@ -9126,6 +9222,60 @@
               }
             }
           },
+          "406": {
+            "description": "No acceptable representation. Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/DeprecationLink"
+              },
+              "Deprecation": {
+                "$ref": "#/components/headers/Deprecation"
+              },
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "not_acceptable": {
+                    "$ref": "#/components/examples/not_acceptable"
+                  }
+                }
+              }
+            }
+          },
           "429": {
             "description": "Rate limit exceeded. Wait the number of seconds in the `Retry-After` header, then retry. Cached responses do not count against the allowance. For scripted or sustained search, ask for an API key: https://mdfromx.com/auth.md.",
             "headers": {
@@ -10363,6 +10513,20 @@
           "resolution": "x.md is read-only. Use GET, HEAD, or OPTIONS; the `Allow` response header lists what this route accepts.",
           "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "POST is not supported on this route. x.md only reads public X content."
+        }
+      },
+      "not_acceptable": {
+        "summary": "No acceptable representation",
+        "value": {
+          "type": "https://mdfromx.com/docs/reliability#not-acceptable",
+          "title": "No acceptable representation",
+          "status": 406,
+          "detail": "No acceptable representation",
+          "instance": "https://mdfromx.com/api/v1/posts",
+          "code": "not_acceptable",
+          "resolution": "Request `text/markdown`, `application/json`, or `text/html`, or omit the Accept header.",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
+          "error": "No acceptable representation"
         }
       },
       "rate_limited": {

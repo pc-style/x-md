@@ -81,16 +81,16 @@ const DATA_OFFERS: readonly Repr[] = ['json', 'markdown']
  * ties. Undefined when it named none of them (no header, bare wildcards, or
  * nothing offered), which leaves the route its Markdown default and the
  * preview-bot path, unless the header refuses Markdown: then the best offer a
- * wildcard still reaches.
+ * wildcard still reaches, or null when it refuses every offer (a 406).
  */
-export function acceptedRepresentation(accept: string, offers: readonly Repr[] = DATA_OFFERS): Repr | undefined {
+export function acceptedRepresentation(accept: string, offers: readonly Repr[] = DATA_OFFERS): Repr | undefined | null {
   const named = offers.filter((offer) => {
     const match = mediaQuality(accept, MEDIA[offer])
     return match?.exact && match.q > 0
   })
   if (named.length > 0) return selectRepresentation(accept, named, named[0]!) ?? undefined
   if (mediaQuality(accept, MEDIA.markdown)?.q !== 0) return undefined
-  return selectRepresentation(accept, offers, 'markdown') ?? undefined
+  return selectRepresentation(accept, offers, 'markdown')
 }
 
 export function wantsJson(format: string | null | undefined, accept: string, offers: readonly Repr[] = DATA_OFFERS): boolean {
