@@ -1,11 +1,12 @@
 import { upstreamHealth } from '../lib/upstream-health.js'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import type { Connect } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Plugin } from 'vite'
+import { defaultAllowedOrigins, type Plugin } from 'vite'
 import { browse, browseResponse, type BrowseResource } from '../lib/browse'
 import { adminAuthorized, adminConfigured } from '../lib/admin'
 import { handleKeysApi, handlePoolApi } from '../lib/adminApi'
-import { callerHeaders, resolveCaller } from '../lib/apiauth'
+import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth'
 import { ConvertError as BrowseError } from '../lib/errors'
 import { parseJsonBody, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http'
 import {
@@ -13,6 +14,7 @@ import {
   applyQuotaPolicyOnly,
   applyRequestQuota,
   chargeRequestQuota,
+  settleRequestQuota,
   type QuotaCaller,
   type QuotaScope,
   type RequestQuota,
@@ -41,8 +43,11 @@ import { browseSuccessor } from '../api/browse'
 import { apiIndexDocument, apiIndexMarkdown } from '../api/index'
 import { CONTENT_TYPE, selectRepresentation } from '../lib/negotiate'
 import mcpHandler from '../api/mcp'
+import importHandler from '../api/import'
 
 const HANDLE = '[A-Za-z0-9_]{1,15}'
+/** First path segments that are site routes, never handles. */
+const RESERVED = ['api', 'docs', 'search', 'oembed']
 
 function respondJson(res: ServerResponse, status: number, payload: unknown): void {
   res.statusCode = status
@@ -149,6 +154,21 @@ async function handleConvert(
   const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
+  // As api/convert.ts: a key that does not verify is refused, private mode
+  // gates everything but a keyless Open Graph card, and a keyed response stays
+  // out of shared caches whatever the renderer chose.
+  const resolved = await resolveCaller(req.headers)
+  for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  if (resolved.status === 'invalid') {
+    fail(req, res, 'invalid_key', 'Invalid or disabled API key.')
+    return true
+  }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure && !(asEmbed && !req.headers.authorization)) {
+    fail(req, res, 'unauthorized', keyFailure)
+    return true
+  }
+
   try {
     const result = await convertTweet({
       origin: requestOrigin(req),
@@ -171,6 +191,7 @@ async function handleConvert(
     for (const [key, value] of Object.entries(headers)) {
       res.setHeader(key, value)
     }
+    for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
     if (req.method === 'HEAD') {
       res.end()
     } else {
@@ -221,7 +242,7 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   else if (path === '/search') resource = 'search'
   else {
     const match = path.match(new RegExp(`^\/(${HANDLE})(?:\/(followers|following))?$`))
-    if (!match || ['api', 'docs', 'search', 'oembed'].includes(match[1] ?? '')) return false
+    if (!match || RESERVED.includes(match[1] ?? '')) return false
     handle = match[1]
     resource = (match[2] as BrowseResource | undefined) ?? 'profile'
   }
@@ -240,6 +261,11 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
     fail(req, res, 'invalid_key', 'Invalid or disabled API key.')
     return true
   }
+  const keyFailure = keyRequirementFailure(resolved)
+  if (keyFailure) {
+    fail(req, res, 'unauthorized', keyFailure)
+    return true
+  }
   // Charged after the caller is known, so a verified key's own policy is part of
   // the quota it is measured against.
   const quotaCaller: QuotaCaller =
@@ -256,9 +282,12 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   admission.catch(() => undefined)
   const pending = browse({ id: url.searchParams.get('id'), require_live: url.searchParams.get('require_live'), include_posts: url.searchParams.get('include_posts'), with_replies: url.searchParams.get('with_replies'), with_reposts: url.searchParams.get('with_reposts'), since: url.searchParams.get('since'), until: url.searchParams.get('until'), resource, handle: handle ?? url.searchParams.get('handle'), q: url.searchParams.get('q'), feed: url.searchParams.get('feed'), cursor: url.searchParams.get('cursor'), page: url.searchParams.get('page'), limit: url.searchParams.get('limit'), full: url.searchParams.get('full'), format: url.searchParams.get('format'), nocache: url.searchParams.get('nocache'), ip: resolved.ip, caller: resolved.caller }, { admission })
   pending.catch(() => undefined)
-  if (answerQuota(req, res, await charged)) return true
+  const quota = await charged
+  if (answerQuota(req, res, quota)) return true
   try {
     const result = await pending
+    // As api/browse.ts: a cache hit spends no search quota, so the earlier report still holds.
+    if (scope === 'search' && result.cache !== 'hit') applyRequestQuota(res, await settleRequestQuota(quota, scope, quotaCaller))
     const response = browseResponse(result, wantsJson(url.searchParams.get('format'), String(req.headers.accept ?? '')))
     res.statusCode = response.status
     for (const [key, value] of Object.entries(response.headers)) res.setHeader(key, value)
@@ -279,6 +308,9 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
       return true
     }
     if (!(error instanceof BrowseError)) console.error(error)
+    if (error instanceof BrowseError && error.status === 429 && error.policy && error.retryAfter !== undefined) {
+      applyExhaustedQuota(res, await settleRequestQuota(quota, scope, quotaCaller), error.policy, error.retryAfter)
+    }
     respondProblem(req, res, problemFrom(error, problemInstance(req)))
   }
   return true
@@ -355,9 +387,44 @@ function applyVersionedRoutes(url: URL): URL {
   if (path === '/api/v1/posts') return routed('/api/convert')
   if (path === '/api/v1/search') return routed('/api/browse', { resource: 'search' })
   if (path === '/api/v1/oembed') return routed('/api/oembed')
+  const posts = path.match(new RegExp(`^/api/v1/profiles/(${HANDLE})/posts$`))
+  if (posts) return routed('/api/import', { handle: posts[1] ?? '' })
   const profile = path.match(new RegExp(`^/api/v1/profiles/(${HANDLE})(?:/(followers|following))?$`))
   if (profile) return routed('/api/browse', { resource: profile[2] ?? 'profile', handle: profile[1] ?? '' })
   return url
+}
+
+/**
+ * Drive a read-only Vercel function from the dev server, lending the Node
+ * request and response the few members the runtime adds.
+ */
+async function runFunction(
+  handler: (req: VercelRequest, res: VercelResponse) => unknown,
+  url: URL,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
+  const request = req as IncomingMessage & { query: Record<string, string> }
+  request.query = Object.fromEntries(url.searchParams)
+  const response = res as ServerResponse & { status(code: number): unknown; send(body: unknown): unknown }
+  response.status = (code: number) => { res.statusCode = code; return response }
+  response.send = (body: unknown) => { res.end(typeof body === 'string' ? body : JSON.stringify(body)); return response }
+  await handler(request as unknown as VercelRequest, response as unknown as VercelResponse)
+}
+
+/** Bulk history (`/{handle}/posts`, and the versioned route rewritten onto /api/import) runs the real api/import.ts. */
+async function handleImport(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  const path = url.pathname.replace(/\/$/, '')
+  const permalink = path.match(new RegExp(`^/(${HANDLE})/posts$`))
+  // As in production, only /docs/posts is a page (a docs file wins over the
+  // rewrite); /search/posts, /api/posts and the rest are imports.
+  if (path !== '/api/import' && (!permalink || permalink[1] === 'docs')) return false
+  if (permalink) {
+    url.searchParams.set('handle', permalink[1] ?? '')
+    url.searchParams.set('via', 'route')
+  }
+  await runFunction(importHandler, url, req, res)
+  return true
 }
 
 function readRawBody(req: IncomingMessage): Promise<string> {
@@ -475,6 +542,7 @@ function installConvertMiddleware(middlewares: Connect.Server) {
           (await handleMcp(url, req, res)) ||
           (await handleOembed(url, req, res)) ||
           (await handleConvert(url, req, res)) ||
+          (await handleImport(url, req, res)) ||
           (await handleBrowse(url, req, res)) ||
           handleApiNotFound(url, req, res)
         if (!handled) next()
@@ -489,6 +557,13 @@ export function apiDevPlugin(): Plugin {
   return {
     name: 'x-md-api-dev',
     enforce: 'pre',
+    // Vite answers every OPTIONS in its own cors middleware, ahead of any
+    // plugin, so the routes' preflight headers (quota policy, deprecation)
+    // never went out locally. Keep Vite's origin policy, pass preflights on.
+    config: () => ({
+      server: { cors: { origin: defaultAllowedOrigins, preflightContinue: true } },
+      preview: { cors: { origin: defaultAllowedOrigins, preflightContinue: true } },
+    }),
     configureServer(server) {
       installConvertMiddleware(server.middlewares)
     },
