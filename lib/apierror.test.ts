@@ -207,10 +207,18 @@ describe('handlers answer with problem details', () => {
     expect(alias.res.getHeader('Link')).toContain('rel="successor-version"')
 
     // This checks route headers, so reject locally rather than depending on a live post.
-    const permalink = exchange({ url: '/api/convert?handle=jack&id=invalid', query: { handle: 'jack', id: 'invalid' } })
+    // The permalink rewrite in vercel.json injects handle, id and via=route.
+    const permalink = exchange({ url: '/api/convert?handle=jack&id=invalid&via=route', query: { handle: 'jack', id: 'invalid', via: 'route' } })
     await convertHandler(permalink.req, permalink.res)
     expect(permalink.res.statusCode).toBe(400)
     expect(permalink.res.getHeader('Deprecation')).toBeUndefined()
+
+    // A direct alias call that names handle and id itself is still the alias.
+    const direct = exchange({ url: '/api/convert?handle=jack&id=20&format=bad', query: { handle: 'jack', id: '20', format: 'bad' } })
+    await convertHandler(direct.req, direct.res)
+    expect(direct.res.statusCode).toBe(400)
+    expect(direct.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
+    expect(direct.res.getHeader('Sunset')).toBe(LEGACY_SUNSET)
 
     const versioned = exchange({ url: '/api/convert?via=route&url=notaurl', query: { via: 'route', url: 'notaurl' } })
     await convertHandler(versioned.req, versioned.res)
@@ -235,6 +243,29 @@ describe('handlers answer with problem details', () => {
       query: { resource: 'profile', handle: 'jack', via: 'route' },
     })
     await browseHandler(routed.req, routed.res)
+    expect(routed.res.getHeader('Deprecation')).toBeUndefined()
+  })
+
+  test('a preflight to either alias carries the deprecation signal, a rewritten one does not', async () => {
+    const convert = exchange({ method: 'OPTIONS' })
+    await convertHandler(convert.req, convert.res)
+    expect(convert.res.statusCode).toBe(204)
+    expect(convert.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
+    expect(convert.res.getHeader('Sunset')).toBe(LEGACY_SUNSET)
+    expect(convert.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/posts>; rel="successor-version"')
+
+    const browse = exchange({ method: 'OPTIONS', url: '/api/browse?resource=search', query: { resource: 'search' } })
+    await browseHandler(browse.req, browse.res)
+    expect(browse.res.statusCode).toBe(204)
+    expect(browse.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
+    expect(browse.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/search>; rel="successor-version"')
+
+    const atHandle = exchange({ method: 'OPTIONS', url: '/api/browse?resource=profile&handle=%40jack', query: { resource: 'profile', handle: '@jack' } })
+    await browseHandler(atHandle.req, atHandle.res)
+    expect(atHandle.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/profiles/jack>; rel="successor-version"')
+
+    const routed = exchange({ method: 'OPTIONS', url: '/api/convert?via=route', query: { via: 'route' } })
+    await convertHandler(routed.req, routed.res)
     expect(routed.res.getHeader('Deprecation')).toBeUndefined()
   })
 

@@ -624,6 +624,54 @@
               }
             }
           },
+          "401": {
+            "description": "Invalid or disabled API key. Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found. Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
             "headers": {
@@ -874,7 +922,13 @@
         "externalDocs": {
           "description": "Endpoint documentation",
           "url": "https://mdfromx.com/docs/posts"
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearerApiKey": []
+          }
+        ]
       }
     },
     "/api/v1/profiles/{handle}": {
@@ -4891,6 +4945,54 @@
               }
             }
           },
+          "401": {
+            "description": "Invalid or disabled API key. Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/ProblemLink"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found. Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
             "headers": {
@@ -5141,7 +5243,13 @@
         "externalDocs": {
           "description": "Endpoint documentation",
           "url": "https://mdfromx.com/docs/posts"
-        }
+        },
+        "security": [
+          {},
+          {
+            "bearerApiKey": []
+          }
+        ]
       }
     },
     "/{handle}": {
@@ -8853,6 +8961,60 @@
               }
             }
           },
+          "401": {
+            "description": "Invalid or disabled API key. Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
+            "headers": {
+              "RateLimit": {
+                "$ref": "#/components/headers/RateLimit"
+              },
+              "RateLimit-Policy": {
+                "$ref": "#/components/headers/RateLimitPolicy"
+              },
+              "RateLimit-Limit": {
+                "$ref": "#/components/headers/RateLimitLimit"
+              },
+              "RateLimit-Remaining": {
+                "$ref": "#/components/headers/RateLimitRemaining"
+              },
+              "RateLimit-Reset": {
+                "$ref": "#/components/headers/RateLimitReset"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "Link": {
+                "$ref": "#/components/headers/DeprecationLink"
+              },
+              "Deprecation": {
+                "$ref": "#/components/headers/Deprecation"
+              },
+              "Sunset": {
+                "$ref": "#/components/headers/Sunset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              },
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                },
+                "examples": {
+                  "invalid_key": {
+                    "$ref": "#/components/examples/invalid_key"
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not found. Confirm the post or profile is public and still exists on x.com, then retry. Deleted and protected content is never available.",
             "headers": {
@@ -9134,6 +9296,12 @@
           "description": "Endpoint documentation",
           "url": "https://mdfromx.com/docs/posts"
         },
+        "security": [
+          {},
+          {
+            "bearerApiKey": []
+          }
+        ],
         "deprecated": true,
         "x-deprecation": "2026-09-15T00:00:00Z",
         "x-sunset": "2027-09-15T00:00:00Z",
@@ -10155,6 +10323,20 @@
           "error": "Missing required `url` query parameter."
         }
       },
+      "invalid_key": {
+        "summary": "Invalid or disabled API key",
+        "value": {
+          "type": "https://mdfromx.com/docs/reliability#invalid-key",
+          "title": "Invalid or disabled API key",
+          "status": 401,
+          "detail": "Invalid or disabled API key.",
+          "instance": "https://mdfromx.com/api/v1/search?q=vercel",
+          "code": "invalid_key",
+          "resolution": "Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
+          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
+          "error": "Invalid or disabled API key."
+        }
+      },
       "not_found": {
         "summary": "Not found",
         "value": {
@@ -10266,20 +10448,6 @@
           "resolution": "Fix the parameter named in `detail`. Dates are ISO dates, ISO datetimes, or unix timestamps; `since` must be earlier than `until`; counts are positive integers within the documented maximum.",
           "documentation_url": "https://mdfromx.com/docs/reliability#errors",
           "error": "Invalid query option"
-        }
-      },
-      "invalid_key": {
-        "summary": "Invalid or disabled API key",
-        "value": {
-          "type": "https://mdfromx.com/docs/reliability#invalid-key",
-          "title": "Invalid or disabled API key",
-          "status": 401,
-          "detail": "Invalid or disabled API key.",
-          "instance": "https://mdfromx.com/api/v1/search?q=vercel",
-          "code": "invalid_key",
-          "resolution": "Remove the Authorization header to call anonymously, or present a valid `Authorization: Bearer <key>`.",
-          "documentation_url": "https://mdfromx.com/docs/reliability#errors",
-          "error": "Invalid or disabled API key."
         }
       },
       "upstream_unavailable": {

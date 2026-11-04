@@ -6,6 +6,7 @@ import {
   withCache,
 } from './cache.js'
 import { ConvertError } from './errors.js'
+import { acceptedRepresentation } from './http.js'
 import { fetchPosts, type ContextMode, type FetchResult, type FetchSource, type RepliesMode } from './tweet-fetch.js'
 import { renderThreadMarkdown, type UserinfoLevel } from './markdown.js'
 
@@ -103,9 +104,11 @@ export function resolveTarget(input: ConvertInput): { canonicalUrl: string; hand
   }
 
   if (input.handle && input.id) {
+    // Validate the pair as given (one optional leading `@` aside): rewriting a
+    // malformed id would select a different post.
     const handle = input.handle.replace(/^@/, '')
-    const id = input.id.replace(/\D/g, '')
-    if (!handle || !id) {
+    const id = input.id
+    if (!/^[A-Za-z0-9_]{1,15}$/.test(handle) || !/^[0-9]+$/.test(id)) {
       throw new ConvertError(400, 'Missing or invalid handle/status id.', 'invalid_params')
     }
     return {
@@ -130,9 +133,8 @@ function parseThread(raw: string | null | undefined): { mode: 'off' | 'full'; li
 
   if (!raw || raw === 'full' || raw === 'conversation') return { mode: 'full', limit: 100 }
 
-  const n = Number.parseInt(raw, 10)
-  if (Number.isFinite(n) && n >= 2 && n <= 100) {
-    return { mode: 'full', limit: n }
+  if (/^([2-9]|[1-9][0-9]|100)$/.test(raw)) {
+    return { mode: 'full', limit: Number(raw) }
   }
 
   throw new ConvertError(
@@ -283,9 +285,11 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
   return { ...renderSnapshot(value, format, thread, userinfo, canonicalUrl, id, compact), cache: status }
 }
 
+/** What a post can be rendered as, in tie-breaking order. */
+export const POST_REPRESENTATIONS = ['json', 'markdown', 'html'] as const
+
 export function acceptPrefersHtml(accept: string): boolean {
-  if (accept.includes('application/json') || accept.includes('text/markdown')) return false
-  return accept.includes('text/html')
+  return acceptedRepresentation(accept, POST_REPRESENTATIONS) === 'html'
 }
 
 function escapeHtml(value: string): string {

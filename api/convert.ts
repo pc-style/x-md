@@ -4,7 +4,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
 import { captureArchive } from '../lib/archive.js'
-import { ConvertError, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
+import { ConvertError, POST_REPRESENTATIONS, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
 import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
 import { requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
@@ -15,28 +15,23 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   trackRequest(req, res, 'convert')
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
+  const param = (key: string): string | undefined => (typeof req.query[key] === 'string' ? req.query[key] : undefined)
+
+  // A vercel.json rewrite hands the function its destination path, so the
+  // permalink and versioned routes arrive here looking like /api/convert too;
+  // every one of them carries via=route, so a request without it is a direct
+  // call to the deprecated alias. RFC 9745 wants the signal on every response,
+  // preflights and errors included, hence before anything can return.
+  if ((req.url ?? '').split('?')[0] === '/api/convert' && param('via') !== 'route') {
+    setDeprecationHeaders(res, '/api/v1/posts')
+  }
   if (req.method === 'OPTIONS') {
     applyQuotaPolicyOnly(res, 'read', caller)
     return res.status(204).end()
   }
 
-  const param = (key: string): string | undefined => (typeof req.query[key] === 'string' ? req.query[key] : undefined)
   const accept = String(req.headers.accept ?? '')
   const instance = requestInstance(req, requestOrigin(req))
-
-  // A vercel.json rewrite hands the function its destination path, so the
-  // permalink routes arrive here looking like /api/convert too. They are the
-  // only ones that can be told apart (they inject handle and id), so the
-  // deprecated alias is "a direct /api/convert call that is not a permalink".
-  // `via=route` lets a rewrite opt out explicitly once one carries the marker.
-  // RFC 9745 wants the signal on error responses too, hence before the guards.
-  if (
-    (req.url ?? '').split('?')[0] === '/api/convert' &&
-    param('via') !== 'route' &&
-    !(param('handle') && param('id'))
-  ) {
-    setDeprecationHeaders(res, '/api/v1/posts')
-  }
 
   // Charged before anything can return, so every response — success, error and
   // 405 alike — tells the caller how much room is left.
@@ -71,8 +66,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
   const userAgent = String(req.headers['user-agent'] ?? '')
   const requestedFormat = param('format')
-  const asJson = wantsJson(requestedFormat, accept)
-  const asMarkdown = wantsMarkdown(requestedFormat, accept)
+  const asJson = wantsJson(requestedFormat, accept, POST_REPRESENTATIONS)
+  const asMarkdown = wantsMarkdown(requestedFormat, accept, POST_REPRESENTATIONS)
   const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
@@ -83,6 +78,11 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // header that is not a valid key is an API caller and gets no exemption.
   const resolved = await resolveCaller(req.headers)
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  // A presented key that does not verify is refused, as on every other read
+  // route, rather than silently served as anonymous.
+  if (resolved.status === 'invalid') {
+    return sendProblem(res, problemDetails('invalid_key', { instance, detail: 'Invalid or disabled API key.' }), accept, req.method)
+  }
   const keyFailure = keyRequirementFailure(resolved)
   if (keyFailure && !(asEmbed && !req.headers.authorization)) {
     return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)

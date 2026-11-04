@@ -1,3 +1,5 @@
+import { MEDIA, mediaQuality, selectRepresentation, type Repr } from './negotiate.js'
+
 /** Minimal shape shared by Vercel's response object and Node's ServerResponse. */
 export interface HeaderWriter {
   setHeader(name: string, value: string): void
@@ -70,12 +72,33 @@ export function parseJsonBody(raw: unknown): { ok: true; value: unknown } | { ok
   }
 }
 
-export function wantsJson(format: string | null | undefined, accept: string): boolean {
-  if (format) return format === 'json'
-  return accept.includes('application/json')
+const DATA_OFFERS: readonly Repr[] = ['json', 'markdown']
+
+/**
+ * The representation an Accept header asks for among `offers`, through the RFC
+ * 9110 parser so `q=0` is a refusal rather than a match. Only types the caller
+ * named itself compete, so a wildcard cannot outrank them; earlier offers win
+ * ties. Undefined when it named none of them (no header, bare wildcards, or
+ * nothing offered), which leaves the route its Markdown default and the
+ * preview-bot path, unless the header refuses Markdown: then the best offer a
+ * wildcard still reaches.
+ */
+export function acceptedRepresentation(accept: string, offers: readonly Repr[] = DATA_OFFERS): Repr | undefined {
+  const named = offers.filter((offer) => {
+    const match = mediaQuality(accept, MEDIA[offer])
+    return match?.exact && match.q > 0
+  })
+  if (named.length > 0) return selectRepresentation(accept, named, named[0]!) ?? undefined
+  if (mediaQuality(accept, MEDIA.markdown)?.q !== 0) return undefined
+  return selectRepresentation(accept, offers, 'markdown') ?? undefined
 }
 
-export function wantsMarkdown(format: string | null | undefined, accept: string): boolean {
+export function wantsJson(format: string | null | undefined, accept: string, offers: readonly Repr[] = DATA_OFFERS): boolean {
+  if (format) return format === 'json'
+  return acceptedRepresentation(accept, offers) === 'json'
+}
+
+export function wantsMarkdown(format: string | null | undefined, accept: string, offers: readonly Repr[] = DATA_OFFERS): boolean {
   if (format) return format === 'markdown' || format === 'obsidian'
-  return accept.includes('text/markdown')
+  return acceptedRepresentation(accept, offers) === 'markdown'
 }
