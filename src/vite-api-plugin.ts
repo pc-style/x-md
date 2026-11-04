@@ -416,7 +416,9 @@ async function runFunction(
 async function handleImport(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const path = url.pathname.replace(/\/$/, '')
   const permalink = path.match(new RegExp(`^/(${HANDLE})/posts$`))
-  if (path !== '/api/import' && (!permalink || RESERVED.includes(permalink[1] ?? ''))) return false
+  // As in production, only /docs/posts is a page (a docs file wins over the
+  // rewrite); /search/posts, /api/posts and the rest are imports.
+  if (path !== '/api/import' && (!permalink || permalink[1] === 'docs')) return false
   if (permalink) {
     url.searchParams.set('handle', permalink[1] ?? '')
     url.searchParams.set('via', 'route')

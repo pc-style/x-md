@@ -128,8 +128,8 @@ test('an uncached dev search reports the search it just spent', async () => {
   expect(String(response.header('RateLimit'))).toContain('"search-ip";r=4;')
 })
 
-test.each(['/api/v1/profiles/jack/posts?index=true', '/jack/posts?index=true'])('dev serves bulk history at %s through api/import.ts', async (path) => {
+test.each(['/api/v1/profiles/jack/posts?index=true', '/jack/posts?index=true', '/search/posts?index=true'])('dev serves bulk history at %s through api/import.ts', async (path) => {
   const response = await request(path, { accept: 'application/json', 'x-forwarded-for': '198.51.100.10' })
   expect(response.status).toBe(200)
-  expect(JSON.parse(response.body)).toMatchObject({ handle: 'jack', archive: null })
+  expect(JSON.parse(response.body)).toMatchObject({ handle: new URL(path, 'http://x').pathname.split('/').at(-2), archive: null })
 })
