@@ -77,6 +77,10 @@ test('private mode: only a keyless preview bot is exempt, and a valid key always
     await convertHandler(spoofed.req, spoofed.res)
     expect(spoofed.res.statusCode).toBe(401)
   }
+  // An unsupported scheme resolves as anonymous but is still a credential.
+  const basic = exchange({ 'user-agent': 'Discordbot/2.0', accept: '*/*', authorization: 'Basic abc' }, { handle: 'alice', id: '123' })
+  await convertHandler(basic.req, basic.res)
+  expect(basic.res.statusCode).toBe(401)
 
   for (const [ua, query] of [['Discordbot/2.0', {}], ['curl/8', {}], ['Discordbot/2.0', { format: 'json' }]] as const) {
     vi.mocked(resolveCaller).mockResolvedValueOnce({ caller: { kind: 'key', id: 'k1', limit: 100 }, status: 'valid', ip: '192.0.2.1' })
