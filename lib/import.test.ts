@@ -249,6 +249,33 @@ describe('importProfilePosts', () => {
     expect(new Set(ids).size).toBeGreaterThanOrEqual(7)
   })
 
+  test('posts sharing one second all come back across continuations', async () => {
+    // Seven own posts minted within one second (dates carry whole seconds), then hourly history.
+    const burst = NOW - 30 * 60_000
+    const entries: Entry[] = []
+    for (let i = 0; i < 7; i += 1) {
+      const sort = snowflakeAt(burst + 900 - i * 120)
+      entries.push({ sort, post: { id: sort.toString(), text: `burst ${i}`, created_at: xdate(burst), author: { screen_name: 'ada' } } })
+    }
+    for (let h = 1; h <= 6; h += 1) {
+      const sort = snowflakeAt(burst - h * HOUR)
+      entries.push({ sort, post: { id: sort.toString(), text: `older ${h}`, created_at: xdate(burst - h * HOUR), author: { screen_name: 'ada' } } })
+    }
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries, { pageSize: 30 }).mock))
+    const since = new Date(burst - 10 * HOUR)
+    let until = new Date(NOW)
+    const seen: string[] = []
+    for (let step = 0; step < 20; step += 1) {
+      const result = await importProfilePosts({ handle: 'ada', since, until, maxPosts: 3, concurrency: 1 })
+      seen.push(...result.posts.map((post) => post.id!))
+      if (!result.meta.next_until) break
+      const next = Date.parse(result.meta.next_until)
+      expect(next).toBeLessThan(until.getTime())
+      until = new Date(next)
+    }
+    expect([...new Set(seen)].sort()).toEqual(entries.map((entry) => entry.post.id!).sort())
+  })
+
   test('never walks past the account join date', async () => {
     vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', joined: new Date(NOW - 50 * HOUR).toUTCString() })
     const entries = timeline('ada', 40, 1)

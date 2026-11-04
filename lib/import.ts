@@ -194,10 +194,12 @@ export function ownPost(post: FxTweet, handle: string): boolean {
 }
 
 export function postTime(post: FxTweet): number {
-  if (post.created_timestamp) return post.created_timestamp * 1000
-  const parsed = Date.parse(post.created_at ?? '')
-  if (Number.isFinite(parsed)) return parsed
-  return post.id ? snowflakeTime(post.id) : 0
+  const stated = post.created_timestamp ? post.created_timestamp * 1000 : Date.parse(post.created_at ?? '')
+  const minted = post.id && /^\d+$/.test(post.id) ? snowflakeTime(post.id) : undefined
+  if (!Number.isFinite(stated)) return minted ?? 0
+  // Dates carry whole seconds; the id minted in that second carries the
+  // millisecond, so posts sharing a second still order and bound distinctly.
+  return minted !== undefined && minted >= stated && minted < stated + 1000 ? minted : stated
 }
 
 function clampInt(value: number | undefined, fallback: number, max: number): number {

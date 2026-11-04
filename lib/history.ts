@@ -10,7 +10,8 @@
  * Store: the shared Upstash/Vercel KV Redis (lib/redis.ts) when configured, an
  * in-process map otherwise. Per handle:
  *   hist:{handle}:index  hash   count, oldest, newest, updated_at, floor_reached
- *   hist:{handle}:ids    zset   member = post id, score = post time in ms
+ *   hist:{handle}:ids    zset   member = post id, score = post time in ms, from
+ *                               the id's snowflake (dates carry whole seconds)
  *   hist:{handle}:posts  hash   post id -> JSON
  * Reads are bounded to the posts a response can use (a 3,500-post archive is
  * ~10 MB of JSON, half a second to move), and a write is one parallel round
@@ -59,6 +60,8 @@ export interface HistoryResult extends Omit<ImportResult, 'meta'> {
 
 /** Gap walks overlap the archive edge by this much: X orders pages by conversation, not time. */
 const EDGE_OVERLAP_MS = 6 * 3_600_000
+/** Bumped when stored coverage or scores stop meaning what they did; an index from another version re-walks. 3: millisecond scores. */
+const COVERAGE_VERSION = 3
 /** A top-up is skipped when the archive was refreshed this recently. */
 const FRESH_MS = 60_000
 /** Posts per Redis pipeline call, under Upstash's request size limit. */
@@ -127,7 +130,7 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
     },
     async writeIndex(index) {
       const k = keys(index.handle).index
-      await run([['HSET', k, 'handle', index.handle, 'count', index.count, 'oldest', index.oldest ?? '', 'newest', index.newest ?? '', 'updated_at', index.updated_at, 'floor_reached', index.floor_reached ? '1' : '0', 'covered_since', index.covered_since ?? '', 'covered_until', index.covered_until ?? '', 'incomplete', index.incomplete ? '1' : '0', 'coverage_version', 2]])
+      await run([['HSET', k, 'handle', index.handle, 'count', index.count, 'oldest', index.oldest ?? '', 'newest', index.newest ?? '', 'updated_at', index.updated_at, 'floor_reached', index.floor_reached ? '1' : '0', 'covered_since', index.covered_since ?? '', 'covered_until', index.covered_until ?? '', 'incomplete', index.incomplete ? '1' : '0', 'coverage_version', COVERAGE_VERSION]])
     },
     async put(handle, posts) {
       const k = keys(handle)
@@ -242,7 +245,7 @@ async function record(s: Store, handle: string, posts: FxTweet[], count: number 
   // can be disjoint from the old archive; retaining its old lower bound would
   // hide the unfetched gap forever. Keep the newest interval conservatively.
   const intervals = [...covered]
-  if (previous?.covered_until && previous.coverage_version === 2 && !previous.incomplete) intervals.push({
+  if (previous?.covered_until && previous.coverage_version === COVERAGE_VERSION && !previous.incomplete) intervals.push({
     since: previous.floor_reached ? undefined : previous.covered_since ? Date.parse(previous.covered_since) : previous.oldest ? Date.parse(previous.oldest) : Date.parse(previous.covered_until),
     until: Date.parse(previous.covered_until), floor: previous.floor_reached,
   })
@@ -263,7 +266,7 @@ async function record(s: Store, handle: string, posts: FxTweet[], count: number 
     updated_at: new Date().toISOString(),
     floor_reached: floor,
     incomplete,
-    coverage_version: 2,
+    coverage_version: COVERAGE_VERSION,
     covered_since: coveredSince === undefined ? undefined : new Date(coveredSince).toISOString(),
     covered_until: coveredUntil ? new Date(coveredUntil).toISOString() : previous?.incomplete ? undefined : previous?.covered_until,
   }
@@ -323,6 +326,13 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
 
   // The lock holds every other writer off this handle, so this read stays current for `record`.
   const previous = await s.readIndex(handle)
+  // Scores before version 3 held whole seconds, which every `until` inside the
+  // second still matches. Re-score the stored bodies in place, so no archived
+  // post goes missing; the version mismatch re-walks coverage separately.
+  if (previous && (previous.coverage_version ?? 0) < COVERAGE_VERSION) {
+    const stored = (await s.range(handle, 0, Number.MAX_SAFE_INTEGER)).flatMap((entry) => (entry.post ? [entry.post] : []))
+    if (stored.length) await s.put(handle, stored)
+  }
   let index = input.refresh ? undefined : previous
   const walked: HistoryMeta['archive']['walked'] = []
   let profile: FxAuthor | undefined
@@ -356,7 +366,7 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
   const unfiltered = withReplies && withReposts && !onlyReplies
   const archived = readWanted(s, handle, since ?? 0, until, wanted, maxPosts + 1, unfiltered)
 
-  if (!index || index.incomplete || index.coverage_version !== 2) {
+  if (!index || index.incomplete || index.coverage_version !== COVERAGE_VERSION) {
     await settleAll([walk('refresh', since, until, maxPosts), archived])
   } else {
     const coveredUntil = index.covered_until ? Date.parse(index.covered_until) : (index.newest ? Date.parse(index.newest) : undefined)
