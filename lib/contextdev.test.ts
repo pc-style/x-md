@@ -46,6 +46,46 @@ describe('fetchContextDevStatus', () => {
     })
   })
 
+  test.each([
+    ['short post', 'just setting up my twttr', 'just setting up my twttr'],
+    [
+      'long multiline post',
+      `A long post ${'with actual content '.repeat(40)}\n\n#StillPartOfThePost\n[Read this](https://example.com/article)`,
+      `A long post ${'with actual content '.repeat(40).trim()}\n#StillPartOfThePost\n[Read this](https://example.com/article)`,
+    ],
+    ['leading hashtag', '#StillPartOfThePost', '#StillPartOfThePost'],
+    ['link-only post', '[Read this](https://example.com/article)', '[Read this](https://example.com/article)'],
+    ['profile-link post', '[NASA](https://x.com/NASA)', '[NASA](https://x.com/NASA)'],
+  ])('extracts %s without page chrome or replies', async (_label, body, expected) => {
+    const login = '[Log in](https://x.com/i/jf/onboarding/web?mode=login&redirect_after_login=%2Fjack%2Fstatus%2F20) [Sign up](https://x.com/i/jf/onboarding/web?mode=signup&redirect_after_login=%2Fjack%2Fstatus%2F20)'
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      success: true,
+      markdown: [
+        '[X](https://x.com/)',
+        '## Post', login, '## Post', login,
+        '# jack on X: "just setting up my twttr"',
+        '## Conversation',
+        '- [@jack](https://x.com/jack)',
+        '[jack](https://x.com/jack)',
+        '[Square](https://x.com/Square)',
+        '[@jack](https://x.com/jack)',
+        body,
+        '[3:50 PM · Mar 21, 2006](https://x.com/jack/status/20)·',
+        '[18K](https://x.com/compose/post?in_reply_to=20)',
+        '133K', '321K', '24K',
+        '- [@other](https://x.com/other)',
+        '[Mar 21, 2024](https://x.com/other/status/1770825760162353449)',
+        'Hello from the future',
+        '## Relevant people',
+        'no state is the best state',
+      ].join('\n\n'),
+    }), { status: 200 })))
+
+    const tweet = await fetchContextDevStatus('jack', '20')
+
+    expect(tweet.text).toBe(expected)
+  })
+
   test('is disabled when CONTEXT_DEV_API_KEY is missing', async () => {
     delete process.env.CONTEXT_DEV_API_KEY
 

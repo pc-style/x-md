@@ -220,7 +220,7 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
     throw new ConvertError(502, 'Firecrawl returned empty content.', 'firecrawl_empty')
   }
 
-  const text = extractStatusTextFromMarkdown(markdown) ?? payload.data?.metadata?.description ?? markdown.slice(0, 2000)
+  const text = extractStatusTextFromMarkdown(markdown, id) ?? payload.data?.metadata?.description ?? markdown.slice(0, 2000)
 
   return {
     id,

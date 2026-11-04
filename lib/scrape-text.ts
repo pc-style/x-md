@@ -1,8 +1,29 @@
-export function extractStatusTextFromMarkdown(markdown: string): string | undefined {
+export function extractStatusTextFromMarkdown(markdown: string, statusId: string): string | undefined {
   const lines = markdown
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line && !line.startsWith('!['))
+
+  // Full X pages include navigation, author cards, metrics and replies. The
+  // requested post's timestamp permalink ends its body, not the whole page.
+  const title = lines.findIndex((line) => /^# .+ on (?:X|Twitter)(?::|$)/.test(line))
+  const timestamp = lines.findIndex((line) =>
+    line.match(/^\[[^\]]+\]\(https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/\w+\/status\/(\d+)\/?(?:[?#][^)]*)?\)[\s·]*$/)?.[1] === statusId,
+  )
+  if (title >= 0 && timestamp > title) {
+    const body = lines.slice(title + 1, timestamp)
+    // Strip only the leading author block. Links and headings in the post
+    // itself must survive, as must text beyond the old 500-character budget.
+    while (body.length && (
+      /^#{1,6}\s+(?:Conversation|Post|Thread)$/.test(body[0]) ||
+      /^(?:-\s*)?(?:\[[^\]]+\]\(https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/[A-Za-z0-9_]{1,15}\/?\)\s*)+$/.test(body[0])
+    )) {
+      const line = body.shift()!
+      // The non-list handle closes the author card; later profile links are content.
+      if (!line.startsWith('- ') && /\[@\w+\]\(/.test(line)) break
+    }
+    return body.join('\n') || undefined
+  }
 
   const skip = new Set([
     'Post',

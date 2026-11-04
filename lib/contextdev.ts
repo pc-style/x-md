@@ -60,7 +60,7 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
     throw new ConvertError(502, 'Context.dev returned empty content.', 'contextdev_empty')
   }
 
-  const text = extractStatusTextFromMarkdown(markdown) ?? markdown.slice(0, 2000)
+  const text = extractStatusTextFromMarkdown(markdown, id) ?? markdown.slice(0, 2000)
 
   return {
     id,
