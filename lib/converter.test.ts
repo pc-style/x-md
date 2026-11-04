@@ -154,6 +154,28 @@ describe('parseThread — invalid values throw ConvertError', () => {
   test('throws for thread="200" (well above maximum)', async () => {
     await expect(convertTweet({ url: validUrl, thread: '200' })).rejects.toBeInstanceOf(ConvertError)
   })
+
+  // Regression: a numeric prefix must not pass for the whole value (parseInt read `2garbage` as 2).
+  test.each(['2garbage', '2.5', '02', ' 5', '1e1'])('rejects thread=%j with invalid_thread', async (thread) => {
+    await expect(convertTweet({ url: validUrl, thread })).rejects.toMatchObject({ status: 400, code: 'invalid_thread' })
+  })
+})
+
+describe('handle and id parameters', () => {
+  test.each([['jack', '20'], ['@jack', '20']])('handle=%s&id=%s resolves to the canonical permalink', async (handle, id) => {
+    const result = await convertTweet({ handle, id })
+    expect(result.canonicalUrl).toBe('https://x.com/jack/status/20')
+  })
+
+  // Regression: stripping non-digits turned `20.9` into status 209 and `abc20` into status 20.
+  test.each([
+    ['jack', '20.9'], ['jack', 'abc20'], ['jack', '20 '], ['jack', '-20'],
+    ['ja/ck', '20'], ['jack.x', '20'], ['@@jack', '20'], ['abcdefghijklmnop', '20'],
+  ])('rejects handle=%j&id=%j with invalid_params before fetching', async (handle, id) => {
+    vi.mocked(fetchPosts).mockClear()
+    await expect(convertTweet({ handle, id })).rejects.toMatchObject({ status: 400, code: 'invalid_params' })
+    expect(vi.mocked(fetchPosts)).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------

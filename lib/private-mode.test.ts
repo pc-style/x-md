@@ -32,6 +32,16 @@ beforeEach(() => {
 })
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
+test('a presented key that does not verify is refused even in public mode', async () => {
+  vi.stubEnv('X_MD_REQUIRE_API_KEY', '')
+  vi.mocked(resolveCaller).mockResolvedValueOnce({ caller: { kind: 'public', ip: '192.0.2.1' }, status: 'invalid', ip: '192.0.2.1' })
+  const { req, res } = exchange({ accept: 'application/json', authorization: 'Bearer nope' })
+  await convertHandler(req, res)
+  expect(res.statusCode).toBe(401)
+  expect(JSON.parse(res.body).code).toBe('invalid_key')
+  expect(convertTweet).not.toHaveBeenCalled()
+})
+
 test('private mode: a preview bot gets the Open Graph card without a key', async () => {
   const { req, res } = exchange({ 'user-agent': DISCORD, accept: '*/*' })
   await convertHandler(req, res)
