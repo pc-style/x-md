@@ -79,10 +79,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // Private mode: the permalink surface is API too, so it needs a key as well.
   // Only an actual Open Graph card is exempt: a preview bot's user agent asking
   // for JSON or Markdown is data access and is gated like any other caller.
+  // Unfurlers never send credentials, so a request presenting any Authorization
+  // header that is not a valid key is an API caller and gets no exemption.
   const resolved = await resolveCaller(req.headers)
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
   const keyFailure = keyRequirementFailure(resolved)
-  if (keyFailure && !asEmbed) {
+  if (keyFailure && !(asEmbed && !req.headers.authorization)) {
     return sendProblem(res, problemDetails('unauthorized', { instance, detail: keyFailure }), accept, req.method)
   }
 
