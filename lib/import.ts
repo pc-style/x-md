@@ -29,7 +29,7 @@
  *   pages at the same moments, and stops early only once nothing still to be
  *   asked could change the answer.
  */
-import { withImportSlot } from './import-admission.js'
+import { withImportSlot, type ImportOwner } from './import-admission.js'
 import { ConvertError } from './errors.js'
 import { UPSTREAM_CANCELLED } from './server-events.js'
 import { cursorAt, decodeTimelineCursor, snowflakeAt, snowflakeTime } from './fx-cursor.js'
@@ -97,6 +97,8 @@ export interface ImportInput {
   /** Called once per post as it arrives, before the final sort. */
   onPost?: (post: FxTweet) => void
   signal?: AbortSignal
+  /** The caller the walk's admission slot is charged to. */
+  owner?: ImportOwner
   /** Engine knobs for benchmarks; not exposed on the API. */
   tuning?: {
     /** Posts a window should hold (default 30). */
@@ -263,7 +265,7 @@ function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
 }
 
 export async function importProfilePosts(input: ImportInput): Promise<ImportResult> {
-  return withImportSlot(() => walkProfilePosts(input))
+  return withImportSlot(() => walkProfilePosts(input), input.owner)
 }
 
 async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
