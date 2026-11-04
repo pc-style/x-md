@@ -18,6 +18,8 @@ import {
   setDeprecationHeaders,
 } from './apierror.js'
 import { ConvertError } from './errors.js'
+import { readFileSync } from 'node:fs'
+import { scanBody } from 'blume/core/sources/normalize.ts'
 
 function exchange(options: { method?: string; url?: string; accept?: string; query?: Record<string, string> } = {}) {
   const req = new IncomingMessage(new Socket()) as any
@@ -41,6 +43,22 @@ describe('problem documents', () => {
       expect(entry.resolution.length, code).toBeGreaterThan(20)
       expect(entry.status, code).toBeGreaterThanOrEqual(400)
     }
+  })
+
+  // Every `type` must dereference: Blume's own anchor scan (the one `blume
+  // validate` uses) of the page the fragment points into must yield it.
+  test('every problem type lands on a real anchor, and the catalogue lists every code', () => {
+    const page = (path: string) => scanBody(readFileSync(new URL(path, import.meta.url), 'utf8').replace(/^---\n[\s\S]*?\n---\n/, ''))
+    const reliability = page('../docs/(api)/reliability.mdx')
+    const targets = new Set([...reliability.headings.map((heading) => heading.slug), ...reliability.anchors])
+    const catalogue = readFileSync(new URL('../docs/errors.mdx', import.meta.url), 'utf8')
+    for (const code of Object.keys(ERROR_CATALOG)) {
+      const type = new URL(problemDetails(code, { instance: 'https://mdfromx.com/api/v1/posts' }).type)
+      expect(type.pathname, code).toBe('/docs/reliability')
+      expect(targets.has(type.hash.slice(1)), `${code} -> ${type.hash}`).toBe(true)
+      expect(catalogue, code).toContain(`| \`${code}\` |`)
+    }
+    expect(targets.has(new URL(problemDetails('missing_url', { instance: 'https://mdfromx.com/' }).documentation_url).hash.slice(1))).toBe(true)
   })
 
   test('a ConvertError becomes a complete problem document', () => {
