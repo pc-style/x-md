@@ -539,6 +539,11 @@ export interface BrowseOptions {
    * only answer the caller sees.
    */
   admission?: Promise<boolean>
+  /**
+   * Serve a cached result without waiting on `admission`, for a caller that
+   * refunds hits and so must not have one refused by a spent allowance.
+   */
+  serveHits?: boolean
 }
 
 export async function browse(input: BrowseInput, options: BrowseOptions = {}): Promise<BrowseResult> {
@@ -606,7 +611,7 @@ export async function browse(input: BrowseInput, options: BrowseOptions = {}): P
     // The in-process copy is stored at once; the shared write is best-effort
     // and nothing in this response depends on it, so the caller does not wait
     // out its round trip. waitUntil keeps the function alive until it lands.
-    { admission: admitted, defer: waitUntil },
+    { admission: admitted, defer: waitUntil, ungatedHits: options.serveHits },
   )
   // The entry may have been filled by another spelling of the handle; echo this caller's.
   const base = cached.value.handle === undefined ? cached.value : { ...cached.value, handle: validHandle(input.handle) }
