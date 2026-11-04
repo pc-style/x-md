@@ -19,6 +19,8 @@ import { fetchFxConnections, searchFxStatuses } from './fxtwitter.js'
 import { chargeRequestQuota, type RequestQuota } from './ratelimit-headers.js'
 import { ACCOUNT_IP, SEARCH_IP, searchIpKey } from './quotas.js'
 import { ConvertError } from './errors.js'
+import { createApiKey } from './apikeys.js'
+import { resetKv } from './kv.js'
 import { rateLimit, resetRateLimits } from './ratelimit.js'
 
 const verdict = (allowed: boolean): RequestQuota => ({
@@ -93,6 +95,33 @@ test('the cache lookup overlaps the front-door charge, and a rejection answers 4
   expect(res.getHeader('Cache-Control')).toBe('no-store')
   expect(fetchFxConnections).not.toHaveBeenCalled()
   expect(commands).toEqual(['GET'])
+})
+
+test('a malformed Bearer token is refused before any store command or quota charge', async () => {
+  const { commands } = sharedStore()
+  resetKv()
+  const { req, res, body } = exchange({ resource: 'followers', handle: 'ada' }, 'application/json')
+  req.headers.authorization = 'Bearer garbage'
+  await handler(req, res)
+  expect(res.statusCode).toBe(401)
+  expect(JSON.parse(body()).code).toBe('invalid_key')
+  expect(commands).toEqual([])
+  expect(chargeRequestQuota).not.toHaveBeenCalled()
+  resetKv()
+})
+
+test('an exhausted front door refuses a valid key too', async () => {
+  resetKv()
+  const { secret } = await createApiKey('kim', 50)
+  vi.mocked(chargeRequestQuota).mockResolvedValueOnce(verdict(false))
+  const { req, res, body } = exchange({ resource: 'followers', handle: 'ada' }, 'application/json')
+  req.headers.authorization = `Bearer ${secret}`
+  await handler(req, res)
+  expect(res.getHeader('X-Api-Key-Status')).toBe('valid')
+  expect(res.statusCode).toBe(429)
+  expect(JSON.parse(body()).code).toBe('rate_limited')
+  expect(fetchFxConnections).not.toHaveBeenCalled()
+  resetKv()
 })
 
 test('an admitted miss fetches upstream once and answers without waiting for the shared cache write', async () => {
