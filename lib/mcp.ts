@@ -43,6 +43,8 @@ export const JSONRPC_INTERNAL_ERROR = -32603
 export const MCP_HEADER_MISMATCH = -32020
 export const MCP_MISSING_CAPABILITY = -32021
 export const MCP_UNSUPPORTED_PROTOCOL_VERSION = -32022
+/** Implementation-defined server error, below the reserved range: the caller's api-ip allowance is spent. */
+export const MCP_RATE_LIMITED = -32000
 /**
  * 2026-07-28 moved "resource not found" from -32002 onto plain Invalid Params
  * to line up with JSON-RPC. Legacy clients accepted -32002, but -32602 is a
@@ -108,6 +110,11 @@ export interface McpContext {
   site?: string
   /** Which revision the request declared; decides which methods exist. */
   era?: 'modern' | 'legacy'
+  /**
+   * The transport's api-ip verdict for this tools/call. Browse tools look up the
+   * cache while it is pending; nothing reaches an upstream until it allows.
+   */
+  admission?: Promise<boolean>
 }
 
 export type DispatchOutcome = { result: unknown } | { error: JsonRpcError } | null
@@ -788,12 +795,18 @@ async function runBrowse(
     full: args.full === true,
     ip: ctx.ip ?? null,
     caller: ctx.caller,
-  })
+  }, { admission: ctx.admission })
   return { text: result.markdown, structured: browseStructured(result) }
+}
+
+/** Wait for the transport's api-ip verdict; a denial is answered by the transport, never from here. */
+async function admitted(ctx: McpContext): Promise<void> {
+  if (ctx.admission && !(await ctx.admission)) throw new ConvertError(429, 'Too many requests from this address.', 'rate_limited')
 }
 
 const TOOL_RUNNERS: Record<string, ToolRunner> = {
   async x_md_get_post(args, ctx) {
+    await admitted(ctx)
     const thread = text(args.thread) ?? 'full'
     const { convertTweet } = await import('./converter.js')
     const result = await convertTweet({
@@ -829,6 +842,7 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
   x_md_get_followers: (args, ctx) => runBrowse('followers', args, ctx),
   x_md_get_following: (args, ctx) => runBrowse('following', args, ctx),
   async submit_feedback(args, ctx) {
+    await admitted(ctx)
     const { submitFeedback } = await import('@usenotra/geo/feedback')
     // Refund rejected calls so a caller retrying early does not push its own reset further out.
     const gate = await rateLimit(feedbackIpKey(ctx.ip ?? ''), FEEDBACK_IP.quota, FEEDBACK_IP.windowSec, false, true)

@@ -4,8 +4,9 @@ import { withErrorTracking } from '../lib/error-tracking.js'
 import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
 import { parseJsonBody, requestOrigin } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
-import { applyQuotaPolicyOnly } from '../lib/ratelimit-headers.js'
-import { clientIp } from '../lib/ratelimit.js'
+import { API_IP, apiIpKey } from '../lib/quotas.js'
+import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
+import { clientIp, refundRateLimit } from '../lib/ratelimit.js'
 import {
   dispatch,
   serverCard,
@@ -15,6 +16,7 @@ import {
   validateModernHeaders,
   JSONRPC_PARSE_ERROR,
   MCP_HEADER_MISMATCH,
+  MCP_RATE_LIMITED,
   MCP_LATEST_LEGACY_PROTOCOL,
   MCP_SUPPORTED_PROTOCOLS,
   MCP_UNSUPPORTED_PROTOCOL_VERSION,
@@ -50,8 +52,9 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Expose-Headers', 'MCP-Protocol-Version, Mcp-Session-Id, Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link')
   res.setHeader('Access-Control-Max-Age', '86400')
 
-  // The tools spend the same read allowance the REST routes charge, so the
-  // transport advertises it even though dispatch charges it further down.
+  // Every tools/call spends the same read allowance the REST routes charge; it
+  // is charged below, once the caller is resolved. Anything answered before
+  // that, or any other method, advertises the policy alone.
   applyQuotaPolicyOnly(res, 'read', { ip: clientIp(req.headers) })
 
   const accept = String(req.headers.accept ?? '')
@@ -178,12 +181,47 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const keyFailure = keyRequirementFailure(resolved)
   if (keyFailure) return transportError(res, 401, JSONRPC_INVALID_REQUEST, keyFailure)
 
+  // A tool call is charged like a REST read. The charge and the tool's cache
+  // lookup run together, and the tool waits for this verdict before it reaches
+  // an upstream; a denial is answered here, never from inside the tool.
+  const quotaCaller: QuotaCaller =
+    resolved.caller.kind === 'key'
+      ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
+      : { ip: resolved.ip }
+  const charged = message.method === 'tools/call' ? chargeRequestQuota('read', quotaCaller) : undefined
+  const admission = charged?.then((quota) => quota.allowed)
+  admission?.catch(() => undefined)
+  const pending = dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, admission })
+  pending.catch(() => undefined)
+  const quota = await charged
+  if (quota) {
+    applyRequestQuota(res, quota)
+    if (!quota.allowed) {
+      applyExhaustedQuota(res, quota, API_IP.name, quota.retryAfter)
+      res.setHeader('Content-Type', 'application/json; charset=utf-8')
+      const retryAfter = Math.max(1, quota.retryAfter)
+      const error = {
+        code: MCP_RATE_LIMITED,
+        message: 'Too many requests from this address. Cached responses do not count against the allowance.',
+        data: { status: 429, code: 'rate_limited', policy: API_IP.name, retryAfter },
+      }
+      return res.status(429).send(JSON.stringify({ jsonrpc: '2.0', id: message.id ?? null, error }))
+    }
+  }
+
   let outcome
   try {
-    outcome = finalizeResult(await dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site }), message.method, modern)
+    outcome = finalizeResult(await pending, message.method, modern)
   } catch (error) {
     console.error(error)
     outcome = { error: { code: JSONRPC_INTERNAL_ERROR, message: 'Internal error' } }
+  }
+
+  // A tool answered from the application cache reached no upstream, so it
+  // gives its charge back.
+  if (quota?.bucket !== undefined && outcome && 'result' in outcome && (outcome.result as { structuredContent?: { cache?: unknown } }).structuredContent?.cache === 'hit') {
+    await refundRateLimit(apiIpKey(resolved.ip), API_IP.windowSec, quota.bucket)
+    applyRequestQuota(res, { ...quota, states: quota.states.map((state) => (state.name === API_IP.name ? { ...state, remaining: Math.min(state.quota, state.remaining + 1) } : state)) })
   }
 
   // The modern transport answers an unimplemented RPC with 404, so a client can
