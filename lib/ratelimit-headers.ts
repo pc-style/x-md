@@ -268,7 +268,8 @@ export async function chargeImportAllowance(caller: QuotaCaller): Promise<Import
   }
   for (const policy of deeper) {
     const key = counterFor(policy, caller)
-    const verdict = await rateLimit(key, policy.quota, policy.windowSec)
+    // refundOnReject: a refused attempt must not keep its own increment, or a later busy refund leaves the window short.
+    const verdict = await rateLimit(key, policy.quota, policy.windowSec, false, true)
     if (!verdict.allowed) {
       await refund()
       return { allowed: false, policy, retryAfter: verdict.retryAfter }

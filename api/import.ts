@@ -112,6 +112,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('X-Archive-Store', historyPersistent() ? 'redis' : 'memory')
     return res.status(200).send(JSON.stringify(result))
   } catch (error) {
+    // A busy refusal gave its import back; republish the counters so the headers show it.
+    if (error instanceof ConvertError && error.code === 'import_busy') applyRequestQuota(res, await settleRequestQuota(quota, 'import', quotaCaller))
     if (error instanceof ConvertError && error.status === 404) {
       const { status, headers, body } = notFoundResponse({ instance, accept: 'application/json', detail: browseNotFoundDetail('profile', options.handle, error.message), code: 'not_found', fallback: 'json' })
       for (const [key, value] of Object.entries(headers)) res.setHeader(key, value)

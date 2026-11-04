@@ -12,6 +12,7 @@ vi.mock('./history.js', async (original) => {
 import importHandler from '../api/import.js'
 import mcpHandler from '../api/mcp.js'
 import { createApiKey } from './apikeys.js'
+import { ConvertError } from './errors.js'
 import { importWithHistory, type HistoryInput } from './history.js'
 import { MCP_MODERN_PROTOCOL, MCP_TOOLS } from './mcp.js'
 import { peekRateLimits, resetRateLimits } from './ratelimit.js'
@@ -133,6 +134,25 @@ describe('anonymous bulk imports: 3 per hour and 5 per day per address', () => {
     // And the HTTP route sees the same spent allowance.
     expect((await http(ip)).res.statusCode).toBe(429)
     expect(imports()).toBe(3)
+  })
+
+  test('a refusal while an import is pending keeps no unit, so a later busy refund gives the import back', async () => {
+    const ip = '198.51.100.7'
+    for (let i = 0; i < 2; i += 1) expect((await http(ip)).res.statusCode).toBe(200)
+    let release!: () => void
+    vi.mocked(importWithHistory).mockImplementationOnce(() => new Promise((_, reject) => {
+      release = () => reject(new ConvertError(503, 'Another import of this account is running.', 'import_busy', 5))
+    }))
+    const pending = http(ip)
+    await vi.waitFor(() => expect(release).toBeTypeOf('function'))
+    expect((await http(ip)).res.statusCode).toBe(429)
+    release()
+    const busy = await pending
+    expect(busy.res.statusCode).toBe(503)
+    // The busy reply republishes the counters after its refund: one import left this hour.
+    expect(String(busy.res.getHeader('RateLimit'))).toContain('"import-ip";r=1;')
+    expect(await count(`import:ip:${ip}`, 3600)).toBe(2)
+    expect((await http(ip)).res.statusCode).toBe(200)
   })
 
   test('concurrent requests cannot overspend a window', async () => {
