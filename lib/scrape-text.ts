@@ -26,7 +26,7 @@ export function extractStatusTextFromMarkdown(markdown: string, statusId: string
       // The non-list handle closes the author card; later profile links are content.
       if (!line.startsWith('- ') && /\[@\w+\]\(/.test(line)) break
     }
-    return body.join('\n') || undefined
+    return body.join('\n')
   }
 
   const skip = new Set([
