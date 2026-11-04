@@ -10,7 +10,7 @@
  * Store: the shared Upstash/Vercel KV Redis (lib/redis.ts) when configured, an
  * in-process map otherwise. Per handle:
  *   hist:{handle}:index  hash   count, oldest, newest, updated_at, floor_reached
- *   hist:{handle}:ids:ms zset   member = post id, score = post time in ms, from
+ *   hist:{handle}:ids    zset   member = post id, score = post time in ms, from
  *                               the id's snowflake (dates carry whole seconds)
  *   hist:{handle}:posts  hash   post id -> JSON
  * Reads are bounded to the posts a response can use (a 3,500-post archive is
@@ -114,9 +114,7 @@ const memoryStore: Store = {
 
 function keys(handle: string) {
   const h = handle.toLowerCase()
-  // `ids` scores held whole seconds before coverage version 3; the millisecond
-  // scores live under their own key, so a version-2 index re-walks once.
-  return { index: `hist:${h}:index`, ids: `hist:${h}:ids:ms`, posts: `hist:${h}:posts`, legacyIds: `hist:${h}:ids` }
+  return { index: `hist:${h}:index`, ids: `hist:${h}:ids`, posts: `hist:${h}:posts` }
 }
 
 function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store {
@@ -190,7 +188,7 @@ function redisStore(config: NonNullable<ReturnType<typeof redisConfig>>): Store 
       const [count] = await run<number>([['ZCARD', keys(handle).ids]])
       return { count: Number(count.result ?? 0) }
     },
-    async clear(handle) { const k = keys(handle); await run([['DEL', k.index, k.ids, k.posts, k.legacyIds]]) },
+    async clear(handle) { const k = keys(handle); await run([['DEL', k.index, k.ids, k.posts]]) },
   }
 }
 
@@ -328,6 +326,13 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
 
   // The lock holds every other writer off this handle, so this read stays current for `record`.
   const previous = await s.readIndex(handle)
+  // Scores before version 3 held whole seconds, which every `until` inside the
+  // second still matches. Re-score the stored bodies in place, so no archived
+  // post goes missing; the version mismatch re-walks coverage separately.
+  if (previous && (previous.coverage_version ?? 0) < COVERAGE_VERSION) {
+    const stored = (await s.range(handle, 0, Number.MAX_SAFE_INTEGER)).flatMap((entry) => (entry.post ? [entry.post] : []))
+    if (stored.length) await s.put(handle, stored)
+  }
   let index = input.refresh ? undefined : previous
   const walked: HistoryMeta['archive']['walked'] = []
   let profile: FxAuthor | undefined

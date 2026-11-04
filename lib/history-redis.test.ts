@@ -143,7 +143,7 @@ describe('posts sharing one second', () => {
   ]
   const since = new Date(burst - 10 * HOUR)
   /** Follow `next_until` from NOW; every post must come back and every step must advance. */
-  const follow = async () => {
+  const follow = async (expected = timeline) => {
     const seen = new Set<string>()
     let until = NOW
     for (let step = 0; step < 20; step += 1) {
@@ -154,7 +154,7 @@ describe('posts sharing one second', () => {
       expect(next).toBeLessThan(until)
       until = next
     }
-    expect([...seen].sort()).toEqual(timeline.map((p) => p.id!).sort())
+    expect([...seen].sort()).toEqual(expected.map((p) => p.id!).sort())
   }
 
   beforeEach(async () => {
@@ -174,19 +174,23 @@ describe('posts sharing one second', () => {
     await follow()
   })
 
-  test('an archive scored at whole seconds is re-walked rather than trusted', async () => {
-    // The archive as it was written before scores carried the millisecond.
+  test('an archive scored at whole seconds is re-scored, keeping posts upstream no longer serves', async () => {
+    // The archive as it was written before scores carried the millisecond,
+    // holding one post the timeline no longer returns.
+    const gone = { ...post(burst - 8 * HOUR + 400), created_at: new Date(burst - 8 * HOUR).toUTCString() }
+    const archived = [...timeline, gone]
     const ids = upstash.zsets.set('hist:ada:ids', new Map()).get('hist:ada:ids')!
     const bodies = new Map<string, string>()
-    for (const p of timeline) {
+    for (const p of archived) {
       ids.set(p.id!, Date.parse(p.created_at!))
       bodies.set(p.id!, JSON.stringify(p))
     }
     upstash.hashes.set('hist:ada:posts', bodies)
     upstash.hashes.set('hist:ada:index', new Map(Object.entries({
-      handle: 'ada', count: String(timeline.length), updated_at: new Date(NOW - HOUR).toISOString(), floor_reached: '0',
+      handle: 'ada', count: String(archived.length), updated_at: new Date(NOW - HOUR).toISOString(), floor_reached: '0',
       covered_since: since.toISOString(), covered_until: new Date(NOW).toISOString(), incomplete: '0', coverage_version: '2',
     })))
-    await follow()
+    await follow(archived)
+    expect(ids.get(gone.id!)).toBe(burst - 8 * HOUR + 400)
   })
 })
