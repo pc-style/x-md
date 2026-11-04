@@ -63,7 +63,7 @@ describe('recovery payloads', () => {
 
   test('the html page is dark by default and honours a stored choice of light', () => {
     const html = notFoundHtml('/nope')
-    const script = html.match(/<script>([\s\S]*?)<\/script>/)![1]
+    const script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'))
     const themeAfter = (stored: string | null) => {
       const root = { dataset: {} as Record<string, string> }
       new Function('localStorage', 'document', script)({ getItem: (key: string) => (key === 'blume-theme' ? stored : null) }, { documentElement: root })
