@@ -24,6 +24,7 @@
         "@vercel/node": "27.0.1",
         "ajv": "8.20.0",
         "blume": "^2.2.6",
+        "shiki": "^4.4.3",
         "typescript": "~7.0.2",
         "vite": "^8.3.5",
         "vitest": "^5.0.5",
@@ -31,7 +32,7 @@
     },
     "packages/sdk": {
       "name": "mdfromx",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "effect": "^4.0.6",
         "typescript": "~7.0.2",

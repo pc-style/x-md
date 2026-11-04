@@ -171,6 +171,19 @@ export const run = async (
   output: Output = { write: (value) => process.stdout.write(value) },
 ) => {
   const parsed = parse(args)
+  // A t.co short link only says where it goes in its redirect: follow that one
+  // hop, then treat the expanded URL like any other target. Only where the
+  // target is a URL to read; a search for a t.co link searches for the link.
+  if ((parsed.command === '' || parsed.command === 'status') && /^https?:\/\/t\.co\/[A-Za-z0-9]+\/?$/i.test(parsed.target)) {
+    let location: string | null = null
+    try {
+      location = (await fetcher(parsed.target, { method: 'HEAD', redirect: 'manual' })).headers.get('location')
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error)
+      throw new CliError(`browse-x: expanding ${parsed.target} failed: ${reason}\n`, 1)
+    }
+    parsed.target = new URL(location ?? fail(`${parsed.target} did not redirect anywhere`), parsed.target).href
+  }
   const { url, accept } = request(parsed, env.X_API_BASE || env.X_MD_API_BASE || 'https://mdfromx.com')
   const headers: Record<string, string> = { Accept: accept }
   if (env.X_MD_API_KEY) headers.Authorization = `Bearer ${env.X_MD_API_KEY}`

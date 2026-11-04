@@ -77,3 +77,30 @@ header[data-blume-header] > div:has(> [data-blume-nav-toggle]) > a {
   --font-sans: var(--blume-font-body);
   --font-mono: var(--blume-font-mono);
 }
+
+/* Without JavaScript, <blume-tabs> never upgrades: Blume's pre-hydration guard
+   (`:not(:defined)`) would hide every panel but the first for good, behind an
+   empty trigger row. With scripting off, drop the row and stack every panel
+   under its own title instead. */
+@media (scripting: none) {
+  blume-tabs > div:has([data-blume-tablist]) {
+    display: none;
+  }
+
+  blume-tabs [data-blume-tab-content] > * {
+    display: block !important;
+  }
+
+  blume-tabs [data-blume-tab-content] > * + * {
+    border-top: 1px solid var(--color-line);
+  }
+
+  blume-tabs [data-blume-tab-content] > [data-title]::before {
+    content: attr(data-title);
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-ink-3);
+  }
+}
