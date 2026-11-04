@@ -127,9 +127,11 @@ Facts worth knowing before you wire it up:
 
 - Only the `Bearer` scheme is read. `Basic`, query-string keys, and custom
   headers are ignored.
-- The key affects the browse surface only — search, profiles, followers,
-  following, and the MCP server. Post conversion (`/{handle}/status/{id}`,
-  `/api/v1/posts`) ignores the header entirely and is always public.
+- The key's allowance applies to the browse surface only — search, profiles,
+  followers, following, and the MCP server. Post conversion
+  (`/{handle}/status/{id}`, `/api/v1/posts`) needs no key and grants none, but
+  it still checks one you present: an unknown or disabled key gets
+  `401 invalid_key` there too.
 - The response echoes `X-Api-Key-Status: valid | anonymous | invalid |
   unverified` so you can confirm which allowance you were actually given.
 - Keyed responses are marked `Cache-Control: private, no-store` and are never
