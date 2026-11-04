@@ -2165,7 +2165,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
+            "description": "Upstream timeline chains walked at once, maximum 32. The service admits three fresh walks across instances, one per caller, with one held for API keys; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
           },
           {
             "name": "format",
@@ -5892,7 +5892,7 @@
               "maximum": 32,
               "default": 16
             },
-            "description": "Upstream timeline chains walked at once, maximum 32. The service admits two fresh walks across instances; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
+            "description": "Upstream timeline chains walked at once, maximum 32. The service admits three fresh walks across instances, one per caller, with one held for API keys; excess demand returns 503 import_busy. Queue those requests and honor Retry-After."
           },
           {
             "name": "format",

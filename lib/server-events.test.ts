@@ -119,10 +119,10 @@ test('cache events occur at lookup, including a miss whose loader fails; bypass 
 
 test.each([400, 401, 404, 405, 429, 500, 502, 503])('records a completed %s once, even on routes without endpoint_called', async status => {
   const { req, res } = exchange()
-  trackRequest(req, res, 'notfound')
+  trackRequest(req, res, 'index')
   res.statusCode = status; res.emit('finish'); res.emit('finish'); res.emit('close')
   await flush()
-  expect(events('request_failed')).toEqual([expect.objectContaining({ route: 'notfound', status, duration_ms: expect.any(Number) })])
+  expect(events('request_failed')).toEqual([expect.objectContaining({ route: 'index', status, duration_ms: expect.any(Number) })])
   expect(events('request_failed')[0]).not.toHaveProperty('error_message')
 })
 
@@ -333,11 +333,11 @@ test.each([
   expect(events('fallback_used')).toHaveLength(0)
 })
 
-test('an empty FxTwitter search timeline is still reported as an outage', async () => {
+test('an empty FxTwitter search timeline is still reported upstream', async () => {
   upstream = async () => new Response('{"code":404,"results":[]}')
   const { req, res } = exchange({ resource: 'search', via: 'route' })
   await withServerEvents('browse', async () => {
-    await expect(searchFxStatuses('private-query', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
+    await expect(searchFxStatuses('private-query', 'latest')).resolves.toMatchObject({ results: [], noTimeline: true })
     res.emit('finish')
   })(req, res)
   await flush()

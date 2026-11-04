@@ -825,14 +825,16 @@ describe('fetchFxConversationReplies', () => {
 describe('searchFxStatuses', () => {
   beforeEach(() => vi.unstubAllGlobals())
 
-  test('maps FxTwitter code 404 (no timeline) to a retryable 503, not not_found', async () => {
+  test('answers FxTwitter code 404 (no timeline) with an empty, flagged page, not a 503', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ code: 404, results: [], cursor: { top: null, bottom: null } }), { status: 404 }),
     ))
-    await expect(searchFxStatuses('supabase', 'latest')).rejects.toMatchObject({
-      status: 503,
-      code: 'search_unavailable',
-    })
+    await expect(searchFxStatuses('zzzznomatchzzzz', 'latest')).resolves.toEqual({ results: [], noTimeline: true })
+  })
+
+  test('maps an FxTwitter 5xx to a retryable 503', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 502 })))
+    await expect(searchFxStatuses('supabase', 'latest')).rejects.toMatchObject({ status: 503, code: 'search_unavailable' })
   })
 
   test('returns empty results on code 200 with no matches', async () => {

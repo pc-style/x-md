@@ -19,6 +19,8 @@ import { fetchFxConnections, searchFxStatuses } from './fxtwitter.js'
 import { chargeRequestQuota, type RequestQuota } from './ratelimit-headers.js'
 import { ACCOUNT_IP, SEARCH_IP, searchIpKey } from './quotas.js'
 import { ConvertError } from './errors.js'
+import { createApiKey } from './apikeys.js'
+import { resetKv } from './kv.js'
 import { rateLimit, resetRateLimits } from './ratelimit.js'
 
 const verdict = (allowed: boolean): RequestQuota => ({
@@ -28,12 +30,12 @@ const verdict = (allowed: boolean): RequestQuota => ({
   degraded: false,
 })
 
-function exchange(query: Record<string, string>, accept = 'text/markdown') {
+function exchange(query: Record<string, string>, accept = 'text/markdown', headers: Record<string, string> = { 'x-real-ip': '192.0.2.1' }) {
   const req = new IncomingMessage(new Socket()) as VercelRequest
   req.method = 'GET'
   req.url = '/api/browse'
   req.query = { ...query, via: 'route' }
-  req.headers = { host: 'mdfromx.com', accept, 'x-real-ip': '192.0.2.1' }
+  req.headers = { host: 'mdfromx.com', accept, ...headers }
   const res = new ServerResponse(req) as VercelResponse
   let body = ''
   res.status = code => { res.statusCode = code; return res }
@@ -93,6 +95,33 @@ test('the cache lookup overlaps the front-door charge, and a rejection answers 4
   expect(res.getHeader('Cache-Control')).toBe('no-store')
   expect(fetchFxConnections).not.toHaveBeenCalled()
   expect(commands).toEqual(['GET'])
+})
+
+test('a malformed Bearer token is refused before any store command or quota charge', async () => {
+  const { commands } = sharedStore()
+  resetKv()
+  const { req, res, body } = exchange({ resource: 'followers', handle: 'ada' }, 'application/json')
+  req.headers.authorization = 'Bearer garbage'
+  await handler(req, res)
+  expect(res.statusCode).toBe(401)
+  expect(JSON.parse(body()).code).toBe('invalid_key')
+  expect(commands).toEqual([])
+  expect(chargeRequestQuota).not.toHaveBeenCalled()
+  resetKv()
+})
+
+test('an exhausted front door refuses a valid key too', async () => {
+  resetKv()
+  const { secret } = await createApiKey('kim', 50)
+  vi.mocked(chargeRequestQuota).mockResolvedValueOnce(verdict(false))
+  const { req, res, body } = exchange({ resource: 'followers', handle: 'ada' }, 'application/json')
+  req.headers.authorization = `Bearer ${secret}`
+  await handler(req, res)
+  expect(res.getHeader('X-Api-Key-Status')).toBe('valid')
+  expect(res.statusCode).toBe(429)
+  expect(JSON.parse(body()).code).toBe('rate_limited')
+  expect(fetchFxConnections).not.toHaveBeenCalled()
+  resetKv()
 })
 
 test('an admitted miss fetches upstream once and answers without waiting for the shared cache write', async () => {
@@ -172,6 +201,23 @@ test('an uncached search reports the search units it just spent', async () => {
   expect(last.statusCode).toBe(200)
   expect(last.getHeader('RateLimit-Remaining')).toBe('0')
   expect((await search('over')).statusCode).toBe(429)
+  vi.mocked(chargeRequestQuota).mockReset()
+})
+
+test('rotating X-Real-IP behind the platform header still charges one search bucket', async () => {
+  resetRateLimits()
+  const actual = await vi.importActual<typeof import('./ratelimit-headers.js')>('./ratelimit-headers.js')
+  vi.mocked(chargeRequestQuota).mockImplementation(actual.chargeRequestQuota)
+  vi.mocked(searchFxStatuses).mockResolvedValue({ results: [{ id: '1', text: 'hi', url: 'https://x.com/ada/status/1', author: { screen_name: 'ada' } }] })
+  // Spend all but one unit of the real client's bucket, so one more search is allowed and the next is not.
+  for (let i = 1; i < SEARCH_IP.quota; i++) await rateLimit(searchIpKey('203.0.113.7'), SEARCH_IP.quota, SEARCH_IP.windowSec)
+  const search = async (q: string, forged: string) => {
+    const { req, res } = exchange({ resource: 'search', q }, 'application/json', { 'x-real-ip': forged, 'x-forwarded-for': `${forged}, 203.0.113.7`, 'x-vercel-forwarded-for': '203.0.113.7' })
+    await handler(req, res)
+    return res
+  }
+  expect((await search('rotate-a', '10.0.0.1')).statusCode).toBe(200)
+  expect((await search('rotate-b', '10.0.0.2')).statusCode).toBe(429)
   vi.mocked(chargeRequestQuota).mockReset()
 })
 

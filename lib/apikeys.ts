@@ -32,6 +32,9 @@ const recordKey = (id: string) => `apikey:rec:${id}`
 const hashKey = (hash: string) => `apikey:hash:${hash}`
 const lastUsedKey = (id: string) => `apikey:last:${id}`
 
+/** The shape `createApiKey` mints. Anything else cannot match a stored hash, so it is refused without a store read. */
+const SECRET_SHAPE = /^xmd_[0-9a-f]{48}$/
+
 function hashSecret(raw: string): string {
   return createHash('sha256').update(raw).digest('hex')
 }
@@ -118,6 +121,9 @@ export async function deleteApiKey(id: string): Promise<boolean> {
  */
 export async function resolveApiKey(raw: string | undefined | null): Promise<ApiKeyRecord | 'invalid' | null> {
   if (!raw) return null
+  // The token is attacker-chosen and its request skips the CDN, so a malformed
+  // one must not cost a billed store command.
+  if (!SECRET_SHAPE.test(raw)) return 'invalid'
   const id = await kv().get(hashKey(hashSecret(raw)))
   if (!id) return 'invalid'
   const record = await getApiKey(id)

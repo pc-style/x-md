@@ -97,10 +97,39 @@ describe('peekRateLimits', () => {
 })
 
 describe('clientIp', () => {
-  test('prefers x-real-ip, then first x-forwarded-for hop', () => {
-    expect(clientIp({ 'x-real-ip': '1.1.1.1', 'x-forwarded-for': '2.2.2.2' })).toBe('1.1.1.1')
-    expect(clientIp({ 'x-forwarded-for': '3.3.3.3, 10.0.0.1' })).toBe('3.3.3.3')
+  afterEach(() => vi.unstubAllEnvs())
+
+  test('takes the hop the trusted proxy appended, not the client-supplied first one', () => {
+    vi.stubEnv('VERCEL', '')
+    expect(clientIp({ 'x-forwarded-for': '1.2.3.4, 9.9.9.9' })).toBe('9.9.9.9')
     expect(clientIp({ 'x-forwarded-for': ['4.4.4.4'] })).toBe('4.4.4.4')
+    vi.stubEnv('TRUSTED_PROXY_HOPS', '2')
+    expect(clientIp({ 'x-forwarded-for': '1.2.3.4, 5.5.5.5, 9.9.9.9' })).toBe('5.5.5.5')
+    expect(clientIp({ 'x-forwarded-for': '9.9.9.9' })).toBe('unknown')
+  })
+
+  test('ignores x-real-ip off Vercel, where nothing guarantees the edge set it', () => {
+    vi.stubEnv('VERCEL', '')
+    expect(clientIp({ 'x-real-ip': '1.1.1.1', 'x-forwarded-for': '2.2.2.2' })).toBe('2.2.2.2')
+    expect(clientIp({ 'x-real-ip': '1.1.1.1' })).toBe('unknown')
+  })
+
+  test('trusts the headers the Vercel edge sets, and only on Vercel', () => {
+    vi.stubEnv('VERCEL', '1')
+    expect(clientIp({ 'x-real-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9, 203.0.113.7', 'x-vercel-forwarded-for': '203.0.113.7' })).toBe('203.0.113.7')
+    expect(clientIp({ 'x-real-ip': '1.1.1.1', 'x-forwarded-for': '2.2.2.2' })).toBe('1.1.1.1')
+    vi.stubEnv('VERCEL', '')
+    expect(clientIp({ 'x-vercel-forwarded-for': '1.2.3.4', 'x-forwarded-for': '203.0.113.7' })).toBe('203.0.113.7')
+  })
+
+  test('falls back to one stable bucket when the header is absent or malformed', () => {
+    vi.stubEnv('VERCEL', '')
     expect(clientIp({})).toBe('unknown')
+    expect(clientIp({ 'x-forwarded-for': '1.2.3.4, not-an-ip' })).toBe('unknown')
+    expect(clientIp({ 'x-forwarded-for': '' })).toBe('unknown')
+    vi.stubEnv('TRUSTED_PROXY_HOPS', '2')
+    expect(clientIp({ 'x-forwarded-for': '1.2.3.4, , 10.0.0.1' })).toBe('unknown')
+    vi.stubEnv('VERCEL', '1')
+    expect(clientIp({ 'x-real-ip': '1.2.3.4, garbage' })).toBe('unknown')
   })
 })

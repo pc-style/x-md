@@ -214,6 +214,12 @@ export interface FxListResponse<T> {
   cursor?: FxCursor
   /** Upstream requests it took to get this page (short-page retries, see fetchFxProfileStatuses). */
   attempts?: number
+  /**
+   * Search only: FxTwitter answered `{code:404, results:[]}`, meaning X gave it no
+   * timeline. That is either a query X could not run or FxTwitter's own session
+   * failure (FxEmbed#2303), so the empty page is not proof of either.
+   */
+  noTimeline?: boolean
 }
 
 function normalizeMediaItem(item: FxMediaItem): FxMediaItem {
@@ -596,10 +602,14 @@ export async function searchFxStatuses(
     data = await fxFetchJson<Partial<FxListResponse<FxTweet>>>(`2/search?${query}`)
   } catch (error) {
     // FxTwitter answers `{code:404, results:[]}` when X's SearchTimeline gives it no
-    // timeline at all (upstream account/session failure, see FxEmbed#2303). That is
-    // an outage, not a missing post, so surface it as retryable.
-    if (error instanceof ConvertError && (error.code === 'not_found' || error.status >= 500)) {
-      if (error.code === 'not_found') trackUpstream('fxtwitter', 'empty_response', 404, started)
+    // timeline at all. That can be its own session failure (FxEmbed#2303), but a
+    // caller can provoke it too, so it comes back as an empty page and the caller
+    // decides whether it was an outage. Only a 5xx is an outage on its own.
+    if (error instanceof ConvertError && error.code === 'not_found') {
+      trackUpstream('fxtwitter', 'empty_response', 404, started)
+      return { results: [], noTimeline: true }
+    }
+    if (error instanceof ConvertError && error.status >= 500) {
       throw new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable', error.retryAfter)
     }
     throw error

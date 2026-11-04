@@ -81,7 +81,7 @@ post lines are buffered until the final selection is known, newest first, matchi
   - `429 rate_limited` — wait `Retry-After` seconds
   - `503 import_busy` — fresh-walk or per-handle capacity is occupied; import allowance is refunded, ordinary request quota still applies
   - `503 upstream_rate_limited` / `upstream_unavailable` — wait at least `Retry-After`, add jitter, then retry the identical request at most twice
-- two fresh walks are admitted across the hosted service; queue demand. This is an admission limit, not a throughput guarantee
+- three fresh walks are admitted across the hosted service, one per caller with one held for API keys; queue demand. This is an admission limit, not a throughput guarantee
 - repost timestamps describe the original post, not the repost event; use profile cursor pagination when timeline position matters
 
 ## what else is there

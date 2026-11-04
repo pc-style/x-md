@@ -7,6 +7,7 @@
  * map otherwise, which still bounds a single warm instance.
  */
 
+import { isIP } from 'node:net'
 import { redisConfig, redisPipeline, type RedisCommand, type RedisConfig } from './redis.js'
 
 export interface RateLimitResult {
@@ -148,8 +149,23 @@ export async function peekRateLimits(entries: readonly { key: string; windowSec:
   return entries.map((_, index) => counts[index] ?? 0)
 }
 
-/** Best-effort client IP from Vercel/proxy headers. */
+/**
+ * Client IP from headers a trusted hop set, never from what the client chose.
+ * Vercel's edge sets `x-vercel-forwarded-for` and overwrites `x-real-ip`, so on
+ * Vercel those name the client. Elsewhere each of `TRUSTED_PROXY_HOPS` proxies
+ * (default 1) appends to `x-forwarded-for`, so the client is that many entries
+ * from the right; everything further left, and `x-real-ip`, is client-supplied.
+ * A missing or malformed value is one shared bucket.
+ */
 export function clientIp(headers: Record<string, string | string[] | undefined>): string {
-  const pick = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim()
-  return pick(headers['x-real-ip']) || pick(headers['x-forwarded-for']) || 'unknown'
+  if (process.env.VERCEL) {
+    for (const name of ['x-vercel-forwarded-for', 'x-real-ip']) {
+      const value = [headers[name]].flat()[0]?.trim()
+      if (value && isIP(value)) return value
+    }
+  }
+  const hops = [headers['x-forwarded-for'] ?? []].flat().join(',').split(',').map((hop) => hop.trim())
+  const trusted = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? '', 10)
+  const hop = hops[hops.length - (trusted > 0 ? trusted : 1)]
+  return hop && isIP(hop) ? hop : 'unknown'
 }

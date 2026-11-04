@@ -245,6 +245,15 @@ describe('search fallback', () => {
     expect(searchFirecrawlStatuses).not.toHaveBeenCalled()
   })
 
+  test('a zero-match search with only the web index behind it answers empty without the breaker', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [], noTimeline: true })
+    vi.mocked(searchFirecrawlStatuses).mockResolvedValue([])
+    const result = await browse({ resource: 'search', q: 'zzzznomatchzzzz', nocache: true })
+    expect(result).toMatchObject({ source: 'fxtwitter', posts: [] })
+    expect(result.degraded).toBeUndefined()
+    expect(kvStore.has('search:fxtwitter:breaker')).toBe(false)
+  })
+
   test('live results report the fxtwitter source and no degraded header', async () => {
     vi.mocked(searchFxStatuses).mockResolvedValue({ results: [post] })
     const result = await browse({ resource: 'search', q: 'hello', nocache: true })
@@ -307,6 +316,45 @@ describe('search provider chain', () => {
     await browse({ resource: 'search', q: 'e', nocache: true })
     expect([...kvStore.keys()]).toEqual([])
     clock.mockRestore()
+  })
+
+  test('an FxTwitter outage opens the shared breaker', async () => {
+    vi.mocked(searchFxStatuses).mockRejectedValue(outage)
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live] })
+    await browse({ resource: 'search', q: 'hello', nocache: true })
+    expect(JSON.parse(kvStore.get('search:fxtwitter:breaker') ?? '{}')).toMatchObject({ strikes: 1 })
+  })
+
+  test('a zero-match search answers empty and leaves the shared breaker alone', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValueOnce({ results: [], noTimeline: true })
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [] })
+    const empty = await browse({ resource: 'search', q: 'zzzznomatchzzzz', nocache: true })
+    expect(empty.posts).toEqual([])
+    expect(kvStore.has('search:fxtwitter:breaker')).toBe(false)
+
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [live] })
+    const next = await browse({ resource: 'search', q: 'cats', nocache: true })
+    expect(next.source).toBe('fxtwitter')
+    expect(searchFxStatuses).toHaveBeenCalledTimes(2)
+    expect(kvStore.has('search:fxtwitter:breaker')).toBe(false)
+  })
+
+  test('an empty FxTwitter page with every other tier down is a 503 that leaves the breaker alone', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [], noTimeline: true })
+    vi.mocked(searchXStatuses).mockRejectedValue(outage)
+    vi.mocked(firecrawlSearchConfigured).mockReturnValueOnce(false)
+    await expect(browse({ resource: 'search', q: 'cats', nocache: true })).rejects.toBe(outage)
+    expect(kvStore.has('search:fxtwitter:breaker')).toBe(false)
+  })
+
+  test('an empty FxTwitter page with no timeline opens the breaker once another source finds posts', async () => {
+    vi.mocked(searchFxStatuses).mockResolvedValue({ results: [], noTimeline: true })
+    vi.mocked(searchXStatuses).mockResolvedValue({ results: [live] })
+    const result = await browse({ resource: 'search', q: 'cats', nocache: true })
+    expect(result).toMatchObject({ source: 'xsearch', posts: [live] })
+    expect(JSON.parse(kvStore.get('search:fxtwitter:breaker') ?? '{}')).toMatchObject({ strikes: 1 })
+    await browse({ resource: 'search', q: 'dogs', nocache: true })
+    expect(searchFxStatuses).toHaveBeenCalledTimes(1)
   })
 
   test('routes tagged cursors to their provider only', async () => {

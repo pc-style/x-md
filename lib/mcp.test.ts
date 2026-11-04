@@ -165,7 +165,7 @@ describe('tools/call', () => {
       { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'x_md_get_profile', arguments: { handle: '@pcstyle53', limit: 3 } } },
       { ip: '203.0.113.7' },
     ))
-    expect(browseMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'profile', handle: 'pcstyle53', limit: 3, ip: '203.0.113.7' }))
+    expect(browseMock).toHaveBeenCalledWith(expect.objectContaining({ resource: 'profile', handle: 'pcstyle53', limit: 3, ip: '203.0.113.7' }), { admission: undefined, serveHits: true })
     expect(result.isError).toBe(false)
     expect(result.content).toEqual([{ type: 'text', text: '# pc (@pcstyle53)' }])
     const structured = result.structuredContent as Record<string, unknown>
@@ -196,7 +196,7 @@ describe('tools/call', () => {
     browseMock.mockResolvedValueOnce({ ...page, posts: [{ id: '2', text: 'next reply' }], markdown: '# next page' })
     const next = ok(await dispatch({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'x_md_search_posts', arguments: { ...args, cursor: nextCursor } } }))
     expect(next.isError).toBe(false)
-    expect(browseMock).toHaveBeenLastCalledWith(expect.objectContaining({ resource: 'search', q: args.q, cursor }))
+    expect(browseMock).toHaveBeenLastCalledWith(expect.objectContaining({ resource: 'search', q: args.q, cursor }), { admission: undefined, serveHits: true })
     expect(next.structuredContent).toMatchObject({ posts: [{ id: '2' }] })
     expect(next.structuredContent).not.toHaveProperty('next_cursor')
   })

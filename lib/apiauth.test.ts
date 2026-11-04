@@ -11,9 +11,12 @@ beforeEach(() => {
 describe('resolveCaller', () => {
   test('anonymous, valid and invalid outcomes', async () => {
     const { secret, record } = await createApiKey('amy', 12)
-    const anon = await resolveCaller({ 'x-real-ip': '9.9.9.9' })
+    const anon = await resolveCaller({ 'x-forwarded-for': '9.9.9.9' })
     expect(anon).toMatchObject({ status: 'anonymous', caller: { kind: 'public', ip: '9.9.9.9' } })
     expect(callerHeaders(anon)).toEqual({ 'X-Api-Key-Status': 'anonymous' })
+    // Handlers and every bucket key see the platform-set address, not the caller's own header.
+    const forged = await resolveCaller({ 'x-real-ip': '1.2.3.4', 'x-forwarded-for': '1.2.3.4, 203.0.113.7' })
+    expect(forged).toMatchObject({ ip: '203.0.113.7', caller: { kind: 'public', ip: '203.0.113.7' } })
 
     const valid = await resolveCaller({ authorization: `Bearer ${secret}` })
     expect(valid).toMatchObject({ status: 'valid', caller: { kind: 'key', id: record.id, limit: 12 } })
@@ -31,7 +34,7 @@ describe('resolveCaller', () => {
     vi.stubEnv('KV_REST_API_TOKEN', 'tok')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')))
     resetKv()
-    const result = await resolveCaller({ authorization: 'Bearer xmd_anything', 'x-real-ip': '1.1.1.1' })
+    const result = await resolveCaller({ authorization: `Bearer xmd_${'0'.repeat(48)}`, 'x-forwarded-for': '1.1.1.1' })
     expect(result).toMatchObject({ status: 'unverified', caller: { kind: 'public', ip: '1.1.1.1' } })
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
@@ -45,7 +48,7 @@ describe('private mode', () => {
   test('is off unless X_MD_REQUIRE_API_KEY is set, then only a valid key passes', async () => {
     delete process.env.X_MD_REQUIRE_API_KEY
     expect(apiKeyRequired()).toBe(false)
-    const anon = await resolveCaller({ 'x-real-ip': '9.9.9.9' })
+    const anon = await resolveCaller({ 'x-forwarded-for': '9.9.9.9' })
     expect(keyRequirementFailure(anon)).toBeUndefined()
 
     process.env.X_MD_REQUIRE_API_KEY = '1'
