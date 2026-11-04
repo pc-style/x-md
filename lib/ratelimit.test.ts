@@ -97,10 +97,15 @@ describe('peekRateLimits', () => {
 })
 
 describe('clientIp', () => {
-  test('prefers x-real-ip, then first x-forwarded-for hop', () => {
-    expect(clientIp({ 'x-real-ip': '1.1.1.1', 'x-forwarded-for': '2.2.2.2' })).toBe('1.1.1.1')
-    expect(clientIp({ 'x-forwarded-for': '3.3.3.3, 10.0.0.1' })).toBe('3.3.3.3')
+  test('trusts the platform header over anything the caller can set', () => {
+    expect(clientIp({ 'x-real-ip': '1.2.3.4', 'x-forwarded-for': '9.9.9.9, 203.0.113.7', 'x-vercel-forwarded-for': '203.0.113.7' })).toBe('203.0.113.7')
+  })
+
+  test('falls back to the last x-forwarded-for hop, then x-real-ip, then unknown', () => {
+    expect(clientIp({ 'x-real-ip': '1.1.1.1', 'x-forwarded-for': '2.2.2.2' })).toBe('2.2.2.2')
+    expect(clientIp({ 'x-forwarded-for': '3.3.3.3, 10.0.0.1' })).toBe('10.0.0.1')
     expect(clientIp({ 'x-forwarded-for': ['4.4.4.4'] })).toBe('4.4.4.4')
+    expect(clientIp({ 'x-real-ip': '5.5.5.5' })).toBe('5.5.5.5')
     expect(clientIp({})).toBe('unknown')
   })
 })
