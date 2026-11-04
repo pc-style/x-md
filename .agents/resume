@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+# No authentication or backing services are required for local development.
+# Dependencies belong in setup, not on every wake.
+bun_version="$(tr -d '[:space:]' < .bun-version)"
+if ! command -v bun >/dev/null || [[ "$(bun --version)" != "$bun_version" ]] || [[ ! -f node_modules/.amp-setup-ready ]]; then
+  echo '[resume] Toolchain or dependencies missing; run .agents/setup' >&2
+  exit 1
+fi
+echo "[resume] Bun $bun_version and workspace dependencies ready"
