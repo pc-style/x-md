@@ -91,6 +91,9 @@ describe('browse-x CLI', () => {
     expect(requested[0]).toBe('HEAD https://t.co/abc123')
     expect(requested[1]).toContain('/api/convert?url=https%3A%2F%2Fx.com%2Fa%2Fstatus%2F1')
     await expect(run(['https://t.co/elsewhere'], { X_API_BASE: 'https://example.test' }, fetcher)).rejects.toMatchObject({ code: 2 })
+    requested.length = 0
+    await run(['search', 'https://t.co/abc123'], { X_API_BASE: 'https://example.test' }, fetcher, { write: () => {} })
+    expect(requested).toEqual(['GET https://example.test/search?q=https%3A%2F%2Ft.co%2Fabc123'])
   })
 
   test('falls back from an empty base and sends configured API authentication', async () => {
