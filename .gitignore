@@ -48,3 +48,4 @@ accounts.local.json
 accss.json
 
 .wrangler/
+.mcp.json
