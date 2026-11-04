@@ -8,10 +8,14 @@ export function extractStatusTextFromMarkdown(markdown: string, statusId: string
   // requested post's timestamp permalink ends its body, not the whole page.
   const title = lines.findIndex((line) => /^# .+ on (?:X|Twitter)(?::|$)/.test(line))
   const timestamp = lines.findIndex((line) =>
-    line.match(/^\[[^\]]+\]\(https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/\w+\/status\/(\d+)\/?(?:[?#][^)]*)?\)[\s·]*$/)?.[1] === statusId,
+    line.match(/^\[[^\]]+\]\(https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/\w+\/status\/(\d+)\/?(?:[?#][^)]*)?\)/)?.[1] === statusId,
   )
   if (title >= 0 && timestamp > title) {
-    const body = lines.slice(title + 1, timestamp)
+    // Replies may have parent posts before them. Each post starts at its list
+    // author marker; use the last one before the requested timestamp.
+    const start = lines.findLastIndex((line, index) => index > title && index < timestamp &&
+      /^- \[@\w+\]\(https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/\w+\/?\)$/.test(line))
+    const body = lines.slice(Math.max(title + 1, start), timestamp)
     // Strip only the leading author block. Links and headings in the post
     // itself must survive, as must text beyond the old 500-character budget.
     while (body.length && (

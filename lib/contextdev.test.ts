@@ -86,6 +86,38 @@ describe('fetchContextDevStatus', () => {
     expect(tweet.text).toBe(expected)
   })
 
+  test.each(['', '·[467.3K Views](https://x.com/lexfridman/status/1770825760162353449)'])(
+    'extracts a reply without its parent, including timestamp suffix %s', async (suffix) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+        success: true,
+        markdown: [
+          '# Lex Fridman on X: "@jack Hello from the future"',
+          '## Conversation',
+          '- [@jack](https://x.com/jack)',
+          '[jack](https://x.com/jack)',
+          '[Square](https://x.com/Square)',
+          '[@jack](https://x.com/jack)',
+          '[Mar 21, 2006](https://x.com/jack/status/20)',
+          'just setting up my twttr',
+          '[18K](https://x.com/compose/post?in_reply_to=20)',
+          '133K',
+          '- [@lexfridman](https://x.com/lexfridman)',
+          '[Lex Fridman](https://x.com/lexfridman)',
+          '[@lexfridman](https://x.com/lexfridman)',
+          'Hello from the future',
+          `[10:52 AM · Mar 21, 2024](https://x.com/lexfridman/status/1770825760162353449)${suffix}`,
+          '[131](https://x.com/compose/post?in_reply_to=1770825760162353449)',
+          '- [@other](https://x.com/other)',
+          'A different reply',
+        ].join('\n\n'),
+      }), { status: 200 })))
+
+      const tweet = await fetchContextDevStatus('lexfridman', '1770825760162353449')
+
+      expect(tweet.text).toBe('Hello from the future')
+    },
+  )
+
   test('is disabled when CONTEXT_DEV_API_KEY is missing', async () => {
     delete process.env.CONTEXT_DEV_API_KEY
 
