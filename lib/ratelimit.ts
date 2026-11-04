@@ -148,8 +148,13 @@ export async function peekRateLimits(entries: readonly { key: string; windowSec:
   return entries.map((_, index) => counts[index] ?? 0)
 }
 
-/** Best-effort client IP from Vercel/proxy headers. */
+/**
+ * Client IP that keys every per-IP quota, so it must not be a value the caller picks.
+ * Vercel sets `x-vercel-forwarded-for` itself; otherwise the last `x-forwarded-for`
+ * hop is the one our own proxy appended. `x-real-ip` is only a last resort.
+ */
 export function clientIp(headers: Record<string, string | string[] | undefined>): string {
-  const pick = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim()
-  return pick(headers['x-real-ip']) || pick(headers['x-forwarded-for']) || 'unknown'
+  const hops = (value: string | string[] | undefined) =>
+    (Array.isArray(value) ? value.join(',') : value ?? '').split(',').map((hop) => hop.trim()).filter(Boolean)
+  return hops(headers['x-vercel-forwarded-for'])[0] || hops(headers['x-forwarded-for']).at(-1) || hops(headers['x-real-ip'])[0] || 'unknown'
 }
