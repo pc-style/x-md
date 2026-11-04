@@ -63,5 +63,7 @@ test.each(['json', 'ndjson'])('refunds busy %s admission but keeps upstream fail
     await handler(req, res)
     expect(refundRateLimit).toHaveBeenCalledTimes(code === 'import_busy' ? 1 : 0)
     if (code === 'import_busy') expect(refundRateLimit).toHaveBeenCalledWith('import:ip:unknown', 900, expect.any(Number))
+    // The walk's admission slot is charged to the same caller as its import allowance.
+    expect(vi.mocked(importWithHistory).mock.lastCall?.[0].owner).toEqual({ kind: 'ip', id: 'unknown' })
   }
 })

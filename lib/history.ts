@@ -335,7 +335,7 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     walked.push(kind)
     const result = await importProfilePosts({
       handle, since: from === undefined ? undefined : new Date(from), until: new Date(to), maxPosts: !withReplies || !withReposts || onlyReplies ? 5000 : maxPosts,
-      concurrency: input.concurrency, withReplies: true, withReposts: true, signal: input.signal, tuning: input.tuning,
+      concurrency: input.concurrency, withReplies: true, withReposts: true, signal: input.signal, tuning: input.tuning, owner: input.owner,
       onPost: (post) => { if (postTime(post) <= until && (since === undefined || postTime(post) >= since || isRepost(post))) emit(post) },
     })
     fresh.push(...result.posts)
