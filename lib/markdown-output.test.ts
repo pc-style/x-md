@@ -68,4 +68,29 @@ describe('markdown output', () => {
     expect(output).toContain('Source: Unavailable (post identity missing)')
     expect(output.match(/https:\/\/x\.com\/root\/status\/1/g)).toHaveLength(1)
   })
+
+  test('renders poll choices and results on posts and quotes', () => {
+    const poll = {
+      choices: [{ label: 'Yes', count: 7814391, percentage: 51.8 }, { label: 'No', count: 7271067, percentage: 48.2 }],
+      total_votes: 15085458,
+      time_left_en: 'Final results',
+    }
+    const output = renderThreadMarkdown([{
+      id: '1', text: 'Reinstate?', author: { name: 'Root', screen_name: 'root' }, poll,
+      quote: { id: '9', text: 'Quoted poll', author: { name: 'Quote', screen_name: 'quote' }, poll: { choices: [{ label: 'Maybe' }] } },
+    }], { format: 'markdown', userinfo: 'off', canonicalUrl: 'https://x.com/root/status/1', compact: true })
+    expect(output).toContain('Poll · 15,085,458 votes · Final results')
+    expect(output).toContain('- Yes: 51.8% (7,814,391 votes)')
+    expect(output).toContain('- No: 48.2% (7,271,067 votes)')
+    expect(output).toContain('> - Maybe\n>\n> Source: https://x.com/quote/status/9')
+  })
+
+  test('links an animated GIF to its playable MP4, keeping the thumbnail', () => {
+    const output = renderThreadMarkdown([{
+      id: '1', text: 'gif', author: { name: 'Root', screen_name: 'root' },
+      media: { all: [{ type: 'gif', url: 'https://video.twimg.com/tweet_video/A.mp4', thumbnail_url: 'https://pbs.twimg.com/tweet_video_thumb/A.jpg' }] },
+    }], { format: 'markdown', userinfo: 'off', canonicalUrl: 'https://x.com/root/status/1', compact: true })
+    expect(output).toContain('[animated_gif](https://video.twimg.com/tweet_video/A.mp4)')
+    expect(output).toContain('![animated_gif thumbnail](https://pbs.twimg.com/tweet_video_thumb/A.jpg)')
+  })
 })
