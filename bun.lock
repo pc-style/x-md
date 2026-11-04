@@ -32,7 +32,7 @@
     },
     "packages/sdk": {
       "name": "mdfromx",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "devDependencies": {
         "effect": "^4.0.6",
         "typescript": "~7.0.2",
@@ -47,6 +47,7 @@
   },
   "patchedDependencies": {
     "@the-convocation/twitter-scraper@0.22.3": "patches/@the-convocation%2Ftwitter-scraper@0.22.3.patch",
+    "blume@2.2.6": "patches/blume@2.2.6.patch",
   },
   "packages": {
     "@ai-sdk/gateway": ["@ai-sdk/gateway@4.0.80", "", { "dependencies": { "@ai-sdk/provider": "4.0.14", "@ai-sdk/provider-utils": "5.0.40", "@vercel/oidc": "3.2.0" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-6t+07o8lSthpKf64Xb1qHWR2bWvJ3Fd2oFvS9fQc45p31bi2OUqan246e/ojAmZpWCiMPjKyQ4TBr4MYytnTiQ=="],
