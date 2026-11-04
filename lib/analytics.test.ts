@@ -11,7 +11,7 @@ function request(method = 'GET') {
   const req = new IncomingMessage(new Socket())
   req.method = method
   req.url = '/search?q=private-search'
-  req.headers = { authorization: 'Bearer private-token', 'x-real-ip': '192.0.2.55' }
+  req.headers = { authorization: 'Bearer private-token', 'x-forwarded-for': '192.0.2.55' }
   return { req, res: new ServerResponse(req) }
 }
 async function finish(res: ServerResponse) {
@@ -126,7 +126,7 @@ describe('production request analytics', () => {
     const caller = async (ip: string, day: string) => {
       vi.setSystemTime(new Date(`${day}T12:00:00Z`))
       const { req, res } = request()
-      req.headers['x-real-ip'] = ip
+      req.headers['x-forwarded-for'] = ip
       trackRequest(req, res, 'browse', 'profile')
       return (await finish(res)).properties.caller_id as string
     }

@@ -218,6 +218,7 @@ Optional environment variables:
 | `KV_REST_API_URL` / `KV_REST_API_TOKEN` | Optional Upstash/Vercel KV REST endpoint (or `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`) for shared rate-limit counters, the per-account post archive, and durable app state. Falls back to per-instance memory |
 | `FXTWITTER_BASE_URL` | Optional upstream override: one FxEmbed base URL or a comma-separated pool. Requests rotate across the pool and a throttled base sits out its `Retry-After`. Default `https://api.fxtwitter.com` |
 | `FIRECRAWL_API_KEY` | Firecrawl converter fallback and degraded `/search` fallback (web-indexed x.com snippets, `X-Source: firecrawl`, `X-Search-Degraded: true`) when live X search is down |
+| `TRUSTED_PROXY_HOPS` | Off Vercel, the number of your own proxies that append to `X-Forwarded-For`; per-IP quotas key on the entry that many hops from the right. Default `1`. On Vercel the edge-set `X-Vercel-Forwarded-For` (then `X-Real-IP`) is used instead |
 | `CACHE_TTL_SECONDS` | Post conversion cache TTL; default `3600` |
 | `CACHE_DISABLED` | Set to `1` to disable caching |
 | `CACHE_PERSIST` | Set to `0` for memory-only caching |

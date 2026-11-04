@@ -201,7 +201,7 @@ function invoke(query: Record<string, string>, ip: string): Promise<Outcome> {
   req.method = 'GET'
   req.query = { ...query, via: 'route' }
   req.url = `/api/browse?${new URLSearchParams(req.query as Record<string, string>).toString()}`
-  req.headers = { host: 'mdfromx.com', accept: 'text/markdown', 'x-real-ip': ip }
+  req.headers = { host: 'mdfromx.com', accept: 'text/markdown', 'x-forwarded-for': ip }
   const res = new ServerResponse(req) as VercelResponse
   const before = { ...stats }
   return new Promise((resolve, reject) => {
