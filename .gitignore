@@ -49,3 +49,7 @@ accss.json
 
 .wrangler/
 .mcp.json
+
+# Local directory submissions and machine-specific deployment material
+/internal/directory-submissions/
+/internal/redis/
