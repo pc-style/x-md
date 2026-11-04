@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+SECONDS=0
+rm -f node_modules/.amp-setup-ready
+
+# The orb base image supplies Node, curl and unzip. Keep Bun aligned with CI.
+bun_version="$(tr -d '[:space:]' < .bun-version)"
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+echo "[setup] Preparing Bun $bun_version"
+if ! command -v bun >/dev/null || [[ "$(bun --version)" != "$bun_version" ]]; then
+  installer="$(mktemp)"
+  trap 'rm -f "$installer"' EXIT
+  curl -fsSL https://bun.sh/install -o "$installer"
+  bash "$installer" "bun-v$bun_version"
+fi
+[[ "$(bun --version)" == "$bun_version" ]]
+command -v node >/dev/null
+
+# Amp and supervised services start in new non-interactive login shells.
+profile_marker='# x-md orb Bun'
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<'EOF'
+
+# x-md orb Bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+EOF
+fi
+echo "[setup] Toolchain ready (${SECONDS}s)"
+
+# Bun cheaply checks a warm install itself; no dependency fingerprint is needed.
+install_started=$SECONDS
+echo '[setup] Installing locked workspace dependencies'
+bun install --frozen-lockfile
+echo "[setup] Dependencies ready ($((SECONDS - install_started))s)"
+
+# All credentials are optional for local development. Never snapshot user auth.
+if [[ ! -f .env.local ]]; then
+  cp -- .env.local.example .env.local
+fi
+touch node_modules/.amp-setup-ready
+echo "[setup] Ready (${SECONDS}s total)"
