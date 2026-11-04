@@ -29,7 +29,7 @@ export function renderSiteOg(file: string, origin: string): Promise<Uint8Array> 
   }
   const render = renderFresh(file, origin)
   renders.set(key, render)
-  render.catch(() => renders.delete(key))
+  render.catch(() => { if (renders.get(key) === render) renders.delete(key) })
   if (renders.size > RENDERS_KEPT) renders.delete(renders.keys().next().value!)
   return render
 }
