@@ -314,10 +314,10 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     return true
   }
 
-  const emitted = new Set<string>()
+  const emitted = new Map<string, number>()
   const emit = (post: FxTweet) => {
     if (!post.id || emitted.has(post.id) || !wanted(post)) return
-    emitted.add(post.id)
+    emitted.set(post.id, postTime(post))
     // Stream only the final selection: concurrent arrivals can be evicted by newer posts.
   }
 
@@ -373,8 +373,16 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
         : undefined,
     ])
     const needOlder = !index.floor_reached && (since === undefined || coveredSince === undefined || since < coveredSince)
-    if (needOlder && emitted.size < maxPosts) {
-      await walk('backfill', since, coveredSince === undefined ? until : coveredSince + EDGE_OVERLAP_MS, maxPosts)
+    // Archived posts below the covered range can sit under an unwalked gap, so
+    // only posts inside it show the cap is already filled with the newest posts.
+    const proven = [...emitted.values()].filter((at) => coveredSince === undefined || at >= coveredSince).length
+    if (needOlder && proven < maxPosts) {
+      // The walk keeps its newest posts, and archived ones above `until` only
+      // re-walk the edge: leave room for them, or a small cap never gets past it.
+      // The overlap stays inside known coverage, where the archive holds every post.
+      const top = coveredSince === undefined ? until : Math.min(coveredSince + EDGE_OVERLAP_MS, coveredUntil ?? Infinity)
+      const above = top > until ? (await s.range(handle, until + 1, top, { offset: 0, count: 5000 })).length : 0
+      await walk('backfill', since, top, Math.min(5000, maxPosts + above))
     } else if (needOlder) {
       // The archive alone filled the cap, so the older part of the range was
       // never walked: the caller has to know there is more than it got.
@@ -421,7 +429,8 @@ async function importHistory(input: HistoryInput): Promise<HistoryResult> {
     truncated,
     floor_reached: warnings.length ? false : index.floor_reached,
     covered_since: index.covered_since,
-    next_until: truncated && originals.length ? new Date(Math.max(postTime(originals[originals.length - 1]), index.covered_since ? Date.parse(index.covered_since) : 0)).toISOString() : undefined,
+    // `until` is inclusive, so a continuation must sit strictly below it to make progress.
+    next_until: truncated && originals.length ? new Date(Math.min(until - 1, Math.max(postTime(originals[originals.length - 1]), index.covered_since ? Date.parse(index.covered_since) : 0))).toISOString() : undefined,
     warnings: warnings.length ? [...new Set(warnings)] : undefined,
     with_replies: withReplies,
     with_reposts: withReposts,

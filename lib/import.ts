@@ -346,6 +346,8 @@ async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
   // old thread root under its reply makes the posting rate look tiny.
   const firstBottom = first.results.length >= FX_SHORT_PAGE && first.cursor?.bottom ? decodeTimelineCursor(first.cursor.bottom) : undefined
   const firstSpan = firstBottom ? until - snowflakeTime(firstBottom.sortIndex) : 0
+  const firstCursor = first.cursor?.bottom ? decodeTimelineCursor(first.cursor.bottom) : undefined
+  const firstFloor = firstCursor ? snowflakeTime(firstCursor.sortIndex) : undefined
   const density = firstSpan > 0 ? first.results.filter((post) => ownPost(post, handle)).length / firstSpan : undefined
 
   // Lazy window generator plus a stack of subdivisions from over-long windows.
@@ -373,6 +375,9 @@ async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
     if (sinceReached || floorReached || nextIndex >= MAX_WINDOWS) return undefined
     if (seen.size >= maxPosts) {
       cappedOut = true
+      // The first page alone filled the cap, so no window moved `nextStart`
+      // off `until`: what that page covered ends at its bottom position.
+      if (nextIndex === 0 && firstFloor !== undefined) nextStart = Math.min(nextStart, firstFloor)
       return undefined
     }
     const bound = lowerBound()
@@ -566,7 +571,8 @@ async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {
       newest: originals.length ? iso(postTime(originals[0])) : undefined,
       truncated,
       covered_since: iso(Math.max(lowerBound(), nextStart, coveredTo)),
-      next_until: truncated ? iso(Math.max(lowerBound(), nextStart, coveredTo, originals.length ? postTime(originals[originals.length - 1]) : until)) : undefined,
+      // `until` is inclusive, so a continuation must sit strictly below it to make progress.
+      next_until: truncated ? iso(Math.min(until - 1, Math.max(lowerBound(), nextStart, coveredTo, originals.length ? postTime(originals[originals.length - 1]) : until))) : undefined,
       floor_reached: (floorReached || (sinceReached && (since === undefined || since < joined()))) && !pageMissing && !budgetReached && coveredTo === -Infinity,
       warnings: pageMissing || budgetReached ? ['page_missing'] : undefined,
       with_replies: withReplies,

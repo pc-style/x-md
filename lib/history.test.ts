@@ -211,6 +211,61 @@ describe('importWithHistory', () => {
 
 })
 
+describe('continuations strictly advance, cold and archive-served', () => {
+  // An engine capped below one page: truncated, continuing from its oldest post.
+  const capped = async (input: ImportInput): Promise<ImportResult> => {
+    // Nothing is posted after NOW.
+    const until = input.until!.getTime()
+    const result = await fakeEngine({ ...input, until: new Date(Math.min(until, NOW)) })
+    const oldest = Date.parse(result.posts.at(-1)!.created_at!)
+    return { ...result, meta: { ...result.meta, truncated: true, next_until: new Date(oldest < until ? oldest : until - 1).toISOString() } }
+  }
+  const follow = async (steps: number, start = NOW) => {
+    const since = new Date(NOW - 200 * HOUR)
+    let until = start
+    const pages: string[][] = []
+    for (let step = 0; step <= steps; step += 1) {
+      const result = await importWithHistory({ handle: 'ada', since, until: new Date(until), maxPosts: 3 })
+      pages.push(result.posts.map((p) => p.id!))
+      const next = Date.parse(result.meta.next_until!)
+      expect(next).toBeLessThan(until)
+      until = next
+    }
+    return pages
+  }
+
+  test('a capped walk continues past its own page, then from the archive', async () => {
+    vi.mocked(importProfilePosts).mockImplementation(capped)
+    const pages = await follow(3)
+    // Each continuation repeats only the documented boundary post.
+    for (let i = 1; i < pages.length; i += 1) expect(pages[i].filter((id) => pages[i - 1].includes(id))).toHaveLength(1)
+    // Following the same continuations again is served from the archive and still advances.
+    vi.mocked(importProfilePosts).mockClear()
+    expect(await follow(3)).toEqual(pages)
+  })
+
+  test('an archive whose coverage ends at the request top still advances', async () => {
+    // The first walk is the engine before its fix: coverage claimed down to `until` only.
+    vi.mocked(importProfilePosts).mockImplementation(capped).mockImplementationOnce(async (input) => {
+      const result = await capped(input)
+      return { ...result, meta: { ...result.meta, next_until: input.until!.toISOString() } }
+    })
+    const pages = await follow(4)
+    expect(new Set(pages.flat()).size).toBeGreaterThanOrEqual(8)
+  })
+
+  test('the same archive deep in history still advances when newer posts sit above its coverage', async () => {
+    vi.mocked(importProfilePosts).mockImplementation(capped).mockImplementationOnce(async (input) => {
+      const result = await capped(input)
+      return { ...result, meta: { ...result.meta, next_until: input.until!.toISOString() } }
+    })
+    const pages = await follow(4, NOW - 50 * HOUR)
+    // Each continuation repeats only the documented boundary post.
+    for (let i = 2; i < pages.length; i += 1) expect(pages[i].filter((id) => pages[i - 1].includes(id))).toHaveLength(1)
+    expect(new Set(pages.flat()).size).toBeGreaterThanOrEqual(8)
+  })
+})
+
 test('a walked copy that leaves the bounded read does not hide an unread archived post', async () => {
   await importWithHistory({ handle: 'ada', since: new Date(NOW - 20 * HOUR), until: new Date(NOW), maxPosts: 5000 })
   vi.setSystemTime(NOW + 2 * 60_000)
