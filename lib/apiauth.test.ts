@@ -14,6 +14,9 @@ describe('resolveCaller', () => {
     const anon = await resolveCaller({ 'x-real-ip': '9.9.9.9' })
     expect(anon).toMatchObject({ status: 'anonymous', caller: { kind: 'public', ip: '9.9.9.9' } })
     expect(callerHeaders(anon)).toEqual({ 'X-Api-Key-Status': 'anonymous' })
+    // Handlers and every bucket key see the platform-set address, not the caller's own header.
+    const forged = await resolveCaller({ 'x-real-ip': '1.2.3.4', 'x-vercel-forwarded-for': '203.0.113.7' })
+    expect(forged).toMatchObject({ ip: '203.0.113.7', caller: { kind: 'public', ip: '203.0.113.7' } })
 
     const valid = await resolveCaller({ authorization: `Bearer ${secret}` })
     expect(valid).toMatchObject({ status: 'valid', caller: { kind: 'key', id: record.id, limit: 12 } })
