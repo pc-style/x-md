@@ -334,7 +334,7 @@ async function main() {
   // Bring the snapshot up to date so every top-up walks the same few hours.
   const caughtUp = await call(head, { limit: '50' })
   const fresh = dump()
-  console.error(`snapshot: ${zset(`hist:${HANDLE}:ids`).size} posts, top-up walked ${JSON.stringify((caughtUp.meta?.archive as { walked?: unknown })?.walked)}`)
+  console.error(`snapshot: ${zset(`hist:${HANDLE}:ids:ms`).size} posts, top-up walked ${JSON.stringify((caughtUp.meta?.archive as { walked?: unknown })?.walked)}`)
   // A top-up only runs once the archive is a minute old, as in production.
   await sleep(61_000)
 

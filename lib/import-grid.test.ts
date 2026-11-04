@@ -57,6 +57,8 @@ const own = (id: bigint, at: number, text: string, extra: Partial<FxTweet> = {})
  * people's conversation parents; and old thread roots placed right above the
  * reply that brought them in.
  */
+const second = (ms: number) => Math.floor(ms / 1000) * 1000
+
 function randomTimeline(seed: number): Timeline {
   const rand = mulberry32(seed)
   const count = 120 + Math.floor(rand() * 1100)
@@ -72,10 +74,13 @@ function randomTimeline(seed: number): Timeline {
     if (rand() < 0.04) gap = gaps[Math.floor(rand() * gaps.length)]
     if (rand() < 0.01) at -= Math.floor((1 + rand() * 20) * DAY)
     at -= Math.max(1000, Math.floor(-Math.log(1 - rand()) * gap))
+    // Whole seconds, so an id's millisecond matches its date and both walkers
+    // time posts alike (lib/import.ts reads the millisecond from the id).
+    at = second(at)
     const sort = snowflakeAt(at) + BigInt(i)
     const kind = rand()
     if (kind < 0.1) {
-      const originalAt = at - Math.floor((1 + rand() * 900) * DAY)
+      const originalAt = second(at - Math.floor((1 + rand() * 900) * DAY))
       entries.push({ sort, post: { id: (snowflakeAt(originalAt) + BigInt(i)).toString(), text: `rt ${i}`, created_at: xdate(originalAt), author: { screen_name: 'someone' }, reposted_by: { screen_name: 'ada' } } })
     } else if (kind < 0.15) {
       entries.push({ sort, post: { id: sort.toString(), text: `parent ${i}`, created_at: xdate(at), author: { screen_name: 'other' } } })
@@ -88,7 +93,7 @@ function randomTimeline(seed: number): Timeline {
         if (conversations.length > 6) conversations.shift()
       }
       if (rand() < 0.04) {
-        const rootAt = at - Math.floor((1 + rand() * 60) * DAY)
+        const rootAt = second(at - Math.floor((1 + rand() * 60) * DAY))
         entries.push({ sort: sort + 1n, post: own(snowflakeAt(rootAt) + BigInt(i), rootAt, `root ${i}`) })
       }
       entries.push({ sort, conversation, post: own(sort, at, `reply ${i}`, { replying_to: { screen_name: 'other', status: '1' } }) })

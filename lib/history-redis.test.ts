@@ -1,4 +1,9 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+
+vi.mock('./fxtwitter.js', async () => {
+  const actual = await vi.importActual<typeof import('./fxtwitter.js')>('./fxtwitter.js')
+  return { ...actual, fetchFxProfile: vi.fn(), fetchFxProfileStatuses: vi.fn() }
+})
 
 vi.mock('./import.js', async () => {
   const actual = await vi.importActual<typeof import('./import.js')>('./import.js')
@@ -6,7 +11,8 @@ vi.mock('./import.js', async () => {
 })
 
 import { importProfilePosts } from './import.js'
-import type { FxTweet } from './fxtwitter.js'
+import { fetchFxProfile, fetchFxProfileStatuses, type FxTweet } from './fxtwitter.js'
+import { decodeTimelineCursor, encodeTimelineCursor } from './fx-cursor.js'
 import { importWithHistory, resetHistoryStore } from './history.js'
 
 const HOUR = 3_600_000
@@ -126,4 +132,61 @@ test('a write whose pipeline answers 200 with a failed command fails instead of 
   })
   await expect(importWithHistory({ handle: 'ada', until: new Date(NOW), maxPosts: 5000 })).rejects.toThrow('redis OOM')
   expect(indexWrites).toEqual([])
+})
+
+describe('posts sharing one second', () => {
+  // Seven own posts minted within one second (dates carry whole seconds), then hourly history.
+  const burst = NOW - 30 * 60_000
+  const timeline = [
+    ...Array.from({ length: 7 }, (_, i) => ({ ...post(burst + 900 - i * 120), created_at: new Date(burst).toUTCString() })),
+    ...Array.from({ length: 6 }, (_, h) => post(burst - (h + 1) * HOUR)),
+  ]
+  const since = new Date(burst - 10 * HOUR)
+  /** Follow `next_until` from NOW; every post must come back and every step must advance. */
+  const follow = async () => {
+    const seen = new Set<string>()
+    let until = NOW
+    for (let step = 0; step < 20; step += 1) {
+      const result = await importWithHistory({ handle: 'ada', since, until: new Date(until), maxPosts: 3, concurrency: 1 })
+      for (const p of result.posts) seen.add(p.id!)
+      if (!result.meta.next_until) break
+      const next = Date.parse(result.meta.next_until)
+      expect(next).toBeLessThan(until)
+      until = next
+    }
+    expect([...seen].sort()).toEqual(timeline.map((p) => p.id!).sort())
+  }
+
+  beforeEach(async () => {
+    const actual = await vi.importActual<typeof import('./import.js')>('./import.js')
+    vi.mocked(importProfilePosts).mockImplementation(actual.importProfilePosts)
+    vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada' })
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(async (_handle, cursor) => {
+      const below = cursor ? decodeTimelineCursor(cursor)!.sortIndex : BigInt(idAt(NOW + 1))
+      const page = timeline.filter((p) => BigInt(p.id!) < below).slice(0, 30)
+      const last = page.at(-1)
+      return { results: page, cursor: last ? { bottom: encodeTimelineCursor({ issuedAt: 0n, sortIndex: BigInt(last.id!), direction: 2 }) } : undefined, attempts: 1 }
+    })
+  })
+
+  test('cold and archive-served continuations return every post', async () => {
+    await follow()
+    await follow()
+  })
+
+  test('an archive scored at whole seconds is re-walked rather than trusted', async () => {
+    // The archive as it was written before scores carried the millisecond.
+    const ids = upstash.zsets.set('hist:ada:ids', new Map()).get('hist:ada:ids')!
+    const bodies = new Map<string, string>()
+    for (const p of timeline) {
+      ids.set(p.id!, Date.parse(p.created_at!))
+      bodies.set(p.id!, JSON.stringify(p))
+    }
+    upstash.hashes.set('hist:ada:posts', bodies)
+    upstash.hashes.set('hist:ada:index', new Map(Object.entries({
+      handle: 'ada', count: String(timeline.length), updated_at: new Date(NOW - HOUR).toISOString(), floor_reached: '0',
+      covered_since: since.toISOString(), covered_until: new Date(NOW).toISOString(), incomplete: '0', coverage_version: '2',
+    })))
+    await follow()
+  })
 })
