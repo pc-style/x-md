@@ -148,7 +148,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     res.flushHeaders()
     let streamedPosts = 0
     try {
-      const result = await importWithHistory({ ...options, signal, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
+      const result = await importWithHistory({ ...options, signal, owner: counter, onPost: (post) => { streamedPosts += 1; res.write(`${JSON.stringify({ post })}\n`) } })
       res.write(`${JSON.stringify({ meta: result.meta, profile: result.profile })}\n`)
     } catch (error) {
       await refundBusy(error)
@@ -161,7 +161,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const result = await importWithHistory({ ...options, signal })
+    const result = await importWithHistory({ ...options, signal, owner: counter })
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     res.setHeader('X-Result-Count', String(result.meta.count))
     res.setHeader('X-Import-Pages', String(result.meta.pages))

@@ -6,11 +6,23 @@ test('bounds concurrent walks, rejects overload, and releases after failure', as
   const pending = new Promise<void>(resolve => { release = resolve })
   const first = withImportSlot(() => pending)
   const second = withImportSlot(() => pending)
-  await expect(withImportSlot(async () => 3)).rejects.toMatchObject({ code: 'import_busy', retryAfter: 5 })
+  const third = withImportSlot(() => pending)
+  await expect(withImportSlot(async () => 4)).rejects.toMatchObject({ code: 'import_busy', retryAfter: 5 })
   release()
-  await Promise.all([first, second])
+  await Promise.all([first, second, third])
   await expect(withImportSlot(async () => { throw new Error('failed') })).rejects.toThrow('failed')
   expect(await withImportSlot(async () => 'recovered')).toBe('recovered')
+})
+
+test('one caller holds one slot and leaves the rest to others', async () => {
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  const held = withImportSlot(() => pending, 'import:ip:203.0.113.1')
+  await expect(withImportSlot(async () => 'second', 'import:ip:203.0.113.1')).rejects.toMatchObject({ code: 'import_busy' })
+  expect(await withImportSlot(async () => 'other', 'import:ip:198.51.100.7')).toBe('other')
+  release()
+  await held
+  expect(await withImportSlot(async () => 'again', 'import:ip:203.0.113.1')).toBe('again')
 })
 
 test('serializes case-insensitive archive writes and releases the lock', async () => {

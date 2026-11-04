@@ -97,6 +97,8 @@ export interface ImportInput {
   /** Called once per post as it arrives, before the final sort. */
   onPost?: (post: FxTweet) => void
   signal?: AbortSignal
+  /** Caller holding the admission slot (its import quota counter), so one caller cannot take every slot. */
+  owner?: string
   /** Engine knobs for benchmarks; not exposed on the API. */
   tuning?: {
     /** Posts a window should hold (default 30). */
@@ -263,7 +265,7 @@ function fetchProfile(handle: string, signal: AbortSignal): Promise<FxAuthor> {
 }
 
 export async function importProfilePosts(input: ImportInput): Promise<ImportResult> {
-  return withImportSlot(() => walkProfilePosts(input))
+  return withImportSlot(() => walkProfilePosts(input), input.owner)
 }
 
 async function walkProfilePosts(input: ImportInput): Promise<ImportResult> {

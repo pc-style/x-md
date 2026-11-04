@@ -3,31 +3,45 @@ import { ConvertError } from './errors.js'
 import { redisConfig, redisPipeline } from './redis.js'
 
 // Bound expensive fresh walks across serverless instances. Archive-only reads
-// do not acquire a slot. Leases outlive the route's 120-second deadline.
-const MAX_ACTIVE = 2
+// do not acquire a slot. Leases outlive the route's 120-second deadline. One
+// caller (an address or API key) holds at most PER_OWNER of them, so a few long
+// walks from one place cannot refuse everyone else.
+const MAX_ACTIVE = 3
+const PER_OWNER = 1
 const LEASE_MS = 150_000
 const KEY = 'import:active:v1'
-const local = new Set<string>()
+const local = new Map<string, string | undefined>()
 const ACQUIRE = `
 redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[1])
-if redis.call('ZCARD', KEYS[1]) >= tonumber(ARGV[3]) then return 0 end
+local active = redis.call('ZRANGE', KEYS[1], 0, -1)
+if #active >= tonumber(ARGV[3]) then return 0 end
+if ARGV[6] ~= '' then
+  local held = 0
+  for _, member in ipairs(active) do
+    if string.sub(member, 1, #ARGV[6]) == ARGV[6] then held = held + 1 end
+  end
+  if held >= tonumber(ARGV[7]) then return 0 end
+end
 redis.call('ZADD', KEYS[1], ARGV[2], ARGV[4])
 redis.call('PEXPIRE', KEYS[1], ARGV[5])
 return 1`
 
-export async function withImportSlot<T>(work: () => Promise<T>): Promise<T> {
-  const id = randomUUID()
+/** `owner` identifies the caller (its import quota counter); without one only the global bound applies. */
+export async function withImportSlot<T>(work: () => Promise<T>, owner?: string): Promise<T> {
+  const prefix = owner ? `${owner}|` : ''
+  const id = `${prefix}${randomUUID()}`
   const config = redisConfig()
   if (config) {
     let admitted = false
     try {
-      const [reply] = await redisPipeline<number>(config, [['EVAL', ACQUIRE, 1, KEY, Date.now(), Date.now() + LEASE_MS, MAX_ACTIVE, id, LEASE_MS]])
+      const [reply] = await redisPipeline<number>(config, [['EVAL', ACQUIRE, 1, KEY, Date.now(), Date.now() + LEASE_MS, MAX_ACTIVE, id, LEASE_MS, prefix, PER_OWNER]])
       admitted = reply?.result === 1 && !reply.error
     } catch { /* Fail closed: do not turn a store outage into unbounded fan-out. */ }
     if (!admitted) throw new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
   } else {
-    if (local.size >= MAX_ACTIVE) throw new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
-    local.add(id)
+    const held = owner ? [...local.values()].filter(o => o === owner).length : 0
+    if (local.size >= MAX_ACTIVE || held >= PER_OWNER) throw new ConvertError(503, 'Fresh import capacity is busy. Retry after the indicated delay.', 'import_busy', 5)
+    local.set(id, owner)
   }
   try { return await work() } finally {
     local.delete(id)
