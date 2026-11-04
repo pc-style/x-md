@@ -50,6 +50,9 @@ accss.json
 .wrangler/
 .mcp.json
 
+# Per-orb portal registrations
+.amp/portals/
+
 # Local directory submissions and machine-specific deployment material
 /internal/directory-submissions/
 /internal/redis/
