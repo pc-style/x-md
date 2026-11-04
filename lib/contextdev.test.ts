@@ -57,6 +57,11 @@ describe('fetchContextDevStatus', () => {
     ['link-only post', '[Read this](https://example.com/article)', '[Read this](https://example.com/article)'],
     ['profile-link post', '[NASA](https://x.com/NASA)', '[NASA](https://x.com/NASA)'],
     ['media-only post', '![Photo](https://pbs.twimg.com/media/photo.jpg)', ''],
+    [
+      'bulleted profile link in content',
+      'Intro\n- [@NASA](https://x.com/NASA)\nMore text',
+      'Intro\n- [@NASA](https://x.com/NASA)\nMore text',
+    ],
   ])('extracts %s without page chrome or replies', async (_label, body, expected) => {
     const login = '[Log in](https://x.com/i/jf/onboarding/web?mode=login&redirect_after_login=%2Fjack%2Fstatus%2F20) [Sign up](https://x.com/i/jf/onboarding/web?mode=signup&redirect_after_login=%2Fjack%2Fstatus%2F20)'
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
