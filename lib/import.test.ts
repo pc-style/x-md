@@ -230,6 +230,25 @@ describe('importProfilePosts', () => {
     expect(capped.meta.truncated).toBe(true)
   })
 
+  test('a cap below one upstream page still continues into older history', async () => {
+    const entries = timeline('ada', 300, 1)
+    vi.mocked(fetchFxProfileStatuses).mockImplementation(withRetries(fakeUpstream(entries).mock))
+    const since = new Date(NOW - 200 * HOUR)
+    let until = new Date(NOW)
+    const ids: string[] = []
+    for (let step = 0; step < 3; step += 1) {
+      const result = await importProfilePosts({ handle: 'ada', since, until, maxPosts: 3, concurrency: 1 })
+      expect(result.meta.truncated).toBe(true)
+      const next = Date.parse(result.meta.next_until!)
+      expect(next).toBeLessThan(until.getTime())
+      // Following the continuation repeats at most the documented boundary post.
+      expect(result.posts.filter((post) => ids.includes(post.id!)).length).toBeLessThanOrEqual(1)
+      ids.push(...result.posts.map((post) => post.id!))
+      until = new Date(next)
+    }
+    expect(new Set(ids).size).toBeGreaterThanOrEqual(7)
+  })
+
   test('never walks past the account join date', async () => {
     vi.mocked(fetchFxProfile).mockResolvedValue({ screen_name: 'ada', joined: new Date(NOW - 50 * HOUR).toUTCString() })
     const entries = timeline('ada', 40, 1)

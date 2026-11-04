@@ -23,6 +23,7 @@ import {
   ConvertError,
   convertTweet,
   markdownResponse,
+  POST_REPRESENTATIONS,
   STATUS_PATH,
 } from '../lib/converter'
 import { embedResponse, isEmbedUserAgent, oembedResponse } from '../lib/embed'
@@ -130,13 +131,11 @@ async function handleConvert(
 
   setCorsHeaders(res)
   const caller = { ip: clientIp(req.headers) }
-  if (preflight(req, res, 'read', caller)) return true
   // Mirrors production: the unversioned alias is deprecated, the permalink and
-  // versioned routes (which carry via=route) are not. Set before the guards so
-  // a 429 and a 405 carry the signal too.
-  if (isApi && url.searchParams.get('via') !== 'route' && !(url.searchParams.get('handle') && url.searchParams.get('id'))) {
-    setDeprecationHeaders(res, '/api/v1/posts')
-  }
+  // versioned routes (which carry via=route) are not. Set before anything can
+  // answer, so a preflight, a 429 and a 405 carry the signal too.
+  if (isApi && url.searchParams.get('via') !== 'route') setDeprecationHeaders(res, '/api/v1/posts')
+  if (preflight(req, res, 'read', caller)) return true
   // Charged ahead of the method guard, as api/convert.ts does, so a 405 reports
   // the remaining allowance too.
   if (await enforceQuota(req, res, 'read', caller)) return true
@@ -145,8 +144,8 @@ async function handleConvert(
   const accept = String(req.headers.accept ?? '')
   const userAgent = String(req.headers['user-agent'] ?? '')
   const requestedFormat = url.searchParams.get('format')
-  const asJson = wantsJson(requestedFormat, accept)
-  const asMarkdown = wantsMarkdown(requestedFormat, accept)
+  const asJson = wantsJson(requestedFormat, accept, POST_REPRESENTATIONS)
+  const asMarkdown = wantsMarkdown(requestedFormat, accept, POST_REPRESENTATIONS)
   const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
@@ -229,11 +228,11 @@ async function handleBrowse(url: URL, req: IncomingMessage, res: ServerResponse)
   if (!resource && !isBrowseApi) return false
   setCorsHeaders(res)
   const scope: QuotaScope = resource === 'search' ? 'search' : 'read'
-  if (preflight(req, res, scope, { ip: clientIp(req.headers) })) return true
   // Mirrors production: only a direct /api/browse call is the deprecated alias.
   if (isBrowseApi && url.searchParams.get('via') !== 'route') {
     setDeprecationHeaders(res, browseSuccessor(resource, url.searchParams.get('handle') ?? undefined))
   }
+  if (preflight(req, res, scope, { ip: clientIp(req.headers) })) return true
   if (rejectMethod(req, res)) return true
   const resolved = await resolveCaller(req.headers)
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
@@ -380,8 +379,14 @@ async function handleMcp(url: URL, req: IncomingMessage, res: ServerResponse): P
   if (path !== '/mcp' && path !== '/mcp/server-card' && path !== '/api/mcp') return false
   if (path === '/mcp/server-card') url.searchParams.set('doc', 'server-card')
 
-  const request = req as IncomingMessage & { query: Record<string, string>; body?: unknown }
+  const request = req as IncomingMessage & { query: Record<string, string>; body?: unknown; protocol?: string; documentOrigin?: string }
   request.query = Object.fromEntries(url.searchParams)
+  // Self-links name the scheme this server actually speaks, and resources/read
+  // fetches documents from the socket it listens on, never from the Host header.
+  const { encrypted, localAddress, localPort } = req.socket as typeof req.socket & { encrypted?: boolean }
+  const scheme = encrypted ? 'https' : 'http'
+  request.protocol = scheme
+  if (localAddress && localPort) request.documentOrigin = `${scheme}://${localAddress.includes(':') ? `[${localAddress}]` : localAddress}:${localPort}`
   if (req.method !== 'GET' && req.method !== 'HEAD') request.body = await readRawBody(req)
 
   const response = res as ServerResponse & {

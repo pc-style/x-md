@@ -14,6 +14,7 @@ import {
   JSONRPC_INTERNAL_ERROR,
   JSONRPC_METHOD_NOT_FOUND,
   validateModernHeaders,
+  validateModernMeta,
   JSONRPC_PARSE_ERROR,
   MCP_HEADER_MISMATCH,
   MCP_RATE_LIMITED,
@@ -26,11 +27,32 @@ import {
   type JsonRpcMessage,
 } from '../lib/mcp.js'
 
-/** Transport-level rejections still answer in JSON, so a plain HTTP client never has to parse an error page. */
-function transportError(res: VercelResponse, status: number, code: number, message: string, data?: unknown) {
+/**
+ * Transport-level rejections still answer in JSON, so a plain HTTP client never
+ * has to parse an error page. `id` is the request's, once it has been read.
+ */
+function transportError(res: VercelResponse, status: number, code: number, message: string, data?: unknown, id: string | number | null = null) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
-  res.setHeader('Cache-Control', 'no-store')
-  return res.status(status).send(JSON.stringify({ jsonrpc: '2.0', id: null, error: data === undefined ? { code, message } : { code, message, data } }))
+  // A keyed answer already carries `private, no-store` from callerHeaders.
+  if (!String(res.getHeader('Cache-Control') ?? '').includes('private')) res.setHeader('Cache-Control', 'no-store')
+  return res.status(status).send(JSON.stringify({ jsonrpc: '2.0', id, error: data === undefined ? { code, message } : { code, message, data } }))
+}
+
+/**
+ * A serialized origin (RFC 6454 section 6.2): `null`, or `scheme://host[:port]`
+ * with nothing after it. Any such origin may call this public endpoint, as the
+ * `*` CORS policy says; only a value that is not an origin at all is refused.
+ */
+function isOrigin(value: string): boolean {
+  if (value === 'null') return true
+  if (!/^[a-z][a-z0-9+.-]*:\/\/[^/\\?#@\s]+$/i.test(value)) return false
+  try {
+    // Belt and braces: whatever URL parsing does with the authority, an origin has no path.
+    const { pathname } = new URL(value)
+    return pathname === '' || pathname === '/'
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -51,6 +73,12 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Headers', 'Accept, Authorization, Content-Type, Last-Event-ID, MCP-Protocol-Version, Mcp-Method, Mcp-Name, Mcp-Session-Id')
   res.setHeader('Access-Control-Expose-Headers', 'MCP-Protocol-Version, Mcp-Session-Id, Retry-After, X-Api-Key-Status, RateLimit, RateLimit-Policy, RateLimit-Limit, RateLimit-Remaining, RateLimit-Reset, Deprecation, Sunset, Link')
   res.setHeader('Access-Control-Max-Age', '86400')
+
+  // Streamable HTTP: a present but invalid Origin is answered with 403.
+  const origin = req.headers.origin
+  if (origin !== undefined && !isOrigin(origin)) {
+    return transportError(res, 403, JSONRPC_INVALID_REQUEST, 'Forbidden: the Origin header is not a valid origin.')
+  }
 
   // Every tools/call spends the same read allowance the REST routes charge; it
   // is charged below, once the caller is resolved. Anything answered before
@@ -119,23 +147,27 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return transportError(res, 405, JSONRPC_INVALID_REQUEST, `Method ${req.method ?? 'unknown'} is not allowed on the MCP endpoint.`)
   }
 
+  const parsed = parseJsonBody(req.body)
+  if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON')
+  if (Array.isArray(parsed.value)) {
+    // Every revision offered here is 2025-06-18 or later, which removed batching.
+    return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: JSON-RPC batching was removed in protocol revision 2025-06-18. Send one message per request.')
+  }
+  const message = (typeof parsed.value === 'object' && parsed.value !== null ? parsed.value : {}) as JsonRpcMessage
+  // A request id is a string or a number, never null; a message with no id is a notification.
+  const validId = message.id === undefined || typeof message.id === 'string' || typeof message.id === 'number'
+  if (message.jsonrpc !== '2.0' || typeof message.method !== 'string' || !message.method || !validId) {
+    return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: expected a JSON-RPC 2.0 object with a string `method` and, on a request, a string or number `id`.')
+  }
+  const id = message.id ?? null
+
   const requested = req.headers['mcp-protocol-version']
   const headerProtocol = Array.isArray(requested) ? requested[0] : requested
   if (headerProtocol && !MCP_SUPPORTED_PROTOCOLS.includes(headerProtocol)) {
     return transportError(res, 400, MCP_UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version', {
       supported: MCP_SUPPORTED_PROTOCOLS,
       requested: headerProtocol,
-    })
-  }
-
-  const parsed = parseJsonBody(req.body)
-  if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON')
-  if (Array.isArray(parsed.value)) {
-    return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: JSON-RPC batching was removed in protocol revision 2025-06-18. Send one message per request.')
-  }
-  const message = (typeof parsed.value === 'object' && parsed.value !== null ? parsed.value : {}) as JsonRpcMessage
-  if (message.jsonrpc !== '2.0' || typeof message.method !== 'string' || !message.method) {
-    return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: expected a JSON-RPC 2.0 object with a string `method`.')
+    }, id)
   }
 
   // 2026-07-28 carries the version in `_meta` as well as the header, and requires
@@ -146,13 +178,13 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return transportError(res, 400, MCP_UNSUPPORTED_PROTOCOL_VERSION, 'Unsupported protocol version', {
       supported: MCP_SUPPORTED_PROTOCOLS,
       requested: bodyProtocol,
-    })
+    }, id)
   }
   if (bodyProtocol && headerProtocol && bodyProtocol !== headerProtocol) {
     return transportError(res, 400, MCP_HEADER_MISMATCH, 'The MCP-Protocol-Version header does not match the protocol version in the request body.', {
       header: headerProtocol,
       body: bodyProtocol,
-    })
+    }, id)
   }
 
   // A modern request announces itself; anything else is the legacy handshake era.
@@ -169,17 +201,22 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       { protocolVersion: headerProtocol, method: header('mcp-method'), name: header('mcp-name') },
       message,
     )
-    if (invalid) return transportError(res, 400, invalid.code, invalid.message, invalid.data)
+    if (invalid) return transportError(res, 400, invalid.code, invalid.message, invalid.data, id)
+    const malformed = validateModernMeta(message)
+    if (malformed) return transportError(res, 400, malformed.code, malformed.message, malformed.data, id)
   }
 
   const resolved = await resolveCaller(req.headers)
   if (resolved.status === 'valid' && resolved.caller.kind === 'key') identity.keyId = resolved.caller.id
   for (const [key, value] of Object.entries(callerHeaders(resolved))) res.setHeader(key, value)
+  // Never let one caller's MCP response reach another through the CDN, and keep
+  // the `private` callerHeaders promised a keyed caller.
+  const cacheControl = resolved.status === 'valid' ? 'private, no-store' : 'no-store'
   if (resolved.status === 'invalid') {
-    return transportError(res, 401, JSONRPC_INVALID_REQUEST, 'Invalid or disabled API key. Drop the Authorization header to call anonymously.')
+    return transportError(res, 401, JSONRPC_INVALID_REQUEST, 'Invalid or disabled API key. Drop the Authorization header to call anonymously.', undefined, id)
   }
   const keyFailure = keyRequirementFailure(resolved)
-  if (keyFailure) return transportError(res, 401, JSONRPC_INVALID_REQUEST, keyFailure)
+  if (keyFailure) return transportError(res, 401, JSONRPC_INVALID_REQUEST, keyFailure, undefined, id)
 
   // A tool call is charged like a REST read. The charge and the tool's cache
   // lookup run together, and the tool waits for this verdict before it reaches
@@ -188,10 +225,13 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     resolved.caller.kind === 'key'
       ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
       : { ip: resolved.ip }
-  const charged = message.method === 'tools/call' ? chargeRequestQuota('read', quotaCaller) : undefined
+  const charged = message.method === 'tools/call' && message.id !== undefined ? chargeRequestQuota('read', quotaCaller) : undefined
   const admission = charged?.then((quota) => quota.allowed)
   admission?.catch(() => undefined)
-  const pending = dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, admission })
+  // Documents are fetched from a trusted origin, never from the Host header:
+  // the Vite adapter lends its own listening origin; on Vercel it is unset.
+  const documentOrigin = (req as { documentOrigin?: string }).documentOrigin
+  const pending = dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, documentOrigin, admission })
   pending.catch(() => undefined)
   const quota = await charged
   if (quota) applyRequestQuota(res, quota)
@@ -214,6 +254,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (quota && !quota.allowed && !hit) {
     applyExhaustedQuota(res, quota, API_IP.name, quota.retryAfter)
+    res.setHeader('Cache-Control', cacheControl)
     res.setHeader('Content-Type', 'application/json; charset=utf-8')
     const retryAfter = Math.max(1, quota.retryAfter)
     const error = {
@@ -221,24 +262,22 @@ async function handler(req: VercelRequest, res: VercelResponse) {
       message: 'Too many requests from this address. Profile, follower, following and search results already cached are still served.',
       data: { status: 429, code: 'rate_limited', policy: API_IP.name, retryAfter },
     }
-    return res.status(429).send(JSON.stringify({ jsonrpc: '2.0', id: message.id ?? null, error }))
+    return res.status(429).send(JSON.stringify({ jsonrpc: '2.0', id, error }))
   }
 
   // The modern transport answers an unimplemented RPC with 404, so a client can
   // tell it apart from a legacy endpoint that never hosted this path at all.
   if (modern && outcome && 'error' in outcome && outcome.error.code === JSONRPC_METHOD_NOT_FOUND) {
-    return transportError(res, 404, JSONRPC_METHOD_NOT_FOUND, outcome.error.message, outcome.error.data)
+    return transportError(res, 404, JSONRPC_METHOD_NOT_FOUND, outcome.error.message, outcome.error.data, id)
   }
 
-  // Never let one caller's MCP response reach another through the CDN.
-  res.setHeader('Cache-Control', 'no-store')
+  res.setHeader('Cache-Control', cacheControl)
   if (outcome === null) return res.status(202).end()
 
-  const id = message.id ?? null
   const envelope = 'error' in outcome ? { jsonrpc: '2.0', id, error: outcome.error } : { jsonrpc: '2.0', id, result: outcome.result }
   if (wantsStream) {
     res.setHeader('Content-Type', 'text/event-stream; charset=utf-8')
-    res.setHeader('Cache-Control', 'no-cache, no-transform')
+    res.setHeader('Cache-Control', `${cacheControl}, no-transform`)
     res.setHeader('Connection', 'keep-alive')
     res.setHeader('X-Accel-Buffering', 'no')
     res.status(200)

@@ -15,7 +15,7 @@ sidebar:
 | Endpoint | `https://mdfromx.com/mcp` |
 | Transport | Streamable HTTP |
 | Authentication | None. `Authorization: Bearer <api key>` is optional and raises your search allowance |
-| Protocol revisions | `2026-07-28`, `2025-11-25`, `2025-06-18`, `2025-03-26` |
+| Protocol revisions | `2026-07-28`, `2025-11-25`, `2025-06-18` |
 | Sessions | None. The server is stateless and never issues an `Mcp-Session-Id` |
 | Server name | `io.github.pc-style/x-md` |
 
@@ -213,4 +213,4 @@ A plain `GET https://mdfromx.com/mcp` returns that card plus the supported proto
 
 ## Deviations worth knowing
 
-`GET` with `Accept: text/event-stream` answers `405`: this server sends no unsolicited messages, so there is no standalone stream to open. The official SDK treats that as expected. `DELETE` answers `405` for the same reason sessions do not exist. JSON-RPC batching is rejected with `-32600`, having been removed from the protocol in revision `2025-06-18`. Origin headers are not validated, because the endpoint is public, unauthenticated, and read-only, so there is nothing a rebound DNS name could reach.
+`GET` with `Accept: text/event-stream` answers `405`: this server sends no unsolicited messages, so there is no standalone stream to open. The official SDK treats that as expected. `DELETE` answers `405` for the same reason sessions do not exist. JSON-RPC batching is rejected with `-32600`, having been removed from the protocol in revision `2025-06-18`; that is also why `2025-03-26`, which required batches, is not offered, and an `initialize` asking for it is answered with `2025-11-25`. A request whose `Origin` header is not a valid origin is refused with `403`. Any real origin is allowed, because the endpoint is public and read-only.

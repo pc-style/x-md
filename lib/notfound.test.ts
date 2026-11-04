@@ -58,7 +58,23 @@ describe('recovery payloads', () => {
     expect(html).toContain('rel="alternate" type="text/markdown"')
     for (const link of RECOVERY) expect(html).toContain(link)
     // A caller-supplied path can never break out of the document.
-    expect(notFoundHtml('/<script>alert(1)</script>')).not.toContain('<script>')
+    expect(notFoundHtml('/<script>alert(1)</script>')).not.toContain('<script>alert')
+  })
+
+  test('the html page is dark by default and honours a stored choice of light', () => {
+    const html = notFoundHtml('/nope')
+    const script = html.slice(html.indexOf('<script>') + '<script>'.length, html.indexOf('</script>'))
+    const themeAfter = (stored: string | null) => {
+      const root = { dataset: {} as Record<string, string> }
+      new Function('localStorage', 'document', script)({ getItem: (key: string) => (key === 'blume-theme' ? stored : null) }, { documentElement: root })
+      return root.dataset.theme ?? 'dark'
+    }
+    expect(themeAfter(null)).toBe('dark')
+    expect(themeAfter('dark')).toBe('dark')
+    expect(themeAfter('light')).toBe('light')
+    // The unthemed page (and JavaScript off) paints the dark palette.
+    expect(html).toMatch(/:root\{color-scheme:dark\}/)
+    expect(html).not.toContain('prefers-color-scheme')
   })
 
   test('the json body is an RFC 9457 problem document with recovery links', () => {

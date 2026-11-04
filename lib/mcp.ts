@@ -27,8 +27,13 @@ export const MCP_FEEDBACK_URL = 'https://api.usenotra.com/v1/feedback/x-md'
 export const MCP_MODERN_PROTOCOL = '2026-07-28'
 /** The newest revision answered to a legacy `initialize` that asks for something we do not speak. */
 export const MCP_LATEST_LEGACY_PROTOCOL = '2025-11-25'
-/** The handshake era, newest first. Only these can come back from `initialize`. */
-export const MCP_LEGACY_PROTOCOLS: readonly string[] = ['2025-11-25', '2025-06-18', '2025-03-26']
+/**
+ * The handshake era, newest first. Only these can come back from `initialize`.
+ * 2025-03-26 is not offered: it obliges a server to accept JSON-RPC batches,
+ * which this one-message-per-POST transport does not, so a client asking for it
+ * is answered with the newest revision instead, as version negotiation allows.
+ */
+export const MCP_LEGACY_PROTOCOLS: readonly string[] = ['2025-11-25', '2025-06-18']
 export const MCP_SUPPORTED_PROTOCOLS: readonly string[] = [MCP_MODERN_PROTOCOL, ...MCP_LEGACY_PROTOCOLS]
 
 export const JSONRPC_PARSE_ERROR = -32700
@@ -108,6 +113,11 @@ export interface McpContext {
   caller?: SearchCaller
   /** Origin the request arrived on (mdfromx.com or a parallel domain); self-links are built from it. */
   site?: string
+  /**
+   * Trusted origin resources/read fetches documents from; defaults to
+   * mdfromx.com. Never derived from request headers, unlike `site`.
+   */
+  documentOrigin?: string
   /** Which revision the request declared; decides which methods exist. */
   era?: 'modern' | 'legacy'
   /**
@@ -531,6 +541,24 @@ export function requestedProtocol(params: unknown): string | undefined {
   return typeof version === 'string' ? version : undefined
 }
 
+/**
+ * The per-request `_meta` fields 2026-07-28 requires on every client request.
+ * A request missing one is malformed: -32602, answered with HTTP 400.
+ * Notifications carry no id and are exempt.
+ */
+export function validateModernMeta(message: JsonRpcMessage): JsonRpcError | null {
+  if (message.id === undefined) return null
+  const params = message.params
+  const meta = typeof params === 'object' && params !== null ? (params as { _meta?: unknown })._meta : undefined
+  const fields = typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>) : {}
+  const missing: string[] = []
+  if (typeof fields[`${META}protocolVersion`] !== 'string') missing.push(`${META}protocolVersion`)
+  const capabilities = fields[`${META}clientCapabilities`]
+  if (typeof capabilities !== 'object' || capabilities === null || Array.isArray(capabilities)) missing.push(`${META}clientCapabilities`)
+  if (!missing.length) return null
+  return { code: JSONRPC_INVALID_PARAMS, message: `Invalid params: params._meta must carry ${missing.join(' and ')} on every ${MCP_MODERN_PROTOCOL} request.`, data: { missing } }
+}
+
 /** True for 2026-07-28 and later: stateless, per-request metadata, typed results. */
 export function isModernProtocol(version: string | undefined): boolean {
   return version === MCP_MODERN_PROTOCOL
@@ -711,9 +739,11 @@ function validateProperty(key: string, schema: Record<string, unknown>, value: u
     const pattern = schema.pattern as string | undefined
     if (pattern && !new RegExp(pattern).test(value)) return `\`${key}\` must match ${pattern}`
     const minLength = schema.minLength as number | undefined
-    if (minLength !== undefined && value.length < minLength) return `\`${key}\` must be at least ${minLength} characters`
+    // JSON Schema counts code points; String#length counts UTF-16 units, so an emoji would count twice.
+    const length = [...value].length
+    if (minLength !== undefined && length < minLength) return `\`${key}\` must be at least ${minLength} characters`
     const maxLength = schema.maxLength as number | undefined
-    if (maxLength !== undefined && value.length > maxLength) return `\`${key}\` must be at most ${maxLength} characters`
+    if (maxLength !== undefined && length > maxLength) return `\`${key}\` must be at most ${maxLength} characters`
     return undefined
   }
   if (type === 'integer') {
@@ -905,7 +935,7 @@ async function callTool(params: unknown, ctx: McpContext): Promise<DispatchOutco
   }
 }
 
-async function readResource(params: unknown, site: string = MCP_SITE): Promise<DispatchOutcome> {
+async function readResource(params: unknown, site: string = MCP_SITE, documentOrigin: string = MCP_SITE): Promise<DispatchOutcome> {
   const uri = typeof params === 'object' && params !== null ? (params as { uri?: unknown }).uri : undefined
   const resources = mcpResources(site)
   if (typeof uri !== 'string' || !uri) {
@@ -921,9 +951,11 @@ async function readResource(params: unknown, site: string = MCP_SITE): Promise<D
     return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: JSON.stringify(serverCard(site), null, 2) }] } }
   }
   try {
-    // `resource.uri`, not `uri`: the caller's string only selected the entry,
-    // so the URL fetched is always one of the documents mcpResources() names.
-    const response = await fetch(resource.uri, { headers: { Accept: resource.mimeType }, signal: AbortSignal.timeout(8000) })
+    // The caller's string only selected the entry: the URL fetched is that
+    // document's path on the trusted document origin, never the Host the request
+    // named, and a redirect is refused rather than followed somewhere else.
+    const target = new URL(new URL(resource.uri).pathname, documentOrigin).href
+    const response = await fetch(target, { headers: { Accept: resource.mimeType }, redirect: 'error', signal: AbortSignal.timeout(8000) })
     if (!response.ok) throw new Error(`upstream ${response.status}`)
     const body = await response.text()
     return { result: { contents: [{ uri, name: resource.name, title: resource.title, mimeType: resource.mimeType, text: body }] } }
@@ -947,8 +979,9 @@ const ERA_ONLY: Readonly<Record<string, 'modern' | 'legacy'>> = {
 export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): Promise<DispatchOutcome> {
   const method = typeof message.method === 'string' ? message.method : ''
 
-  // Notifications carry no id and are answered with 202 and an empty body.
-  if (method.startsWith('notifications/')) return null
+  // A message without an id is a notification, whatever its method, and gets
+  // no reply; one with an id is a request, even if it names a notification.
+  if (message.id === undefined) return null
 
   // Default to legacy so a direct dispatch() call keeps the handshake surface.
   const era = ctx.era ?? 'legacy'
@@ -999,7 +1032,7 @@ export async function dispatch(message: JsonRpcMessage, ctx: McpContext = {}): P
     case 'resources/templates/list':
       return { result: { resourceTemplates: [] } }
     case 'resources/read':
-      return readResource(message.params, ctx.site)
+      return readResource(message.params, ctx.site, ctx.documentOrigin)
     default:
       return { error: { code: JSONRPC_METHOD_NOT_FOUND, message: 'Method not found', data: { method, supported: ['server/discover', 'initialize', 'ping', 'tools/list', 'tools/call', 'resources/list', 'resources/templates/list', 'resources/read'] } } }
   }

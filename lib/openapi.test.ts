@@ -316,6 +316,8 @@ describe('versioning and deprecation', () => {
     expect(browseSuccessor('search')).toBe('/api/v1/search')
     expect(browseSuccessor('profile')).toBeUndefined()
     expect(browseSuccessor('followers', 'not a handle')).toBeUndefined()
+    expect(browseSuccessor('profile', '@jack')).toBe('/api/v1/profiles/jack')
+    expect(browseSuccessor('followers', '@@jack')).toBeUndefined()
     expect(browseSuccessor(undefined, 'jack')).toBeUndefined()
   })
 

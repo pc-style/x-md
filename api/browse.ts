@@ -15,6 +15,8 @@ import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 /** The v1 path that replaces this exact legacy call, or nothing when it names no resource. */
 export function browseSuccessor(resource?: string, handle?: string): string | undefined {
   if (resource === 'search') return '/api/v1/search'
+  // `browse` accepts a leading @, so the successor must too.
+  handle = handle?.replace(/^@/, '')
   if (!handle || !/^[A-Za-z0-9_]{1,15}$/.test(handle)) return undefined
   if (resource === 'followers' || resource === 'following') return `/api/v1/profiles/${handle}/${resource}`
   if (resource === 'profile') return `/api/v1/profiles/${handle}`
@@ -29,18 +31,19 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // No key is resolved this early, so an uncharged response names the anonymous
   // shape of the policy, which is the only one it can honestly claim.
   applyQuotaPolicyOnly(res, req.query.resource === 'search' ? 'search' : 'read', { ip: clientIp(req.headers) })
-  if (req.method === 'OPTIONS') return res.status(204).end()
-
   const param = (key: string): string | undefined => typeof req.query[key] === 'string' ? req.query[key] : undefined
-  const accept = String(req.headers.accept ?? '')
-  const instance = requestInstance(req, requestOrigin(req))
 
   // Every vercel.json rewrite that lands here carries via=route, so a request
   // still on the bare /api/browse path is a direct call to the legacy alias.
-  // RFC 9745 wants the signal on error responses too, hence before the guards.
+  // RFC 9745 wants the signal on every response, preflights and errors
+  // included, hence before anything can return.
   if ((req.url ?? '').split('?')[0] === '/api/browse' && param('via') !== 'route') {
     setDeprecationHeaders(res, browseSuccessor(param('resource'), param('handle')))
   }
+  if (req.method === 'OPTIONS') return res.status(204).end()
+
+  const accept = String(req.headers.accept ?? '')
+  const instance = requestInstance(req, requestOrigin(req))
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.setHeader('Allow', 'GET, HEAD, OPTIONS')

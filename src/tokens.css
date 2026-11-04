@@ -9,7 +9,8 @@
   --color-ink: #1a1915;
   --color-ink-2: #45433c;
   --color-ink-3: #6e6b62;
-  --color-ink-4: #949085;
+  /* 4.5:1 or better on surface and raised: it sets 12px labels and the footer. */
+  --color-ink-4: #737067;
 
   --color-line: #e5e2d9;
   --color-hair: rgb(26 25 21 / 0.08);
