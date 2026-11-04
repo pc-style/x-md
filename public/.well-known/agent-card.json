@@ -8,7 +8,7 @@
     "url": "https://mdfromx.com/"
   },
   "iconUrl": "https://mdfromx.com/logo.svg",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "documentationUrl": "https://mdfromx.com/docs/mcp",
   "capabilities": {
     "streaming": false,
@@ -45,6 +45,13 @@
       "description": "List who a public X account follows, or who follows it. MCP tools x_md_get_followers and x_md_get_following, or GET /{handle}/followers and /{handle}/following.",
       "tags": ["x", "twitter", "followers", "following"],
       "examples": ["Which accounts does @vercel follow?"]
+    },
+    {
+      "id": "import-history",
+      "name": "Import an X account's post history",
+      "description": "Pull a public X account's posts over a date range as raw post objects, continuing into older posts call by call. MCP tool x_md_import_posts, or GET /{handle}/posts. No key needed: 3 imports per hour and 5 per day per address.",
+      "tags": ["x", "twitter", "history", "import"],
+      "examples": ["Collect everything @NASA posted since November 1."]
     }
   ]
 }

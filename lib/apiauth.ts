@@ -6,7 +6,9 @@
  * that carry an Authorization header, so keyed responses (and the status header
  * describing them) can never be served from cache to another caller.
  */
-import { resolveApiKey, touchApiKey, type ApiKeyRecord } from './apikeys.js'
+import { importAllowance, resolveApiKey, touchApiKey, type ApiKeyRecord } from './apikeys.js'
+import { IMPORT_KEY } from './quotas.js'
+import type { QuotaCaller } from './ratelimit-headers.js'
 import { presentedApiKey } from './http.js'
 import { clientIp } from './ratelimit.js'
 import type { SearchCaller } from './xsearch.js'
@@ -68,4 +70,11 @@ export function keyRequirementFailure(resolved: ResolvedCaller): string | undefi
   if (!apiKeyRequired() || resolved.status === 'valid') return undefined
   if (resolved.status === 'unverified') return 'The key store is unavailable and this deployment requires an API key. Retry shortly.'
   return 'This deployment requires an API key: send `Authorization: Bearer <key>`.'
+}
+
+/** Who a request is metered against: a verified key with its own allowances, or the client IP. */
+export function quotaCaller(resolved: ResolvedCaller): QuotaCaller {
+  if (resolved.caller.kind !== 'key') return { ip: resolved.ip }
+  const importLimit = resolved.record ? importAllowance(resolved.record, IMPORT_KEY.quota) : IMPORT_KEY.quota
+  return { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit, importLimit } }
 }

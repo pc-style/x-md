@@ -102,13 +102,14 @@ describe('protocol negotiation', () => {
 describe('tools/list', () => {
   test('every tool is named, described, typed, and annotated; only feedback writes', async () => {
     const tools = ok(await dispatch({ jsonrpc: '2.0', id: 4, method: 'tools/list' })).tools as typeof MCP_TOOLS
-    expect(tools).toHaveLength(6)
+    expect(tools).toHaveLength(7)
     expect(tools.map((tool) => tool.name)).toEqual([
       'x_md_get_post',
       'x_md_get_profile',
       'x_md_search_posts',
       'x_md_get_followers',
       'x_md_get_following',
+      'x_md_import_posts',
       'submit_feedback',
     ])
     expect(new Set(tools.map((tool) => tool.name)).size).toBe(tools.length)

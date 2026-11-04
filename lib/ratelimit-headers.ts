@@ -29,15 +29,17 @@ import {
   accountKeyPolicy,
   apiIpKey,
   IMPORT_IP,
+  IMPORT_IP_DAY,
   IMPORT_KEY,
   importKeyPolicy,
+  importIpDayKey,
   importIpKey,
   importKeyKey,
   searchIpKey,
   searchKeyKey,
   type QuotaPolicy,
 } from './quotas.js'
-import { peekRateLimits, rateLimit, windowClock } from './ratelimit.js'
+import { peekRateLimits, rateLimit, refundRateLimit, windowClock } from './ratelimit.js'
 
 /** A policy plus this caller's position in it: the `"name";r=<remaining>;t=<reset>` item of `RateLimit`. */
 export interface QuotaState extends QuotaPolicy {
@@ -147,7 +149,7 @@ export function setUncacheable(res: HeaderWriter): void {
 /** The policies that apply to `scope` for `caller`, front door first. */
 export function quotaPolicies(scope: QuotaScope, caller: QuotaCaller): QuotaPolicy[] {
   const policies: QuotaPolicy[] = [API_IP]
-  if (scope === 'import') return [...policies, caller.key ? importKeyPolicy(caller.key.importLimit ?? IMPORT_KEY.quota) : IMPORT_IP]
+  if (scope === 'import') return [...policies, ...(caller.key ? [importKeyPolicy(caller.key.importLimit ?? IMPORT_KEY.quota)] : [IMPORT_IP, IMPORT_IP_DAY])]
   if (scope !== 'search') return policies
   policies.push(caller.key ? SEARCH_KEY : SEARCH_IP)
   policies.push(caller.key ? accountKeyPolicy(caller.key.limit) : ACCOUNT_IP)
@@ -165,6 +167,8 @@ function counterFor(policy: QuotaPolicy, caller: QuotaCaller): string {
       return importKeyKey(caller.key?.id ?? 'unknown')
     case IMPORT_IP.name:
       return importIpKey(caller.ip)
+    case IMPORT_IP_DAY.name:
+      return importIpDayKey(caller.ip)
     case ACCOUNT_KEY_NAME:
       return accountKeyKey(caller.key?.id ?? 'unknown')
     default:
@@ -242,4 +246,42 @@ export function applyExhaustedQuota(res: HeaderWriter, quota: RequestQuota, poli
 /** Preflight and other uncharged responses still say what the policies are. */
 export function applyQuotaPolicyOnly(res: HeaderWriter, scope: QuotaScope, caller: QuotaCaller): void {
   setRateLimitPolicy(res, quotaPolicies(scope, caller))
+}
+
+/** The outcome of charging a bulk import against its deeper allowances. */
+export type ImportCharge =
+  | { allowed: true; refund: () => Promise<void> }
+  | { allowed: false; policy: QuotaPolicy; retryAfter: number }
+
+/**
+ * Spend one bulk import from every deeper `import` policy of `caller`: the key's
+ * allowance, or both anonymous windows. Each counter is charged atomically, so
+ * concurrent requests cannot overspend one; a request refused by a later policy
+ * gives back what the earlier ones took, so it spends nothing, and one refused by
+ * the first never touches the rest. `refund` gives a successful charge back.
+ */
+export async function chargeImportAllowance(caller: QuotaCaller): Promise<ImportCharge> {
+  const [, ...deeper] = quotaPolicies('import', caller)
+  const charged: Array<{ key: string; windowSec: number; bucket: number }> = []
+  const refund = async () => {
+    await Promise.all(charged.map((entry) => refundRateLimit(entry.key, entry.windowSec, entry.bucket)))
+  }
+  for (const policy of deeper) {
+    const key = counterFor(policy, caller)
+    // refundOnReject: a refused attempt must not keep its own increment, or a later busy refund leaves the window short.
+    const verdict = await rateLimit(key, policy.quota, policy.windowSec, false, true)
+    if (!verdict.allowed) {
+      await refund()
+      return { allowed: false, policy, retryAfter: verdict.retryAfter }
+    }
+    // A store outage failed open without counting anything, so there is nothing to give back.
+    if (!verdict.degraded) charged.push({ key, windowSec: policy.windowSec, bucket: verdict.bucket })
+  }
+  return { allowed: true, refund }
+}
+
+/** "3 per hour", "5 per day", "60 per 15 minutes": a policy's allowance in words. */
+export function describeAllowance(policy: QuotaPolicy): string {
+  const window = policy.windowSec === 3600 ? 'hour' : policy.windowSec === 86_400 ? 'day' : `${policy.windowSec / 60} minutes`
+  return `${policy.quota} per ${window}`
 }
