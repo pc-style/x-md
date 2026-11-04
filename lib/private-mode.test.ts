@@ -52,3 +52,36 @@ test('private mode: the same user agent asking for data is gated like anyone els
   await convertHandler(anonymous.req, anonymous.res)
   expect(anonymous.res.statusCode).toBe(401)
 })
+
+test('private mode: only a keyless preview bot is exempt, and a valid key always passes', async () => {
+  const card = exchange({ 'user-agent': 'Discordbot/2.0', accept: '*/*' }, { handle: 'alice', id: '123' })
+  await convertHandler(card.req, card.res)
+  expect(card.res.statusCode).toBe(200)
+  expect(String(card.res.getHeader('Content-Type'))).toContain('text/html')
+  expect(card.res.body).toMatch(/<meta property="og:description" content="[^"]*a post/)
+
+  const curl = exchange({ 'user-agent': 'curl/8', accept: '*/*' }, { handle: 'alice', id: '123' })
+  await convertHandler(curl.req, curl.res)
+  expect(curl.res.statusCode).toBe(401)
+  expect(String(curl.res.getHeader('Content-Type'))).toContain('application/problem+json')
+
+  const json = exchange({ 'user-agent': 'Discordbot/2.0', accept: '*/*' }, { handle: 'alice', id: '123', format: 'json' })
+  await convertHandler(json.req, json.res)
+  expect(json.res.statusCode).toBe(401)
+
+  // A caller that presents a credential is an API caller, not a link unfurler:
+  // a bad or unverifiable key must not fall back to the preview-bot exemption.
+  for (const status of ['invalid', 'unverified'] as const) {
+    vi.mocked(resolveCaller).mockResolvedValueOnce({ caller: { kind: 'public', ip: '192.0.2.1' }, status, ip: '192.0.2.1' })
+    const spoofed = exchange({ 'user-agent': 'Discordbot/2.0', accept: '*/*', authorization: 'Bearer nope' }, { handle: 'alice', id: '123' })
+    await convertHandler(spoofed.req, spoofed.res)
+    expect(spoofed.res.statusCode).toBe(401)
+  }
+
+  for (const [ua, query] of [['Discordbot/2.0', {}], ['curl/8', {}], ['Discordbot/2.0', { format: 'json' }]] as const) {
+    vi.mocked(resolveCaller).mockResolvedValueOnce({ caller: { kind: 'key', id: 'k1', limit: 100 }, status: 'valid', ip: '192.0.2.1' })
+    const keyed = exchange({ 'user-agent': ua, accept: '*/*', authorization: 'Bearer good' }, { handle: 'alice', id: '123', ...query })
+    await convertHandler(keyed.req, keyed.res)
+    expect(keyed.res.statusCode).toBe(200)
+  }
+})
