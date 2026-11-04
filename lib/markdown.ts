@@ -1,5 +1,5 @@
 import { articleToMarkdown } from './article-markdown.js'
-import type { FxAuthor, FxMedia, FxMediaItem, FxTweet } from './fxtwitter.js'
+import type { FxAuthor, FxMedia, FxMediaItem, FxPoll, FxTweet } from './fxtwitter.js'
 import type { OutputFormat } from './converter.js'
 
 export type UserinfoLevel = 'off' | 'author' | 'all'
@@ -41,10 +41,29 @@ function renderMedia(media?: FxMedia): string[] {
         lines.push(`> Variants: ${variants.map((variant) => `[${variant.bitrate ? `${variant.bitrate}bps` : variant.content_type ?? 'MP4'}](${variant.url})`).join(' · ')}`)
       }
     } else if (type === 'gif' || type === 'animated_gif') {
-      lines.push(`> [animated_gif](${thumb ?? url})`)
+      if (url) lines.push(`> [animated_gif](${url})`)
+      if (thumb && thumb !== url) lines.push(`> ![animated_gif thumbnail](${thumb})`)
     } else if (url) {
       lines.push(`> [media](${url})`)
     }
+  }
+  return lines
+}
+
+function renderPoll(poll?: FxPoll): string[] {
+  if (!poll?.choices?.length) return []
+  const header = [
+    'Poll',
+    poll.total_votes != null ? `${poll.total_votes.toLocaleString('en-US')} ${poll.total_votes === 1 ? 'vote' : 'votes'}` : undefined,
+    poll.time_left_en,
+  ].filter((part): part is string => Boolean(part)).join(' · ')
+  const lines = [`${header}:`]
+  for (const choice of poll.choices) {
+    const results = [
+      choice.percentage != null ? `${choice.percentage}%` : undefined,
+      choice.count != null ? `(${choice.count.toLocaleString('en-US')} ${choice.count === 1 ? 'vote' : 'votes'})` : undefined,
+    ].filter((part): part is string => Boolean(part)).join(' ')
+    lines.push(`- ${choice.label ?? ''}${results ? `: ${results}` : ''}`)
   }
   return lines
 }
@@ -92,6 +111,9 @@ function renderQuote(quote: FxTweet): string[] {
       lines.push(`> ${line}`)
     }
   }
+  const poll = renderPoll(quote.poll)
+  // A blank quote line ends the choice list, so the next line is not part of its last item.
+  if (poll.length) lines.push(...poll.map((line) => `> ${line}`), '>')
   for (const mediaLine of renderMedia(quote.media)) {
     lines.push(`> ${mediaLine.replace(/^> /, '')}`)
   }
@@ -177,6 +199,9 @@ function renderSingleTweet(
     lines.push(tweet.text.trim())
     lines.push('')
   }
+
+  const poll = renderPoll(tweet.poll)
+  if (poll.length) lines.push(...poll, '')
 
   lines.push(...renderMedia(tweet.media))
 
