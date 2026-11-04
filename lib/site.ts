@@ -10,7 +10,7 @@ const TYPES: Record<string, string> = {
 }
 
 /** Reads only the public build output; never fetches a caller-controlled host. */
-export async function siteResponse(path: string, origin: string): Promise<Response> {
+export async function siteResponse(path: string, origin: string, { head = false } = {}): Promise<Response> {
   const file = domainFile(path)
   if (!file) return new Response('Not found', { status: 404 })
   const root = resolve(process.cwd(), 'dist')
@@ -21,8 +21,9 @@ export async function siteResponse(path: string, origin: string): Promise<Respon
     if (file.endsWith('.tar.gz')) {
       body = await readFile(filename)
     } else if (file.endsWith('.png')) {
-      const { renderSiteOg } = await import('./site-og.js')
-      body = await renderSiteOg(file, origin)
+      const { renderSiteOg, siteOgPage } = await import('./site-og.js')
+      // HEAD only needs to know the card exists; it never pays for a render.
+      body = head ? (await siteOgPage(file), new Uint8Array()) : await renderSiteOg(file, origin)
     } else {
       body = domainText(await readFile(filename, 'utf8'), origin)
       if (file === '.well-known/agent-skills/index.json') {
