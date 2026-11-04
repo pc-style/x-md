@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { convertRewrites, getTransformedRoutes } from '@vercel/routing-utils'
 import config from '../vercel.json'
+import middleware from '../middleware'
 import { convertTweet, markdownResponse, parseStatusUrl, STATUS_PATH } from './converter'
 
 vi.mock('./cache.js', () => ({
@@ -83,6 +84,61 @@ describe('@handle paths', () => {
 
   test('a handle longer than X allows is not redirected', () => {
     expect(redirects.some((route) => 'src' in route && new RegExp(route.src).test('/@abcdefghijklmnop'))).toBe(false)
+  })
+})
+
+describe('trailing slashes', () => {
+  const rewriteFor = (path: string) => routes.find((route) => 'src' in route && new RegExp(route.src).test(path))
+  const handlerFor = (path: string) => rewriteFor(path)?.dest?.split('?')[0]
+  const request = (path: string, accept = 'application/json') =>
+    middleware(new Request(`https://mdfromx.com${path}`, { headers: { Accept: accept } }))
+
+  test.each([
+    ['/api/v1/search/?q=from%3Ajack', '/api/v1/search?q=from%3Ajack', '/api/browse'],
+    ['/api/v1/posts/', '/api/v1/posts', '/api/convert'],
+    ['/api/v1/oembed/', '/api/v1/oembed', '/api/oembed'],
+    ['/api/v1/profiles/jack/', '/api/v1/profiles/jack', '/api/browse'],
+    ['/api/v1/profiles/jack/followers/', '/api/v1/profiles/jack/followers', '/api/browse'],
+    ['/jack/', '/jack', '/api/browse'],
+    ['/search/', '/search', '/api/browse'],
+    ['/about/', '/about', '/about.html'],
+    ['/api/nope//', '/api/nope', '/api/notfound'],
+    ['/no-such-page/', '/no-such-page', '/api/notfound'],
+    ['/nope/', '/nope', '/api/browse'],
+  ])('redirects %s, which no strict vercel.json source matches, to %s', (path, location, handler) => {
+    expect(rewriteFor(new URL(path, 'https://mdfromx.com').pathname)).toBeUndefined()
+    const response = request(path)
+    expect(response.status).toBe(308)
+    const target = new URL(response.headers.get('location')!)
+    expect(target.href).toBe(`https://mdfromx.com${location}`)
+    expect(request(location).headers.get('location')).toBeNull()
+    expect(handlerFor(target.pathname)).toBe(handler)
+  })
+
+  test.each(['/about/', '/contact/', '/privacy/', '/terms/'])('%s negotiates like its canonical path once redirected', (path) => {
+    const location = request(path, 'text/markdown').headers.get('location')!
+    const response = middleware(new Request(location, { headers: { Accept: 'text/markdown' } }))
+    expect(new URL(response.headers.get('x-middleware-rewrite')!).pathname).toBe(`${path.slice(0, -1)}.md`)
+    expect(response.headers.get('link')).toContain('rel="service-desc"')
+  })
+
+  test.each(['/', '/docs/', '/docs/posts/', '/jack/status/20/', '/jack/status/20/video/1/', '/mcp/', '/mcp/server-card/'])('serves %s without a redirect', (path) => {
+    const response = request(path, 'text/html')
+    expect(response.status).toBe(200)
+    expect(response.headers.get('location')).toBeNull()
+  })
+
+  test('the explicit slash rewrites are the ones the middleware serves as they are', () => {
+    expect(config.rewrites.map((rewrite) => rewrite.source).filter((source) => source.endsWith('/'))).toEqual([
+      '/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/',
+      '/:handle([A-Za-z0-9_]{1,15})/status/:id(\\d+)/:media(video|photo)/:index([1-9]\\d*)/',
+      '/mcp/',
+      '/mcp/server-card/',
+    ])
+  })
+
+  test('a protocol-relative path stays on this origin', () => {
+    expect(new URL(request('//evil.example/').headers.get('location')!).origin).toBe('https://mdfromx.com')
   })
 })
 

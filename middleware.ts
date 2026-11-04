@@ -11,7 +11,8 @@ import { domainFile } from './lib/domain-pages.js'
  * `Accept: text/markdown` can be handed the Markdown twin of a page.
  *
  * Host-aware responses include static docs, discovery documents, and social cards.
- * All API, permalink, and shared asset requests immediately pass through.
+ * All API, permalink, and shared asset requests immediately pass through, after
+ * slashed paths that `vercel.json` cannot match are sent to their canonical form.
  */
 export const config = {
   matcher: ['/:path*'],
@@ -24,6 +25,13 @@ const DISCOVERY_LINKS = [
   '</llms.txt>; rel="describedby"; type="text/plain"',
 ]
 
+// Vercel compiles every `vercel.json` source in strict mode, so a trailing
+// slash matches no rewrite, not even the `/:path*` catch-all, and the platform's
+// bare 404 answers instead of the route or the structured `route_not_found`.
+// These slash forms are served as they are: the docs directories and the
+// explicit `/` rewrites. Every other one is redirected to its slashless route.
+const SERVED_WITH_SLASH = /^\/(?:docs\/.*|mcp\/(?:server-card\/)?|[A-Za-z0-9_]{1,15}\/status\/\d+\/(?:(?:video|photo)\/[1-9]\d*\/)?)$/
+
 function markdownSibling(pathname: string): string {
   if (pathname === '/') return '/index.md'
   return `${pathname.replace(/\/+$/, '')}.md`
@@ -31,6 +39,11 @@ function markdownSibling(pathname: string): string {
 
 export default function middleware(request: Request): Response {
   const url = new URL(request.url)
+  if (url.pathname !== '/' && url.pathname.endsWith('/') && !SERVED_WITH_SLASH.test(url.pathname)) {
+    // Set the pathname rather than resolving a string, so `//host/` stays on this origin.
+    url.pathname = url.pathname.replace(/\/+$/, '')
+    return Response.redirect(url, 308)
+  }
   // Only `path` selects a host-rendered asset. Any other parameter would make a
   // fresh CDN cache key and force a render, so send it to the canonical URL.
   if (url.pathname === '/api/site') {
