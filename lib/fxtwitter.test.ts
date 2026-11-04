@@ -681,6 +681,50 @@ describe('fetchFxFullThread', () => {
     }
   })
 
+  test.each([
+    ['a 5xx', () => new Response(JSON.stringify({ code: 503, message: 'UPSTREAM_ERROR' }), { status: 503 })],
+    ['a network failure', () => { throw new TypeError('fetch failed') }],
+  ])('a parent lost to %s fails retryably instead of returning a lone reply', async (_, parentResponse) => {
+    const { resetFxPool } = await import('./fxtwitter.js')
+    const { fetchPosts } = await import('./tweet-fetch.js')
+    resetFxPool()
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/status/100')) return parentResponse()
+      if (url.includes('/thread/')) return new Response(JSON.stringify(fxThreadResponse([leaf])))
+      return new Response(JSON.stringify({ replies: [] }))
+    }))
+    try {
+      await expect(fetchPosts('alice', '200', 'full', 'full', 'off')).rejects.toMatchObject({ status: 502, code: 'upstream_error', retryAfter: 30 })
+    } finally {
+      resetFxPool()
+    }
+  })
+
+  test('a failed thread endpoint still recovers known parents, and fails retryably when it cannot', async () => {
+    const { resetFxPool } = await import('./fxtwitter.js')
+    const { fetchPosts } = await import('./tweet-fetch.js')
+    const leaf = makeTweet('200', { replying_to: { status: '100' } })
+    for (const parentUp of [true, false]) {
+      resetFxPool()
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url.includes('/thread/')) return new Response('{}', { status: 503 })
+        if (url.includes('/status/200')) return new Response(JSON.stringify(fxStatusResponse(leaf)))
+        if (url.includes('/status/100')) {
+          return parentUp ? new Response(JSON.stringify(fxStatusResponse(makeTweet('100')))) : new Response('{}', { status: 503 })
+        }
+        throw new Error(`unexpected ${url}`)
+      }))
+      const pending = fetchPosts('alice', '200', 'full', 'full', 'off')
+      if (parentUp) {
+        await expect(pending).resolves.toMatchObject({ source: 'fxtwitter', tweets: [{ id: '100', context: 'parent' }, { id: '200', context: 'post' }] })
+      } else {
+        await expect(pending).rejects.toMatchObject({ code: 'upstream_error' })
+      }
+    }
+    resetFxPool()
+  })
+
   test('falls back to conversation chain when thread endpoint returns single tweet with parent', async () => {
     const root = makeTweet('100')
     const leaf = makeTweet('200', { replying_to: { status: '100' } as FxReplyingTo })

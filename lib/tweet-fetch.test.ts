@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { ConvertError } from './errors.js'
 
-vi.mock('./fxtwitter.js', () => ({
+vi.mock('./fxtwitter.js', async (importOriginal) => ({
+  getParentStatusId: (await importOriginal<typeof import('./fxtwitter.js')>()).getParentStatusId,
+  fetchFxConversationChain: vi.fn(),
   fetchFxConversationReplies: vi.fn(),
   fetchFxFullThread: vi.fn(),
   fetchFxStatus: vi.fn(),
