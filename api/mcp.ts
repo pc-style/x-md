@@ -194,20 +194,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   const pending = dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, admission })
   pending.catch(() => undefined)
   const quota = await charged
-  if (quota) {
-    applyRequestQuota(res, quota)
-    if (!quota.allowed) {
-      applyExhaustedQuota(res, quota, API_IP.name, quota.retryAfter)
-      res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      const retryAfter = Math.max(1, quota.retryAfter)
-      const error = {
-        code: MCP_RATE_LIMITED,
-        message: 'Too many requests from this address. Cached responses do not count against the allowance.',
-        data: { status: 429, code: 'rate_limited', policy: API_IP.name, retryAfter },
-      }
-      return res.status(429).send(JSON.stringify({ jsonrpc: '2.0', id: message.id ?? null, error }))
-    }
-  }
+  if (quota) applyRequestQuota(res, quota)
 
   let outcome
   try {
@@ -217,11 +204,24 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     outcome = { error: { code: JSONRPC_INTERNAL_ERROR, message: 'Internal error' } }
   }
 
-  // A tool answered from the application cache reached no upstream, so it
-  // gives its charge back.
-  if (quota?.bucket !== undefined && outcome && 'result' in outcome && (outcome.result as { structuredContent?: { cache?: unknown } }).structuredContent?.cache === 'hit') {
+  // A tool answered from the application cache reached no upstream, so it is
+  // served even on a spent allowance and gives its charge back. Only a call
+  // that needed an upstream is refused, and it keeps its charge.
+  const hit = outcome !== null && 'result' in outcome && (outcome.result as { structuredContent?: { cache?: unknown } }).structuredContent?.cache === 'hit'
+  if (quota && hit && quota.bucket !== undefined) {
     await refundRateLimit(apiIpKey(resolved.ip), API_IP.windowSec, quota.bucket)
-    applyRequestQuota(res, { ...quota, states: quota.states.map((state) => (state.name === API_IP.name ? { ...state, remaining: Math.min(state.quota, state.remaining + 1) } : state)) })
+    if (quota.allowed) applyRequestQuota(res, { ...quota, states: quota.states.map((state) => (state.name === API_IP.name ? { ...state, remaining: Math.min(state.quota, state.remaining + 1) } : state)) })
+  }
+  if (quota && !quota.allowed && !hit) {
+    applyExhaustedQuota(res, quota, API_IP.name, quota.retryAfter)
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    const retryAfter = Math.max(1, quota.retryAfter)
+    const error = {
+      code: MCP_RATE_LIMITED,
+      message: 'Too many requests from this address. Profile, follower, following and search results already cached are still served.',
+      data: { status: 429, code: 'rate_limited', policy: API_IP.name, retryAfter },
+    }
+    return res.status(429).send(JSON.stringify({ jsonrpc: '2.0', id: message.id ?? null, error }))
   }
 
   // The modern transport answers an unimplemented RPC with 404, so a client can

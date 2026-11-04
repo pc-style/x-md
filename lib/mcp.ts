@@ -795,7 +795,7 @@ async function runBrowse(
     full: args.full === true,
     ip: ctx.ip ?? null,
     caller: ctx.caller,
-  }, { admission: ctx.admission })
+  }, { admission: ctx.admission, serveHits: true })
   return { text: result.markdown, structured: browseStructured(result) }
 }
 

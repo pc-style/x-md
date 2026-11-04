@@ -199,7 +199,7 @@ Protocol mistakes come back as JSON-RPC errors: `-32700` for an unparseable body
 
 Upstream failures are different: a rate limit, a protected account, or a missing post comes back as a successful `tools/call` result with `isError: true` and a message naming the HTTP status, the machine code, and the seconds to wait. That keeps a recoverable X-side problem out of the transport layer.
 
-Every `tools/call` spends one unit of the same `api-ip` allowance the REST routes charge, and a call answered from the application cache gives it back. Once the allowance is spent the transport answers HTTP `429` with `Retry-After` and a JSON-RPC error `-32000` whose `error.data` is `{ status: 429, code: "rate_limited", policy: "api-ip", retryAfter }`.
+Every `tools/call` spends one unit of the same `api-ip` allowance the REST routes charge, and a profile, follower, following or search call answered from the application cache gives it back and is served even once the allowance is spent. Any other call over the allowance gets HTTP `429` with `Retry-After` and a JSON-RPC error `-32000` whose `error.data` is `{ status: 429, code: "rate_limited", policy: "api-ip", retryAfter }`.
 
 ## Discovery
 

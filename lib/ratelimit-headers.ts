@@ -65,7 +65,7 @@ export interface RequestQuota {
   states: QuotaState[]
   /** A counter could not be read, so the reported state is the fail-open assumption. */
   degraded: boolean
-  /** The front-door window charged, so a refund cannot land in the next one. */
+  /** The front-door window charged, so a refund cannot land in the next one. Absent when nothing was counted. */
   bucket?: number
 }
 
@@ -193,7 +193,7 @@ export async function chargeRequestQuota(scope: QuotaScope, caller: QuotaCaller)
     }),
   ])
   const states: QuotaState[] = [{ ...front, remaining: verdict.remaining, resetSec: verdict.retryAfter }, ...deeperStates(deeper, counts)]
-  return { allowed: verdict.allowed, retryAfter: verdict.retryAfter, states, degraded: verdict.degraded || counts === undefined, bucket: verdict.bucket }
+  return { allowed: verdict.allowed, retryAfter: verdict.retryAfter, states, degraded: verdict.degraded || counts === undefined, bucket: verdict.degraded ? undefined : verdict.bucket }
 }
 
 function deeperStates(deeper: readonly QuotaPolicy[], counts: readonly number[] | undefined): QuotaState[] {

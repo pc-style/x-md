@@ -76,4 +76,27 @@ describe('/mcp tools/call spends the api-ip allowance', () => {
     }
     expect(vi.mocked(fetchFxProfile)).toHaveBeenCalledTimes(1)
   })
+
+  test('an exhausted allowance still serves cache hits, and refuses only misses', async () => {
+    const ip = '203.0.113.10'
+    // Two clients behind one address each warm their own entry.
+    expect((await profileCall(1, 'warm_mine', ip)).json.result.structuredContent.cache).toBe('miss')
+    expect((await profileCall(2, 'warm_mine', ip)).json.result.structuredContent.cache).toBe('hit')
+    expect((await profileCall(3, 'warm_theirs', ip)).json.result.structuredContent.cache).toBe('miss')
+    // Burn what is left with distinct misses.
+    expect((await profileCall(4, 'burn_one', ip)).res.statusCode).toBe(429)
+    const fetched = vi.mocked(fetchFxProfile).mock.calls.length
+
+    for (const [id, handle] of [[5, 'warm_mine'], [6, 'warm_theirs'], [7, 'warm_mine']] as const) {
+      const { res, json } = await profileCall(id, handle, ip)
+      expect(res.statusCode, handle).toBe(200)
+      expect(json.result.structuredContent.cache, handle).toBe('hit')
+    }
+    // Refunded hits free nothing for misses: the next fresh handle is still refused.
+    const miss = await profileCall(8, 'burn_two', ip)
+    expect(miss.res.statusCode).toBe(429)
+    expect(miss.json.error.data).toMatchObject({ status: 429, code: 'rate_limited', policy: 'api-ip' })
+    expect(miss.json.error.message).not.toMatch(/do not count/)
+    expect(vi.mocked(fetchFxProfile).mock.calls.length).toBe(fetched)
+  })
 })

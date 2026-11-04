@@ -234,6 +234,8 @@ export interface WithCacheOptions {
    * soon as hot memory holds the value. Without it the write is awaited.
    */
   defer?: (write: Promise<void>) => void
+  /** Serve a stored entry without waiting on `admission`; only a miss is gated. */
+  ungatedHits?: boolean
 }
 
 /**
@@ -250,7 +252,7 @@ export async function withCache<T>(
   flightKey?: string,
   options: WithCacheOptions = {},
 ): Promise<{ value: T; status: CacheStatus }> {
-  const { admission, defer } = options
+  const { admission, defer, ungatedHits } = options
   if (nocache || cacheDisabled()) {
     if (admission) await admission
     return { value: await fn(), status: 'bypass' }
@@ -258,7 +260,7 @@ export async function withCache<T>(
 
   const hot = readMemory<T>(key)
   if (hot) {
-    if (admission) await admission
+    if (admission && !ungatedHits) await admission
     trackCache(true)
     return hot
   }
@@ -272,7 +274,7 @@ export async function withCache<T>(
   }
 
   let hit = await getCached<T>(key)
-  if (admission) {
+  if (admission && !(ungatedHits && hit)) {
     await admission
     // Another caller's fill may have landed while the verdict was pending.
     hit ??= readMemory<T>(key)
