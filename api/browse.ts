@@ -15,6 +15,8 @@ import { browseNotFoundDetail, notFoundResponse } from '../lib/notfound.js'
 /** The v1 path that replaces this exact legacy call, or nothing when it names no resource. */
 export function browseSuccessor(resource?: string, handle?: string): string | undefined {
   if (resource === 'search') return '/api/v1/search'
+  // `browse` accepts a leading @, so the successor must too.
+  handle = handle?.replace(/^@/, '')
   if (!handle || !/^[A-Za-z0-9_]{1,15}$/.test(handle)) return undefined
   if (resource === 'followers' || resource === 'following') return `/api/v1/profiles/${handle}/${resource}`
   if (resource === 'profile') return `/api/v1/profiles/${handle}`

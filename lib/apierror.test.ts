@@ -260,6 +260,10 @@ describe('handlers answer with problem details', () => {
     expect(browse.res.getHeader('Deprecation')).toBe(LEGACY_DEPRECATION)
     expect(browse.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/search>; rel="successor-version"')
 
+    const atHandle = exchange({ method: 'OPTIONS', url: '/api/browse?resource=profile&handle=%40jack', query: { resource: 'profile', handle: '@jack' } })
+    await browseHandler(atHandle.req, atHandle.res)
+    expect(atHandle.res.getHeader('Link')).toContain('<https://mdfromx.com/api/v1/profiles/jack>; rel="successor-version"')
+
     const routed = exchange({ method: 'OPTIONS', url: '/api/convert?via=route', query: { via: 'route' } })
     await convertHandler(routed.req, routed.res)
     expect(routed.res.getHeader('Deprecation')).toBeUndefined()
