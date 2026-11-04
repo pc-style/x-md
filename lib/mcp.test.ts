@@ -9,6 +9,7 @@ vi.mock('./browse.js', () => ({ browse: vi.fn() }))
 vi.mock('./converter.js', () => ({ convertTweet: vi.fn() }))
 
 import handler from '../api/mcp.js'
+import { createApiKey } from './apikeys.js'
 import { browse } from './browse.js'
 import { convertTweet } from './converter.js'
 import { ConvertError } from './errors.js'
@@ -24,6 +25,7 @@ import {
   requestedProtocol,
   decodeHeaderValue,
   validateModernHeaders,
+  validateArguments,
   MCP_MODERN_PROTOCOL,
   MCP_RESOURCES,
   MCP_SERVER_NAME,
@@ -64,7 +66,8 @@ beforeEach(() => {
 describe('protocol negotiation', () => {
   test('echoes a revision we speak and downgrades everything else', () => {
     expect(negotiateProtocol('2025-06-18')).toBe('2025-06-18')
-    expect(negotiateProtocol('2025-03-26')).toBe('2025-03-26')
+    // 2025-03-26 obliges batch support this transport does not offer.
+    expect(negotiateProtocol('2025-03-26')).toBe(MCP_LATEST_LEGACY_PROTOCOL)
     // 2026-07-28 removed initialize, so the handshake never answers with it.
     expect(negotiateProtocol('2026-07-28')).toBe(MCP_LATEST_LEGACY_PROTOCOL)
     expect(negotiateProtocol(undefined)).toBe(MCP_LATEST_LEGACY_PROTOCOL)
@@ -745,5 +748,115 @@ describe('methods that exist in only one protocol era', () => {
 
   test('a direct dispatch with no era keeps the handshake surface', async () => {
     expect(ok(await dispatch({ jsonrpc: '2.0', id: 7, method: 'ping' }))).toEqual({})
+  })
+})
+
+describe('audit regressions (envelope, metadata, origin, resources, caching)', () => {
+  const META = 'io.modelcontextprotocol/'
+  const fullMeta = { _meta: { [`${META}protocolVersion`]: MCP_MODERN_PROTOCOL, [`${META}clientCapabilities`]: {} } }
+  const modern = (method: string) => ({ 'mcp-protocol-version': MCP_MODERN_PROTOCOL, 'mcp-method': method })
+  const post = (body: unknown, headers: Record<string, string> = {}, accept = 'application/json') => call('POST', { accept, body, headers })
+
+  test('modern transport errors keep the request id', async () => {
+    const unknown = await post({ jsonrpc: '2.0', id: 42, method: 'audit/unknown', params: fullMeta }, modern('audit/unknown'))
+    expect(unknown.res.statusCode).toBe(404)
+    expect(JSON.parse(unknown.body())).toMatchObject({ id: 42, error: { code: -32601 } })
+    const mismatch = await post({ jsonrpc: '2.0', id: 'req-43', method: 'tools/list', params: fullMeta }, modern('resources/list'))
+    expect(mismatch.res.statusCode).toBe(400)
+    expect(JSON.parse(mismatch.body())).toMatchObject({ id: 'req-43', error: { code: -32020 } })
+  })
+
+  test('a modern request missing required _meta is 400 / -32602', async () => {
+    const bare = await post({ jsonrpc: '2.0', id: 3, method: 'resources/templates/list' }, modern('resources/templates/list'))
+    expect(bare.res.statusCode).toBe(400)
+    expect(JSON.parse(bare.body())).toMatchObject({ id: 3, error: { code: -32602 } })
+    const noCaps = await post(
+      { jsonrpc: '2.0', id: 4, method: 'resources/templates/list', params: { _meta: { [`${META}protocolVersion`]: MCP_MODERN_PROTOCOL } } },
+      modern('resources/templates/list'),
+    )
+    expect(noCaps.res.statusCode).toBe(400)
+    expect(JSON.parse(noCaps.body()).error.data.missing).toEqual([`${META}clientCapabilities`])
+    const complete = await post({ jsonrpc: '2.0', id: 5, method: 'resources/templates/list', params: fullMeta }, modern('resources/templates/list'))
+    expect(complete.res.statusCode).toBe(200)
+    expect(JSON.parse(complete.body()).result.resultType).toBe('complete')
+  })
+
+  test('2025-03-26 is not offered, since it would oblige batch support', async () => {
+    const held = await post({ jsonrpc: '2.0', id: 1, method: 'ping' }, { 'mcp-protocol-version': '2025-03-26' })
+    expect(held.res.statusCode).toBe(400)
+    expect(JSON.parse(held.body()).error.code).toBe(-32022)
+    expect((serverCard().remotes as Array<{ supportedProtocolVersions: string[] }>)[0]!.supportedProtocolVersions).not.toContain('2025-03-26')
+  })
+
+  test('the envelope is validated and requests are told from notifications by id', async () => {
+    const objectId = await post({ jsonrpc: '2.0', id: { bad: true }, method: 'ping' })
+    expect(objectId.res.statusCode).toBe(400)
+    expect(JSON.parse(objectId.body())).toMatchObject({ id: null, error: { code: -32600 } })
+    const nullId = await post({ jsonrpc: '2.0', id: null, method: 'ping' })
+    expect(nullId.res.statusCode).toBe(400)
+
+    const noIdPing = await post({ jsonrpc: '2.0', method: 'ping' })
+    expect(noIdPing.res.statusCode).toBe(202)
+    expect(noIdPing.body()).toBe('')
+
+    const idNotification = await post({ jsonrpc: '2.0', id: 7, method: 'notifications/initialized' })
+    expect(idNotification.res.statusCode).toBe(200)
+    expect(JSON.parse(idNotification.body())).toMatchObject({ id: 7, error: { code: -32601 } })
+  })
+
+  test('an Origin that is not an origin is refused; real origins still pass CORS', async () => {
+    const bad = await post({ jsonrpc: '2.0', id: 32, method: 'ping' }, { origin: 'not-an-origin' })
+    expect(bad.res.statusCode).toBe(403)
+    expect(JSON.parse(bad.body()).error.code).toBe(-32600)
+    for (const origin of ['https://example.com', 'http://localhost:3000', 'null']) {
+      const good = await post({ jsonrpc: '2.0', id: 33, method: 'ping' }, { origin })
+      expect(good.res.statusCode, origin).toBe(200)
+      expect(good.res.getHeader('Access-Control-Allow-Origin')).toBe('*')
+    }
+    for (const origin of ['https://example.com/path', 'https://example.com\\path', 'https://user@example.com']) {
+      expect((await post({ jsonrpc: '2.0', id: 34, method: 'ping' }, { origin })).res.statusCode, origin).toBe(403)
+    }
+  })
+
+  test('string lengths count code points, as JSON Schema does', () => {
+    const search = MCP_TOOLS.find((tool) => tool.name === 'x_md_search_posts')!
+    expect(validateArguments(search, { q: '😀'.repeat(251) })).toBeUndefined()
+    expect(validateArguments(search, { q: '😀'.repeat(501) })).toMatch(/at most 500/)
+  })
+
+  test('resources/read fetches from the trusted origin, never the Host header, and refuses redirects', async () => {
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, text: async () => '{}' }))
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const forged = await post(
+        { jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'http://127.0.0.1:6391/openapi.json' } },
+        { host: '127.0.0.1:6391', 'x-forwarded-proto': 'http' },
+      )
+      expect(JSON.parse(forged.body()).result.contents[0].uri).toBe('http://127.0.0.1:6391/openapi.json')
+      expect(fetchMock).toHaveBeenCalledWith('https://mdfromx.com/openapi.json', expect.objectContaining({ redirect: 'error' }))
+
+      // The local dev adapter lends its listening origin, so its advertised http:// URIs are readable.
+      const local = exchange('POST', { accept: 'application/json', body: { jsonrpc: '2.0', id: 3, method: 'resources/read', params: { uri: 'http://localhost:5173/index.md' } }, headers: { host: 'localhost:5173' } })
+      local.req.protocol = 'http'
+      local.req.documentOrigin = 'http://127.0.0.1:5173'
+      await (handler as unknown as (req: unknown, res: unknown) => Promise<unknown>)(local.req, local.res)
+      expect(JSON.parse(local.body()).result.contents[0].uri).toBe('http://localhost:5173/index.md')
+      expect(fetchMock).toHaveBeenLastCalledWith('http://127.0.0.1:5173/index.md', expect.objectContaining({ redirect: 'error' }))
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('a keyed response keeps private, no-store over JSON and SSE', async () => {
+    const { secret } = await createApiKey('mcp-cache', 10)
+    const headers = { authorization: `Bearer ${secret}` }
+    const json = await post({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, headers)
+    expect(json.res.getHeader('X-Api-Key-Status')).toBe('valid')
+    expect(json.res.getHeader('Cache-Control')).toBe('private, no-store')
+    const sse = await post({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, headers, 'application/json, text/event-stream')
+    expect(sse.res.getHeader('Content-Type')).toBe('text/event-stream; charset=utf-8')
+    expect(sse.res.getHeader('Cache-Control')).toBe('private, no-store, no-transform')
+    const anonymous = await post({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, {}, 'application/json, text/event-stream')
+    expect(anonymous.res.getHeader('Cache-Control')).toBe('no-store, no-transform')
   })
 })

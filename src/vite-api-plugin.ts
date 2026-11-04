@@ -380,8 +380,14 @@ async function handleMcp(url: URL, req: IncomingMessage, res: ServerResponse): P
   if (path !== '/mcp' && path !== '/mcp/server-card' && path !== '/api/mcp') return false
   if (path === '/mcp/server-card') url.searchParams.set('doc', 'server-card')
 
-  const request = req as IncomingMessage & { query: Record<string, string>; body?: unknown }
+  const request = req as IncomingMessage & { query: Record<string, string>; body?: unknown; protocol?: string; documentOrigin?: string }
   request.query = Object.fromEntries(url.searchParams)
+  // Self-links name the scheme this server actually speaks, and resources/read
+  // fetches documents from the socket it listens on, never from the Host header.
+  const { encrypted, localAddress, localPort } = req.socket as typeof req.socket & { encrypted?: boolean }
+  const scheme = encrypted ? 'https' : 'http'
+  request.protocol = scheme
+  if (localAddress && localPort) request.documentOrigin = `${scheme}://${localAddress.includes(':') ? `[${localAddress}]` : localAddress}:${localPort}`
   if (req.method !== 'GET' && req.method !== 'HEAD') request.body = await readRawBody(req)
 
   const response = res as ServerResponse & {
