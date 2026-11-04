@@ -333,11 +333,11 @@ test.each([
   expect(events('fallback_used')).toHaveLength(0)
 })
 
-test('an empty FxTwitter search timeline is still reported as an outage', async () => {
+test('an empty FxTwitter search timeline is still reported upstream', async () => {
   upstream = async () => new Response('{"code":404,"results":[]}')
   const { req, res } = exchange({ resource: 'search', via: 'route' })
   await withServerEvents('browse', async () => {
-    await expect(searchFxStatuses('private-query', 'latest')).rejects.toMatchObject({ code: 'search_unavailable' })
+    await expect(searchFxStatuses('private-query', 'latest')).resolves.toMatchObject({ results: [], noTimeline: true })
     res.emit('finish')
   })(req, res)
   await flush()

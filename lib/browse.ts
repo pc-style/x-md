@@ -469,17 +469,27 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     const providers = tagged ? live.filter((provider) => provider.source === tagged.source) : live
 
     let outage: ConvertError | undefined
+    // An FxTwitter page with no timeline is an outage only if another source finds
+    // posts for the same query. Otherwise anyone could open the shared breaker with
+    // a query that matches nothing, moving every caller onto the scarcer tiers.
+    let fxNoTimeline: ConvertError | undefined
     for (const provider of providers) {
       const isFallback = outage || (provider.source === 'xsearch' && !tagged && fxDown)
       try {
-        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, provider.search, provider.pages, true)
+        const list = await collectList(page, tagged ? { cursor: tagged.raw, offset: tagged.offset } : undefined, provider.limit, async (cursor) => {
+          const result = await provider.search(cursor)
+          if (result.noTimeline) throw (fxNoTimeline = new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable'))
+          return result
+        }, provider.pages, true)
         if (provider.source === 'fxtwitter') await clearSearchBreaker()
+        // Another source finding nothing either confirms the empty answer.
+        if (fxNoTimeline && list.results.length > 0) await tripSearchBreaker()
         // Report only once the fallback has served the request.
-        if (isFallback) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
+        if (isFallback && !(fxNoTimeline && list.results.length === 0)) trackFallback('fxtwitter', provider.source, outage ? 'primary_error' : 'primary_unavailable')
         return { resource, posts: list.results, query: typed, feed, page, limit: provider.limit, nextCursor: tagCursor(provider.source, list.next), warnings: list.warnings, source: provider.source }
       } catch (error) {
         if (!(error instanceof ConvertError && error.code === 'search_unavailable')) throw error
-        if (provider.source === 'fxtwitter') await tripSearchBreaker()
+        if (provider.source === 'fxtwitter' && error !== fxNoTimeline) await tripSearchBreaker()
         outage = error
       }
     }
@@ -490,6 +500,8 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
     if (firecrawl?.firecrawlSearchConfigured()) {
       try {
         const posts = await firecrawl.searchFirecrawlStatuses(query, feed, limit)
+        if (fxNoTimeline && posts.length === 0) return { resource, posts, query: typed, feed, page, limit, source: 'fxtwitter' }
+        if (fxNoTimeline) await tripSearchBreaker()
         trackFallback(xsearchConfigured() ? 'xsearch' : 'fxtwitter', 'firecrawl', outage ? 'primary_error' : 'primary_unavailable')
         return { resource, posts, query: typed, feed, page, limit, source: 'firecrawl', degraded: true }
       } catch (error) {
@@ -497,6 +509,9 @@ async function browseUncached(input: BrowseInput, resource: BrowseResource, page
         if (!(error instanceof ConvertError && error.code === 'firecrawl_unavailable')) throw error
       }
     }
+    // No other tier was there to check FxTwitter's empty answer, so it stands. If
+    // one was there and failed too, nothing shows the query matches nothing: 503.
+    if (fxNoTimeline && outage === fxNoTimeline) return { resource, posts: [], query: typed, feed, page, limit, source: 'fxtwitter' }
     throw outage ?? new ConvertError(503, 'X search is temporarily unavailable upstream. Retry shortly.', 'search_unavailable')
   }
 
