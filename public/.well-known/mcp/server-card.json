@@ -3,7 +3,7 @@
   "name": "io.github.pc-style/x-md",
   "title": "x.md",
   "description": "Read public X posts, threads, profiles, and search results as Markdown or JSON.",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "websiteUrl": "https://mdfromx.com/",
   "documentationUrl": "https://mdfromx.com/docs/mcp",
   "icons": [
@@ -67,6 +67,11 @@
       "name": "x_md_get_following",
       "title": "List the accounts an X account follows",
       "description": "Page through the accounts a public X account follows, returning each one’s handle, display name, bio, and counts. Use it to map who an account pays attention to. Read-only and unauthenticated; protected accounts return an error instead of partial data."
+    },
+    {
+      "name": "x_md_import_posts",
+      "title": "Import an X account’s post history",
+      "description": "Bulk-import a public X account’s posts over a date range, newest first, as raw post objects with every upstream field (the same contract as the HTTP route /{handle}/posts). Use it to read or archive what an account posted between two dates, beyond what one profile page shows. Results are capped at 100 posts per call; when more exist, next_arguments holds the exact arguments for the next call into older posts. Each call spends one bulk import: 3 per hour and 5 per day per address without an API key, or the key’s own import allowance. Read-only; protected accounts return an error instead of partial data."
     },
     {
       "name": "submit_feedback",

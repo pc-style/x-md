@@ -94,8 +94,9 @@ takes `since` and `until`.
 - Live search: 5 uncached requests per minute per IP. Cache hits are free.
 - Live-provider requests: a further shared allowance per IP per 15-minute
   window. Every feed and every page of a page walk counts as one request.
-- Bulk imports through `/{handle}/posts`: 10 per 15 minutes per IP, 60 per API
-  key, one unit per import however many posts it returns.
+- Bulk imports through `/{handle}/posts` or the MCP tool `x_md_import_posts`: no
+  key needed; 3 per hour and 5 per day per IP, 60 per 15 minutes per API key; one
+  unit per request, continuations included, however many posts it returns.
 - `429` carries `Retry-After` in seconds. Wait that long. Do not retry in a
   loop, and do not fan out across IPs.
 - Scripted or sustained search outgrows the anonymous allowance. Ask a human

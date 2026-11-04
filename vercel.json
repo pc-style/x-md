@@ -9,6 +9,9 @@
     "api/import.ts": {
       "maxDuration": 120
     },
+    "api/mcp.ts": {
+      "maxDuration": 120
+    },
     "api/site.ts": {
       "includeFiles": "{dist/**,docs-assets/fonts/**,public/logo.svg}"
     }

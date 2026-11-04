@@ -39,10 +39,14 @@ export const SEARCH_IP: QuotaPolicy = { name: 'search-ip', quota: 5, windowSec: 
 export const SEARCH_KEY: QuotaPolicy = { name: 'search-key', quota: 30, windowSec: 60, partition: 'key' }
 
 /**
- * Bulk imports (api/import.ts). One import can cost upstream a few hundred
- * timeline pages, so it is metered on its own, not as one ordinary read.
+ * Bulk imports (lib/import-request.ts: every HTTP import route and the MCP
+ * import tool). One import can cost upstream a few hundred timeline pages, so it
+ * is metered on its own, not as one ordinary read. Anonymous callers hold two
+ * windows at once, an hour and a day; each request spends a unit of both, and
+ * one refused by either spends neither.
  */
-export const IMPORT_IP: QuotaPolicy = { name: 'import-ip', quota: 10, windowSec: 15 * 60, partition: 'ip' }
+export const IMPORT_IP: QuotaPolicy = { name: 'import-ip', quota: 3, windowSec: 60 * 60, partition: 'ip' }
+export const IMPORT_IP_DAY: QuotaPolicy = { name: 'import-ip-day', quota: 5, windowSec: 24 * 60 * 60, partition: 'ip' }
 export const IMPORT_KEY: QuotaPolicy = { name: 'import-key', quota: 60, windowSec: 15 * 60, partition: 'key' }
 /** The same policy with a key's own allowance; the name stays fixed, the quota is the key's. */
 export const importKeyPolicy = (limit: number): QuotaPolicy => ({ ...IMPORT_KEY, quota: limit })
@@ -85,6 +89,7 @@ export const apiIpKey = (ip: string): string => `api:ip:${ip || 'unknown'}`
 export const searchIpKey = (ip: string): string => `search:ip:${ip}`
 export const searchKeyKey = (id: string): string => `search:key:${id}`
 export const importIpKey = (ip: string): string => `import:ip:${ip || 'unknown'}`
+export const importIpDayKey = (ip: string): string => `import:ip-day:${ip || 'unknown'}`
 export const importKeyKey = (id: string): string => `import:key:${id}`
 export const feedbackIpKey = (ip: string): string => `feedback:ip:${ip || 'unknown'}`
 export const accountIpKey = (ip: string): string => `xsearch:ip:${ip || 'unknown'}`

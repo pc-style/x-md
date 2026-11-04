@@ -2,11 +2,12 @@ import type { BrowseResult } from './browse.js'
 import { ConvertError } from './errors.js'
 import { FEEDBACK_IP, feedbackIpKey } from './quotas.js'
 import { rateLimit } from './ratelimit.js'
+import type { QuotaCaller } from './ratelimit-headers.js'
 import type { SearchCaller } from './xsearch.js'
 
 export const MCP_SERVER_NAME = 'io.github.pc-style/x-md'
 export const MCP_SERVER_TITLE = 'x.md'
-export const MCP_SERVER_VERSION = '1.1.2'
+export const MCP_SERVER_VERSION = '1.2.0'
 export const MCP_SITE = 'https://mdfromx.com'
 export const MCP_ENDPOINT = `${MCP_SITE}/mcp`
 export const MCP_DOCS_URL = `${MCP_SITE}/docs/mcp`
@@ -63,6 +64,7 @@ export const MCP_INSTRUCTIONS = [
   'Use x_md_get_profile to learn who an account is and what it has posted recently.',
   'Use x_md_search_posts to find current public discussion on a topic or to locate an account by name.',
   'Use x_md_get_followers and x_md_get_following to page through an account’s public connections.',
+  'Use x_md_import_posts to pull an account’s post history over a date range as raw post objects; when it returns next_arguments, call it again with exactly those arguments to continue into older posts, and drop the one boundary post you already have. Imports are metered separately: 3 per hour and 5 per day per address without a key.',
   'Every x_md_ tool is read-only: none of them post, reply, like, follow, or read protected accounts, direct messages, or Lists.',
   'When the user hits a problem with x.md, or asks for something it does not support, use submit_feedback to send a bug report, feature request, question, or praise to the x.md team; include the tool call or URL involved and leave out personal data.',
   'submit_feedback is the only tool that writes anything, and it writes to the x.md feedback inbox, never to X.',
@@ -125,6 +127,12 @@ export interface McpContext {
    * cache while it is pending; nothing reaches an upstream until it allows.
    */
   admission?: Promise<boolean>
+  /** Who a bulk import is metered against; the transport fills it in from the resolved caller. */
+  quota?: QuotaCaller
+  /** Aborted when the client goes away, so a bulk import stops walking. */
+  signal?: AbortSignal
+  /** Told when a bulk-import allowance refuses the call, so the transport can advertise it. */
+  onThrottle?: (policy: string, retryAfter: number) => void
 }
 
 export type DispatchOutcome = { result: unknown } | { error: JsonRpcError } | null
@@ -259,6 +267,10 @@ function connectionTool(name: string, resource: 'followers' | 'following', title
     annotations: { title, ...READ_ONLY },
   }
 }
+
+/** Posts per import call: the per-call cap every MCP list tool shares, which keeps one result within a model's context. */
+export const MCP_IMPORT_MAX_POSTS = 100
+export const MCP_IMPORT_TOOL = 'x_md_import_posts'
 
 const FEEDBACK_KINDS = ['bug', 'feature', 'praise', 'question', 'other'] as const
 const FEEDBACK_SENTIMENTS = ['negative', 'neutral', 'positive'] as const
@@ -432,6 +444,61 @@ export const MCP_TOOLS: McpTool[] = [
     'List the accounts an X account follows',
     'Page through the accounts a public X account follows, returning each one’s handle, display name, bio, and counts. Use it to map who an account pays attention to. Read-only and unauthenticated; protected accounts return an error instead of partial data.',
   ),
+  {
+    name: MCP_IMPORT_TOOL,
+    title: 'Import an X account’s post history',
+    description: `Bulk-import a public X account’s posts over a date range, newest first, as raw post objects with every upstream field (the same contract as the HTTP route /{handle}/posts). Use it to read or archive what an account posted between two dates, beyond what one profile page shows. Results are capped at ${MCP_IMPORT_MAX_POSTS} posts per call; when more exist, next_arguments holds the exact arguments for the next call into older posts. Each call spends one bulk import: 3 per hour and 5 per day per address without an API key, or the key’s own import allowance. Read-only; protected accounts return an error instead of partial data.`,
+    inputSchema: {
+      $schema: DRAFT,
+      type: 'object',
+      additionalProperties: false,
+      required: ['handle'],
+      properties: {
+        handle: HANDLE_PROPERTY,
+        since: { type: 'string', maxLength: 40, description: 'Oldest post to include: an ISO date (`2026-01-01`), ISO datetime, or unix timestamp in seconds or milliseconds. Omit to go as far back as the archive and X allow.' },
+        until: { type: 'string', maxLength: 40, description: 'Newest post to include, in the same formats as since. Defaults to now. To continue a truncated import, use next_arguments instead of setting this by hand.' },
+        max_posts: { type: 'integer', minimum: 1, maximum: MCP_IMPORT_MAX_POSTS, default: MCP_IMPORT_MAX_POSTS, description: `Most posts to return, newest first. The tool caps this at ${MCP_IMPORT_MAX_POSTS}; continue with next_arguments for more.` },
+        with_replies: { type: 'boolean', default: true, description: 'Include the account’s own replies.' },
+        with_reposts: { type: 'boolean', default: true, description: 'Include reposts. A repost carries the original post’s time.' },
+        only_replies: { type: 'boolean', default: false, description: 'Return only the account’s replies. Conflicts with with_replies=false.' },
+        refresh: { type: 'boolean', default: false, description: 'Re-walk the whole range upstream instead of serving what x.md has already archived.' },
+      },
+    },
+    outputSchema: {
+      $schema: DRAFT,
+      type: 'object',
+      additionalProperties: false,
+      required: ['handle', 'posts', 'meta'],
+      properties: {
+        handle: { type: 'string' },
+        posts: { type: 'array', items: { $ref: '#/$defs/post' }, description: 'Posts in the range, newest first.' },
+        profile: { $ref: '#/$defs/author' },
+        meta: {
+          type: 'object',
+          description: 'Import metadata, the same object the HTTP route returns as meta: coverage, truncation, archive state and walk statistics.',
+          required: ['count', 'until', 'truncated'],
+          properties: {
+            count: { type: 'integer', minimum: 0 },
+            since: { type: 'string' },
+            until: { type: 'string' },
+            oldest: { type: 'string' },
+            newest: { type: 'string' },
+            truncated: { type: 'boolean', description: 'True when the range held more posts than were returned, or a walk was incomplete.' },
+            floor_reached: { type: 'boolean' },
+            covered_since: { type: 'string' },
+            next_until: { type: 'string', description: 'Upper bound of the next call; next_arguments already carries it.' },
+            warnings: { type: 'array', items: { type: 'string' }, description: 'Present when part of the range could not be read: retry the same arguments before continuing.' },
+          },
+        },
+        next_arguments: {
+          type: 'object',
+          description: 'Present when older posts remain: the arguments of the next call, to pass back unchanged. Deduplicate posts by id, since the boundary post repeats.',
+        },
+      },
+      $defs: OUTPUT_DEFS,
+    },
+    annotations: { title: 'Import an X account’s post history', ...READ_ONLY },
+  },
   // The same tool @usenotra/geo's registerFeedbackTool puts on an SDK McpServer,
   // spelled out as JSON Schema because this server dispatches by hand.
   {
@@ -871,6 +938,25 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
   x_md_search_posts: (args, ctx) => runBrowse('search', args, ctx),
   x_md_get_followers: (args, ctx) => runBrowse('followers', args, ctx),
   x_md_get_following: (args, ctx) => runBrowse('following', args, ctx),
+  async x_md_import_posts(args, ctx) {
+    await admitted(ctx)
+    const { chargeImport, parseImportRequest, runImport } = await import('./import-request.js')
+    // The HTTP route's own parser, over the same names, so both surfaces validate alike.
+    const parsed = parseImportRequest((key) => (args[key] === undefined ? undefined : String(args[key])), MCP_IMPORT_MAX_POSTS)
+    if (!parsed.ok) throw new ConvertError(400, parsed.detail, parsed.code)
+    const caller: QuotaCaller = ctx.quota ?? (ctx.caller?.kind === 'key' ? { ip: ctx.ip ?? '', key: { id: ctx.caller.id, limit: ctx.caller.limit } } : { ip: ctx.ip ?? '' })
+    const charged = await chargeImport(caller)
+    if ('refused' in charged) {
+      ctx.onThrottle?.(charged.refused.policy ?? '', charged.refused.retryAfter ?? 1)
+      throw charged.refused
+    }
+    const result = await runImport(parsed.options, caller, charged.charge, { signal: ctx.signal })
+    const structured: Record<string, unknown> = { handle: parsed.options.handle, posts: result.posts, meta: result.meta }
+    if (result.profile !== undefined) structured.profile = result.profile
+    if (result.meta.next_until) structured.next_arguments = { ...args, until: result.meta.next_until }
+    // The text block is the body the HTTP route returns, for clients that read only text.
+    return { text: JSON.stringify(result), structured }
+  },
   async submit_feedback(args, ctx) {
     await admitted(ctx)
     const { submitFeedback } = await import('@usenotra/geo/feedback')

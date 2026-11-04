@@ -25,7 +25,7 @@ Currency: USD. Last updated: 2026-09-08. Canonical source:
 
 | Plan | Price | Interval | Best for | Includes | Limits |
 | --- | ---: | --- | --- | --- | --- |
-| Public | $0 | none | Every caller, including agents | All read routes, Markdown and JSON, OpenAPI, MCP, the `browse-x` skill | 5 uncached live searches per minute per IP; a further shared live-provider allowance per IP per 15-minute window; 20 items per page; 10 pages maximum |
+| Public | $0 | none | Every caller, including agents | All read routes, Markdown and JSON, OpenAPI, MCP, the `browse-x` skill | 5 uncached live searches per minute per IP; a further shared live-provider allowance per IP per 15-minute window; 20 items per page; 10 pages maximum; 3 bulk history imports (`/{handle}/posts` or the MCP `x_md_import_posts` tool) per hour and 5 per day per IP, each continuation counting as one |
 | Keyed | $0 | none | A project that outgrew the public search allowance | Everything in Public, plus a per-key share of the account search pool | Per-key allowance per 15 minutes, set when the key is issued; issued by hand, not self-serve |
 | Self-hosted | $0 | none | Anyone who wants their own limits, providers, or private deployment | The full source under MIT | Your infrastructure, your provider keys, your bill |
 

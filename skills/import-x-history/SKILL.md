@@ -7,7 +7,7 @@ allowed-tools:
 
 # import x history
 
-one request, one handle, as much history as you ask for. base URL `https://mdfromx.com` (`https://mdfromx.com` is the same service). no key is needed: anonymous imports are metered per address, **10 per 15 minutes**. the default keyed allowance is **60 per 15 minutes per key**, but issued keys can have an override; read `RateLimit-Policy`; send it as:
+one request, one handle, as much history as you ask for. base URL `https://mdfromx.com` (`https://mdfromx.com` is the same service). no key is needed: anonymous imports are metered per address, **3 per hour and 5 per day**, both enforced. the default keyed allowance is **60 per 15 minutes per key**, but issued keys can have an override; read `RateLimit-Policy`; send it as:
 
 ```
 Authorization: Bearer $X_MD_API_KEY
@@ -72,7 +72,7 @@ post lines are buffered until the final selection is known, newest first, matchi
 
 ## limits and errors
 
-- imports are metered on their own: **10 per 15 minutes per address** without a key (`import-ip` in `RateLimit-Policy`), **60 per 15 minutes per key by default** with one (issued-key overrides are advertised in headers) (`import-key`); one unit per import however many posts it returns. `index=true` is free
+- imports are metered on their own: **3 per hour (`import-ip`) and 5 per day (`import-ip-day`) per address** without a key, **60 per 15 minutes per key by default** with one (issued-key overrides are advertised in headers) (`import-key`); one unit per request, continuations included, however many posts it returns; the MCP tool `x_md_import_posts` spends the same allowance. `index=true` is free
 - every response carries `RateLimit` / `RateLimit-Policy`; pace against them instead of discovering `429`
 - errors are RFC 9457 problem JSON with a machine `code`:
   - `401 unauthorized` / `invalid_key` — missing required key or invalid/disabled key

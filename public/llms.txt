@@ -33,7 +33,7 @@ How to call it: one plain `GET`, no key, no OAuth. Send `Accept: text/markdown` 
 
 - Post, video, thread, or conversation: `https://mdfromx.com/{handle}/status/{id}`
 - Profile and latest posts: `https://mdfromx.com/{handle}`; add `with_replies=true`, `with_reposts=true`, `limit` up to 100, or `until={date}` to jump to a date
-- Bulk post history as raw JSON: `https://mdfromx.com/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams, `index=true` reports what is already archived for the account
+- Bulk post history as raw JSON: `https://mdfromx.com/{handle}/posts?since={date}&max_posts=2000`; replies and reposts included by default, `format=ndjson` streams, `index=true` reports what is already archived for the account; no key needed (3 imports per hour and 5 per day per IP, each continuation counts), and MCP exposes the same import as `x_md_import_posts`
 - Search public posts or users: `https://mdfromx.com/search?q={query}`; optional `feed=latest|top|photos|videos|users|media`
 - Followers: `https://mdfromx.com/{handle}/followers`
 - Following: `https://mdfromx.com/{handle}/following`

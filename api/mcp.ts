@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { withErrorTracking } from '../lib/error-tracking.js'
-import { callerHeaders, keyRequirementFailure, resolveCaller } from '../lib/apiauth.js'
+import { callerHeaders, keyRequirementFailure, quotaCaller as quotaCallerOf, resolveCaller } from '../lib/apiauth.js'
 import { parseJsonBody, requestOrigin } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
 import { API_IP, apiIpKey } from '../lib/quotas.js'
-import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, type QuotaCaller } from '../lib/ratelimit-headers.js'
+import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota, settleRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp, refundRateLimit } from '../lib/ratelimit.js'
 import {
   dispatch,
@@ -25,6 +25,7 @@ import {
   isModernProtocol,
   requestedProtocol,
   type JsonRpcMessage,
+  MCP_IMPORT_TOOL,
 } from '../lib/mcp.js'
 
 /**
@@ -221,17 +222,25 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // A tool call is charged like a REST read. The charge and the tool's cache
   // lookup run together, and the tool waits for this verdict before it reaches
   // an upstream; a denial is answered here, never from inside the tool.
-  const quotaCaller: QuotaCaller =
-    resolved.caller.kind === 'key'
-      ? { ip: resolved.ip, key: { id: resolved.caller.id, limit: resolved.caller.limit } }
-      : { ip: resolved.ip }
-  const charged = message.method === 'tools/call' && message.id !== undefined ? chargeRequestQuota('read', quotaCaller) : undefined
+  const quotaCaller = quotaCallerOf(resolved)
+  // A bulk import also spends the import allowance the HTTP import routes spend,
+  // inside the tool once arguments are valid; its headers advertise both.
+  const toolName = typeof message.params === 'object' && message.params !== null ? (message.params as { name?: unknown }).name : undefined
+  const importing = message.method === 'tools/call' && toolName === MCP_IMPORT_TOOL
+  const charged = message.method === 'tools/call' && message.id !== undefined ? chargeRequestQuota(importing ? 'import' : 'read', quotaCaller) : undefined
   const admission = charged?.then((quota) => quota.allowed)
   admission?.catch(() => undefined)
   // Documents are fetched from a trusted origin, never from the Host header:
   // the Vite adapter lends its own listening origin; on Vercel it is unset.
   const documentOrigin = (req as { documentOrigin?: string }).documentOrigin
-  const pending = dispatch(message, { ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, documentOrigin, admission })
+  // A client that leaves stops a bulk import instead of leaving its walk running.
+  const aborter = new AbortController()
+  res.once('close', () => aborter.abort())
+  let throttled: { policy: string; retryAfter: number } | undefined
+  const pending = dispatch(message, {
+    ip: resolved.ip, caller: resolved.caller, era: modern ? 'modern' : 'legacy', site, documentOrigin, admission,
+    quota: quotaCaller, signal: aborter.signal, onThrottle: (policy, retryAfter) => { throttled = { policy, retryAfter } },
+  })
   pending.catch(() => undefined)
   const quota = await charged
   if (quota) applyRequestQuota(res, quota)
@@ -251,6 +260,11 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   if (quota && hit && quota.bucket !== undefined) {
     await refundRateLimit(apiIpKey(resolved.ip), API_IP.windowSec, quota.bucket)
     if (quota.allowed) applyRequestQuota(res, { ...quota, states: quota.states.map((state) => (state.name === API_IP.name ? { ...state, remaining: Math.min(state.quota, state.remaining + 1) } : state)) })
+  }
+  if (quota && quota.allowed && importing) {
+    // The import charged its allowance after the peek above: report what is left, or which window refused it.
+    if (throttled) applyExhaustedQuota(res, quota, throttled.policy, throttled.retryAfter)
+    else applyRequestQuota(res, await settleRequestQuota(quota, 'import', quotaCaller))
   }
   if (quota && !quota.allowed && !hit) {
     applyExhaustedQuota(res, quota, API_IP.name, quota.retryAfter)
