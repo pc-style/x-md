@@ -2,6 +2,23 @@ import { defineConfig } from 'blume'
 import { script, vercel } from 'blume/analytics'
 import { orama } from 'blume/search'
 import type { LocalFontConfig } from 'blume'
+import githubDark from 'shiki/themes/github-dark.mjs'
+import githubLight from 'shiki/themes/github-light.mjs'
+import type { ThemeRegistration } from 'shiki'
+
+/**
+ * GitHub's themes with darker (light) and lighter (dark) comments. Their stock
+ * `#6a737d` is 4.10:1 on the dark docs surface (`#080b09`) and 4.45:1 on the
+ * light one (`#f7f6f2`), under the 4.5:1 that 13px code needs. These are the
+ * comment colours GitHub's own current themes use.
+ */
+const withComments = (theme: ThemeRegistration, foreground: string): ThemeRegistration => ({
+  ...theme,
+  name: `${theme.name}-x-md`,
+  tokenColors: theme.tokenColors?.map((rule) =>
+    [rule.scope].flat().includes('comment') ? { ...rule, settings: { ...rule.settings, foreground } } : rule,
+  ),
+})
 
 /**
  * The same self-hosted, Latin-subsetted Satoshi the landing page loads
@@ -104,7 +121,7 @@ export default defineConfig({
   },
   markdown: {
     code: {
-      theme: { light: 'github-light', dark: 'github-dark' },
+      theme: { light: withComments(githubLight, '#59636e'), dark: withComments(githubDark, '#8b949e') },
     },
   },
 })

@@ -450,7 +450,8 @@ export function landingHtml(chrome: ChromeData = {}): string {
           </p>
 
           <div id="convert" class="mt-9 max-w-[600px] scroll-mt-28">
-            <form data-convert-form data-beam class="convert-shell">
+            <form data-convert-form data-beam class="convert-shell" action="/api/v1/posts" method="get" target="_blank" rel="noopener noreferrer">
+              <input type="hidden" name="thread" value="full" />
               <label for="x-url" class="sr-only">X status URL</label>
               <input
                 id="x-url"
@@ -578,7 +579,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
             </p>
             <div class="mt-auto pt-6">
               <div class="cmd-row">
-                <code><span class="t-dim mr-2 select-none">$</span>${SKILL_CMD}</code>
+                <code tabindex="0" role="region" aria-label="Install command"><span class="t-dim mr-2 select-none">$</span>${SKILL_CMD}</code>
                 <button type="button" class="copy-btn" data-copy="${SKILL_CMD}">Copy</button>
               </div>
             </div>

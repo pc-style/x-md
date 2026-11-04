@@ -70,3 +70,13 @@ test('every "what comes through" panel is in the markup, stacked, with the tabli
   expect(panels).toEqual(['threads', 'media', 'quotes', 'articles', 'obsidian'])
   for (const id of panels) expect(html).toContain(`aria-controls="panel-${id}"`)
 })
+
+test('the converter and the install command work without JavaScript or a mouse', () => {
+  // With JavaScript off the form submits natively; it must land on Markdown, not the landing page again.
+  const form = html.match(/<form data-convert-form[^>]*>[\s\S]*?<\/form>/)![0]
+  expect(form).toMatch(/action="\/api\/v1\/posts" method="get"/)
+  expect(form).toContain('<input type="hidden" name="thread" value="full" />')
+  expect(form).toMatch(/<input\s+id="x-url"[\s\S]*?name="url"/)
+  // The command scrolls sideways on a phone, so the keyboard has to reach it.
+  expect(html).toMatch(/<div class="cmd-row">\s*<code tabindex="0" role="region" aria-label="[^"]+">/)
+})

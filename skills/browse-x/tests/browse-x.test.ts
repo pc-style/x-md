@@ -79,6 +79,20 @@ describe('browse-x CLI', () => {
     expect(new URL(requested).pathname).toBe('/name%2Fwith%3Fdelimiters')
   })
 
+  test('expands a t.co link before routing it, and still rejects non-X destinations', async () => {
+    const requested: string[] = []
+    const fetcher = async (input: RequestInfo | URL, init?: RequestInit) => {
+      requested.push(`${init?.method ?? 'GET'} ${String(input)}`)
+      if (String(input) === 'https://t.co/abc123') return new Response(null, { status: 301, headers: { location: 'https://x.com/a/status/1?s=20' } })
+      if (String(input) === 'https://t.co/elsewhere') return new Response(null, { status: 301, headers: { location: 'https://example.test/page' } })
+      return response()
+    }
+    await run(['https://t.co/abc123'], { X_API_BASE: 'https://example.test' }, fetcher, { write: () => {} })
+    expect(requested[0]).toBe('HEAD https://t.co/abc123')
+    expect(requested[1]).toContain('/api/convert?url=https%3A%2F%2Fx.com%2Fa%2Fstatus%2F1')
+    await expect(run(['https://t.co/elsewhere'], { X_API_BASE: 'https://example.test' }, fetcher)).rejects.toMatchObject({ code: 2 })
+  })
+
   test('falls back from an empty base and sends configured API authentication', async () => {
     let requested = ''
     let requestHeaders: HeadersInit | undefined

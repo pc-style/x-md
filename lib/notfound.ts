@@ -132,7 +132,8 @@ function escapeHtml(value: string): string {
 /**
  * Compact HTML 404 that embeds the markdown recovery document in a `<pre>`, so
  * an agent that sent no Accept header still gets the machine-readable version
- * instead of a styled dead end.
+ * instead of a styled dead end. Dark by default, as every other page is; a
+ * stored choice of light (the shared `blume-theme` key) still wins.
  */
 export function notFoundHtml(path?: string, detail?: string, links: ProblemLink[] = NOT_FOUND_LINKS): string {
   const markdown = notFoundMarkdown(path, detail, links)
@@ -141,16 +142,18 @@ export function notFoundHtml(path?: string, detail?: string, links: ProblemLink[
 <title>404 Not Found - x.md</title>
 <meta name="robots" content="noindex">
 <link rel="alternate" type="text/markdown" href="/404.md">
+<script>try{if(localStorage.getItem('blume-theme')==='light')document.documentElement.dataset.theme='light'}catch{}</script>
 <style>
-:root{color-scheme:light dark}
-body{margin:0;padding:3rem 1.25rem;background:#f7f6f2;color:#1a1915;font:16px/1.6 ui-sans-serif,system-ui,-apple-system,sans-serif}
+:root{color-scheme:dark}
+:root[data-theme=light]{color-scheme:light}
+body{margin:0;padding:3rem 1.25rem;background:#131310;color:#eceade;font:16px/1.6 ui-sans-serif,system-ui,-apple-system,sans-serif}
 main{max-width:44rem;margin:0 auto}
 h1{font-size:1.5rem;margin:0 0 .5rem}
-h2{font-size:1rem;letter-spacing:.02em;text-transform:uppercase;color:#6b6858;margin:2rem 0 .5rem}
-a{color:#146c43}
+h2{font-size:1rem;letter-spacing:.02em;text-transform:uppercase;color:#9a9684;margin:2rem 0 .5rem}
+a{color:#5fbc8a}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em}
-pre{white-space:pre-wrap;background:#fffdf7;border:1px solid #e5e2d9;border-radius:.5rem;padding:1rem;overflow-x:auto;font-size:.85rem}
-@media(prefers-color-scheme:dark){body{background:#131310;color:#eceade}h2{color:#9a9684}a{color:#5fbc8a}pre{background:#1b1c17;border-color:#2c2e27}}
+pre{white-space:pre-wrap;background:#1b1c17;border:1px solid #2c2e27;border-radius:.5rem;padding:1rem;overflow-x:auto;font-size:.85rem}
+[data-theme=light] body{background:#f7f6f2;color:#1a1915}[data-theme=light] h2{color:#6b6858}[data-theme=light] a{color:#146c43}[data-theme=light] pre{background:#fffdf7;border-color:#e5e2d9}
 </style>
 </head><body><main>
 <h1>404 Not Found</h1>
