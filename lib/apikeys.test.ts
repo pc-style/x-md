@@ -1,9 +1,9 @@
-import { beforeEach, describe, expect, test } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { handleKeysApi, handlePoolApi } from './adminApi.js'
 import { importAllowance, type ApiKeyView } from './apikeys.js'
 import { poolSnapshot } from './pool.js'
 import { createApiKey, deleteApiKey, getApiKey, listApiKeys, resolveApiKey, toView, touchApiKey, updateApiKey } from './apikeys.js'
-import { resetKv } from './kv.js'
+import { kv, resetKv } from './kv.js'
 import { resetXSessions } from './xsearch.js'
 
 beforeEach(() => {
@@ -29,6 +29,19 @@ describe('api key store', () => {
     const { secret, record } = await createApiKey('bob', 10)
     await updateApiKey(record.id, { disabled: true })
     expect(await resolveApiKey(secret)).toBe('invalid')
+  })
+
+  test('a token that cannot be a key is rejected without a store lookup', async () => {
+    const { secret, record } = await createApiKey('erin', 7)
+    const get = vi.spyOn(kv(), 'get')
+    for (const token of ['garbage', 'xmd_nope', `xmd_${'g'.repeat(48)}`, `xmd_${'a'.repeat(47)}`, `${secret}0`, secret.toUpperCase()]) {
+      expect(await resolveApiKey(token)).toBe('invalid')
+    }
+    expect(get).not.toHaveBeenCalled()
+    expect(await resolveApiKey(`xmd_${'a'.repeat(48)}`)).toBe('invalid')
+    expect(get).toHaveBeenCalledTimes(1)
+    expect(await resolveApiKey(secret)).toMatchObject({ id: record.id, limitPer15m: 7 })
+    get.mockRestore()
   })
 
   test('touch stamps activity without overwriting a concurrent admin edit', async () => {

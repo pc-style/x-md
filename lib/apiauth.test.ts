@@ -34,7 +34,7 @@ describe('resolveCaller', () => {
     vi.stubEnv('KV_REST_API_TOKEN', 'tok')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('down')))
     resetKv()
-    const result = await resolveCaller({ authorization: 'Bearer xmd_anything', 'x-forwarded-for': '1.1.1.1' })
+    const result = await resolveCaller({ authorization: `Bearer xmd_${'0'.repeat(48)}`, 'x-forwarded-for': '1.1.1.1' })
     expect(result).toMatchObject({ status: 'unverified', caller: { kind: 'public', ip: '1.1.1.1' } })
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
