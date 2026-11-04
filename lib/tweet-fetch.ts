@@ -3,9 +3,11 @@ import { ConvertError, ParentContextThrottleError } from './errors.js'
 import { fetchContextDevStatus } from './contextdev.js'
 import { fetchFirecrawlStatus } from './firecrawl.js'
 import {
+  fetchFxConversationChain,
   fetchFxConversationReplies,
   fetchFxFullThread,
   fetchFxStatus,
+  getParentStatusId,
   type FxReplyRanking,
   type FxTweet,
 } from './fxtwitter.js'
@@ -146,5 +148,14 @@ export async function fetchPosts(
   }
 
   const result = await fetchStatusWithFallback(handle, id)
+  // FxTwitter served the post but not its thread, and no fallback warning says
+  // the context is limited: walk the known parents, which fails retryably
+  // rather than returning a complete-looking single post.
+  const focal = result.tweets[0]
+  if (result.source === 'fxtwitter' && focal && getParentStatusId(focal)) {
+    const chain = await fetchFxConversationChain(id, focal)
+    const thread = contextMode === 'thread' ? focalAuthorThread(chain, id, handle) : chain
+    return { tweets: annotateAndDedupe(thread, id, []), source: 'fxtwitter' }
+  }
   return { ...result, tweets: annotateAndDedupe(result.tweets, id, []) }
 }

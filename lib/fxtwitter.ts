@@ -711,6 +711,13 @@ export async function fetchFxStatus(id: string): Promise<FxTweet> {
   return tweet
 }
 
+/** The known parent could not be fetched; retry rather than drop the context. */
+function parentContextError(error: unknown): ParentContextThrottleError {
+  if (error instanceof ConvertError && error.code === 'upstream_rate_limited') return new ParentContextThrottleError(error)
+  const retryAfter = error instanceof ConvertError && error.retryAfter ? error.retryAfter : 30
+  return new ParentContextThrottleError(new ConvertError(502, 'The parent post could not be fetched, so the thread context would be incomplete. Retry shortly.', 'upstream_error', retryAfter))
+}
+
 export function getParentStatusId(tweet: FxTweet): string | undefined {
   const replyingTo = tweet.replying_to
   if (replyingTo && !Array.isArray(replyingTo)) {
@@ -743,13 +750,13 @@ export async function fetchFxConversationChain(
       walked.push(tweet)
       currentId = getParentStatusId(tweet)
     } catch (error) {
-      // A concurrent optional reply can cool the shared provider before the
-      // parent walk. Surface its retry deadline instead of silently truncating.
       if (error instanceof ConvertError && error.code === 'private_tweet') throw error
-      if (error instanceof ConvertError && error.code === 'upstream_rate_limited') {
-        throw walked.length > 0 ? new ParentContextThrottleError(error) : error
-      }
-      break
+      // Only a missing parent ends the chain. A throttled, failing or unreachable
+      // provider says nothing about the parent: surface a retryable failure
+      // instead of returning a complete-looking, truncated thread.
+      if (error instanceof ConvertError && error.code === 'not_found') break
+      if (walked.length === 0) throw error
+      throw parentContextError(error)
     }
   }
 
