@@ -1,4 +1,4 @@
-import { notedErrorCode, notedErrorType, requestBatch, serverEvent } from './server-events.js'
+import { SAMPLE_RATE, notedErrorCode, notedErrorType, requestBatch, serverEvent } from './server-events.js'
 import { createHmac } from 'node:crypto'
 import { clientIp } from './ratelimit.js'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -39,6 +39,10 @@ export function trackRequest(
   const token = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
   const host = process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST
   if (process.env.VERCEL_ENV !== 'production' || !token || !host?.startsWith('https://') || req.method === 'OPTIONS') return identity
+  // Unknown paths cost nothing to invent, so a miss is sampled and sends one
+  // event, carrying `sample_rate`; its status already says it failed.
+  const sampled = endpoint === 'notfound'
+  if (sampled && Math.random() >= SAMPLE_RATE) return identity
 
   const started = performance.now()
   const send = requestBatch()
@@ -78,8 +82,9 @@ export function trackRequest(
         // A property, not the person: counts unique callers without building profiles.
         caller_id: keyId ?? dailyCallerId(req),
         degraded: res.getHeader('X-Search-Degraded') === 'true',
+        ...(sampled ? { sample_rate: SAMPLE_RATE } : {}),
       }, keyId ?? 'anonymous')]
-      if (status >= 400) batch.push(serverEvent('request_failed', {
+      if (status >= 400 && !sampled) batch.push(serverEvent('request_failed', {
         route, status, error_type: notedErrorType(res, status), error_code: notedErrorCode(res), duration_ms, access, key_status: auth,
       }))
       void send(batch).finally(resolve)
