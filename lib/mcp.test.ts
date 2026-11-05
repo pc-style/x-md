@@ -585,11 +585,31 @@ describe('the HTTP transport', () => {
     expect(parse.res.statusCode).toBe(400)
     expect(JSON.parse(parse.body())).toEqual({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error: Invalid JSON' } })
 
+    // Vercel parses application/json lazily, so reading body can throw before
+    // our parser receives a value.
+    const lazy = exchange('POST', { accept: 'application/json', headers: { 'content-type': 'application/json' } })
+    Object.defineProperty(lazy.req, 'body', {
+      get() { throw Object.assign(new Error('Invalid JSON'), { statusCode: 400 }) },
+    })
+    await (handler as unknown as (req: unknown, res: unknown) => Promise<unknown>)(lazy.req, lazy.res)
+    expect(lazy.res.statusCode).toBe(400)
+    expect(lazy.res.getHeader('Content-Type')).toBe('application/json; charset=utf-8')
+    expect(JSON.parse(lazy.body())).toEqual(JSON.parse(parse.body()))
+
     for (const body of [[{ jsonrpc: '2.0', id: 1, method: 'ping' }], { method: 'ping' }, { jsonrpc: '1.0', method: 'ping' }]) {
       const held = await call('POST', { accept: 'application/json', body })
       expect(held.res.statusCode).toBe(400)
       expect(JSON.parse(held.body()).error.code).toBe(-32600)
     }
+  })
+
+  test('unexpected body getter failures still reach error tracking', async () => {
+    const error = Object.assign(new Error('Body storage unavailable'), { statusCode: 500 })
+    const held = exchange('POST')
+    Object.defineProperty(held.req, 'body', { get() { throw error } })
+    await expect((handler as unknown as (req: unknown, res: unknown) => Promise<unknown>)(held.req, held.res))
+      .rejects.toBe(error)
+    expect(held.body()).toBe('')
   })
 
   test('the protocol version header is validated and echoed', async () => {

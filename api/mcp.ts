@@ -148,7 +148,16 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return transportError(res, 405, JSONRPC_INVALID_REQUEST, `Method ${req.method ?? 'unknown'} is not allowed on the MCP endpoint.`)
   }
 
-  const parsed = parseJsonBody(req.body)
+  let parsed: ReturnType<typeof parseJsonBody>
+  try {
+    // Vercel's lazy body getter can reject malformed application/json before
+    // parseJsonBody runs. It still needs the same JSON-RPC parse-error reply.
+    parsed = parseJsonBody(req.body)
+  } catch (error) {
+    if (!(error instanceof Error) || !('statusCode' in error)
+      || error.statusCode !== 400 || error.message !== 'Invalid JSON') throw error
+    parsed = { ok: false }
+  }
   if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON')
   if (Array.isArray(parsed.value)) {
     // Every revision offered here is 2025-06-18 or later, which removed batching.
