@@ -15,6 +15,70 @@
 }
 h1 { text-wrap: balance; }
 
+/* Reading. Blume sets running text in its muted colour, which is right for the
+   lead and the rails but makes long pages read as one grey field; ink-2 keeps
+   the body a step under the headings without dimming it. Inline code was a
+   bright, heavy chip on a near-black (or pure white) ground that out-shouted
+   the sentence around it: it now sits on the raised surface with a hairline,
+   at the body's weight. Steps and callouts are `not-prose`, so they get the
+   same chip by hand (callout text itself stays muted, an aside), and Step
+   titles read as titles rather than muted paragraphs. */
+:root, :root[data-theme="dark"] {
+  --blume-code-background: var(--color-raised-2);
+}
+
+.prose,
+[data-blume-step] {
+  color: var(--color-ink-2);
+}
+
+.prose :not(pre) > code:not(:where([class~="not-prose"] *)),
+[data-blume-step] :not(pre) > code,
+[data-blume-callout] :not(pre) > code {
+  border: 1px solid var(--color-hair);
+  border-radius: 0.375rem;
+  background: var(--blume-code-background);
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  font-weight: 400;
+  padding: 0.1em 0.35em;
+}
+
+[data-blume-step] > p:first-of-type {
+  color: var(--color-ink);
+}
+
+/* The quickstart's copy-paste prompts wrap (`text wrap` fences); balance their
+   lines so a last word doesn't sit alone. */
+[data-blume-step] pre[data-wrap] code {
+  text-wrap: pretty;
+}
+
+/* The search preview is the snippet a reader is deciding on; set it in the
+   body colour rather than Blume's muted grey, as running text now is. */
+[data-blume-search-preview] > div {
+  color: var(--color-ink-2);
+}
+
+/* "Open in chat" kept its chevron at the far edge of the rail, away from its
+   label; keep it beside the words it belongs to. */
+[data-blume-page-actions] summary > svg:last-child {
+  margin-inline-start: 0;
+}
+
+/* Below `sm` Blume hides the header's actions to make room for the drawer
+   toggle, and the drawer has no slot for them, so phones lost Convert, the
+   site's primary action. The wordmark already leads back to the site, so only
+   the call to action comes back. */
+@media (width < 40rem) {
+  header[data-blume-header] a[href$="#convert"] {
+    display: inline-flex;
+    min-height: 2.25rem;
+    padding-inline: 0.75rem;
+  }
+}
+
 /* Chrome alignment with the landing page. Blume's header is full-bleed with
    its own padding, so the wordmark used to jump between `/` and `/docs`. Put
    the header in the shared chrome box (src/tokens.css), keeping the blurred
