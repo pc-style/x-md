@@ -23,10 +23,6 @@ h1 { text-wrap: balance; }
    at the body's weight. Steps and callouts are `not-prose`, so they get the
    same chip by hand (callout text itself stays muted, an aside), and Step
    titles read as titles rather than muted paragraphs. */
-:root, :root[data-theme="dark"] {
-  --blume-code-background: var(--color-raised-2);
-}
-
 .prose,
 [data-blume-step] {
   color: var(--color-ink-2);
@@ -37,7 +33,7 @@ h1 { text-wrap: balance; }
 [data-blume-callout] :not(pre) > code {
   border: 1px solid var(--color-hair);
   border-radius: 0.375rem;
-  background: var(--blume-code-background);
+  background: var(--color-raised-2);
   color: var(--color-ink);
   font-family: var(--font-mono);
   font-size: 0.875em;
