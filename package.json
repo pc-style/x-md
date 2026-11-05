@@ -49,7 +49,7 @@
     "@posthog/rollup-plugin": "^1.6.2",
     "@types/node": "^26.6.5",
     "@vercel/build-utils": "15.1.0",
-    "@vercel/node": "27.0.1",
+    "@vercel/node": "29.0.1",
     "ajv": "8.20.0",
     "blume": "^2.2.6",
     "shiki": "^4.4.3",
