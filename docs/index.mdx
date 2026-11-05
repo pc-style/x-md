@@ -15,17 +15,15 @@ x.md turns a public X URL into Markdown your agent can read. The rule is one sen
   <Step title="Tell your agent the rule">
     Paste this into the chat, or into `AGENTS.md`, `CLAUDE.md`, or whatever instruction file your agent reads:
 
-    ```text
-    To read an X (Twitter) post, thread, or profile, swap x.com for
-    mdfromx.com in the URL and fetch it. For search, fetch
-    https://mdfromx.com/search?q=<query>. The response is Markdown.
+    ```text wrap
+    To read an X (Twitter) post, thread, or profile, swap x.com for mdfromx.com in the URL and fetch it. For search, fetch https://mdfromx.com/search?q=<query>. The response is Markdown.
     ```
 
     Any agent that can fetch a URL now reads X. No further setup.
   </Step>
 
   <Step title="Ask it something">
-    ```text
+    ```text wrap
     Summarize https://x.com/trq212/status/2052809885763747935 and its replies.
     ```
 
