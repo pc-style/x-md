@@ -1,0 +1,45 @@
+name: Dependabot takeover
+
+# Hands every new Dependabot PR to an Amp orb thread owned by the workspace's
+# service account, which takes it over with .agents/skills/taking-over-work.
+#
+# pull_request_target, because Dependabot-triggered pull_request runs get no
+# Actions secrets. That is safe here only because this job never checks out or
+# runs the PR's code: it just starts a thread that works in its own orb.
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-takeover-${{ github.event.pull_request.number }}
+
+jobs:
+  takeover:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Amp CLI
+        run: |
+          curl -fsSL https://ampcode.com/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Start takeover thread
+        env:
+          AMP_API_KEY: ${{ secrets.AMP_SERVICE_ACCOUNT_API_KEY }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$AMP_API_KEY" ]; then
+            echo "::error::Set the AMP_SERVICE_ACCOUNT_API_KEY secret to an Amp service account API key."
+            exit 1
+          fi
+          amp -ox \
+            --project "$REPO" \
+            --title "Take over Dependabot #$PR_NUMBER: $PR_TITLE" \
+            --label dependabot \
+            "Take over Dependabot PR $PR_URL (\"$PR_TITLE\") using the taking-over-work skill in .agents/skills/taking-over-work. Get the dependency update landed in working order: fix whatever it breaks in the code, tests, build, or generated files, following AGENTS.md. If the PR already passes CI and needs no changes, say so in a comment on the PR instead of opening a replacement. Do not merge or close anything."
