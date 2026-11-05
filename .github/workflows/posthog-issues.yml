@@ -1,0 +1,48 @@
+name: PostHog issues
+
+# Starts an Amp orb thread owned by the workspace's service account for each new
+# PostHog error-tracking issue. A PostHog alert on $error_tracking_issue_created
+# sends the repository_dispatch (event_type posthog-issue, client_payload with
+# issue_id and name). Run it by hand to triage every active issue instead.
+# The service account needs PostHog connected in Amp to read issue details.
+
+on:
+  repository_dispatch:
+    types: [posthog-issue]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: posthog-issues-${{ github.event.client_payload.issue_id || 'all' }}
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Install Amp CLI
+        run: |
+          curl -fsSL https://ampcode.com/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Start triage thread
+        env:
+          AMP_API_KEY: ${{ secrets.AMP_SERVICE_ACCOUNT_API_KEY }}
+          REPO: ${{ github.repository }}
+          ISSUE_ID: ${{ github.event.client_payload.issue_id }}
+          ISSUE_NAME: ${{ github.event.client_payload.name }}
+        run: |
+          if [ -z "$AMP_API_KEY" ]; then
+            echo "::error::Set the AMP_SERVICE_ACCOUNT_API_KEY secret to an Amp service account API key."
+            exit 1
+          fi
+          rules="Find the cause in this repository from the issue's events and stack traces. Skip it if an open PR in $REPO already mentions the issue ID. When our code causes it, fix it in its own PR that links the PostHog issue URL, following AGENTS.md. When it is noise, such as browser extensions, bots, or third-party scripts, do not change code; say why in your final message. Do not merge PRs and do not change issue status in PostHog."
+          project="PostHog project mdfromx (ID 326194, EU cloud)"
+          if [ -n "$ISSUE_ID" ]; then
+            title="PostHog issue: $ISSUE_NAME"
+            prompt="Take care of the new error-tracking issue $ISSUE_ID (\"$ISSUE_NAME\") in $project: https://eu.posthog.com/project/326194/error-tracking/$ISSUE_ID. $rules"
+          else
+            title="PostHog issues $(date -u +%F)"
+            prompt="Take care of every active error-tracking issue in $project, one PR per issue. $rules"
+          fi
+          amp -ox --project "$REPO" --title "$title" --label posthog "$prompt"
