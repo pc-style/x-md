@@ -579,7 +579,7 @@ export function landingHtml(chrome: ChromeData = {}): string {
             </p>
             <div class="mt-auto pt-6">
               <div class="cmd-row">
-                <code tabindex="0" role="region" aria-label="Install command"><span class="t-dim mr-2 select-none">$</span>${SKILL_CMD}</code>
+                <code tabindex="0" role="region" aria-label="Install command"><span class="t-dim mr-2 select-none">$</span>${SKILL_CMD.split(' ').map((word) => `<span class="whitespace-nowrap">${word}</span>`).join(' ')}</code>
                 <button type="button" class="copy-btn" data-copy="${SKILL_CMD}">Copy</button>
               </div>
             </div>

@@ -440,8 +440,11 @@
     box-shadow: 0 0 0 3px var(--color-accent-soft);
   }
 
+  /* A URL wider than the field ends in an ellipsis rather than a cut glyph;
+     focusing the field scrolls it as usual. */
   .convert-input {
     @apply h-12 min-w-0 flex-1 rounded-xl border-0 bg-transparent px-4 font-mono text-[13.5px] text-ink outline-none sm:pl-5;
+    text-overflow: ellipsis;
   }
 
   .x-root .convert-input:focus-visible {
@@ -1209,12 +1212,17 @@
     box-shadow: inset 0 0 0 1px var(--color-line);
   }
 
+  /* The command wraps between its words (each one is kept whole in
+     `landing.ts`) in a narrow card instead of scrolling out of sight under
+     Copy, which copies `data-copy`, not the rendered text. */
   .cmd-row code {
-    @apply flex min-w-0 flex-1 items-center overflow-x-auto rounded-lg px-3.5 py-2.5 font-mono text-[12.5px] whitespace-nowrap text-ink;
+    @apply block min-w-0 flex-1 self-center overflow-x-auto rounded-lg px-3.5 py-2.5 font-mono text-[12.5px] text-ink;
   }
 
+  /* A fixed 40px hit area, centred, so it stays a button when the command
+     wraps instead of stretching into a slab beside it. */
   .copy-btn {
-    @apply shrink-0 cursor-pointer rounded-lg border-0 bg-ink px-4 font-mono text-[12px] font-medium text-surface;
+    @apply h-10 shrink-0 cursor-pointer self-center rounded-lg border-0 bg-ink px-4 font-mono text-[12px] font-medium text-surface;
   }
 
   .copy-btn:hover {
@@ -1234,6 +1242,21 @@
   .tablist {
     @apply relative flex items-end gap-1 overflow-x-auto overflow-y-hidden border-b border-line;
     scrollbar-width: none;
+  }
+
+  /* Below sm the last tabs sit off-screen. The row runs out to the screen
+     edge (through the section's px-6 gutter) so the next tab shows dimmed
+     under a fade that says "more this way". The end padding (a little wider
+     than the fade) lets the last tab and its focus ring clear it once
+     scrolled; the scroll padding does the same for a keyboard-focused tab,
+     which `tabs.ts` scrolls into view. */
+  @media (width < 40rem) {
+    .tablist {
+      margin-inline-end: calc(var(--spacing) * -6);
+      padding-inline-end: 3rem;
+      scroll-padding-inline: 3rem;
+      mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+    }
   }
 
   .tab {
