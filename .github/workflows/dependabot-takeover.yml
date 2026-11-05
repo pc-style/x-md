@@ -42,5 +42,7 @@ jobs:
             --project "$REPO" \
             --title "Take over Dependabot #$PR_NUMBER: $PR_TITLE" \
             --label dependabot \
+            --mode medium \
+            --features fast \
             -ox \
             "Take over Dependabot PR $PR_URL (\"$PR_TITLE\") using the taking-over-work skill in .agents/skills/taking-over-work. Get the dependency update landed in working order: fix whatever it breaks in the code, tests, build, or generated files, following AGENTS.md. If the PR already passes CI and needs no changes, say so in a comment on the PR instead of opening a replacement. Do not merge or close anything."

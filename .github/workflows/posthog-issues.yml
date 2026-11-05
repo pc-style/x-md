@@ -48,4 +48,6 @@ jobs:
             title="PostHog issues $(date -u +%F)"
             prompt="Take care of every active error-tracking issue in $project, one PR per issue. $rules"
           fi
-          amp --project "$REPO" --title "$title" --label posthog -ox "$prompt"
+          amp --project "$REPO" --title "$title" --label posthog \
+            --mode claude-code --features model:claude-opus-5-5,effort:high \
+            -ox "$prompt"
