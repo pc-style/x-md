@@ -2,6 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { trackRequest } from '../lib/analytics.js'
 import { withErrorTracking } from '../lib/error-tracking.js'
 import { callerHeaders, keyRequirementFailure, quotaCaller as quotaCallerOf, resolveCaller } from '../lib/apiauth.js'
+import { problemDetails } from '../lib/apierror.js'
 import { parseJsonBody, requestOrigin } from '../lib/http.js'
 import { mediaQuality } from '../lib/negotiate.js'
 import { API_IP, apiIpKey } from '../lib/quotas.js'
@@ -148,8 +149,18 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     return transportError(res, 405, JSONRPC_INVALID_REQUEST, `Method ${req.method ?? 'unknown'} is not allowed on the MCP endpoint.`)
   }
 
-  const parsed = parseJsonBody(req.body)
-  if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON')
+  let parsed: ReturnType<typeof parseJsonBody>
+  try {
+    // Vercel's lazy body getter can reject malformed application/json before
+    // parseJsonBody runs. It still needs the same JSON-RPC parse-error reply.
+    parsed = parseJsonBody(req.body)
+  } catch (error) {
+    if (!(error instanceof Error) || !('statusCode' in error)
+      || error.statusCode !== 400 || error.message !== 'Invalid JSON') throw error
+    parsed = { ok: false }
+  }
+  if (!parsed.ok) return transportError(res, 400, JSONRPC_PARSE_ERROR, 'Parse error: Invalid JSON',
+    problemDetails('invalid_body', { instance: `${site}/mcp` }))
   if (Array.isArray(parsed.value)) {
     // Every revision offered here is 2025-06-18 or later, which removed batching.
     return transportError(res, 400, JSONRPC_INVALID_REQUEST, 'Invalid Request: JSON-RPC batching was removed in protocol revision 2025-06-18. Send one message per request.')
