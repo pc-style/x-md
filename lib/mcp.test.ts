@@ -583,7 +583,17 @@ describe('the HTTP transport', () => {
   test('unparseable and malformed messages get the right JSON-RPC codes', async () => {
     const parse = await call('POST', { accept: 'application/json', body: 'not json' })
     expect(parse.res.statusCode).toBe(400)
-    expect(JSON.parse(parse.body())).toEqual({ jsonrpc: '2.0', id: null, error: { code: -32700, message: 'Parse error: Invalid JSON' } })
+    expect(JSON.parse(parse.body())).toEqual({
+      jsonrpc: '2.0', id: null,
+      error: {
+        code: -32700, message: 'Parse error: Invalid JSON',
+        data: expect.objectContaining({
+          code: 'invalid_body', status: 400,
+          instance: 'https://mdfromx.com/mcp',
+          resolution: 'Send a well-formed JSON object, or omit the body entirely.',
+        }),
+      },
+    })
 
     // Vercel parses application/json lazily, so reading body can throw before
     // our parser receives a value.
