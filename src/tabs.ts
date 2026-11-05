@@ -56,6 +56,9 @@ export function setupTabs(root: HTMLElement) {
       event.preventDefault()
       select(next)
       buttons[next].focus()
+      // focus() scrolls a tab only to the row's edge, under the narrow-screen
+      // fade; this one honours the row's scroll-padding.
+      buttons[next].scrollIntoView({ block: 'nearest', inline: 'nearest' })
     })
 
     select(Math.max(0, buttons.findIndex((button) => button.getAttribute('aria-selected') === 'true')))
