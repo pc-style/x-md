@@ -18,9 +18,30 @@ export function supportsNativeMultiImage(userAgent: string): boolean {
   return NATIVE_MULTI_IMAGE_UA_REGEX.test(userAgent)
 }
 
+/**
+ * The only part of a preview bot's user agent its card depends on: native
+ * multi-image (Discord, Matrix), Slack's media handling, or a plain card.
+ * `middleware.ts` puts it in the URL as `?embed=`, so the CDN keys cards on it
+ * and every other response can vary on `Accept` alone, not on each user agent.
+ */
+export type EmbedFlavor = 'multi' | 'slack' | 'card'
+export const EMBED_PARAM = 'embed'
+const EMBED_FLAVORS: readonly EmbedFlavor[] = ['multi', 'slack', 'card']
+
+export function embedFlavor(userAgent: string): EmbedFlavor | undefined {
+  if (!isEmbedUserAgent(userAgent)) return undefined
+  if (supportsNativeMultiImage(userAgent)) return 'multi'
+  return /slackbot|slack-img/i.test(userAgent) ? 'slack' : 'card'
+}
+
+export function parseEmbedFlavor(value: unknown): EmbedFlavor | undefined {
+  return EMBED_FLAVORS.find((flavor) => flavor === value)
+}
+
 export interface EmbedOptions {
   origin: string
   userAgent?: string
+  flavor?: EmbedFlavor
 }
 
 export interface OEmbedQuery {
@@ -283,9 +304,8 @@ export function buildEmbedHtml(tweet: FxTweet, options: EmbedOptions): string {
   const title = tweet.article?.title?.trim() || `${name} (@${handle})`
   const description = embedDescription(tweet)
   const proof = socialProof(tweet) ?? 'Embed'
-  const userAgent = options.userAgent ?? ''
-  const multiImage = supportsNativeMultiImage(userAgent)
-  const media = mediaPlan(tweet, multiImage, /slackbot|slack-img/i.test(userAgent))
+  const flavor = options.flavor ?? embedFlavor(options.userAgent ?? '') ?? 'card'
+  const media = mediaPlan(tweet, flavor === 'multi', flavor === 'slack')
   const oembed = new URL('/oembed', options.origin)
   oembed.searchParams.set('url', canonical)
   oembed.searchParams.set('text', proof.slice(0, 255))
@@ -335,7 +355,7 @@ export function embedResponse(
 
   const headers: Record<string, string> = {
     'Content-Type': 'text/html; charset=utf-8',
-    Vary: 'Accept, User-Agent',
+    Vary: options.flavor === undefined ? 'Accept, User-Agent' : 'Accept',
     'X-Converter': 'x-md',
     'X-Embed': '1',
     'X-Source': result.source,

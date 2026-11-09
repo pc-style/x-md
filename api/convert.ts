@@ -5,7 +5,7 @@ import { trackRequest } from '../lib/analytics.js'
 import { problemDetails, problemFrom, requestInstance, sendProblem, setDeprecationHeaders } from '../lib/apierror.js'
 import { captureArchive } from '../lib/archive.js'
 import { ConvertError, POST_REPRESENTATIONS, acceptPrefersHtml, convertTweet, markdownResponse } from '../lib/converter.js'
-import { embedResponse, isEmbedUserAgent } from '../lib/embed.js'
+import { EMBED_PARAM, embedFlavor, embedResponse, parseEmbedFlavor } from '../lib/embed.js'
 import { acceptedRepresentation, requestOrigin, setCorsHeaders, wantsJson, wantsMarkdown } from '../lib/http.js'
 import { applyExhaustedQuota, applyQuotaPolicyOnly, applyRequestQuota, chargeRequestQuota } from '../lib/ratelimit-headers.js'
 import { clientIp } from '../lib/ratelimit.js'
@@ -91,7 +91,10 @@ async function handler(req: VercelRequest, res: VercelResponse) {
     const requestedFormat = param('format')
     const asJson = wantsJson(requestedFormat, accept, POST_REPRESENTATIONS)
     const asMarkdown = wantsMarkdown(requestedFormat, accept, POST_REPRESENTATIONS)
-    const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
+    // The user agent is only a fallback for when middleware has not run (local dev).
+    const urlFlavor = parseEmbedFlavor(param(EMBED_PARAM))
+    const flavor = urlFlavor ?? embedFlavor(userAgent)
+    const asEmbed = !requestedFormat && !asJson && !asMarkdown && flavor !== undefined
     const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
     // Private mode: the permalink surface is API too, so it needs a key as well.
@@ -121,7 +124,7 @@ async function handler(req: VercelRequest, res: VercelResponse) {
 
       trackResult(result)
       const { status, headers, body } = asEmbed
-        ? embedResponse(result, { origin: requestOrigin(req), userAgent })
+        ? embedResponse(result, { origin: requestOrigin(req), flavor: urlFlavor, userAgent })
         : markdownResponse(result, asJson, asHtml)
       for (const [key, value] of Object.entries(headers)) {
         res.setHeader(key, value)

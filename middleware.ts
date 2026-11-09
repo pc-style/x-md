@@ -1,6 +1,7 @@
 import { next, rewrite } from '@vercel/functions'
 import { notAcceptableBody, selectRepresentation } from './lib/negotiate.js'
 import { domainFile } from './lib/domain-pages.js'
+import { EMBED_PARAM, embedFlavor, parseEmbedFlavor } from './lib/embed.js'
 
 /**
  * Content negotiation for the HTML pages.
@@ -32,6 +33,9 @@ const DISCOVERY_LINKS = [
 // explicit `/` rewrites. Every other one is redirected to its slashless route.
 const SERVED_WITH_SLASH = /^\/(?:docs\/.*|mcp\/(?:server-card\/)?|[A-Za-z0-9_]{1,15}\/status\/\d+\/(?:(?:video|photo)\/[1-9]\d*\/)?)$/
 
+// The routes `vercel.json` hands to api/convert.ts.
+const CONVERT_PATH = /^\/(?:[A-Za-z0-9_]{1,15}\/status\/\d+(?:\/(?:video|photo)\/[1-9]\d*)?\/?|api\/v1\/posts|api\/convert)$/
+
 function markdownSibling(pathname: string): string {
   if (pathname === '/') return '/index.md'
   return `${pathname.replace(/\/+$/, '')}.md`
@@ -50,6 +54,14 @@ export default function middleware(request: Request): Response {
     const path = url.searchParams.get('path')
     const canonical = path === null ? '' : `?${new URLSearchParams({ path })}`
     if (url.search !== canonical) return Response.redirect(new URL(`/api/site${canonical}`, request.url), 308)
+  }
+  // Give a preview bot's card its own cache key (see `EmbedFlavor`).
+  if (CONVERT_PATH.test(url.pathname)) {
+    const flavor = embedFlavor(request.headers.get('user-agent') ?? '')
+    if (flavor && !parseEmbedFlavor(url.searchParams.get(EMBED_PARAM))) {
+      url.searchParams.set(EMBED_PARAM, flavor)
+      return rewrite(url)
+    }
   }
   const needsHost = url.hostname !== 'mdfromx.com'
   const variant = (path: string) => needsHost && domainFile(path)

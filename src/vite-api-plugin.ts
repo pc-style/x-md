@@ -28,7 +28,7 @@ import {
   POST_REPRESENTATIONS,
   STATUS_PATH,
 } from '../lib/converter'
-import { embedResponse, isEmbedUserAgent, oembedResponse } from '../lib/embed'
+import { EMBED_PARAM, embedFlavor, embedResponse, oembedResponse, parseEmbedFlavor } from '../lib/embed'
 import {
   appendLink,
   problemDetails,
@@ -151,7 +151,9 @@ async function handleConvert(
   const requestedFormat = url.searchParams.get('format')
   const asJson = wantsJson(requestedFormat, accept, POST_REPRESENTATIONS)
   const asMarkdown = wantsMarkdown(requestedFormat, accept, POST_REPRESENTATIONS)
-  const asEmbed = !requestedFormat && !asJson && !asMarkdown && isEmbedUserAgent(userAgent)
+  const urlFlavor = parseEmbedFlavor(url.searchParams.get(EMBED_PARAM))
+  const flavor = urlFlavor ?? embedFlavor(userAgent)
+  const asEmbed = !requestedFormat && !asJson && !asMarkdown && flavor !== undefined
   const asHtml = !requestedFormat && !asJson && !asMarkdown && !asEmbed && acceptPrefersHtml(accept)
 
   // As api/convert.ts: a key that does not verify is refused, private mode
@@ -189,7 +191,7 @@ async function handleConvert(
     })
 
     const { status, headers, body } = asEmbed
-      ? embedResponse(result, { origin: requestOrigin(req), userAgent })
+      ? embedResponse(result, { origin: requestOrigin(req), flavor: urlFlavor, userAgent })
       : markdownResponse(result, asJson, asHtml)
     res.statusCode = status
     for (const [key, value] of Object.entries(headers)) {
