@@ -195,6 +195,8 @@ export async function fetchFirecrawlStatus(handle: string, id: string): Promise<
         onlyMainContent: true,
         waitFor: 2000,
       }),
+      // Same ceiling as search.
+      signal: AbortSignal.timeout(15_000),
     })
   } catch {
     throw new ConvertError(502, 'Failed to reach Firecrawl API.', 'firecrawl_network')
