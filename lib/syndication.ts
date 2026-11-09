@@ -4,6 +4,9 @@ import type { FxArticle, FxArticleBlock, FxMedia, FxMediaItem, FxTweet } from '.
 
 const SYNDICATION_BASE = 'https://cdn.syndication.twimg.com/tweet-result'
 const UA = 'Mozilla/5.0 (compatible; x-md/1.0)'
+// The hedge's own ceiling: the caller's signal only cancels it once another
+// provider answers, so a stalled CDN would otherwise hold the whole request.
+const SYNDICATION_TIMEOUT_MS = 8_000
 
 interface SyndicationUser {
   name?: string
@@ -159,7 +162,11 @@ export async function fetchSyndicationStatus(handle: string, id: string, signal?
   let response: Response
   try {
     const url = `${SYNDICATION_BASE}?id=${encodeURIComponent(id)}&lang=en&token=0`
-    response = await providerFetch('syndication', url, { headers: { 'User-Agent': UA, Accept: 'application/json' }, signal })
+    const timeout = AbortSignal.timeout(SYNDICATION_TIMEOUT_MS)
+    response = await providerFetch('syndication', url, {
+      headers: { 'User-Agent': UA, Accept: 'application/json' },
+      signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    })
   } catch {
     throw new ConvertError(502, 'Failed to reach X syndication API.', 'syndication_network')
   }

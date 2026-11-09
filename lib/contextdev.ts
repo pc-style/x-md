@@ -5,6 +5,7 @@ import { extractStatusTextFromMarkdown } from './scrape-text.js'
 
 const CONTEXT_DEV_MARKDOWN_API = 'https://api.context.dev/v1/web/scrape/markdown'
 const UA = 'x-md/1.0'
+const CONTEXT_DEV_TIMEOUT_MS = 12_000
 
 interface ContextDevMarkdownResponse {
   success?: boolean
@@ -34,6 +35,7 @@ export async function fetchContextDevStatus(handle: string, id: string): Promise
         Authorization: `Bearer ${apiKey}`,
         'User-Agent': UA,
       },
+      signal: AbortSignal.timeout(CONTEXT_DEV_TIMEOUT_MS),
     })
   } catch {
     throw new ConvertError(502, 'Failed to reach Context.dev API.', 'contextdev_network')
