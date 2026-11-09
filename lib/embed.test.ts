@@ -271,6 +271,7 @@ describe('embed and oEmbed responses', () => {
     expect(response.status).toBe(200)
     expect(response.headers['Content-Type']).toContain('text/html')
     expect(response.headers.Vary).toBe('Accept, User-Agent')
+    expect(embedResponse(result, { origin: 'https://mdfromx.com', flavor: 'multi' }).headers.Vary).toBe('Accept')
     expect(response.headers['X-Embed']).toBe('1')
     expect(response.body).toContain('Nathan (@nthglsn)')
   })

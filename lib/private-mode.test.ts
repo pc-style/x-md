@@ -82,12 +82,21 @@ test('private mode: the same user agent asking for data is gated like anyone els
   expect(anonymous.res.statusCode).toBe(401)
 })
 
-test('private mode: only a keyless preview bot is exempt, and a valid key always passes', async () => {
+test('private mode: only a keyless Open Graph card is exempt, and a valid key always passes', async () => {
   const card = exchange({ 'user-agent': 'Discordbot/2.0', accept: '*/*' }, { handle: 'alice', id: '123' })
   await convertHandler(card.req, card.res)
   expect(card.res.statusCode).toBe(200)
   expect(String(card.res.getHeader('Content-Type'))).toContain('text/html')
   expect(card.res.body).toMatch(/<meta property="og:description" content="[^"]*a post/)
+
+  // URL-selected cards expose the same public metadata as a spoofable bot UA.
+  const explicitCard = exchange({ 'user-agent': 'curl/8', accept: '*/*' }, { embed: 'card' })
+  await convertHandler(explicitCard.req, explicitCard.res)
+  expect(explicitCard.res.statusCode).toBe(200)
+  expect(String(explicitCard.res.getHeader('Content-Type'))).toContain('text/html')
+  const explicitData = exchange({ 'user-agent': 'curl/8', accept: 'application/json' }, { embed: 'card' })
+  await convertHandler(explicitData.req, explicitData.res)
+  expect(explicitData.res.statusCode).toBe(401)
 
   const curl = exchange({ 'user-agent': 'curl/8', accept: '*/*' }, { handle: 'alice', id: '123' })
   await convertHandler(curl.req, curl.res)

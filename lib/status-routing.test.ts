@@ -51,6 +51,36 @@ describe('status permalink routing', () => {
     )
   })
 
+  test.each([
+    ['Discordbot/2.0', '/jack/status/20', 'multi'],
+    ['Slackbot-LinkExpanding 1.0', '/jack/status/20/photo/1', 'slack'],
+    ['TelegramBot (like TwitterBot)', '/api/v1/posts', 'card'],
+    ['curl/8.7.1', '/jack/status/20', null],
+    ['Discordbot/2.0', '/jack', null],
+  ])('a %s request for %s gets its card flavor in the URL', (agent, path, flavor) => {
+    const response = middleware(new Request(`https://mdfromx.com${path}?s=46`, { headers: { 'User-Agent': agent } }))
+    const rewritten = response.headers.get('x-middleware-rewrite')
+    if (flavor === null) return expect(rewritten).toBeNull()
+    const url = new URL(rewritten!)
+    expect(url.pathname).toBe(path)
+    expect(url.searchParams.get('embed')).toBe(flavor)
+    expect(url.searchParams.get('s')).toBe('46')
+    // Already flavored: no second rewrite.
+    expect(middleware(new Request(url, { headers: { 'User-Agent': agent } })).headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
+  test.each(['card', 'slack', 'multi'])('preserves an explicit embed=%s instead of inferring it from the bot', (flavor) => {
+    const url = `https://mdfromx.com/jack/status/20?embed=${flavor}`
+    expect(middleware(new Request(url, { headers: { 'User-Agent': 'Discordbot/2.0' } })).headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
+  test.each(['invalid', ''])('normalizes embed=%s for bots without sharing the ordinary cache key', (flavor) => {
+    const url = `https://mdfromx.com/jack/status/20?embed=${flavor}`
+    expect(middleware(new Request(url, { headers: { 'User-Agent': 'curl/8' } })).headers.get('x-middleware-rewrite')).toBeNull()
+    const rewritten = middleware(new Request(url, { headers: { 'User-Agent': 'Discordbot/2.0' } })).headers.get('x-middleware-rewrite')
+    expect(new URL(rewritten!).searchParams.get('embed')).toBe('multi')
+  })
+
   test.each(['/video/0', '/video/-1', '/video/nope', '/video/1/extra', '/other/1'])('rejects invalid media suffix %s', (suffix) => {
     const url = new URL(canonicalUrl + suffix)
     expect(STATUS_PATH.test(url.pathname)).toBe(false)
