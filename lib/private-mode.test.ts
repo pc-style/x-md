@@ -32,6 +32,11 @@ beforeEach(() => {
 })
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks() })
 
+/** The cache lookup may start before the checks finish, but a refused caller's gate never opens. */
+async function expectNeverAdmitted() {
+  for (const [, options] of vi.mocked(convertTweet).mock.calls) expect(await options?.admission).toBe(false)
+}
+
 test('a presented key that does not verify is refused even in public mode', async () => {
   vi.stubEnv('X_MD_REQUIRE_API_KEY', '')
   vi.mocked(resolveCaller).mockResolvedValueOnce({ caller: { kind: 'public', ip: '192.0.2.1' }, status: 'invalid', ip: '192.0.2.1' })
@@ -39,7 +44,7 @@ test('a presented key that does not verify is refused even in public mode', asyn
   await convertHandler(req, res)
   expect(res.statusCode).toBe(401)
   expect(JSON.parse(res.body).code).toBe('invalid_key')
-  expect(convertTweet).not.toHaveBeenCalled()
+  await expectNeverAdmitted()
 })
 
 test('an Accept that refuses every representation is 406, but a preview bot keeps its card', async () => {
@@ -48,7 +53,7 @@ test('an Accept that refuses every representation is 406, but a preview bot keep
   await convertHandler(refused.req, refused.res)
   expect(refused.res.statusCode).toBe(406)
   expect(JSON.parse(refused.res.body).code).toBe('not_acceptable')
-  expect(convertTweet).not.toHaveBeenCalled()
+  await expectNeverAdmitted()
 
   const card = exchange({ 'user-agent': DISCORD, accept: '*/*;q=0' })
   await convertHandler(card.req, card.res)

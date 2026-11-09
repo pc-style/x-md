@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { waitUntil } from '@vercel/functions'
 import { trackRequest } from '../lib/analytics.js'
 import { withErrorTracking } from '../lib/error-tracking.js'
 import { callerHeaders, keyRequirementFailure, quotaCaller as quotaCallerOf, resolveCaller } from '../lib/apiauth.js'
@@ -269,7 +270,8 @@ async function handler(req: VercelRequest, res: VercelResponse) {
   // that needed an upstream is refused, and it keeps its charge.
   const hit = outcome !== null && 'result' in outcome && (outcome.result as { structuredContent?: { cache?: unknown } }).structuredContent?.cache === 'hit'
   if (quota && hit && quota.bucket !== undefined) {
-    await refundRateLimit(apiIpKey(resolved.ip), API_IP.windowSec, quota.bucket)
+    // Nothing below reads the store again, so the refund need not hold the answer.
+    waitUntil(refundRateLimit(apiIpKey(resolved.ip), API_IP.windowSec, quota.bucket))
     if (quota.allowed) applyRequestQuota(res, { ...quota, states: quota.states.map((state) => (state.name === API_IP.name ? { ...state, remaining: Math.min(state.quota, state.remaining + 1) } : state)) })
   }
   if (quota && quota.allowed && importing) {

@@ -1,4 +1,5 @@
-import { PostHog } from 'posthog-node'
+// Loaded on the first failure, not up front: every handler imports this module.
+import type { PostHog } from 'posthog-node'
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { exceptionKeys, sanitizeException } from './exception-properties.js'
 
@@ -18,17 +19,20 @@ export function withErrorTracking<T>(handler: VercelHandler<T>): VercelHandler<T
         const token = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
         const host = process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST
         if (process.env.VERCEL_ENV === 'production' && token && host?.startsWith('https://')) {
-          posthog ??= new PostHog(token, {
-            host, flushInterval: 0, requestTimeout: 3000, fetchRetryCount: 0, disableGeoip: true,
-            before_send(event) {
-              if (event.event !== '$exception') return null
-              const kept = Object.fromEntries(Object.entries(event.properties ?? {}).filter(([key]) => properties.has(key)))
-              sanitizeException(kept)
-              return { ...event, distinctId: 'server', properties: {
-                ...kept, environment: 'production', $process_person_profile: false, $geoip_disable: true, $ip: null,
-              } }
-            },
-          })
+          if (!posthog) {
+            const { PostHog } = await import('posthog-node')
+            posthog ??= new PostHog(token, {
+              host, flushInterval: 0, requestTimeout: 3000, fetchRetryCount: 0, disableGeoip: true,
+              before_send(event) {
+                if (event.event !== '$exception') return null
+                const kept = Object.fromEntries(Object.entries(event.properties ?? {}).filter(([key]) => properties.has(key)))
+                sanitizeException(kept)
+                return { ...event, distinctId: 'server', properties: {
+                  ...kept, environment: 'production', $process_person_profile: false, $geoip_disable: true, $ip: null,
+                } }
+              },
+            })
+          }
           posthog.captureException(error, 'server')
           await Promise.race([
             posthog.flush(),

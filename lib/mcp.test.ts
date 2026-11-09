@@ -218,7 +218,7 @@ describe('tools/call', () => {
       compact: true,
     })
     const result = ok(await dispatch({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'x_md_get_post', arguments: { url: 'https://x.com/pcstyle53/status/1', max_posts: 12 } } }))
-    expect(convertMock).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://x.com/pcstyle53/status/1', thread: '12' }))
+    expect(convertMock).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://x.com/pcstyle53/status/1', thread: '12' }), expect.anything())
     expect((result.structuredContent as Record<string, unknown>).post_count).toBe(1)
   })
 

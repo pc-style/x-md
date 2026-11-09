@@ -38,6 +38,36 @@ async function read(input: ConvertInput = {}) {
   return pending
 }
 
+test.each(['miss', 'hit', 'nocache'] as const)('admission gates a %s before returning content or fetching', async mode => {
+  if (mode === 'hit') await read()
+  vi.mocked(fetchPosts).mockClear()
+
+  for (const allowed of [false, true]) {
+    let admit!: (allowed: boolean) => void
+    const admission = new Promise<boolean>(resolve => { admit = resolve })
+    const pending = convertTweet({ url, nocache: mode === 'nocache' }, { admission })
+    let settled = false
+    void pending.then(() => { settled = true }, () => { settled = true })
+    await vi.runAllTimersAsync()
+    expect(settled).toBe(false)
+    expect(fetchPosts).not.toHaveBeenCalled()
+
+    if (allowed) {
+      admit(true)
+      await vi.runAllTimersAsync()
+      const result = await pending
+      expect(result.body).toContain('requested post')
+      expect(result.cache).toBe(mode === 'nocache' ? 'bypass' : mode)
+      expect(fetchPosts).toHaveBeenCalledTimes(mode === 'hit' ? 0 : 1)
+    } else {
+      const rejected = expect(pending).rejects.toMatchObject({ status: 429, code: 'rate_limited' })
+      admit(false)
+      await rejected
+      expect(fetchPosts).not.toHaveBeenCalled()
+    }
+  }
+})
+
 test('six representations reuse one fresh snapshot without repeating upstream latency', async () => {
   const started = Date.now()
   const variants: ConvertInput[] = [
