@@ -5,6 +5,7 @@ import {
   vercelCacheControlHeader,
   withCache,
 } from './cache.js'
+import { waitUntil } from '@vercel/functions'
 import { ConvertError } from './errors.js'
 import { acceptedRepresentation } from './http.js'
 import { fetchPosts, type ContextMode, type FetchResult, type FetchSource, type RepliesMode } from './tweet-fetch.js'
@@ -26,6 +27,11 @@ export interface ConvertInput {
   full?: boolean | string | null
   context?: string | null
   replies?: string | null
+}
+
+export interface ConvertOptions {
+  /** The handler's verdict; the cache lookup runs while it is pending, and a denial throws. */
+  admission?: Promise<boolean>
 }
 
 export interface ConvertSuccess {
@@ -245,7 +251,13 @@ function renderSnapshot(
   }
 }
 
-export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess> {
+export async function convertTweet(input: ConvertInput, options: ConvertOptions = {}): Promise<ConvertSuccess> {
+  // Derived before anything can throw, so a verdict that settles while the input
+  // is still being rejected below is observed here and never left unhandled.
+  const admitted = options.admission?.then((allowed) => {
+    if (!allowed) throw new ConvertError(429, 'Too many requests from this address. Cached responses do not count against the allowance.', 'rate_limited')
+  })
+  admitted?.catch(() => undefined)
   const format = parseFormat(input.format)
   const thread = parseThread(input.thread)
   const userinfo = parseUserinfo(input.userinfo)
@@ -267,7 +279,8 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
 
   // Cache retrieval, not presentation: formats and display limits all render
   // the same upstream snapshot without fetching the conversation again. Store
-  // its timestamp once so rendering another view cannot refresh its age.
+  // its timestamp once so rendering another view cannot refresh its age. The
+  // shared write goes to waitUntil, so a miss is answered once hot memory holds it.
   const { value, status } = await withCache<PostSnapshot>(cacheKey, nocache, async () => {
     const snapshot = {
       ...await fetchPosts(handle, id, thread.mode, context, replies),
@@ -280,7 +293,7 @@ export async function convertTweet(input: ConvertInput): Promise<ConvertSuccess>
       renderSnapshot({ ...snapshot, tweets: [tweet] }, 'markdown', { mode: 'off', limit: 1 }, 'author', canonicalUrl, id, false)
     }
     return snapshot
-  })
+  }, undefined, undefined, { admission: admitted, defer: waitUntil })
 
   return { ...renderSnapshot(value, format, thread, userinfo, canonicalUrl, id, compact), cache: status }
 }

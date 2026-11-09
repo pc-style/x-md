@@ -903,7 +903,6 @@ async function admitted(ctx: McpContext): Promise<void> {
 
 const TOOL_RUNNERS: Record<string, ToolRunner> = {
   async x_md_get_post(args, ctx) {
-    await admitted(ctx)
     const thread = text(args.thread) ?? 'full'
     const { convertTweet } = await import('./converter.js')
     const result = await convertTweet({
@@ -918,7 +917,7 @@ const TOOL_RUNNERS: Record<string, ToolRunner> = {
       replies: text(args.replies) ?? null,
       userinfo: text(args.userinfo) ?? null,
       full: args.full === true,
-    })
+    }, { admission: ctx.admission })
     return {
       text: result.body,
       structured: {
