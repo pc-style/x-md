@@ -32,7 +32,7 @@
     "build": "bun scripts/build-og-renderer.mjs && bun --bun tsc && bun run docs:build && bun run openapi:build && bun run sdk:build && bun --bun vite build && bun --bun vite build --config vite.docs-analytics.config.ts && bun run skills:publish && bun run docs:theme",
     "preview": "vite preview",
     "browse-x": "bun skills/browse-x/scripts/browse-x.ts",
-    "test": "bun --bun vitest --run",
+    "test": "vitest --run",
     "fonts:build": "bun scripts/build-fonts.ts",
     "fonts:check": "bun scripts/build-fonts.ts --check",
     "docs:dev": "bun --bun blume dev",
