@@ -11,7 +11,7 @@ bun run dev          # landing page + API handlers on Vite
 bun run docs:dev     # documentation site (separate server)
 ```
 
-Bun `1.4.x` is the supported toolchain (see `.bun-version`). The Vite dev server mirrors the Vercel routing in `vercel.json`, so `/handle/status/id`, `/search`, and `/api/*` work locally.
+Bun `1.4.x` is the supported toolchain (see `.bun-version`). Node.js must also be on `PATH` for `bun run test`, which uses Vitest's Node launcher. The Vite dev server mirrors the Vercel routing in `vercel.json`, so `/handle/status/id`, `/search`, and `/api/*` work locally.
 
 ## Before you open a PR
 
